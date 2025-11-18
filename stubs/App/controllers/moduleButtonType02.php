@@ -27,6 +27,6 @@ function controller_moduleButtonType02(int $i = 0, array $params = []): string
         '{cta-link-span-text}' => is_object($ctaSpanObj) && isset($ctaSpanObj->text) ? $ctaSpanObj->text : '',
     ];
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_moduleButtonType02.html', $vars);
+    return render('App/templates/_moduleButtonType02.html', $vars);
 }
 ?>

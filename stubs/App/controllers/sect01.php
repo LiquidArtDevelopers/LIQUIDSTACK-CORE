@@ -103,6 +103,6 @@ function controller_sect01(int $i = 0, array $params = []): string
     $vars['{items}'] = $itemsHtml;
     unset($params['items']);
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_sect01.html', $vars);
+    return render('App/templates/_sect01.html', $vars);
 }
 ?>

@@ -17,6 +17,6 @@ function controller_moduleTest(int $i = 0, array $params = []): string
         '{test-slot}'    => ''
     ];
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_moduleTest.html', $vars);
+    return render('App/templates/_moduleTest.html', $vars);
 }
 ?>

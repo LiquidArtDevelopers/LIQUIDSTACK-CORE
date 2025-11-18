@@ -12,6 +12,6 @@ function controller_moduleLoader01(int $i = 1, array $params = []): string
         '{loader-id}' => "loader{$pad}",
     ];
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_moduleLoader01.html', $vars);
+    return render('App/templates/_moduleLoader01.html', $vars);
 }
 ?>

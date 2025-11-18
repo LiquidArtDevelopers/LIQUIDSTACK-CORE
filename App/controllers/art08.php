@@ -75,6 +75,6 @@ function controller_art08(int $i = 0, array $params = []): string
     ];
 
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_art08.html', $vars);
+    return render('App/templates/_art08.html', $vars);
 }
 ?>

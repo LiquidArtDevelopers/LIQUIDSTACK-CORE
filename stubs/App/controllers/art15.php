@@ -26,6 +26,6 @@ function controller_art15(int $i = 0, array $params = []): string
         '{img-02-title}'   => $GLOBALS["art15_{$pad}_img2"]->title,
     ];
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_art15.html', $vars);
+    return render('App/templates/_art15.html', $vars);
 }
 ?>

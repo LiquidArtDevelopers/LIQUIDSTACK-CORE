@@ -260,6 +260,6 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
         '{col3-links}'         => $col3Html,
     ];
     $pageVars = array_replace($pageVars, $params);
-    return render('../App/templates/_navMegamenu01.html', $pageVars);
+    return render('App/templates/_navMegamenu01.html', $pageVars);
 }
 ?>

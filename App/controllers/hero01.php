@@ -11,6 +11,6 @@ function controller_hero01(int $i = 0, array $params = []): string
         '{hero01-content}' => '',
     ];
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_hero01.html', $vars);
+    return render('App/templates/_hero01.html', $vars);
 }
 ?>

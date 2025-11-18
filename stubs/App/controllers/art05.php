@@ -46,6 +46,6 @@ function controller_art05(int $i = 0, array $params = []): string
     ];
     $vars = array_replace($vars, $params);
     unset($params['items']);
-    return render('../App/templates/_art05.html', $vars);
+    return render('App/templates/_art05.html', $vars);
 }
 ?>

@@ -60,6 +60,6 @@ HTML;
     $vars['{artSlider02-slides}'] = $slidesHtml;
     unset($params['items']);
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_artSlider02.html', $vars);
+    return render('App/templates/_artSlider02.html', $vars);
 }
 ?>

@@ -75,6 +75,6 @@ function controller_artSlider01(int $i = 0, array $params = []): string
     $vars['{artSlider01-track}'] = $trackHtml;
     unset($params['items']);
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_artSlider01.html', $vars);
+    return render('App/templates/_artSlider01.html', $vars);
 }
 ?>

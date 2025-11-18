@@ -19,6 +19,6 @@ function controller_hero00(int $i = 0, array $params = []): string
         '{bg-fallback-src}' => $_ENV['RAIZ'].'/'.$GLOBALS['hero00_bg_fallback']->src,
     ];
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_hero00.html', $vars);
+    return render('App/templates/_hero00.html', $vars);
 }
 ?>

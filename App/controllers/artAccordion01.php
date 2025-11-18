@@ -68,6 +68,6 @@ SVG;
 
     $vars = array_replace($vars, $params);
 
-    return render('../App/templates/_artAccordion01.html', $vars);
+    return render('App/templates/_artAccordion01.html', $vars);
 }
 ?>

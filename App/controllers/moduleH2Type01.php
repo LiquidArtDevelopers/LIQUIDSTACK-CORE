@@ -13,6 +13,6 @@ function controller_moduleH2Type01(int $i = 0, array $params = []): string
         '{h2-text}' => $GLOBALS["moduleH2Type01_{$pad}_h2_text"]->text,
     ];
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_moduleH2Type01.html', $vars);
+    return render('App/templates/_moduleH2Type01.html', $vars);
 }
 ?>

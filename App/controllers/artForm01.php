@@ -98,6 +98,6 @@ function controller_artForm01(int $i = 0, array $params = []): string
         '{new-query-text}'         => $GLOBALS["artForm01_{$pad}_new_query"]->text,
     ];
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_artForm01.html', $vars);
+    return render('App/templates/_artForm01.html', $vars);
 }
 ?>

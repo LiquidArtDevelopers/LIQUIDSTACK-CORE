@@ -60,5 +60,5 @@ function controller_moduleImgType01(int $i = 0, array $params = []): string
 
     $vars = array_replace($vars, $params);
 
-    return render('../App/templates/_moduleImgType01.html', $vars);
+    return render('App/templates/_moduleImgType01.html', $vars);
 }

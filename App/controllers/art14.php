@@ -20,6 +20,6 @@ function controller_art14(int $i = 0, array $params = []): string
         '{img-title}'      => $GLOBALS["art14_{$pad}_img"]->title,
     ];
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_art14.html', $vars);
+    return render('App/templates/_art14.html', $vars);
 }
 ?>

@@ -32,6 +32,6 @@ function controller_footerInfo01(int $i = 0, array $params = []): string
 
     $vars = array_replace($vars, $params);
 
-    return render('../App/templates/_footerInfo01.html', $vars);
+    return render('App/templates/_footerInfo01.html', $vars);
 }
 ?>

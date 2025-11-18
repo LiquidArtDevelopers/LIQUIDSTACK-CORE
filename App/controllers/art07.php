@@ -40,6 +40,6 @@ function controller_art07(int $i = 0, array $params = []): string
         '{cite-text}'        => $GLOBALS["art07_{$pad}_cite"]->text,
     ];
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_art07.html', $vars);
+    return render('App/templates/_art07.html', $vars);
 }
 ?>

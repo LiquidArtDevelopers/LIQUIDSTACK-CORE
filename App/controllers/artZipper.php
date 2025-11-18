@@ -24,6 +24,6 @@ function controller_artZipper(int $i = 0, array $params = []): string
     ];
     unset($params['items']);
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_artZipper.html', $vars);
+    return render('App/templates/_artZipper.html', $vars);
 }
 ?>

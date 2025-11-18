@@ -23,6 +23,6 @@ function controller_moduleH1Type02(int $i = 0, array $params = []): string
 
     $vars = array_replace($vars, $params);
 
-    return render('../App/templates/_moduleH1Type02.html', $vars);
+    return render('App/templates/_moduleH1Type02.html', $vars);
 }
 ?>

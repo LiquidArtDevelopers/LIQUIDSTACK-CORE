@@ -134,6 +134,6 @@ HTML;
 
     $vars = array_replace($vars, $params);
 
-    return render('../App/templates/_art13.html', $vars);
+    return render('App/templates/_art13.html', $vars);
 }
 ?>

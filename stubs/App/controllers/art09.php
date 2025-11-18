@@ -85,6 +85,6 @@ HTML;
     $vars['{art09-fichas}'] = $cardsHtml;
     unset($params['items']);
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_art09.html', $vars);
+    return render('App/templates/_art09.html', $vars);
 }
 ?>

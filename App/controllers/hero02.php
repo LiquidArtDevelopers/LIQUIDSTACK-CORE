@@ -19,6 +19,6 @@ function controller_hero02(int $i = 0, array $params = []): string
         '{video-title}'     => $GLOBALS['hero02_video_title']->title,
     ];
     $vars = array_replace($vars, $params);
-    return render('../App/templates/_hero02.html', $vars);
+    return render('App/templates/_hero02.html', $vars);
 }
 ?>
