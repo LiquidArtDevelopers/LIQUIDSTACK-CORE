@@ -4,7 +4,7 @@ Este paquete incluye tanto el núcleo PHP de Liquid Stack como los recursos de f
 
 ## Versionado, changelog y avisos de release
 
-- `stack-core` adopta versionado semántico desde la `1.0.0`. Los cambios deben registrarse en `CHANGELOG.md` junto con los pasos de actualización recomendados para proyectos cliente.
+`liquidstack/core` adopta versionado semántico desde la `1.0.0`. Los cambios deben registrarse en `CHANGELOG.md` junto con los pasos de actualización recomendados para proyectos cliente.
 - Cada release debe añadir en este README un breve aviso con breaking changes o nuevas deprecaciones para que los integradores tengan la guía a mano durante los despliegues.
 - Cuando se marquen APIs como `@deprecated`, indica la versión de retirada esperada y mantén la compatibilidad hasta la siguiente versión mayor.
 
@@ -14,12 +14,12 @@ Este paquete incluye tanto el núcleo PHP de Liquid Stack como los recursos de f
 
 ## Sincronización de assets
 
-Los recursos de `stack-core/resources/js` y `stack-core/resources/scss` se copian automáticamente después de `composer install` y `composer update` hacia un directorio accesible para el proyecto. Por defecto se depositan en `src/js/resources` y `src/scss/resources` (además de mantener una copia en `vendor/liquidstack/core/resources`), pero puedes cambiar el destino indicando la variable de entorno `STACK_CORE_RESOURCES_TARGET` con una ruta absoluta o relativa al proyecto (por ejemplo, `src/resources`). Se mantiene `STACK_LIQUID_CORE_RESOURCES_TARGET` como alias heredado para facilitar la migración.
+Los recursos del paquete (`vendor/liquidstack/core/resources/js` y `vendor/liquidstack/core/resources/scss`) se copian automáticamente después de `composer install` y `composer update` hacia un directorio accesible para el proyecto. Por defecto se depositan en `src/js/resources` y `src/scss/resources` (además de mantener una copia en `vendor/liquidstack/core/resources`), pero puedes cambiar el destino indicando la variable de entorno `STACK_CORE_RESOURCES_TARGET` con una ruta absoluta o relativa al proyecto (por ejemplo, `src/resources`). Se mantiene `STACK_LIQUID_CORE_RESOURCES_TARGET` como alias heredado para facilitar la migración.
 
 Si necesitas relanzar la sincronización manualmente ejecuta el script Composer dedicado:
 
 ```bash
-composer stack-core:sync-resources
+composer liquidstack-core:sync-resources
 ```
 
 El alias heredado `composer stack-liquid-core:sync-resources` permanece disponible para proyectos que aún no hayan actualizado sus scripts.
@@ -28,7 +28,7 @@ El alias heredado `composer stack-liquid-core:sync-resources` permanece disponib
 
 - **PHP agnóstico**: los controladores y templates reutilizables viven en `stubs/App/controllers` y `stubs/App/templates` y se copian automáticamente a `App/` tras `composer install`/`composer update`. Si existe un controlador homónimo en `App/controllers`, se prioriza como override local; en caso contrario se recurre al del core. Las herramientas CLI compartidas (`App/tools`) también se replican al proyecto para que puedan ejecutarse allí, de modo que el directorio `App/tools` reaparece en cada instalación aunque no se mantenga versionado.
 - **Entrypoint y helpers**: se sincronizan `public/index.php`, `App/config/helpers.php`, `App/app/url.php`, los scripts de idiomas y el sitemap. No se distribuye ningún `App/bootstrap.php`; en los proyectos cliente se puede eliminar con seguridad si quedó como rastro de versiones antiguas.
-- **Assets front**: continúan en `resources/js` y `resources/scss` y se copian con `stack-core:sync-resources`.
+- **Assets front**: continúan en `resources/js` y `resources/scss` y se copian con `liquidstack-core:sync-resources`.
 
 Algunos módulos JS incluidos en `resources/js` emplean GSAP para animaciones.
 
@@ -36,7 +36,7 @@ Para migrar código agnóstico que todavía resida en un proyecto cliente, muév
 
 ## Dónde actualizar el core y cómo publicarlo
 
-- El código fuente del core vive en el paquete `liquidstack/core` (este repositorio). Cualquier cambio agnóstico debe aplicarse aquí, dentro de `stack-core/stubs` para PHP o `stack-core/resources` para assets front.
+- El código fuente del core vive en el paquete `liquidstack/core` (este repositorio). Cualquier cambio agnóstico debe aplicarse aquí, dentro de `stubs/` para PHP o `resources/` para assets front (en versiones antiguas estas rutas tenían nombres distintos; migrar a las rutas actuales cuando corresponda).
 - Una vez incorporados los cambios, sube la nueva versión del paquete al repositorio VCS que comparten los proyectos cliente (por ejemplo, el repo remoto configurado para `liquidstack/core`) y etiqueta con SemVer (`git tag 1.0.X`).
 - En los proyectos que consumen el stack, ejecuta `composer update liquidstack/core` para que Composer tome la nueva release y refresque controladores, templates, tools y assets agnósticos.
 
@@ -51,7 +51,7 @@ import { resolve } from "path";
 export default defineConfig({
   resolve: {
     alias: {
-      "~stack-core": resolve(__dirname, "vendor/liquidstack/core"),
+      "~liquidstack-core": resolve(__dirname, "vendor/liquidstack/core"),
     },
   },
 });
@@ -60,13 +60,13 @@ export default defineConfig({
 Con el alias creado puedes importar directamente los recursos empaquetados:
 
 ```scss
-@use "~stack-core/src/scss/_global.scss";
-@use "~stack-core/resources/scss/_artAccordion01.scss";
+@use "~liquidstack-core/src/scss/_global.scss";
+@use "~liquidstack-core/resources/scss/_artAccordion01.scss";
 ```
 
 ```js
-import "~stack-core/src/js/_global.js";
-import "~stack-core/resources/js/_toast.js";
+import "~liquidstack-core/src/js/_global.js";
+import "~liquidstack-core/resources/js/_toast.js";
 ```
 
 Los archivos de configuración global (`_config.scss`, `_global.scss` y `_global.js`) se ubican ahora fuera de `resources` para reflejar que su contenido debe adaptarse a cada proyecto. Puedes importarlos directamente desde `src/` o usarlos como punto de partida para tus propias variantes.

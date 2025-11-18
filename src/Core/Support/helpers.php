@@ -36,7 +36,7 @@ function render(string $tpl, array $vars): string
         // Proyecto consumidor
         $candidates[] = Paths::projectRoot() . DIRECTORY_SEPARATOR . ltrim($normalized, DIRECTORY_SEPARATOR);
 
-        // Copia de stubs en stack-core (para cuando aún no se haya replicado a App/)
+        // Copia de stubs en el paquete (`vendor/liquidstack/core`) para cuando aún no se haya replicado a App/
         $candidates[] = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . ltrim($normalized, DIRECTORY_SEPARATOR);
     }
 
