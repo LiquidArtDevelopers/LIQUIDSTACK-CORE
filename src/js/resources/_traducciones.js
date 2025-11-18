@@ -3,7 +3,7 @@
 
 
 //IMPORTAMOS UN OBJETO CON LA RELACIÓN DE PATHNAME CON RUTA
-import rutas from "../../App/config/rutas.js";
+import rutas from "../../../App/config/rutas.js";
 const DEFAULT_LANG = import.meta.env.LANG_DEFAULT || "es";
 // console.log(rutas)
 

@@ -1,6 +1,6 @@
 // Módulo para mostrar ocultar contraseña
 import "./_showPassword.js";
-import rutas from "../../App/config/rutas.js";
+import rutas from "../../../App/config/rutas.js";
 
 const DEFAULT_LANG = (import.meta.env.LANG_DEFAULT || "es").toLowerCase();
 const LANGUAGE_ENDPOINT = "/languages";
