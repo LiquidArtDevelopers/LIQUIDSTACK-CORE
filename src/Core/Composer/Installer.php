@@ -4,6 +4,9 @@ namespace App\Core\Composer;
 
 use App\Core\Support\Paths;
 use Composer\Script\Event;
+use FilesystemIterator;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Symfony\Component\Filesystem\Filesystem;
 
 class Installer
@@ -53,10 +56,7 @@ class Installer
                 }
 
                 try {
-                    $filesystem->mirror($source, $destination, null, [
-                        'override' => true,
-                        'delete'   => false,
-                    ]);
+                    self::mirrorWithoutDeletion($filesystem, $source, $destination);
                     $io->write(sprintf('<info>Synced resources to %s</info>', $destination));
                 } catch (\Throwable $exception) {
                     $io->writeError(sprintf('<error>Failed to sync %s to %s: %s</error>', $source, $destination, $exception->getMessage()));
@@ -179,5 +179,36 @@ class Installer
     private static function startsWith(string $haystack, string $needle): bool
     {
         return strncmp($haystack, $needle, strlen($needle)) === 0;
+    }
+
+    private static function mirrorWithoutDeletion(
+        Filesystem $filesystem,
+        string $source,
+        string $destination
+    ): void {
+        $filesystem->mkdir($destination, 0775);
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $targetPath = $destination . DIRECTORY_SEPARATOR . $iterator->getSubPathName();
+
+            if ($item->isDir()) {
+                $filesystem->mkdir($targetPath, 0775);
+                continue;
+            }
+
+            $filesystem->mkdir(dirname($targetPath), 0775);
+
+            $shouldCopy = !is_file($targetPath)
+                || md5_file($item->getPathname()) !== md5_file($targetPath);
+
+            if ($shouldCopy) {
+                $filesystem->copy($item->getPathname(), $targetPath, true);
+            }
+        }
     }
 }
