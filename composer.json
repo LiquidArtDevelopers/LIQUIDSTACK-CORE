@@ -2,7 +2,7 @@
     "name": "liquidstack/core",
     "description": "Core de arranque, routing y helpers para el framework Liquid Stack con módulos JS/SCSS que incluyen animaciones GSAP",
     "type": "library",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "license": "MIT",
     "require": {
         "php": ">=8.1",
