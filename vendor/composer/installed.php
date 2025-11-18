@@ -3,7 +3,7 @@
         'name' => 'liquidstack/core',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'f8b2747e09e93b1d05dfdac2a45036487afac90d',
+        'reference' => 'f369256346d540f55b739db2a5682ac7ce253082',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,7 +22,7 @@
         'liquidstack/core' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'f8b2747e09e93b1d05dfdac2a45036487afac90d',
+            'reference' => 'f369256346d540f55b739db2a5682ac7ce253082',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
