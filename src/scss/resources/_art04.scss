@@ -1,0 +1,78 @@
+@use '../../src/scss/config' as c;
+
+/* ARTÍCULO TIPO 4 */
+.art04{
+    width: c.$anchoFull;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    row-gap:3rem;
+    /* tablet */
+    @media only screen and (min-width:c.$tablet) {
+        &{
+            width: c.$anchoMedio;
+        }
+    }
+    h3, >p{
+        padding: 0 c.$padMin;
+        @media only screen and (min-width:c.$tablet) {
+            padding: initial;
+        }
+    }
+    >p{
+        @media only screen and (min-width:c.$tablet) {
+            &{
+                width: c.$anchoCorto;
+                max-width: c.$textMax;
+                min-width: c.$textMin;            
+            }
+        }
+    }
+    .art04-matrix{
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 1rem;
+        @media only screen and (min-width:c.$desktop){
+            &{
+                justify-content: space-between;
+            }
+        }
+        >.art04-item{
+            width: 100%;
+            height: 400px;
+            overflow: hidden;
+            border-radius: 2px;
+            display: block;
+            text-decoration: none;
+            @media only screen and (min-width:c.$tablet){
+                &{
+                    width: 45%;
+                    max-width: 800px;
+                }
+            }
+            @media only screen and (min-width:c.$desktop){
+                &{
+                    width: 32%;
+                }
+            }
+            img{
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                transition: 1s;
+                &:hover{
+                    transform: scale(1.2);
+                    -webkit-transform: scale(1.2);
+                }
+            }
+        }
+    }
+}
+
+
+

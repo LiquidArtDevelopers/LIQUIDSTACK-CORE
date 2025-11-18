@@ -1,0 +1,117 @@
+
+@use '../../src/scss/config' as c;
+
+.artSlider02 {
+    width: c.$anchoFull;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    h3{
+        width: c.$anchoMedio;
+        text-align: left;
+    }
+    button {
+        cursor: pointer;
+        padding: 0.5rem 1rem;
+        margin: 0.6rem 0.3rem;
+        border: none;
+        background: c.$color02;
+        color: c.$color00;
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+    .slider {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 50dvh;
+        margin-top: 1rem;
+
+        @media only screen and (min-width: c.$tablet) {
+            height:70dvh;
+        }
+
+        /* ---- contenedor visible ---- */
+        .slides-container {
+            position: relative;
+            overflow: hidden;
+            flex: 1;
+
+            /* ---- wrapper que traslada GSAP ---- */
+            .slides-inner {
+                position: relative;
+                height: 100%;
+                width: 100%;
+
+                .slide {
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+
+                    picture,
+                    img {
+                        width: 100%;
+                        height: 100%;
+                        object-fit: cover;
+                        object-position: center;
+                    }
+
+                    h4{
+                        position: absolute;                        
+                        background-color: c.$color01bis3; 
+                        backdrop-filter: blur(3px);
+                        padding: 1rem 2rem;
+                        border-radius: 1rem;
+                        opacity: 0;
+                        transition: 0.5s ease-in-out;
+                        @media only screen and (min-width: c.$tablet) {
+                            padding: 2rem 4rem;
+                        }                        
+                        span{
+                            font-family: c.$fuente02;
+                            font-weight: 700;
+                            color: c.$color00;
+                            font-size: 6vw;
+                            letter-spacing: 3px;
+                            @media only screen and (min-width: c.$tablet) {
+                                font-size: 4vw;
+                            }
+                            @media only screen and (min-width: c.$desktop) {
+                                font-size: 4rem;
+                            }
+                        }
+                    }
+
+                    /* clase que activa la animación desde tu JS */
+                    .efecto {
+                        opacity: 1;
+                        transition-delay: 0.1s;
+                    }
+                }
+            }
+        }
+
+        /* ---- controles ---- */
+        .controls {
+            padding: 10px;
+            display: none;       // mostrar solo si quieres botones visibles
+            align-items: center;
+            justify-content: center;
+            min-height: 70px;
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+  

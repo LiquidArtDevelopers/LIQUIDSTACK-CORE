@@ -1,0 +1,124 @@
+<article class="artForm01 {classVar}">
+    {header-primary}
+
+    <div class="artForm01-grid">
+        <!-- Bloque texto cabecera -->
+        <div class="grid1">
+            {grid1-header-secondary}
+        </div>
+        <p  class="grid2" data-lang="{grid2-p-dl}">{grid2-p-text}</p>
+
+        <!-- ===== Formulario ===== -->
+        <form class="grid3" id="form01" method="post">
+            <!-- Nombre -->
+            <span id="nombre_error" class="error"></span>
+            <label data-lang="{label-name-dl}" for="nombreId" style="display:none;">{label-name-text}</label>
+            <input data-lang="{ph-name-dl}" id="nombreId" class="campo" type="text"
+                   name="nombre" placeholder="{ph-name-text}" autocomplete="given-name" required>
+
+            <!-- Teléfono -->
+            <span id="telefono_error" class="error"></span>
+            <label data-lang="{label-phone-dl}" for="telefonoId" style="display:none;">{label-phone-text}</label>
+            <input data-lang="{ph-phone-dl}" id="telefonoId" class="campo" type="tel"
+                   name="telefono" placeholder="{ph-phone-text}" autocomplete="tel" required>
+
+            <!-- Correo -->
+            <span id="correo_error" class="error"></span>
+            <label data-lang="{label-mail-dl}" for="correoId" style="display:none;">{label-mail-text}</label>
+            <input data-lang="{ph-mail-dl}" id="correoId" class="campo" type="email"
+                   name="correo" placeholder="{ph-mail-text}" autocomplete="email" required>
+
+            <!-- Mensaje -->
+            <span id="mensaje_error" class="error"></span>
+            <label data-lang="{label-msg-dl}" for="campoconsulta" style="display:none;">{label-msg-text}</label>
+            <textarea data-lang="{ph-msg-dl}" class="campo" name="mensaje" id="campoconsulta"
+                      placeholder="{ph-msg-text}" autocomplete="off" required></textarea>
+
+            <!-- Términos -->
+            <span id="terminos_error" class="error"></span>
+            <div class="terminos">
+                <input type="checkbox" name="terminos" id="terminos" required>
+                <label data-lang="{terms-dl}" for="terminos">
+                    <span>{terms-text}</span>
+                    <span data-lang="{privacy-dl}" class="legal">{privacy-text}</span>
+                </label>
+            </div>
+
+            <!-- Captcha -->
+            <span id="captcha_error" class="error"></span>
+            <div class="liquidCaptcha">
+                <p><span id="num1"></span> + <span id="num2"></span> =</p>
+                <label data-lang="{label-captcha-dl}" for="resuelveId" style="display:none;">{label-captcha-text}</label>
+                <input data-lang="{ph-captcha-dl}" name="respuesta" id="resuelveId" class="campo"
+                       type="text" placeholder="{ph-captcha-text}" autocomplete="off" required>
+                <label for="solucion" style="display:none;">Solución</label>
+                <input type="text" name="solucion" id="solucion">
+            </div>
+
+            <!-- Botón -->
+            <input data-lang="{submit-dl}" value="{submit-text}" type="submit"
+                   class="boton" id="form01_button">
+        </form>
+
+        <!-- Mensaje enviado -->
+        <div class="grid3 cuadro" id="enviado" role="status" aria-live="polite">
+            <img data-lang="{sent-img-dl}" src="{sent-img-src}" width="50" height="50" loading="lazy"
+                alt="{sent-img-alt}" title="{sent-img-title}">
+            <div class="caja">
+                {send-header-secondary}
+                <p  data-lang="{sent-p1-dl}">{sent-p1-text}</p>
+                <p  data-lang="{sent-p2-dl}">{sent-p2-text}</p>
+                <p  data-lang="{new-query-dl}" id="beztebat" class="boton">{new-query-text}</p>
+            </div>
+        </div>
+
+        {loader-slot}
+
+        <!-- Bloque texto lateral -->
+        <div class="grid4">
+            {grid4-header-secondary}
+        </div>
+        <p  class="grid5" data-lang="{grid5-p-dl}">{grid5-p-text}</p>
+
+        <!-- Datos de contacto + mapa -->
+        <div class="grid6" id="datos">
+            <ul>
+                <!-- Teléfono -->
+                <li>
+                    <a href="{contact-tel-href}" target="_blank" title="{contact-tel-title}">
+                        <img src="{contact-tel-img-src}" alt="{contact-tel-img-alt}" title="{contact-tel-img-title}">
+                        <span data-lang="{contact-tel-dl}">{contact-tel-text}</span>
+                    </a>
+                </li>
+                <!-- Correo -->
+                <li>
+                    <a href="{contact-mail-href}" target="_blank" title="{contact-mail-title}">
+                        <img src="{contact-mail-img-src}" alt="{contact-mail-img-alt}" title="{contact-mail-img-title}">
+                        <span data-lang="{contact-mail-dl}">{contact-mail-text}</span>
+                    </a>
+                </li>
+                <!-- Dirección -->
+                <li>
+                    <a href="{contact-addr-href}" target="_blank" title="{contact-addr-title}">
+                        <img src="{contact-addr-img-src}" alt="{contact-addr-img-alt}" title="{contact-addr-img-title}">
+                        <span data-lang="{contact-addr-dl}">{contact-addr-text}</span>
+                    </a>
+                </li>
+                <!-- Web -->
+                <li>
+                    <a href="{contact-web-href}" target="_blank" title="{contact-web-title}">
+                        <img src="{contact-web-img-src}" alt="{contact-web-img-alt}" title="{contact-web-img-title}">
+                        <span data-lang="{contact-web-dl}">{contact-web-text}</span>
+                    </a>
+                </li>
+            </ul>
+
+            <iframe src="{map-src}" width="{map-width}" height="{map-height}"
+                    style="border:0;" allowfullscreen loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade"
+                    title="{map-title}"></iframe>
+        </div>
+    </div>
+</article>
+
+

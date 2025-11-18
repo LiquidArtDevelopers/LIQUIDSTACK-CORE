@@ -1,0 +1,280 @@
+@use '../../src/scss/config' as c;
+@use 'moduleH2Type01';
+@use 'moduleLoader01';
+
+
+.contenedor_formulario{      
+    position: relative;     
+    width: c.$anchoFull;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    row-gap: 5rem;
+    @media only screen and (min-width:c.$tablet){
+        &{
+            row-gap: 7rem;
+        }
+    } 
+    >:nth-child(1){
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: flex-start;
+        row-gap: 4rem;
+        flex-wrap: wrap;
+        @media only screen and (min-width:c.$desktop){
+            &{
+                row-gap: initial;
+                column-gap: 4rem;
+            }
+        }
+        h3{
+            text-align: center;
+            @media only screen and (min-width:c.$desktop){
+                &{
+                    height: 5rem;
+                }
+            }
+        }
+        >div >p{
+            width: 100%;
+            @media only screen and (min-width:c.$tablet){
+                &{
+                    width: 70%;
+                }
+            }
+            @media only screen and (min-width:c.$desktop){
+                &{
+                    height: 5vw;
+                    max-height: 6rem;
+                }
+            }
+        }
+        .cuadro{
+            display: flex;
+            width: 100%;                  
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-start;
+            row-gap: 5px;
+            background-color: c.$color00;                 
+            padding: 2rem;
+            border: 1px solid c.$color03;                
+            @media only screen and (min-width:c.$tablet){
+                &{
+                    padding: 5rem;
+                    row-gap: 3rem
+                }
+            }
+            .boton{
+                margin-top: 3rem;
+                @media only screend and (min-width:c.$desktop){
+                    &{
+                        min-width: 400px;
+                        max-width: 400px;
+                    }
+                }
+            }
+        }     
+        >:nth-child(1){
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            row-gap: 2rem;
+            @media only screen and (min-width:c.$desktop){
+                &{
+                    border-radius: 10px;
+                    width: 45%;
+                }
+            }  
+            #formulario{
+                display:flex;
+                flex-direction: column;
+                row-gap: 0.5rem;
+                min-height: 527px;
+                h4{
+                    padding-bottom: 2rem;
+                }
+                >p{
+                    padding-top: 1rem;
+                }
+                .passwordContainer{
+                    width: 100%;
+                    position: relative;
+                    .showPassword{
+                        position: absolute;
+                        right: 5px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        width: 35px;
+                        filter: opacity(.3);
+                    }
+                }
+                .labelPass{
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    transform: translateY(-30px);
+                    color: c.$color00;
+                    
+                }                      
+                input::placeholder, textarea::placeholder{
+                    font-family: c.$fuente02;
+                    color: c.$color03;
+                }     
+                .campo:-webkit-autofill,
+                .campo:-webkit-autofill:hover, 
+                .campo:-webkit-autofill:focus {
+                    box-shadow: 0 0 0px 1000px c.$color03 inset;
+                    -webkit-box-shadow: 0 0 0px 1000px c.$color03 inset;
+                    -webkit-text-fill-color:c.$color01;
+                    -moz-box-shadow: 0 0 0px 1000px c.$color03 inset;
+                    -moz-text-fill-color:c.$color01;
+                    -o-box-shadow: 0 0 0px 1000px c.$color03 inset;
+                    -o-text-fill-color:c.$color01;
+                }                 
+                .campo{
+                    width: 100%;
+                    padding: 10px;
+                    box-sizing: border-box;
+                    font-family: c.$fuente02;
+                    font-size: clamp(0.9rem, 5vw, 1.1rem);
+                    color: c.$color01;
+                    border: none;
+                    border-radius: 4px;
+                    background-color: c.$color03;
+                    caret-color: c.$color01; 
+                }
+                input[type='submit']{
+                    opacity: 0.2;
+                    pointer-events: none;
+                    position: relative;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    -webkit-transform: translateX(-50%);
+                }
+                textarea{
+                    min-width: 100%;
+                    max-width: 0;
+                    width: 100px;
+                    min-height: 100px;
+                    max-height: 200px;
+                }
+                .terminos{
+                    display: flex;
+                    justify-content: flex-start;
+                    align-items: center;
+                    gap: 20px;
+                    color: c.$color01;
+                    font-family: c.$fuente02;
+                    font-size: 1rem;
+                    text-underline-offset: 3px;                    
+                    margin: 2rem 0;
+                    input[type='checkbox']{                        
+                        width: 25px;
+                        height: 25px;
+                        margin-left: 12px;
+                        accent-color: c.$color02;
+                        &:hover{
+                            cursor: crosshair;
+                        }
+                    }
+                    span, a{
+                        color: c.$color01;
+                        text-decoration:underline;
+                        cursor: crosshair;
+                        &:hover{
+                            color: c.$color02;
+                        }
+                    }
+                }
+                .boton{
+                    margin-top: 3rem;
+                }
+            }
+        }
+        >:nth-child(2){
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            row-gap: clamp(1.2rem, 5vw, 2rem);
+            @media only screen and (min-width:c.$desktop){
+                &{
+                    width: 45%;
+                }
+            }
+            img{
+                width: 2rem;
+                filter: c.$filterColor02;
+                -webkit-filter: c.$filterColor02;
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;   
+            }          
+            >div{
+                ul{
+                    width: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: flex-start;
+                    row-gap: 2rem;
+                    li{
+                        width: 100%;
+                        &, a{
+                            display: flex;
+                            column-gap: 3rem;
+                            
+                        }
+                    }
+                }
+                iframe{
+                    width: 100%;
+                }
+            } 
+        }        
+    }    
+}
+#enviado{
+    z-index: 100;
+    padding: 1rem;
+    max-height:724px;
+    display: none;
+    // display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-image: url("/assets/img/system/enviado.jpg");
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-size: 100%;
+    background-position: center;
+    .caja{
+        width: 90%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        row-gap: 20px;
+        padding: 10px;
+        h4{
+            font-size: 1.5rem;
+            font-family: c.$fuente02;                
+            color: c.$color01;
+        }
+    }
+    img{
+        height: 50px;
+        opacity: 1;
+        left: inherit;
+        transform: inherit;
+        -webkit-transform: inherit;
+        -moz-transform: inherit;
+        -o-transform: inherit;
+        position: relative; 
+
+    }                           
+} 

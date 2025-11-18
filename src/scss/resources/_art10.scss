@@ -1,0 +1,98 @@
+@use '../../src/scss/config' as c;
+
+
+.art10{
+    position: relative;
+    width: c.$anchoFull;
+    background-color: c.$color01;
+    padding: 8rem c.$padMin;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    row-gap: 3rem;
+    @media only screen and (min-width:c.$tablet){
+        padding: c.$padMax;
+        row-gap: 4rem;
+    }
+    @media only screen and (min-width:c.$desktop){ 
+        padding: 10rem 0;      
+        row-gap: 5rem;
+    }
+    >:nth-child(1){
+        color: c.$color00;
+    }
+    .art10-fichas{
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 2rem;
+        @media only screen and (min-width:c.$desktop){
+            width: c.$anchoMedio;
+            justify-content: space-between;
+        }
+        .art10-ficha{
+            background-color: c.$color00bis2;
+            border-radius: 1.5rem;
+            padding: c.$padMin;
+            display: flex;
+            flex-direction: column;
+            row-gap: 1rem;
+            transition: .5s;
+            flex: 1 1 100%;
+            min-width: 0;
+            @media only screen and (min-width:c.$tablet){
+                flex: 1 1 calc(50% - 2rem);
+            }
+            @media only screen and (min-width:c.$desktop){
+                flex: 1 1 calc(33.333% - 2rem);
+                padding: c.$padMax;
+            }
+            &:hover{
+                background-color: c.$color00;
+                >:not(img){
+                    color: c.$color01;
+                }
+            }
+            >:not(img){
+                color: c.$color00;
+                transition: .5s;         
+            }
+        }
+    }
+    
+    .custom-shape-divider-top {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        overflow: hidden;
+        line-height: 0;
+        transform: translateY(-2px); //Corrige error de pixel al hacer scroll
+        svg {
+            position: relative;
+            display: block;
+            width: calc(100% + 1.3px);
+            height: 59px;            
+            // transform: rotateY(180deg);
+        }
+    }
+    .custom-shape-divider-bottom {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        overflow: hidden;
+        line-height: 0;
+        transform: rotate(180deg) translateY(-2px); //Corrige error de pixel al hacer scroll
+        svg {
+            position: relative;
+            display: block;
+            width: calc(100% + 1.3px);
+            height: 59px;
+        }
+    }
+}

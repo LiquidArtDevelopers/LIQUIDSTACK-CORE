@@ -1,0 +1,20 @@
+// custom cursor style
+.cursor {
+  position: fixed;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  transform-origin: center center;
+  pointer-events: none;
+  z-index: 999999999;
+  background: white;
+  mix-blend-mode: difference;
+}
+
+.grow,
+.grow-small {
+  transition: transform 0.5s ease-in-out;
+  transform: scale(4);
+  background: white;
+  border: none;
+}

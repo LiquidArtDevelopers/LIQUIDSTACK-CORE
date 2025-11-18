@@ -1,0 +1,101 @@
+@use '../../src/scss/config' as c;
+@use 'moduleButtonType01';
+
+.art08 {
+    width: c.$anchoFull;
+    display: flex;
+    flex-direction: column;
+    row-gap: 2rem;
+    padding: c.$padMax c.$padMin;
+    background: c.$color01;
+    @media only screen and (min-width: c.$desktop) {
+        width: c.$anchoMedio;
+        border-radius: 2.1rem;
+        margin-inline: auto;
+        padding: c.$padMax;
+    }
+    h3 {
+        color: c.$color00;
+        font-size: 1.75rem;
+        line-height: 1.2;
+        @media only screen and (min-width: c.$tablet) {
+            font-size: 2.25rem;
+        }
+    }
+
+    /* ----- grid de bloques ----- */
+    .art08-blocks {
+        display: flex;
+        flex-direction: column;
+        row-gap: 2rem;
+        @media only screen and (min-width: c.$tablet) {
+            row-gap: 3rem;
+        }
+        .art08-block {
+            display: flex;
+            flex-direction: column;
+            row-gap: 1.5rem;
+
+            /* en desktop: dos columnas 50 / 50 */
+            @media only screen and (min-width: c.$tablet) {
+                flex-direction: row;
+                justify-content: space-between;
+                column-gap: 2rem;
+            }
+
+            /* alternamos orden para el bloque B (segunda fila) */
+            &:nth-child(even) {
+                @media only screen and (min-width: c.$tablet) {
+                    flex-direction: row-reverse;
+                }
+            }
+            /* ----- imagen ----- */
+            .art08-img {
+                width: 100%;
+                height: 40dvh;
+                position: relative;
+                overflow: hidden;
+                border-radius: 1.5rem;
+
+                @media only screen and (min-width: c.$tablet) {
+                    width: c.$anchoCorto;
+                    height: auto;
+                }
+
+                img {
+                    position: absolute;
+                    inset: 0;
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+            }
+
+            /* ----- tarjeta ----- */
+            .art08-card {
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                row-gap: 1.25rem;
+                background: c.$color02;
+                padding: c.$padMin;
+                border-radius: 1.5rem;
+
+                @media only screen and (min-width: c.$tablet) {
+                    width: c.$anchoMini;
+                    padding: 2rem;
+                }
+
+                h4 {
+                    font-size: 1.25rem;
+                    color: #fff;
+                }
+                p {
+                    font-size: 0.95rem;
+                    color: c.$color00;
+                    line-height: 1.4;
+                }
+            }
+        }
+    }
+}

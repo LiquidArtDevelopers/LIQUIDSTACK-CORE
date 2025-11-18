@@ -1,0 +1,32 @@
+
+@use '../../src/scss/config' as c;
+
+.moduleH2Type01{    
+    width: c.$anchoFull;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    column-gap: c.$padMin;
+    padding: 0 c.$padMin;
+    @media only screen and (min-width:c.$desktop) {
+        &{
+            width: c.$anchoMedio;
+            padding: initial;
+        }
+    }
+    >span{
+        width: 50px;
+        height: 2px;
+        background-color: c.$color04;
+        @media only screen and (min-width:c.$desktop) {
+                &{
+                    width: 100px;
+                }
+            }
+    }
+    h2{
+        font-size: clamp(1.2rem, 3vw, 2rem);
+        font-weight: 300;        
+    }
+    
+}
