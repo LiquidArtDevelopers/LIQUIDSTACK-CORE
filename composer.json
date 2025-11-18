@@ -1,10 +1,11 @@
 {
     "name": "liquidstack/core",
     "description": "Core de arranque, routing y helpers para el framework Liquid Stack con módulos JS/SCSS que incluyen animaciones GSAP",
-    "type": "library",
+    "type": "composer-plugin",
     "license": "MIT",
     "require": {
         "php": ">=8.1",
+        "composer-plugin-api": "^2.0",
         "vlucas/phpdotenv": "^5.6",
         "phpmailer/phpmailer": "^6.9",
         "symfony/filesystem": "^6.4"
@@ -18,17 +19,14 @@
         ]
     },
     "scripts": {
-        "post-install-cmd": [
-            "App\\Core\\Composer\\Installer::postInstall"
-        ],
-        "post-update-cmd": [
-            "App\\Core\\Composer\\Installer::postUpdate"
-        ],
         "stack-core:sync-resources": [
             "App\\Core\\Composer\\Installer::syncResources"
         ],
         "stack-liquid-core:sync-resources": [
             "@stack-core:sync-resources"
         ]
+    },
+    "extra": {
+        "class": "App\\Core\\Composer\\Plugin"
     }
 }
