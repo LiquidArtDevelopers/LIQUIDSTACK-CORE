@@ -1,0 +1,252 @@
+* {
+    margin: 0;
+    padding: 0;
+    outline: 0; 
+    box-sizing: border-box;
+    scroll-behavior:smooth;
+    // border: 0.2px solid black;
+}
+
+html{
+    scroll-behavior: smooth;
+    cursor: crosshair;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+// Definición de fuentes personalizadas
+// Definición de fuentes personalizadas
+@font-face {
+    font-family: 'antton';
+    src: url('/assets/fonts/Anton-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: fallback;
+}
+@font-face {
+    font-family: 'poppins';
+    src: url('/assets/fonts/Poppins-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: fallback;
+}
+
+// Variables SCSS para fuentes
+$fuente01: 'antton';
+$fuente02: 'poppins';
+
+$color00: rgb(255, 255, 255);
+$color00bis: #ffffff56;
+$color00bis2: #ffffff13;
+$color00bis3: #ffffffdb;
+
+$color01: #272727;
+$color01bis: #5b5b5b;
+$color01bis2:#7f7f7f;
+$color01bis3:#27272745;
+$color01bis4:#272727bf;
+$color01bis5:#000000bf;
+
+$color02: #24658e;
+$color02bis: #1c466f;
+$color02bis2: rgba(33,33,33,0.2);
+$color02bis3:#20335e;
+
+$color03: #E9F5FF;
+$color03bis: #f6f6f6;
+
+$color04: #092F64;
+$color05: #ac2e29;
+
+$colorERROR: #DD7676;
+$colorOK: #6DE063;
+
+$filterColorSepia: invert(43%) sepia(84%) saturate(0%) hue-rotate(319deg) brightness(93%) contrast(92%);
+$filterColor02: invert(56%) sepia(19%) saturate(5000%) hue-rotate(183deg) brightness(102%) contrast(101%);
+
+$tablet: 800px;
+$desktop: 1400px;
+$desktop2k: 2000px; 
+
+$anchoMax: 2560px;
+$anchoFull: 100%;
+$anchoMedio: 80%; 
+$anchoCorto: 60%;
+$anchoMini: 40%;
+
+$padMin: 1.5rem;
+$padMax: 4rem;
+
+// Variable para encorsetar en una columna troncal más reducida
+$textMin: 600px;
+$textMax: 1200px;
+
+// box-shadow
+$sombraMax: 1rem 1rem 3rem $color01bis3;
+$sombraMin: 0.3rem 0.3rem 0.8rem $color01bis3;
+
+
+
+.no_select{
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none; 
+}
+.si_select{
+    -webkit-user-select:text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text; 
+}
+.resaltado{
+    color:$color02!important;
+}
+
+.idioma_select{
+    color: $colorERROR!important;
+    font-weight: 800;
+}
+
+body{
+    position: relative!important;
+    max-width: 100vw!important;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;    
+    overscroll-behavior: none;
+    background-color: $color00;
+    &::-webkit-scrollbar{
+        display: none;
+    }    
+}
+nav, header, main, footer, section, article{
+    width: $anchoFull;
+    max-width: $anchoMax;
+}
+#smooth-content, #smooth-wrapper{
+    min-width: 100vw;
+    width: 100vw;
+    max-width: 100vw;
+}
+section, #smooth-content{
+    position: relative;
+    width: $anchoFull;
+    max-width: $anchoFull;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    // @media only screen and (min-width:$tablet){
+    //     &{
+    //         align-items: center;
+    //     }
+    // }
+}
+section{
+    row-gap: 2.5rem;
+    padding: 4rem 0;
+    @media only screen and (min-width:$tablet){
+        &{
+            row-gap: 3rem;
+        }
+    }
+    @media only screen and (min-width:$desktop){
+        &{
+            padding: 5rem 0;
+            row-gap: 10rem;
+        }
+    }
+    
+}
+
+// estilos de encabezados, textos y listas
+a{
+    text-decoration: none;
+    cursor:pointer;
+}
+b{
+    color: $color02;
+}
+ul{ 
+    list-style: none;
+}
+h1, h2, h3, h4, h5{
+    font-family: $fuente02;    
+}
+h1{
+    text-align: center;
+    font-size: clamp(1.5rem, 2vw, 2.5rem);
+    color: $color00;
+    span{
+        color:$color02;
+        font-size: clamp(1rem, 4vw, 5rem);
+        letter-spacing: 0.3px;   
+        font-weight: 600;
+    }
+}
+h2{
+    font-size: clamp(1.3rem, 2vw, 2.7rem); 
+    color: $color04; 
+}
+h3{
+    font-size: clamp(1.2rem, 2vw, 3rem);
+    color: $color02;
+}
+h4{
+    font-size: clamp(1.1rem, 2vw, 1.3rem);
+    font-weight: 400;
+    color: $color01;
+}
+h5{
+    color:$color02;
+}
+// Los span que estén dentro de h1, h2, etc, no cogerán el estilo por defecto del span común. .spanHeader permitirá poner otro color a esa palabra del header en concreto
+a, p, span, input, textarea, th, td, label{
+    font-family: $fuente02;
+    color: $color01;
+    letter-spacing: .5px;
+    font-size: clamp(0.8rem, 1vw, 1rem);
+}
+p{
+    line-height: clamp(1.2rem, 1.2vw, 1.7rem);    
+}
+input, textarea{    
+    border: none;
+}
+textarea{
+    width: 100%;
+    max-width: 100%;
+    min-width: 100%;
+}
+
+
+
+.boton{
+    cursor: pointer;
+    width: fit-content;
+    background-color: $color02;    
+    color: $color00;
+    text-align: center;
+    border: 1px solid $color02;
+    padding: .9rem 3rem .8rem;
+    font-size: clamp(0.8rem, 1vw, 1rem);
+    border-radius: 4px;
+    font-family: $fuente02;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    transition: 200ms ease-in-out;
+    -webkit-transition: 200ms ease-in-out;
+    -o-transition: 200ms ease-in-out;
+    -moz-transition: 200ms ease-in-out;
+    &:hover{
+        background-color: $color00;
+        color: $color02;
+        text-decoration: solid;
+    }
+}
+
+

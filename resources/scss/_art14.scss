@@ -1,0 +1,43 @@
+@use '../../src/scss/config' as c;
+
+
+.art14{
+    width: c.$anchoFull;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    row-gap: 2rem;
+    padding: 2rem c.$padMin;
+    @media only screen and (min-width:c.$desktop){
+        &{
+            width: c.$anchoMedio;
+            row-gap: 4rem;
+        } 
+    }
+    .art14-info{
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        row-gap: 1rem;        
+        @media only screen and (min-width:c.$tablet){
+            &{
+                width: c.$anchoCorto;
+                min-width: c.$textMin;
+                max-width: c.$textMax;
+            }
+        }
+    }
+    >img{
+        width: 100%;
+        @media only screen and (min-width:c.$tablet){
+            &{
+                width: c.$anchoMedio;
+            }
+        }
+        @media only screen and (min-width:c.$desktop){
+            &{
+                width: 300px;
+            }
+        }
+   }
+}

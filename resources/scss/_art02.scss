@@ -1,0 +1,123 @@
+@use '../../src/scss/config' as c;
+
+.art02{
+    $pad: 3rem;
+    width: c.$anchoFull;    
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    row-gap: 2rem;
+    @media only screen and (min-width:c.$tablet){
+        padding: c.$padMax 0;
+        width: c.$anchoMedio;
+    }
+    
+    .art02-header{
+        width: 100%;
+        padding: 0 c.$padMin;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        row-gap: 1rem;
+        @media only screen and (min-width:c.$tablet) {
+            padding: initial;
+            width: c.$anchoMedio;
+        }
+        @media only screen and (min-width:c.$desktop) {
+            padding: initial;
+            width: c.$anchoCorto;
+            max-width: c.$textMax;
+            min-width: c.$textMin;   
+        }
+        @media only screen and (min-width:c.$desktop){
+            row-gap: 3rem;
+        }
+        >p{
+            color: c.$color01;
+        }            
+    }
+    >p{
+        padding: 0 c.$padMin;
+        @media only screen and (min-width:c.$tablet) {
+            padding: initial;
+            width: c.$anchoMedio;
+        }
+        @media only screen and (min-width:c.$desktop) {
+            &{
+                padding: initial;
+                width: c.$anchoCorto;
+                max-width: c.$textMax;
+                min-width: c.$textMin;            
+            }
+        }
+    }
+    .art02-cards{
+        width: 100%;
+        height: calc(100% + $pad);
+        display: flex;
+        flex-direction: column;
+        row-gap: 1.5rem;
+        @media only screen and (min-width:c.$tablet){
+            column-gap: 2rem;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        @media only screen and (min-width:c.$desktop){
+            width: 80%;
+            min-width: c.$textMax;
+            column-gap: 3rem;
+            padding-top: 4rem;
+        }
+        >.art02-card{
+            width: 100%;
+            padding: 0 c.$padMin;
+            display: flex;
+            flex-direction: column;
+            row-gap: 1.5rem;
+            position: relative;            
+            @media only screen and (min-width:c.$tablet){
+                padding: initial;
+                width: 46%;
+            }
+            @media only screen and (min-width:c.$desktop){
+                padding: initial;
+                width: 20%;
+                row-gap: 2rem;
+            }
+            >:nth-child(1){ //Normalmente es el encabezado
+                font-size: clamp(1rem, 3vw, 1.1rem);
+                height: calc(clamp(1.3rem, 3.3vw, 1.3rem) * 4);
+                color: c.$color02;
+                order: 2;
+                font-weight: lighter;
+                
+            }
+            >img{
+                width: 35%;
+                height: initial;
+                position: relative;
+                left: 50%;
+                transform: translateX(-50%);
+                object-fit: contain;
+                object-position: center;
+                order: 1; //Ponemos encabezado al final
+                @media only screen and (min-width:c.$tablet){
+                    width: 50%;
+                }
+            }
+            >h4{
+                text-align: center;
+            }          
+            >p{
+                order: 3;
+                margin-bottom: $pad;       
+            }
+            >a{
+                order: 4;
+                position: absolute;
+                bottom: 0;
+            }         
+        } 
+    }
+}

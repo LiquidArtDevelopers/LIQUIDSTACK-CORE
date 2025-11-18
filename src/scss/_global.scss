@@ -1,0 +1,51 @@
+@use './config' as c;
+@use '../resources/scss/rippleCursor';
+@use '../resources/scss/cursorTracking';
+@use '../resources/scss/moduleTerminos';
+@use '../resources/scss/navMegamenu01';
+@use '../resources/scss/footerInfo01';
+
+// RECURSOS GLOBALES
+@use '../resources/scss/moduleH1Type01';
+@use '../resources/scss/moduleH1Type02';
+@use '../resources/scss/moduleH2Type01';
+
+@use '../resources/scss/moduleButtonType01';
+@use '../resources/scss/moduleButtonType02';
+@use '../resources/scss/moduleImgType01';
+
+@use '../resources/scss/art02';
+@use '../resources/scss/art12';
+@use '../resources/scss/artForm01';
+@use '../resources/scss/artSlider01';
+
+
+/* CLASES GLOBALES */
+.error{
+    color: c.$colorERROR;
+    font-size: 1rem;
+    font-family: c.$fuente02;
+    //height: 20px;
+}
+
+
+header{
+    .moduleButtonType01_00_classVar{
+        background-color: c.$color02;
+    }
+}
+
+.artForm01_99_classVar{
+    .artForm01-grid #form01{
+        input::placeholder, textarea::placeholder{
+            color: c.$color02bis;
+        } 
+    }
+    
+}
+
+
+
+
+
+

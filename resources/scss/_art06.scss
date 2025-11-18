@@ -1,0 +1,123 @@
+@use '../../src/scss/config' as c;
+
+/* ESTILOS ARTÍCULO 6 */
+.art06{
+    width: c.$anchoFull;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    row-gap: 3rem;
+    @media only screen and (min-width:c.$desktop){
+        &{
+            width: c.$anchoMedio;
+            row-gap: 4rem;
+        }
+    }
+    .art06-content{
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        @media only screen and (min-width:c.$tablet){
+            gap: 3rem;
+        }
+        @media only screen and (min-width:c.$desktop){
+            &{
+                justify-content: space-between;
+            }
+        }
+        &.art06-content--reverse{
+            @media only screen and (min-width:c.$desktop){
+                &{
+                    flex-direction: row-reverse;
+                }
+            }
+        }
+        >:nth-child(1){
+            width: 100%;
+            padding: 0 c.$padMin;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; 
+            row-gap: 2rem;
+            @media only screen and (min-width:c.$desktop){
+                &{
+                    width: 45%;
+                    padding: initial;
+                }
+            }
+            >p{
+                width: 100%;
+                @media only screen and (min-width:c.$tablet){
+                    width: c.$anchoCorto;
+                    max-width: c.$textMax;
+                    min-width: c.$textMin;
+                }
+            }
+        }
+        >picture{
+            width: 100%;
+            height: 100%;
+            @media only screen and (min-width:c.$desktop){
+                &{
+                    width: 50%;
+                }
+            }
+            >img{
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+        }
+    }
+    .art06-cite{
+        margin: 2rem c.$padMin;
+        border-left: 2px solid c.$color02;
+        padding-left: c.$padMin;
+        @media only screen and (min-width:c.$tablet){
+            &{
+                margin: 2rem 6rem;
+                padding-left: 3rem;
+            }
+        }
+        @media only screen and (min-width:c.$desktop){
+            &{
+                width: c.$anchoCorto;
+                min-width: c.$textMin;
+                max-width: c.$textMax;
+            }
+        }   
+        cite{            
+            display: flex;
+            flex-direction: column;
+            @media only screen and (min-width:c.$tablet){
+                &{
+                    flex-direction: row;
+                    align-items: center;
+                }
+            }
+            >:nth-child(1){
+                font-size: clamp(2em, 5vw, 4em);
+                @media only screen and (min-width:c.$tablet){
+                &{
+                    position: relative;
+                    transform: translate(-20px, -20px);
+                }
+            }
+            }
+            >:nth-child(2){
+                font-size: clamp(1.1rem, 5vw, 1.5rem);
+            }
+        }
+    }
+}
+
+
+
+
+

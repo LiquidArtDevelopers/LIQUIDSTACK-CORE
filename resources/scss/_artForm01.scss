@@ -1,0 +1,255 @@
+@use '../../src/scss/config' as c;
+@use 'moduleLiquidCaptcha';
+@use 'moduleLoader01';
+
+
+.artForm01{
+    width: 100%;
+    padding: 4rem c.$padMin;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    row-gap: 1rem;
+    @media only screen and (min-width:c.$tablet){
+        row-gap: 3rem;
+        padding: 6rem;
+    }
+    .artForm01-grid{    
+        width: 100%;
+        display: grid;
+        row-gap: 2rem;
+        grid-template-rows: auto;
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            'area01'
+            'area02'
+            'area03'
+            'area04'
+            'area05'
+            'area06'
+        ;
+        @media only screen and (min-width:c.$tablet){
+            width: 90%;
+            column-gap: clamp(4rem, 5vw, 10rem);
+            grid-template-rows: auto;
+            grid-template-columns: auto;
+            grid-template-areas:
+                'area01 area04'
+                'area02 area05'
+                'area02 area05'
+                'area03 area06'
+                'area03 area06'
+                'area03 area06'
+                'area03 area06'
+            ;
+        }
+        @media only screen and (min-width:c.$desktop){
+            width: c.$anchoMedio;            
+        }
+        .grid1{
+            grid-area: area01;    
+        }
+        .grid2{
+            grid-area: area02;
+        }
+        .grid3{
+            grid-area: area03;            
+        }
+        .grid4{
+            grid-area: area04;
+        }
+        .grid5{
+            grid-area: area05;
+        }
+        .grid6{
+            grid-area: area06;            
+        }
+        #form01{ 
+            display:flex;
+            flex-direction: column;
+            justify-content: space-between;
+            row-gap: 0.5rem;
+            @media only screen and (min-width:c.$desktop){
+                // padding: 0 20%;
+            }
+            >p{
+                padding-top: 1rem;
+            }
+            .passwordContainer{
+                width: 100%;
+                position: relative;
+                .showPassword{
+                    position: absolute;
+                    right: 5px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 35px;
+                    filter: opacity(.3);
+                }
+            }
+            .labelPass{
+                position: absolute;
+                top: 0;
+                left: 0;
+                transform: translateY(-30px);
+                color: c.$color00;
+                
+            }                      
+            input::placeholder, textarea::placeholder{
+                font-family: c.$fuente02;
+                color: c.$color00;
+            }     
+            .campo:-webkit-autofill,
+            .campo:-webkit-autofill:hover, 
+            .campo:-webkit-autofill:focus {
+                box-shadow: 0 0 0px 1000px c.$color03 inset;
+                -webkit-box-shadow: 0 0 0px 1000px c.$color03 inset;
+                -webkit-text-fill-color:c.$color01;
+                -moz-box-shadow: 0 0 0px 1000px c.$color03 inset;
+                -moz-text-fill-color:c.$color01;
+                -o-box-shadow: 0 0 0px 1000px c.$color03 inset;
+                -o-text-fill-color:c.$color01;
+            }                 
+            .campo{
+                width: 100%;
+                padding: 6px;
+                box-sizing: border-box;
+                font-family: c.$fuente02;
+                font-size: clamp(0.9rem, 5vw, 1.1rem);
+                color: c.$color01;
+                border: none;
+                border-radius: 4px;
+                background-color: c.$color03;
+                caret-color: c.$color01;
+                @media only screen and (min-width: c.$tablet){
+                    padding: 8px;
+                }
+            }
+            input[type='submit']{
+                // opacity: 0.2;
+                // pointer-events: none;
+                position: relative;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+            textarea{
+                min-width: 100%;
+                max-width: 0;
+                width: 100px;
+                min-height: 100px;
+                max-height: 200px;
+            }
+            .terminos{
+                display: flex;
+                justify-content: flex-start;
+                align-items: center;
+                gap: 20px;
+                color: c.$color01;
+                font-family: c.$fuente02;
+                font-size: 1rem;
+                text-underline-offset: 3px;                    
+                margin: 1rem 0;
+                input[type='checkbox']{                        
+                    width: 30px;
+                    height: 30px;
+                    margin-left: 12px;
+                    accent-color: c.$color02;
+                    &:hover{
+                        cursor: crosshair;
+                    }
+                }
+                span, a{
+                    color: c.$color01;
+                    text-decoration:underline;
+                    cursor: crosshair;
+                    font-size: 0.7rem;
+                    @media only screen and (min-width:c.$desktop){
+                        font-size: initial;
+                    }
+                    &:hover{
+                        color: c.$color02;
+                    }
+                }
+            }
+            .boton{
+                margin-top: 1rem;
+            }
+            input, textarea{
+                &:focus-visible{
+                    outline: 2px solid c.$color01;
+                }
+            }
+        }
+        #enviado{
+            z-index: 100;
+            max-height:724px;
+            display: none;
+            // display: flex; //dev
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            .caja{
+                width: 90%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                row-gap: 20px;
+            }
+            img{
+                height: 50px;
+                opacity: 1;
+                left: inherit;
+                transform: inherit;
+                -webkit-transform: inherit;
+                -moz-transform: inherit;
+                -o-transform: inherit;
+                position: relative;
+                filter: c.$filterColor02;
+                -webkit-filter: c.$filterColor02;
+
+            }                           
+        }
+        #datos{
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            row-gap: 2rem;
+            ul{
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                row-gap: 1rem;
+                @media only screen and (min-width:c.$desktop){
+                    padding: 0 c.$padMax;
+                }
+                li{
+                    width: 100%;
+                    &, a{
+                        display: flex;
+                        align-items: center;
+                        column-gap: 0.5rem;
+                        @media only screen and (min-width:c.$tablet){
+                            column-gap: 2rem;
+                        }                            
+                    }
+                    a{
+                        img{
+                            width: 2rem;
+                            filter: c.$filterColor02;
+                            -webkit-filter: c.$filterColor02;
+                            user-select: none;
+                            -webkit-user-select: none;
+                            -moz-user-select: none;
+                            -ms-user-select: none;   
+                        }   
+                    }
+                }
+            }
+            iframe{
+                width: 100%;
+            }
+        }       
+    }
+}
