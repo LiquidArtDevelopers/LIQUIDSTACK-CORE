@@ -125,10 +125,12 @@ class Application
     {
         $url       = $requestedUrl;
         $view      = $rutaConfig['view'];
-        $content   = $rutaConfig['content'] ?? null;
-        $resources = $rutaConfig['resources'] ?? null;
+        $resources = null;
 
-        if (is_string($content) && $content !== '') {
+        if (isset($rutaConfig['content']) && isset($rutaConfig['resources'])) {
+            $content   = $rutaConfig['content'] ?? '';
+            $resources = $rutaConfig['resources'] ?? '';
+
             $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/{$content}/{$lang}.json"));
             if ($data) {
                 extract($data);
@@ -144,19 +146,19 @@ class Application
                     $GLOBALS[$k] = $v;
                 }
             }
-        }
 
-        if (is_string($resources) && $resources !== '' && !$this->isDevMode()) {
-            $cssFiles = glob(Paths::publicPath() . "/assets/css/{$resources}*.css");
-            $jsFiles  = glob(Paths::publicPath() . "/assets/js/{$resources}*.js");
+            if (!($_ENV['DEV_MODE'] ?? false)) {
+                $cssFiles = glob(Paths::publicPath() . "/assets/css/{$resources}*.css");
+                $jsFiles  = glob(Paths::publicPath() . "/assets/js/{$resources}*.js");
 
-            if ($cssFiles) {
-                $css              = ($_ENV['RAIZ'] ?? '') . '/assets/css/' . basename($cssFiles[0]);
-                $GLOBALS['css'] = $css;
-            }
-            if ($jsFiles) {
-                $js              = ($_ENV['RAIZ'] ?? '') . '/assets/js/' . basename($jsFiles[0]);
-                $GLOBALS['js'] = $js;
+                if ($cssFiles) {
+                    $css              = ($_ENV['RAIZ'] ?? '') . '/assets/css/' . basename($cssFiles[0]);
+                    $GLOBALS['css'] = $css;
+                }
+                if ($jsFiles) {
+                    $js              = ($_ENV['RAIZ'] ?? '') . '/assets/js/' . basename($jsFiles[0]);
+                    $GLOBALS['js'] = $js;
+                }
             }
         }
 
@@ -183,7 +185,7 @@ class Application
 
         $resources = '404';
 
-        if (!$this->isDevMode()) {
+        if (!($_ENV['DEV_MODE'] ?? false)) {
             $cssFiles = glob(Paths::publicPath() . "/assets/css/{$resources}*.css");
             $jsFiles  = glob(Paths::publicPath() . "/assets/js/{$resources}*.js");
 
@@ -199,26 +201,5 @@ class Application
 
         http_response_code(404);
         require_once Paths::appPath() . '/views/404.php';
-    }
-
-    private function isDevMode(): bool
-    {
-        $value = $_ENV['DEV_MODE'] ?? getenv('DEV_MODE');
-
-        if ($value === null) {
-            return false;
-        }
-
-        if (is_bool($value)) {
-            return $value;
-        }
-
-        if (is_numeric($value)) {
-            return (int) $value !== 0;
-        }
-
-        $normalized = strtolower((string) $value);
-
-        return in_array($normalized, ['1', 'true', 'on', 'yes'], true);
     }
 }
