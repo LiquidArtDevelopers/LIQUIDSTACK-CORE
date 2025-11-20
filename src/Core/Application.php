@@ -129,15 +129,15 @@ class Application
         $resources = $rutaConfig['resources'] ?? null;
 
         if (is_string($content) && $content !== '') {
-            $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/{$content}/{$lang}.json"));
+            
+            $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/global/{$lang}.json"));
             if ($data) {
                 extract($data);
                 foreach ($data as $k => $v) {
                     $GLOBALS[$k] = $v;
                 }
             }
-
-            $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/global/{$lang}.json"));
+            $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/{$content}/{$lang}.json"));
             if ($data) {
                 extract($data);
                 foreach ($data as $k => $v) {
@@ -165,7 +165,8 @@ class Application
 
     private function renderNotFound(string $lang): void
     {
-        $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/404/{$lang}.json"));
+        
+        $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/global/{$lang}.json"));
         if ($data) {
             extract($data);
             foreach ($data as $k => $v) {
@@ -173,7 +174,7 @@ class Application
             }
         }
 
-        $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/global/{$lang}.json"));
+        $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/404/{$lang}.json"));
         if ($data) {
             extract($data);
             foreach ($data as $k => $v) {
