@@ -1,4 +1,131 @@
+import configScss from "../../scss/_config.scss?raw";
+
 const STYLE_ID = "dev-inline-editor-style";
+const DEFAULT_COLOR_OPTIONS = [
+  { label: "$color00 · Blanco", value: "rgb(255, 255, 255)" },
+  { label: "$color01 · Gris oscuro", value: "#272727" },
+  { label: "$color02 · Azul", value: "#5285c5" },
+  { label: "$color03 · Azul claro", value: "#E9F5FF" },
+  { label: "$color04 · Azul marino", value: "#092F64" },
+  { label: "$color05 · Malva", value: "#b7b8ec" },
+  { label: "$colorERROR · Rojo", value: "#DD7676" },
+  { label: "$colorOK · Verde", value: "#6DE063" },
+];
+
+const COLOR_CONFIG_PATHS = [
+  "/src/scss/_config.scss",
+  "/scss/_config.scss",
+  "./src/scss/_config.scss",
+];
+
+const getBundledScssConfig = () =>
+  typeof configScss === "string" && configScss.trim().length > 0
+    ? configScss
+    : null;
+
+let colorOptionsCache = null;
+
+const parseScssColors = (scssContent) => {
+  if (typeof scssContent !== "string") {
+    return [];
+  }
+
+  const results = [];
+  const regex = /\$color([\w-]+)\s*:\s*([^;]+);/gi;
+  let match = regex.exec(scssContent);
+
+  while (match) {
+    results.push({
+      label: `$color${match[1]}`,
+      value: match[2].trim(),
+    });
+    match = regex.exec(scssContent);
+  }
+
+  return results;
+};
+
+const fetchConfigColors = async () => {
+  for (const path of COLOR_CONFIG_PATHS) {
+    try {
+      const response = await fetch(new URL(path, window.location.origin), {
+        cache: "reload",
+      });
+
+      if (response.ok) {
+        return response.text();
+      }
+    } catch (error) {
+      // ignore fetch failures and try the next path
+    }
+  }
+  return null;
+};
+
+const getColorOptions = async () => {
+  if (Array.isArray(colorOptionsCache)) {
+    return colorOptionsCache;
+  }
+
+  const bundledConfig = getBundledScssConfig();
+  const inlineParsed = parseScssColors(bundledConfig);
+
+  if (inlineParsed.length > 0) {
+    colorOptionsCache = inlineParsed;
+    return inlineParsed;
+  }
+
+  const scssContent = await fetchConfigColors();
+  const parsed = parseScssColors(scssContent);
+
+  if (parsed.length > 0) {
+    colorOptionsCache = parsed;
+    return parsed;
+  }
+
+  colorOptionsCache = DEFAULT_COLOR_OPTIONS;
+  return DEFAULT_COLOR_OPTIONS;
+};
+
+const parseHexColor = (value) => {
+  const hex = value.replace(/^#/, "");
+  if (hex.length === 3) {
+    const [r, g, b] = hex.split("");
+    return [r, g, b].map((part) => parseInt(part.repeat(2), 16));
+  }
+  if (hex.length === 6) {
+    return [hex.slice(0, 2), hex.slice(2, 4), hex.slice(4, 6)].map((part) =>
+      parseInt(part, 16)
+    );
+  }
+  return null;
+};
+
+const parseRgbColor = (value) => {
+  const match = value.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+  if (!match) {
+    return null;
+  }
+  return match.slice(1, 4).map((part) => Number(part));
+};
+
+const toRgbTuple = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return parseHexColor(trimmed) || parseRgbColor(trimmed) || null;
+};
+
+const getContrastTextColor = (background) => {
+  const rgb = toRgbTuple(background);
+  if (!rgb) {
+    return "#0f172a";
+  }
+  const [r, g, b] = rgb;
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? "#0f172a" : "#f8fafc";
+};
 
 const toBool = (value) => {
   if (typeof value === "boolean") {
@@ -149,6 +276,34 @@ const ensureStyles = () => {
       flex-direction: column;
       gap: 0.35rem;
       margin-bottom: 1rem;
+    }
+    .dev-inline-editor-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin: 0.25rem 0 0.15rem;
+    }
+    .dev-inline-editor-toolbar button,
+    .dev-inline-editor-toolbar select {
+      border-radius: 0.4rem;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(248, 250, 252, 0.9);
+      color: #0f172a;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .dev-inline-editor-toolbar button:hover,
+    .dev-inline-editor-toolbar select:hover {
+      background: #fff;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .dev-inline-editor-toolbar button:active,
+    .dev-inline-editor-toolbar select:active {
+      transform: translateY(1px);
     }
     .dev-inline-editor-field label {
       font-size: 0.85rem;
@@ -348,6 +503,7 @@ const createField = ({
   group,
   groupIndex = 0,
   dataset = {},
+  enableRichText = false,
 }) => {
   const fieldWrapper = document.createElement("div");
   fieldWrapper.className = "dev-inline-editor-field";
@@ -388,6 +544,87 @@ const createField = ({
   }
 
   fieldWrapper.appendChild(labelEl);
+  if (enableRichText && (control instanceof HTMLTextAreaElement || control instanceof HTMLInputElement)) {
+    const toolbar = document.createElement("div");
+    toolbar.className = "dev-inline-editor-toolbar";
+
+    const insertContent = (before, after = "", placeholder = "") => {
+      const currentValue = control.value ?? "";
+      const start = typeof control.selectionStart === "number" ? control.selectionStart : currentValue.length;
+      const end = typeof control.selectionEnd === "number" ? control.selectionEnd : start;
+      const selected = currentValue.slice(start, end) || placeholder;
+      const nextValue = `${currentValue.slice(0, start)}${before}${selected}${after}${currentValue.slice(end)}`;
+
+      control.value = nextValue;
+      const selectionStart = start + before.length;
+      const selectionEnd = selectionStart + selected.length;
+      if (typeof control.setSelectionRange === "function") {
+        control.focus();
+        control.setSelectionRange(selectionStart, selectionEnd);
+      }
+    };
+
+    const addButton = (text, title, handler) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = text;
+      if (title) {
+        button.title = title;
+      }
+      button.addEventListener("click", handler);
+      toolbar.appendChild(button);
+    };
+
+    addButton("B", "Negrita (<b>)", () => insertContent("<b>", "</b>", "texto"));
+    addButton("U", "Subrayado (<u>)", () => insertContent("<u>", "</u>", "texto"));
+    addButton("br", "Salto de línea (<br>)", () => insertContent("<br>", ""));
+
+    const colorSelect = document.createElement("select");
+    colorSelect.className = "dev-inline-editor-color";
+
+    const populateColorSelect = (options) => {
+      colorSelect.innerHTML = "";
+
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = "Color";
+      colorSelect.appendChild(defaultOption);
+
+      options.forEach((option) => {
+        const opt = document.createElement("option");
+        opt.value = option.value;
+        opt.textContent = `▇ ${option.label}`;
+        opt.style.backgroundColor = option.value;
+        opt.style.color = getContrastTextColor(option.value);
+        opt.style.paddingLeft = "0.75em";
+        opt.style.textShadow = "0 0 2px rgba(0,0,0,0.25)";
+        colorSelect.appendChild(opt);
+      });
+    };
+
+    populateColorSelect(DEFAULT_COLOR_OPTIONS);
+    colorSelect.disabled = true;
+
+    getColorOptions()
+      .then((options) => populateColorSelect(options))
+      .catch(() => populateColorSelect(DEFAULT_COLOR_OPTIONS))
+      .finally(() => {
+        colorSelect.disabled = false;
+      });
+
+    colorSelect.addEventListener("change", (event) => {
+      const target = event.target;
+      const selectedValue = target instanceof HTMLSelectElement ? target.value : "";
+      if (!selectedValue) {
+        return;
+      }
+      insertContent(`<span style="color: ${selectedValue};">`, "</span>", "texto");
+      colorSelect.value = "";
+    });
+
+    toolbar.appendChild(colorSelect);
+    fieldWrapper.appendChild(toolbar);
+  }
   fieldWrapper.appendChild(control);
 
   return fieldWrapper;
@@ -570,6 +807,7 @@ const showModal = ({
           value,
           group: "main",
           label: name,
+          enableRichText: supportsText && name === "text",
         }),
       );
     });
