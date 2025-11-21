@@ -51,6 +51,7 @@
             width: 100%;
             height: 100%;
             display: flex;
+            flex-wrap: wrap; 
             flex-direction: column;
             row-gap: 3rem;
             margin-bottom: $pad;
@@ -64,7 +65,8 @@
             .art01-card{
                 position: relative;
                 width: 100%;
-                height: calc(100% + $pad); //damos X rem de altura adicional para separar el botón 
+                margin-bottom: 2rem;
+                height: auto;
                 display: flex;
                 flex-direction: column;
                 row-gap: 1rem;
@@ -92,7 +94,7 @@
                 }
                 >:nth-last-child(1):is(a){
                     // botón opcional, para que se posicione siempre abajo.                    
-                    bottom: 0;
+                    bottom: -3rem;
                     @media only screen and (min-width:c.$tablet){
                         position: absolute;
                     }
