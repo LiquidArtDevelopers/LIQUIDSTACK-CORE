@@ -36,7 +36,10 @@
                 @media only screen and (min-width: c.$desktop){
                     font-size: clamp(5rem, 10vw, 7rem);
                 }
-            }
+                @media only screen and (min-width:c.$tablet) and (max-height: 900px){
+                    font-size: clamp(5rem, 10vw, 5rem)
+                }   
+            }   
             >span{
                 color:c.$color00;
             }
