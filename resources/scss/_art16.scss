@@ -32,7 +32,8 @@
             row-gap: 1rem;
             text-align: center;
             >:nth-child(2){
-                font-size: 9vw;
+                font-size: 7vw;
+                line-height: 7vw;
                 @media only screen and (min-width: c.$desktop){
                     font-size: clamp(5rem, 10vw, 7rem);
                     line-height: clamp(5rem, 10vw, 7rem);
