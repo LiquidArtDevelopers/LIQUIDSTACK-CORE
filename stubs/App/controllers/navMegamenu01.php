@@ -1,4 +1,3 @@
-
 <?php
 function controller_navMegamenu01(int $i = 0, array $params = []): string
 {
@@ -11,145 +10,108 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
         $GLOBALS["{$pref}forward"]->title.'">';
 
 
-    if (!isset($_SESSION["id_rol"])):
-        $col1Simple = [
-            [ //home
-                'aDL'    => "{$pref}link0not",
-                'href'   => homeUrl($GLOBALS['lang']),
-                'title'  => $GLOBALS["{$pref}link0not"]->title,
-                'spanDL' => "{$pref}link0Textnot",
+    $extractHref = static function (string $globalKey): string {
+        $linkObj = $GLOBALS[$globalKey] ?? null;
+
+        if (is_object($linkObj) && isset($linkObj->href)) {
+            return (string) $linkObj->href;
+        }
+
+        if (is_array($linkObj) && isset($linkObj['href'])) {
+            return (string) $linkObj['href'];
+        }
+
+        return '';
+    };
+
+    $extractTitle = static function (string $globalKey): string {
+        $linkObj = $GLOBALS[$globalKey] ?? null;
+
+        if (is_object($linkObj) && isset($linkObj->title)) {
+            return (string) $linkObj->title;
+        }
+
+        if (is_array($linkObj) && isset($linkObj['title'])) {
+            return (string) $linkObj['title'];
+        }
+
+        return '';
+    };
+
+    $buildLink = static function (
+        string $linkKey,
+        string $textKey,
+        ?string $overrideHref = null,
+        array $hrefOptions = ['absolute' => false]
+    ) use ($extractHref, $extractTitle): array {
+        $hrefValue = $overrideHref ?? $extractHref($linkKey);
+        $href      = $overrideHref === null ? resolve_localized_href($hrefValue, $hrefOptions) : $hrefValue;
+
+        return [
+            'aDL'    => $linkKey,
+            'href'   => $href,
+            'title'  => $extractTitle($linkKey),
+            'spanDL' => $textKey,
+        ];
+    };
+
+    $col1Items = [
+        [
+            'type'  => 'simple',
+            'value' => $buildLink("{$pref}home", "{$pref}homeText", homeUrl($GLOBALS['lang']), []),
+        ],
+        [
+            'type'  => 'group',
+            'value' => [
+                'aDL'    => "{$pref}services",
+                'href'   => resolve_localized_href($extractHref("{$pref}services"), ['absolute' => false]),
+                'title'  => $extractTitle("{$pref}services"),
+                'spanDL' => "{$pref}servicesText",
+                'items'  => [
+                    $buildLink("{$pref}servicesItem0", "{$pref}servicesItem0Text"),
+                ],
             ],
-            
+        ],
+        [
+            'type'  => 'simple',
+            'value' => $buildLink("{$pref}contactLink", "{$pref}contactText"),
+        ],
+    ];
+
+    if (!isset($_SESSION["id_rol"])):
+        $col1Items[] = [
+            'type'  => 'simple',
+            'value' => $buildLink("{$pref}login", "{$pref}loginText"),
         ];
     endif;
+
     if (isset($_SESSION["id_rol"])):
-        $link0Obj = $GLOBALS["{$pref}link0"] ?? null;
-        $link4Obj = $GLOBALS["{$pref}link4"] ?? null;
-        $link1Obj = $GLOBALS["{$pref}link1"] ?? null;
-        $link2Obj = $GLOBALS["{$pref}link2"] ?? null;
-        $link3Obj = $GLOBALS["{$pref}link3"] ?? null;
+        $privateLinks = [
+            $buildLink("{$pref}link0", "{$pref}link0Text"),
+            $buildLink("{$pref}link4", "{$pref}link4Text"),
+            $buildLink("{$pref}link1", "{$pref}link1Text"),
+            $buildLink("{$pref}link2", "{$pref}link2Text"),
+            $buildLink("{$pref}link3", "{$pref}link3Text"),
+        ];
 
-        $link4HrefValue = '';
-        if (is_object($link4Obj) && isset($link4Obj->href)) {
-            $link4HrefValue = $link4Obj->href;
-        } elseif (is_array($link4Obj) && isset($link4Obj['href'])) {
-            $link4HrefValue = (string) $link4Obj['href'];
+        foreach ($privateLinks as $link) {
+            $col1Items[] = [
+                'type'  => 'simple',
+                'value' => $link,
+            ];
         }
-
-        $link1HrefValue = '';
-        if (is_object($link1Obj) && isset($link1Obj->href)) {
-            $link1HrefValue = $link1Obj->href;
-        } elseif (is_array($link1Obj) && isset($link1Obj['href'])) {
-            $link1HrefValue = (string) $link1Obj['href'];
-        }
-
-        $link2HrefValue = '';
-        if (is_object($link2Obj) && isset($link2Obj->href)) {
-            $link2HrefValue = $link2Obj->href;
-        } elseif (is_array($link2Obj) && isset($link2Obj['href'])) {
-            $link2HrefValue = (string) $link2Obj['href'];
-        }
-
-        $link3HrefValue = '';
-        if (is_object($link3Obj) && isset($link3Obj->href)) {
-            $link3HrefValue = $link3Obj->href;
-        } elseif (is_array($link3Obj) && isset($link3Obj['href'])) {
-            $link3HrefValue = (string) $link3Obj['href'];
-        }
-
-        $col1Simple = [
-        [ //home
-            'aDL'    => "{$pref}link0",
-            'href'   => homeUrl($GLOBALS['lang']),
-            'title'  => is_object($link0Obj) && isset($link0Obj->title) ? $link0Obj->title : '',
-            'spanDL' => "{$pref}link0Text",
-        ],
-        [ //Documentos del club
-            'aDL'    => "{$pref}link4",
-            'href'   => resolve_localized_href($link4HrefValue, ['absolute' => false]),
-            'title'  => is_object($link4Obj) && isset($link4Obj->title) ? $link4Obj->title : '',
-            'spanDL' => "{$pref}link4Text",
-        ],
-        [ //Comunicados para socios
-            'aDL'    => "{$pref}link1",
-            'href'   => resolve_localized_href($link1HrefValue, ['absolute' => false]),
-            'title'  => is_object($link1Obj) && isset($link1Obj->title) ? $link1Obj->title : '',
-            'spanDL' => "{$pref}link1Text",
-        ],
-        [ //Cerrar Sesión
-            'aDL'    => "{$pref}link2",
-            'href'   => resolve_localized_href($link2HrefValue, ['absolute' => false]),
-            'title'  => is_object($link2Obj) && isset($link2Obj->title) ? $link2Obj->title : '',
-            'spanDL' => "{$pref}link2Text",
-        ],
-        [ //Cambiar Contraseña
-            'aDL'    => "{$pref}link3",
-            'href'   => resolve_localized_href($link3HrefValue, ['absolute' => false]),
-            'title'  => is_object($link3Obj) && isset($link3Obj->title) ? $link3Obj->title : '',
-            'spanDL' => "{$pref}link3Text",
-        ]
-    ];
     endif;
-    if (isset($_SESSION["id_rol"]) && $_SESSION["id_rol"] == ROLES::ADMIN->value):
-    endif;
-
-    $col1Groups = [
-        // [ //9 servicios
-        //     'aDL'    => "{$pref}linkGroup0",
-        //     'href'   => '/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup0"]->href,
-        //     'title'  => $GLOBALS["{$pref}linkGroup0"]->title,
-        //     'spanDL' => "{$pref}linkGroup0Text",
-        //     'items'  => [
-        //         [ 'aDL'=> "{$pref}linkGroup0Item0", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup0Item0"]->href, 'spanDL' => "{$pref}linkGroup0Item0text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup0Item1", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup0Item1"]->href, 'spanDL' => "{$pref}linkGroup0Item1text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup0Item2", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup0Item2"]->href, 'spanDL' => "{$pref}linkGroup0Item2text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup0Item3", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup0Item3"]->href, 'spanDL' => "{$pref}linkGroup0Item3text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup0Item4", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup0Item4"]->href, 'spanDL' => "{$pref}linkGroup0Item4text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup0Item5", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup0Item5"]->href, 'spanDL' => "{$pref}linkGroup0Item5text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup0Item6", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup0Item6"]->href, 'spanDL' => "{$pref}linkGroup0Item6text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup0Item7", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup0Item7"]->href, 'spanDL' => "{$pref}linkGroup0Item7text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup0Item8", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup0Item8"]->href, 'spanDL' => "{$pref}linkGroup0Item8text" ],
-        //     ],
-        // ],
-        // [ //3 soluciones
-        //     'aDL'    => "{$pref}linkGroup1",
-        //     'href'   => '/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup1"]->href,
-        //     'title'  => $GLOBALS["{$pref}linkGroup1"]->title,
-        //     'spanDL' => "{$pref}linkGroup1Text",
-        //     'items'  => [
-        //         [ 'aDL'=> "{$pref}linkGroup1Item0", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup1Item0"]->href, 'spanDL' => "{$pref}linkGroup1Item0text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup1Item1", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup1Item1"]->href, 'spanDL' => "{$pref}linkGroup1Item1text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup1Item2", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup1Item2"]->href, 'spanDL' => "{$pref}linkGroup1Item2text" ],
-        //     ],
-        // ],
-        // [ //10 zonas
-        //     'aDL'    => "{$pref}linkGroup2",
-        //     'href'   => '/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup2"]->href,
-        //     'title'  => $GLOBALS["{$pref}linkGroup2"]->title,
-        //     'spanDL' => "{$pref}linkGroup2Text",
-        //     'items'  => [
-        //         [ 'aDL'=> "{$pref}linkGroup2Item0", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup2Item0"]->href, 'spanDL' => "{$pref}linkGroup2Item0text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup2Item1", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup2Item1"]->href, 'spanDL' => "{$pref}linkGroup2Item1text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup2Item2", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup2Item2"]->href, 'spanDL' => "{$pref}linkGroup2Item2text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup2Item3", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup2Item3"]->href, 'spanDL' => "{$pref}linkGroup2Item3text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup2Item4", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup2Item4"]->href, 'spanDL' => "{$pref}linkGroup2Item4text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup2Item5", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup2Item5"]->href, 'spanDL' => "{$pref}linkGroup2Item5text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup2Item6", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup2Item6"]->href, 'spanDL' => "{$pref}linkGroup2Item6text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup2Item7", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup2Item7"]->href, 'spanDL' => "{$pref}linkGroup2Item7text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup2Item8", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup2Item8"]->href, 'spanDL' => "{$pref}linkGroup2Item8text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup2Item9", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup2Item9"]->href, 'spanDL' => "{$pref}linkGroup2Item9text" ],
-        //         [ 'aDL'=> "{$pref}linkGroup2Item10", 'href'=>'/'.$GLOBALS['lang'].'/'.$GLOBALS["{$pref}linkGroup2Item10"]->href, 'spanDL' => "{$pref}linkGroup2Item10text" ],
-
-        //     ],
-        // ]
-    ];
 
     $col1Html = '<ul>';
-    foreach ($col1Simple as $s) {
-        $spanTxt = $GLOBALS[$s['spanDL']]->text;
-        $col1Html .= '<li><a data-lang="'.$s['aDL'].'" href="'.$s['href'].'" title="'.$s['title'].'">'.$iconForward.'<span data-lang="'.$s['spanDL'].'">'.$spanTxt.'</span></a></li>';
-    }
-    foreach ($col1Groups as $g) {
+    foreach ($col1Items as $item) {
+        if ($item['type'] === 'simple') {
+            $s       = $item['value'];
+            $spanTxt = $GLOBALS[$s['spanDL']]->text;
+            $col1Html .= '<li><a data-lang="'.$s['aDL'].'" href="'.$s['href'].'" title="'.$s['title'].'">'.$iconForward.'<span data-lang="'.$s['spanDL'].'">'.$spanTxt.'</span></a></li>';
+            continue;
+        }
+
+        $g        = $item['value'];
         $groupTxt = $GLOBALS[$g['spanDL']]->text;
         $col1Html .= '<li><div><a data-lang="'.$g['aDL'].'" href="'.$g['href'].'" title="'.$g['title'].'">'.$iconForward.'<span data-lang="'.$g['spanDL'].'">'.$groupTxt.'</span></a><div class="submenu"><ul>';
         foreach ($g['items'] as $sub) {
