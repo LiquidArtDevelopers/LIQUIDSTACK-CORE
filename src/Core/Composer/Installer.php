@@ -80,12 +80,16 @@ class Installer
         $assets = [
             ['path' => 'public/index.php', 'type' => 'file'],
             ['path' => 'App/config/helpers.php', 'type' => 'file'],
+            ['path' => 'App/config/languages', 'type' => 'dir'],
             ['path' => 'App/app/url.php', 'type' => 'file'],
             ['path' => 'App/controllers', 'type' => 'dir'],
             ['path' => 'App/templates', 'type' => 'dir'],
+            ['path' => 'App/views', 'type' => 'dir'],
             ['path' => 'App/tools/build-sitemap.php', 'type' => 'file'],
             ['path' => 'App/tools/update-languages.php', 'type' => 'file'],
             ['path' => 'App/tools', 'type' => 'dir'],
+            ['path' => 'src/js/templates.js', 'type' => 'file', 'base' => $packageRoot],
+            ['path' => 'src/scss/templates.scss', 'type' => 'file', 'base' => $packageRoot],
         ];
 
         $filesystem = new Filesystem();
@@ -93,8 +97,9 @@ class Installer
         foreach ($assets as $asset) {
             $assetPath = $asset['path'];
             $assetType = $asset['type'];
+            $assetBase = $asset['base'] ?? $stubsDir;
 
-            $source = $stubsDir . '/' . $assetPath;
+            $source = $assetBase . '/' . $assetPath;
             $target = $projectRoot . '/' . $assetPath;
 
             if ($assetType === 'file' && !is_file($source)) {
