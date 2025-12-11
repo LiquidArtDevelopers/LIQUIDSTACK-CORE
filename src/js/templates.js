@@ -4,7 +4,7 @@ import initArtSlider01 from './resources/_artSlider01.js';
 import initArtSlider02 from './resources/_artSlider02.js';
 import initArtZipper from './resources/_artZipper.js';
 
-// parallax 
+// parallax
 import ScrollTrigger from 'gsap/ScrollTrigger';
 import gsapParallax from "./resources/_gsapParallaxScroll.js";
 
@@ -15,6 +15,7 @@ import initGlobalForm from './resources/_globalForm.js';
 import initArtAccordion01 from "./resources/_artAccordion01.js";
 
 const doc = document
+
 doc.addEventListener('DOMContentLoaded',()=>{
 
     initStatsCounter()
@@ -25,7 +26,7 @@ doc.addEventListener('DOMContentLoaded',()=>{
     initArtSlider02()
     initArtZipper()
 
-    // GSAP PARALLAX SCROLL--    
+    // GSAP PARALLAX SCROLL--
     /* ── función que cambia la imagen según ancho ────────────────── */
     function swapBG(){
         const w = innerWidth;
@@ -36,7 +37,7 @@ doc.addEventListener('DOMContentLoaded',()=>{
                         el.dataset.bgDesktop;
             el.style.setProperty("background-image", `url(${url})`, "important");
         });
-    }                               
+    }
 
     /* --- debounce con delayedCall ----------------------------------- */
     let dc;
@@ -78,9 +79,6 @@ doc.addEventListener('DOMContentLoaded',()=>{
       container: ".art07-matrix",
       sizeMode : "containHeight"   // o "containWidth" según tu ajuste final
     });
-    // FIN GSAP PARALLAX SCROLL--    
+    // FIN GSAP PARALLAX SCROLL--
 
 });
-
-
-
