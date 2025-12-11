@@ -1,0 +1,101 @@
+@use '../config' as c;
+
+.art17 {
+    width: c.$anchoFull;
+    padding: c.$padMax c.$padMin;
+    background-color: c.$color03;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: c.$padMax;
+
+    >:nth-child(1) {
+        width: 100%;
+        max-width: c.$textMax;
+        color: c.$color00;
+        text-align: center;
+    }
+
+    .art17-grid {
+        width: 100%;
+        max-width: 1450px;
+        display: flex;
+        flex-direction: column;
+        gap: c.$padMin;
+        @media only screen and (min-width: c.$tablet) {
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        @media only screen and (min-width: c.$desktop) {
+            gap: c.$padMax;
+        }
+    }
+
+    .art17-card {
+        width: 100%;
+        background-color: c.$color03bis;
+        color: c.$color01;
+        border-radius: 1rem;
+        padding: c.$padMin;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        box-shadow: c.$sombraMin;
+
+        @media only screen and (min-width: c.$tablet) {
+            gap: 2rem;
+            padding: c.$padMax;
+            width: calc(50% - c.$padMax / 2);
+            min-width: 320px;
+        }
+
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            margin: 0;
+            color: c.$color02bis3;
+        }
+
+        .art17-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            @media only screen and (min-width: c.$desktop) {
+                gap: 1.5rem;
+            }
+        }
+
+        .art17-list-item {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.75rem;
+            align-items: start;
+            @media only screen and (min-width: c.$tablet) {
+                gap: 1.5rem;
+            }
+            span:not(.art17-list-icon) {
+                color: c.$color01bis;
+                line-height: 1.4;
+            }
+        }
+        .art17-list-icon {
+            width: 1.5rem;
+            height: 1.5rem;
+            display: inline-block;
+            // background: url('/assets/img/system/shield-checkmark-outline.svg') center/contain no-repeat;
+            filter: c.$filterColor02;
+        }
+
+        a,
+        button {
+            align-self: flex-start;
+            margin-top: 2rem;
+        }
+    }
+}
