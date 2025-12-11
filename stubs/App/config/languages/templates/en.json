@@ -1,0 +1,1517 @@
+{
+    "example": {
+        "alt": "z",
+        "title": "link",
+        "text": "",
+        "placeholder": "",
+        "value": "",
+        "content": "",
+        "href": "",
+        "src": ""
+    },
+    "title": {
+        "text": "LAD Framework Templates"
+    },
+    "description": {
+        "content": ""
+    },
+    "robots": {
+        "content": "nofollow, noindex, max-snippet:-1, max-video-preview:-1, max-image-preview:large"
+    },
+    "hero00_bg_mobile": {
+        "src": "assets/img/dummy/dummy_900.avif"
+    },
+    "hero00_bg_tablet": {
+        "src": "assets/img/dummy/dummy_1800.avif"
+    },
+    "hero00_bg_desktop": {
+        "src": "assets/img/dummy/dummy_2560.avif"
+    },
+    "hero00_bg_fallback": {
+        "src": "assets/img/dummy/dummy_900.avif"
+    },
+    "hero02_video_webm": {
+        "src": "/assets/video/dummy.webm"
+    },
+    "hero02_video_mp4": {
+        "src": "/assets/video/dummy.mp4"
+    },
+    "hero02_video_poster": {
+        "src": "assets/img/dummy/dummy_2560.avif"
+    },
+    "hero02_video_title": {
+        "title": "Vídeo operaciones inteligentes"
+    },
+    "sect01_00_a_img01": {
+        "src": "assets/img/system/bookmark-outline.svg",
+        "alt": "Icono seguimiento clientes",
+        "title": "Icono seguimiento de clientes"
+    },
+    "sect01_00_a_h3_text": {
+        "text": "Integración ágil de showroom digital"
+    },
+    "sect01_00_a_p01_text": {
+        "text": "Conectamos catálogos, visitas guiadas y paneles compartidos para que tu equipo comercial cierre acuerdos sin fricciones y mantenga la narrativa visual en cada demostración."
+    },
+    "sect01_00_a_p02_text": {
+        "text": "Aportamos métricas de seguimiento y soporte remoto continuo para nutrir oportunidades tras cada evento híbrido."
+    },
+    "sect01_00_a_img02": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Equipo analizando panel de métricas",
+        "title": "Equipo analiza panel de métricas"
+    },
+    "sect01_00_a_img03": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Clientes revisando catálogo interactivo",
+        "title": "Clientes revisan catálogo interactivo"
+    },
+    "sect01_00_a_img04": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Showroom híbrido con asistentes conectados",
+        "title": "Showroom híbrido para asistentes conectados"
+    },
+    "sect01_00_b_img01": {
+        "src": "assets/img/system/bookmark-outline.svg",
+        "alt": "Icono agenda automatizada",
+        "title": "Icono de agenda automatizada"
+    },
+    "sect01_00_b_h3_text": {
+        "text": "Flujos automatizados de seguimiento comercial"
+    },
+    "sect01_00_b_p01_text": {
+        "text": "Orquestamos workflows que sincronizan visitas, firmas electrónicas, presupuestos y reporting financiero para sostener oportunidades complejas sin depender de tareas manuales repetitivas."
+    },
+    "sect01_00_b_p02_text": {
+        "text": "Enlazamos CRM, mailing y chat proactivo para activar respuestas rápidas cuando surge un nuevo requisito."
+    },
+    "sect01_00_b_img02": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Panel con hitos automatizados activos",
+        "title": "Panel muestra hitos automatizados activos"
+    },
+    "sect01_00_b_img03": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Equipo coordinando seguimiento multicanal integrado",
+        "title": "Equipo coordina seguimiento multicanal integrado"
+    },
+    "sect01_00_b_img04": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Representación de workflow comercial inteligente",
+        "title": "Workflow comercial inteligente en ejecución"
+    },
+    "sect01_00_c_img01": {
+        "src": "assets/img/system/bookmark-outline.svg",
+        "alt": "Icono experiencia inmersiva",
+        "title": "Icono de experiencia inmersiva"
+    },
+    "sect01_00_c_h3_text": {
+        "text": "Experiencias phygital guiadas en directo"
+    },
+    "sect01_00_c_p01_text": {
+        "text": "Diseñamos recorridos combinando streaming, chat moderado y pruebas táctiles para que cada asistente experimente la solución como si estuviera en planta."
+    },
+    "sect01_00_c_p02_text": {
+        "text": "Incluimos resúmenes descargables y agendas de talleres para mantener viva la conversación tras el tour."
+    },
+    "sect01_00_c_img02": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Visitantes probando módulos interactivos conectados",
+        "title": "Visitantes prueban módulos interactivos conectados"
+    },
+    "sect01_00_c_img03": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Guía facilitando demostración phygital colaborativa",
+        "title": "Guía facilita demostración phygital colaborativa"
+    },
+    "sect01_00_c_img04": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Escenario inmersivo con señalética dinámica",
+        "title": "Escenario inmersivo muestra señalética dinámica"
+    },
+    "sect01_00_d_img01": {
+        "src": "assets/img/system/bookmark-outline.svg",
+        "alt": "Icono formación continua",
+        "title": "Icono de formación continua"
+    },
+    "sect01_00_d_h3_text": {
+        "text": "Academia para partners certificados"
+    },
+    "sect01_00_d_p01_text": {
+        "text": "Creamos itinerarios modulares con sesiones técnicas, cápsulas de producto y evaluaciones para acreditar a distribuidores y reforzar la consistencia del mensaje comercial."
+    },
+    "sect01_00_d_p02_text": {
+        "text": "Ofrecemos foros privados y soporte experto para resolver dudas avanzadas y compartir mejores prácticas."
+    },
+    "sect01_00_d_img02": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Sesión formativa con instructores certificados",
+        "title": "Sesión formativa para partners certificados"
+    },
+    "sect01_00_d_img03": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Participantes evaluando módulos técnicos especializados",
+        "title": "Participantes evalúan módulos técnicos especializados"
+    },
+    "sect01_00_d_img04": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Plataforma académica con progreso gamificado",
+        "title": "Plataforma académica muestra progreso gamificado"
+    },
+
+    "sect02_00_a_h3_text": {
+        "text": "Producción audiovisual para lanzamientos globales"
+    },
+    "sect02_00_a_p01_text": {
+        "text": "Planificamos rodajes multicámara, traducciones simultáneas y espacios virtuales para amplificar cada lanzamiento sin depender de la logística presencial tradicional y reforzar la comunidad profesional."
+    },
+    "sect02_00_a_p02_text": {
+        "text": "Gestionamos clipping, boletines y sesiones de preguntas para prolongar la conversación internacional digital después del estreno."
+    },
+    "sect02_00_a_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Equipo creativo coordinando rodaje inmersivo global",
+        "title": "Equipo creativo coordina rodaje inmersivo global"
+    },
+    "sect02_00_a_img_sizes": {
+        "text": "(max-width: 899px) 1000px, 1500px"
+    },
+    "sect02_00_a_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "sect02_00_a_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
+
+    
+    "sect02_00_b_h3_text": {
+        "text": "Producción audiovisual para lanzamientos globales"
+    },
+    "sect02_00_b_p01_text": {
+        "text": "Planificamos rodajes multicámara, traducciones simultáneas y espacios virtuales para amplificar cada lanzamiento sin depender de la logística presencial tradicional y reforzar la comunidad profesional."
+    },
+    "sect02_00_b_p02_text": {
+        "text": "Gestionamos clipping, boletines y sesiones de preguntas para prolongar la conversación internacional digital después del estreno."
+    },
+    "sect02_00_b_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Equipo creativo coordinando rodaje inmersivo global",
+        "title": "Equipo creativo coordina rodaje inmersivo global"
+    },
+    "sect02_00_b_img_sizes": {
+        "text": "(max-width: 899px) 1000px, 1500px"
+    },
+    "sect02_00_b_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "sect02_00_b_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",    
+    "sect02_00_c_h3_text": {
+        "text": "Analítica de visitas y monetización"
+    },
+    "sect02_00_c_p01_text": {
+        "text": "Implementamos cuadros de mando, atribución asistida y modelos de conversión para medir el impacto económico de cada experiencia en vivo y digital de alto valor."
+    },
+    "sect02_00_c_p02_text": {
+        "text": "Integramos CRM, facturación y encuestas para detectar palancas de upselling y ajustar campañas en tiempo real."
+    },
+    "sect02_00_c_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Panel financiero comparando métricas de experiencias",
+        "title": "Panel financiero compara métricas de experiencias"
+    },
+    "sect02_00_c_img_sizes": {
+        "text": "(max-width: 899px) 1000px, 1500px"
+    },
+    "sect02_00_c_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "sect02_00_c_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
+    
+    
+
+    "sectTabs01_00_intro": {
+        "text": "Accede a documentación técnica, protocolos de seguridad y plantillas contractuales listos para compartir con proveedores, delegaciones y clientes finales; actualizamos los archivos clave cada trimestre para mantener alineada tu red logística."
+    },
+    "sectTabs01_00_a_id": {
+        "text": "protocolos-operativos"
+    },
+    "sectTabs01_00_a_nav": {
+        "text": "Protocolos clave"
+    },
+    "sectTabs01_00_a_h3": {
+        "text": "Protocolos operativos para delegaciones críticas de transporte"
+    },
+    "sectTabs01_00_a_b1_h4": {
+        "text": "Protocolos de seguridad en muelles compartidos"
+    },
+    "sectTabs01_00_a_b1_h5": {
+        "text": "Checklist diario para prevenir incidencias y coordinar accesos entre turnos y transportistas externos."
+    },
+    "sectTabs01_00_a_b1_l1": {
+        "text": "Descargar checklist",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_a_b1_l2": {
+        "text": "Guía de accesos",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_a_b2_h4": {
+        "text": "Gestión logística de mercancía sensible"
+    },
+    "sectTabs01_00_a_b2_h5": {
+        "text": "Plantilla para declarar incidencias térmicas, roturas y lotes sujetos a trazabilidad reforzada."
+    },
+    "sectTabs01_00_a_b2_l1": {
+        "text": "Formulario incidencias",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_a_b2_l2": {
+        "text": "Protocolo cadena fría",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_a_b3_h4": {
+        "text": "Coordinación con partners estratégicos regionales"
+    },
+    "sectTabs01_00_a_b3_h5": {
+        "text": "Modelo de reunión semanal para compartir KPIs críticos, cuellos de botella y acciones preventivas conjuntas."
+    },
+    "sectTabs01_00_a_b3_l1": {
+        "text": "Agenda semanal",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_a_b3_l2": {
+        "text": "Resumen KPI",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_b_id": {
+        "text": "documentos-comerciales"
+    },
+    "sectTabs01_00_b_nav": {
+        "text": "Docs comerciales"
+    },
+    "sectTabs01_00_b_h3": {
+        "text": "Documentación contractual para nuevos operadores logísticos regionales"
+    },
+    "sectTabs01_00_b_b1_h4": {
+        "text": "Acuerdos marco de servicio nacional"
+    },
+    "sectTabs01_00_b_b1_h5": {
+        "text": "Modelo contractual con cláusulas SLA, penalizaciones y anexos de cobertura geográfica anual."
+    },
+    "sectTabs01_00_b_b1_l1": {
+        "text": "Descargar contrato",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_b_b1_l2": {
+        "text": "Anexo de coberturas",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_b_b2_h4": {
+        "text": "Tarifarios escalables por volumen mensual"
+    },
+    "sectTabs01_00_b_b2_h5": {
+        "text": "Hoja de tarifas con tramos por peso, servicios urgentes y recargos aplicables por temporada."
+    },
+    "sectTabs01_00_b_b2_l1": {
+        "text": "Tabla vigente",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_b_b2_l2": {
+        "text": "Detalle de recargos",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_b_b3_h4": {
+        "text": "Brief comercial para onboarding regional"
+    },
+    "sectTabs01_00_b_b3_h5": {
+        "text": "Resumen para nuevos partners con propuesta de valor, diferenciadores digitales y apoyo de preventa."
+    },
+    "sectTabs01_00_b_b3_l1": {
+        "text": "Presentación PDF",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_b_b3_l2": {
+        "text": "Script de llamadas",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_c_id": {
+        "text": "recursos-formacion"
+    },
+    "sectTabs01_00_c_nav": {
+        "text": "Recursos training"
+    },
+    "sectTabs01_00_c_h3": {
+        "text": "Formación continua para equipos de almacén y reparto"
+    },
+    "sectTabs01_00_c_b1_h4": {
+        "text": "Capacitaciones para operativa de almacén"
+    },
+    "sectTabs01_00_c_b1_h5": {
+        "text": "Agenda trimestral de workshops sobre WMS, preparación de pedidos y control de inventario sin papel."
+    },
+    "sectTabs01_00_c_b1_l1": {
+        "text": "Calendario talleres",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_c_b1_l2": {
+        "text": "Ficha de contenidos",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_c_b2_h4": {
+        "text": "Manuales de ruta y experiencia cliente"
+    },
+    "sectTabs01_00_c_b2_h5": {
+        "text": "Material descargable con guiones de entrega, registro fotográfico y pautas de trato profesional."
+    },
+    "sectTabs01_00_c_b2_l1": {
+        "text": "Kit entregas",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_c_b2_l2": {
+        "text": "Guía de trato",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_c_b3_h4": {
+        "text": "Evaluaciones y certificaciones internas anuales"
+    },
+    "sectTabs01_00_c_b3_h5": {
+        "text": "Test online y rúbricas para medir adopción de procesos, manejo de incidencias y estándares de imagen."
+    },
+    "sectTabs01_00_c_b3_l1": {
+        "text": "Evaluación online",
+        "href": "example.pdf"
+    },
+    "sectTabs01_00_c_b3_l2": {
+        "text": "Plantilla de rúbrica",
+        "href": "example.pdf"
+    },
+    "moduleH1Type01_00_h1_text": {
+        "text": "Encabezado H1"
+    },
+    "moduleH1Type01_00_p01_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsa, ex!"
+    },
+    "moduleH1Type01_00_p02_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minima optio cumque inventore perferendis similique…"
+    },
+    "moduleH2Type01_00_h2_text": {
+        "text": "Sectores que transformamos con datos"
+    },
+    "moduleH2Type01_01_h2_text": {
+        "text": "Soluciones modulares por vertical"
+    },
+    "moduleH2Type01_02_h2_text": {
+        "text": "Descarga guías y recursos técnicos"
+    },
+    "moduleH2Type01_03_h2_text": {
+        "text": "Historias reales de eficiencia logística"
+    },
+    "moduleH2Type01_04_h2_text": {
+        "text": "Strategic and operational guidance"
+    },
+    "moduleButtonType01_00_cta": {
+        "href": "#",
+        "title": "Solicitar diagnóstico logístico"
+    },
+    "moduleButtonType01_00_cta_span": {
+        "text": "Planifica demo"
+    },
+    "moduleButtonType01_00_cta_img": {
+        "src": "assets/img/system/arrow-forward-outline.svg",
+        "alt": "Flecha avanzar",
+        "title": "Flecha avanzar"
+    },
+    "moduleButtonType02_00_cta_link": {
+        "href": "#",
+        "title": "Explorar caso de éxito"
+    },
+    "moduleButtonType02_00_cta_span": {
+        "text": "Ver caso completo"
+    },
+    "art01_00_headerPrimary": {
+        "text": "Encabezado variable h3 art01"
+    },
+    "art01_00_intro_p": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Harum culpa sapiente placeat? Voluptatibus optio maiores vel nemo, voluptatem repellat iure?"
+    },
+    "art01_00_a_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Imagen dummy",
+        "title": "Imagen dummy"
+    },
+    "art01_00_headerSecondary_a": {
+        "text": "Encabezado variable h4 art01"
+    },
+    "art01_00_a_p": {
+        "text": "Lorem ipsum, dolor sit amet consectetur adipisicing elit. Ipsum officia, voluptatem aperiam nemo dicta quisquam ullam"
+    },
+    "art01_00_b_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Imagen dummy",
+        "title": "Imagen dummy"
+    },
+    "art01_00_headerSecondary_b": {
+        "text": "Encabezado variable h4 art01"
+    },
+    "art01_00_b_p": {
+        "text": "Lorem ipsum, dolor sit amet consectetur adipisicing elit. Ipsum officia, voluptatem aperiam nemo dicta quisquam ullam"
+    },
+    "art01_00_hero_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Imagen dummy",
+        "title": "Imagen dummy"
+    },
+    "art02_00_headerPrimary": {
+        "text": "Encabezado variable h3 art02"
+    },
+    "art02_00_intro_p": {
+        "text": "Lorem ipsum dolor sit."
+    },
+    "art02_00_p1": {
+        "text": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Cum expedita quam laudantium voluptatem consectetur nobis nemo."
+    },
+    "art02_00_p2": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Odit recusandae voluptatem tempore, tempora assumenda temporibus quasi at ducimus velit."
+    },
+    "art02_00_headerSecondary_a": {
+        "text": "Encabezado variable h4 art02"
+    },
+    "art02_00_a_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Imagen dummy",
+        "title": "Imagen dummy"
+    },
+    "art02_00_a_p": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+    },
+    "art02_00_headerSecondary_b": {
+        "text": "Encabezado variable h4 art02"
+    },
+    "art02_00_b_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Imagen dummy",
+        "title": "Imagen dummy"
+    },
+    "art02_00_b_p": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+    },
+    "art03_00_headerPrimary": {
+        "text": "Coberturas industriales premium para proteger activos estratégicos clave"
+    },
+    "art03_00_intro_p": {
+        "text": "Fortalecemos la resiliencia operativa con pólizas modulares que cubren maquinaria crítica, interrupciones prolongadas y requisitos normativos, asegurando continuidad financiera mientras alineamos la estrategia de riesgos con tus objetivos de crecimiento."
+    },
+    "art03_00_headerSecondary_a": {
+        "text": "Análisis pericial para activos críticos"
+    },
+    "art03_00_a_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Equipo técnico auditando almacén de alto rendimiento",
+        "title": "Supervisión pericial con tecnología avanzada"
+    },
+    "art03_00_a_link": {
+        "href": "#",
+        "title": "Explorar programa de aseguramiento"
+    },
+    "art03_00_a_p": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+    },
+    "art03_00_headerSecondary_b": {
+        "text": "Monitorización predictiva de siniestros"
+    },
+    "art03_00_b_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Panel de control analiza riesgos operativos críticos",
+        "title": "Modelado predictivo para prevenir incidencias"
+    },
+    "art03_00_b_link": {
+        "href": "#",
+        "title": "Ver protocolos de respuesta rápida"
+    },
+    "art03_00_b_p": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+    },
+    "art03_00_headerSecondary_c": {
+        "text": "Cobertura logística y cadena global"
+    },
+    "art03_00_c_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Centro logístico coordina envíos internacionales sensibles",
+        "title": "Cadena global alineada con normativas vigentes"
+    },
+    "art03_00_c_link": {
+        "href": "#",
+        "title": "Consultar auditoría integral anual"
+    },
+    "art03_00_c_p": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+    },
+    "art03_00_headerSecondary_d": {
+        "text": "Planes de continuidad certificados ISO"
+    },
+    "art03_00_d_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Sala de crisis ejecuta planes de contingencia certificados",
+        "title": "Continuidad operativa avalada por auditorías ISO"
+    },
+    "art03_00_d_link": {
+        "href": "#",
+        "title": "Descubrir beneficios para plantas"
+    },
+    "art03_00_d_p": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+    },
+    "art04_00_headerPrimary": {
+        "text": "Galería de proyectos y casos destacados"
+    },
+    "art04_00_intro_p": {
+        "text": "Seleccionamos intervenciones recientes que ilustran nuestra capacidad para integrar seguridad, eficiencia energética y narrativa visual en entornos industriales con altos requisitos de cumplimiento."
+    },
+    "art04_00_a_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Operario ajusta luminarias inteligentes en planta",
+        "title": "Calibración lumínica segura y certificada"
+    },
+    "art04_00_a_link": {
+        "href": "#",
+        "title": "Ver caso iluminación"
+    },
+    "art04_00_b_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Ingeniera supervisa centro de control energético",
+        "title": "Supervisión energética con métricas en vivo"
+    },
+    "art04_00_b_link": {
+        "href": "#",
+        "title": "Abrir control energético"
+    },
+    "art04_00_c_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Fachada industrial renovada con señalética sostenible",
+        "title": "Señalética sostenible guiando flujos seguros"
+    },
+    "art04_00_c_link": {
+        "href": "#",
+        "title": "Explorar fachada sostenible"
+    },
+    "art06_00_headerPrimary": {
+        "text": "Soluciones solares que escalan con tu negocio"
+    },
+    "art06_00_headerSecondary_a": {
+        "text": "Ingeniería fotovoltaica modular a medida"
+    },
+    "art06_00_a_p": {
+        "text": "Diseñamos campos solares escalables que se adaptan al consumo real de cada sede, priorizando inversores híbridos y cableado eficiente. El equipo coordina permisos y puesta en marcha sin detener los turnos críticos de producción."
+    },
+    "art06_00_a_avif_src01": "assets/img/dummy/dummy_900.avif 900w",
+    "art06_00_a_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art06_00_a_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Técnica revisando inversores solares en planta industrial",
+        "title": "Supervisión profesional de inversores industriales en operación"
+    },
+    "art06_00_a_img_src01": "assets/img/dummy/dummy_900.avif 900w",
+    "art06_00_a_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art06_00_headerSecondary_b": {
+        "text": "Monitorización proactiva de rendimiento"
+    },
+    "art06_00_b_p": {
+        "text": "Supervisamos la producción en tiempo real con alertas automáticas que detectan incidencias y envían partes al servicio técnico. Los clientes acceden a paneles con métricas históricas, comparativas climáticas y recomendaciones de ajuste."
+    },
+    "art06_00_b_avif_src01": "assets/img/dummy/dummy_900.avif 900w",
+    "art06_00_b_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art06_00_b_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Analista controlando métricas de autoconsumo empresarial",
+        "title": "Plataforma con métricas solares en tiempo real"
+    },
+    "art06_00_b_img_src01": "assets/img/dummy/dummy_900.avif 900w",
+    "art06_00_b_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art06_00_cite": {
+        "text": "\"La auditoría energética y el soporte posventa de IT Lanak nos permitieron duplicar el ahorro previsto en menos de un año.\""
+    },
+    "art06_00_headerSecondary_c": {
+        "text": "Financiación verde flexible y local"
+    },
+    "art06_00_c_p": {
+        "text": "Integramos fórmulas de renting energético, ayudas públicas y certificados de autoconsumo para reducir la inversión inicial. Nuestro equipo financiero asesora sobre amortizaciones y beneficios fiscales específicos del tejido empresarial local."
+    },
+    "art06_00_c_avif_src01": "assets/img/dummy/dummy_900.avif 900w",
+    "art06_00_c_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art06_00_c_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Consultora presentando opciones de financiación verde",
+        "title": "Reunión sobre incentivos fiscales para autoconsumo"
+    },
+    "art06_00_c_img_src01": "assets/img/dummy/dummy_900.avif 900w",
+    "art06_00_c_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art07_00_bgHero_mobile": "assets/img/dummy/dummy_900.avif",
+    "art07_00_bgHero_tablet": "assets/img/dummy/dummy_1800.avif",
+    "art07_00_bgHero_desktop": "assets/img/dummy/dummy_2560.avif",
+    "art07_00_bgMatrix_mobile": "assets/img/dummy/dummy_900.avif",
+    "art07_00_bgMatrix_tablet": "assets/img/dummy/dummy_1800.avif",
+    "art07_00_bgMatrix_desktop": "assets/img/dummy/dummy_2560.avif",
+    "art07_00_h3_1": {
+        "text": "Plan integral solar"
+    },
+    "art07_00_h3_2": {
+        "text": "en barrios industriales"
+    },
+    "art07_00_intro_p": {
+        "text": "Coordinamos diagnósticos energéticos, rediseñamos cubiertas con paneles fotovoltaicos y gestionamos ayudas para reducir hasta un 40 % el consumo eléctrico anual de cada planta productiva involucrada activada."
+    },
+    "art07_00_h4": {
+        "text": "Resultados auditables en solo doce meses"
+    },
+    "art07_00_cite": {
+        "text": "Nuestros técnicos certifican instalaciones modulares que se adaptan a las dinámicas de producción y aseguran estabilidad energética incluso ante picos de demanda en cadena."
+    },
+    "art08_00_headerPrimary": {
+        "text": "Estrategias solares para ampliar la competitividad industrial regional en Gipuzkoa"
+    },
+    "art08_00_a_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Render de placas solares sobre nave logística automatizada",
+        "title": "Fotovoltaica industrial conectada a sistemas de control inteligente"
+    },
+    "art08_00_headerSecondary_a": {
+        "text": "Diagnóstico integral y dimensionamiento de tejados activos"
+    },
+    "art08_00_a_p": {
+        "text": "Analizamos consumos históricos, calculamos cargas estructurales y definimos configuraciones híbridas que permiten integrar almacenamiento, monitorización en tiempo real y contratos PPA adaptados al perfil de demanda de cada línea de producción."
+    },
+    "art08_00_b_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Equipo instalando inversores trifásicos en centro de control",
+        "title": "Comisionado eléctrico con pruebas de seguridad industrial avanzada"
+    },
+    "art08_00_headerSecondary_b": {
+        "text": "Integración financiera y retorno asegurado del proyecto"
+    },
+    "art08_00_b_p": {
+        "text": "Gestionamos subvenciones autonómicas, coordinamos créditos verdes y modelizamos escenarios de retorno para que cada inversión fotovoltaica mantenga flujos de caja positivos desde el primer ejercicio fiscal sin comprometer la liquidez operativa."
+    },
+    "art09_00_headerPrimary": {
+        "text": "Casos de interiorismo con retorno medible en retail"
+    },
+    "art09_00_p1": {
+        "text": "Analizamos implantaciones híbridas con datos de afluencia, conversiones cruzadas y fidelización para replicar experiencias omnicanal que eleven la permanencia media por visita en cada tienda."
+    },
+    "art09_00_span": {
+        "text": "Consulta el informe"
+    },
+    "art09_00_link": {
+        "href": "https://ejemplo.com",
+        "title": "Descubre métricas completas del proyecto",
+        "text": "Ver informe"
+    },
+    "art09_00_headerSecondary_a": {
+        "text": "Rediseño flagship centro Bilbao"
+    },
+    "art09_00_a_img1": {
+        "src": "assets/img/system/star-outline.svg",
+        "alt": "Equipo planificando visual merchandising modular",
+        "title": "Simulación de flujo en tienda piloto"
+    },
+    "art09_00_a_img2": {
+        "src": "assets/img/dummy/dummy_1200.avif",
+        "alt": "Render 3D de zona de experiencia",
+        "title": "Vista cenital de la experiencia inmersiva"
+    },
+    "art09_00_a_desc": {
+        "text": "Reordenamos la circulación principal con señalética dinámica y pruebas de producto asistidas que incrementaron un 18 % las ventas cruzadas y redujeron el tiempo de espera medio en caja."
+    },
+    "art09_00_headerSecondary_b": {
+        "text": "Plan piloto showroom Barcelona"
+    },
+    "art09_00_b_img1": {
+        "src": "assets/img/system/star-outline.svg",
+        "alt": "Consultores analizando panel de trazabilidad",
+        "title": "Evaluación diaria de indicadores prioritarios"
+    },
+    "art09_00_b_img2": {
+        "src": "assets/img/dummy/dummy_1200.avif",
+        "alt": "Equipo asesorando a personal de tienda",
+        "title": "Sesión táctica con responsables de ventas"
+    },
+    "art09_00_b_desc": {
+        "text": "Aplicamos recorridos asistidos y formación express sobre argumentarios que aumentaron un 22 % las ventas vinculadas y mejoraron la valoración NPS en ocho puntos."
+    },
+    "art09_00_headerSecondary_c": {
+        "text": "Activación omnicanal para franquicias"
+    },
+    "art09_00_c_img1": {
+        "src": "assets/img/system/star-outline.svg",
+        "alt": "Dashboard monitorizando campañas locales activas",
+        "title": "Panel central con ratios de conversión"
+    },
+    "art09_00_c_img2": {
+        "src": "assets/img/dummy/dummy_1200.avif",
+        "alt": "Escaparate digital con testimonios en directo",
+        "title": "Pantalla mostrando reseñas verificadas"
+    },
+    "art09_00_c_desc": {
+        "text": "Coordinamos promociones geolocalizadas, inventarios sincronizados y recogidas flexibles que impulsaron un 31 % las órdenes online con entrega en tienda durante el trimestre piloto."
+    },
+    "art10_00_headerPrimary": {
+        "text": "Servicios modulares para activar equipos comerciales omnicanal ágiles"
+    },
+    "art10_00_headerSecondary_a": {
+        "text": "Diagnóstico táctico en tienda"
+    },
+    "art10_00_a_img": {
+        "src": "assets/img/system/star-outline.svg",
+        "alt": "Icono checklist de operaciones ágiles",
+        "title": "Verificación diaria de aperturas eficientes"
+    },
+    "art10_00_a_p": {
+        "text": "Auditamos rutinas operativas y configuramos listas dinámicas de tareas para habilitar aperturas ágiles con menos incidencias durante las primeras semanas."
+    },
+    "art10_00_headerSecondary_b": {
+        "text": "Soporte formativo bajo demanda"
+    },
+    "art10_00_b_img": {
+        "src": "assets/img/system/star-outline.svg",
+        "alt": "Icono monitor con aula virtual",
+        "title": "Panel activo de formación continua"
+    },
+    "art10_00_b_p": {
+        "text": "Implementamos cápsulas microlearning y seguimiento de hitos comerciales que elevaron un 19 % el ticket medio de los lanzamientos regionales."
+    },
+    "art10_00_headerSecondary_c": {
+        "text": "Automatización de reporting comercial"
+    },
+    "art10_00_c_img": {
+        "src": "assets/img/system/star-outline.svg",
+        "alt": "Icono gráfico con alertas activas",
+        "title": "Seguimiento inteligente de indicadores clave"
+    },
+    "art10_00_c_p": {
+        "text": "Integramos dashboards predictivos con alertas de stock y campañas para reducir un 28 % las roturas y acelerar la reposición prioritaria."
+    },
+    "art10_00_top_fill": "#ffffff",
+    "art10_00_bottom_fill": "#ffffff",
+    "art11_00_headerPrimary": {
+        "text": "Nuestra experiencia en cifras"
+    },
+    "art11_00_a_target": {
+        "value": "998"
+    },
+    "art11_00_a_suffix": {
+        "text": "k+"
+    },
+    "art11_00_a_label": {
+        "text": "GOAL1"
+    },
+    "art11_00_b_target": {
+        "value": "998"
+    },
+    "art11_00_b_suffix": {
+        "text": "k+"
+    },
+    "art11_00_b_label": {
+        "text": "GOAL2"
+    },
+    "art11_00_c_target": {
+        "value": "998"
+    },
+    "art11_00_c_suffix": {
+        "text": "k+"
+    },
+    "art11_00_c_label": {
+        "text": "GOAL3"
+    },
+    "art11_00_span_optional": {
+        "text": "El 100 % de nuestros alumnos termina aprobando, aunque el número de intentos pueda variar."
+    },
+    "art12_00_headerPrimary": {
+        "text": "Estrategias modulares que optimizan tu canal digital de ventas"
+    },
+    "art12_00_headerSecondary_a": {
+        "text": "Onboarding ágil de partners"
+    },
+    "art12_00_a_img": {
+        "src": "assets/img/system/star-outline.svg",
+        "alt": "Icono proceso de activación",
+        "title": "Proceso de activación guiado"
+    },
+    "art12_00_a_imgBack": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Equipo configurando paneles colaborativos digitales",
+        "title": "Panel colaborativo listo para partners"
+    },
+    "art12_00_a_p": {
+        "text": "Integramos catálogos y flujos legales en semanas, liberando a tu equipo comercial para enfocarse en captar distribuidores estratégicos."
+    },
+    "art12_00_headerSecondary_b": {
+        "text": "Soporte proactivo multilingüe"
+    },
+    "art12_00_b_img": {
+        "src": "assets/img/system/star-outline.svg",
+        "alt": "Icono de asistencia continua",
+        "title": "Asistencia continua para socios"
+    },
+    "art12_00_b_imgBack": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Analistas revisando panel global colaborativo",
+        "title": "Panel global activo en directo"
+    },
+    "art12_00_b_p": {
+        "text": "Monitorizamos incidencias y ventas en tiempo real para escalar respuestas, priorizar oportunidades premium y blindar la satisfacción de tus partners."
+    },
+    "art12_00_headerSecondary_c": {
+        "text": "Datos accionables seguros"
+    },
+    "art12_00_c_img": {
+        "src": "assets/img/system/star-outline.svg",
+        "alt": "Icono control de datos",
+        "title": "Control seguro de datos"
+    },
+    "art12_00_c_imgBack": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Dashboard con métricas protegidas críticas",
+        "title": "Dashboard protegido para escalado global"
+    },
+    "art12_00_c_p": {
+        "text": "Automatizamos reporting, alertas antifraude y conciliaciones para que cada partner acceda solo a los datos relevantes y trace planes de crecimiento."
+    },
+    "art12_00_top_fill": "#ffffff",
+    "art12_00_bottom_fill": "#ffffff",
+    "art13_00_headerPrimary": {
+        "text": "Clientes que impulsan nuestra innovación diaria conjunta"
+    },
+    "art13_00_a_quote": {
+        "text": "Tras migrar con AvT logramos integrar canales físicos y digitales sin fricciones. El equipo nos guio en automatizaciones críticas y definió métricas compartidas que hoy permiten a cada partner acceder a reportes fiables y coordinar lanzamientos conjuntos estratégicos."
+    },
+    "art13_00_a_author_img": {
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Retrato de Laura Méndez",
+        "title": "Laura Méndez en evento"
+    },
+    "art13_00_a_author_name": {
+        "text": "Laura Méndez"
+    },
+    "art13_00_a_author_stars": {
+        "text": "Valoración 5/5"
+    },
+    "art13_00_a_side_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Equipo celebrando lanzamiento colaborativo global",
+        "title": "Celebración interna junto a partners"
+    },
+    "art14_00_headerPrimary": {
+        "text": "Servicios legales ágiles para la industria inteligente vasca"
+    },
+    "art14_00_p": {
+        "text": "Nuestro equipo combina asesoría jurídica tecnológica con conocimiento industrial para acelerar implantaciones seguras en Bizkaia. Coordinamos evaluaciones regulatorias, contratos de innovación y formación preventiva para que tus lanzamientos conecten con partners locales y cumplan la norma europea sin fricciones operativas. Supervisamos auditorías de datos, licencias y cláusulas de ciberseguridad que blindan el crecimiento sostenible de cada planta."
+    },
+    "art14_00_img": {
+        "src": "assets/img/logos/logo-business-b.svg",
+        "alt": "Abogada revisando contrato de innovación industrial estratégica",
+        "title": "Revisión jurídica de innovación industrial estratégica"
+    },
+    "art15_00_headerPrimary": {
+        "text": "Metodología integral para digitalizar cadenas logísticas complejas de Euskadi"
+    },
+    "art15_00_p1": {
+        "text": "Analizamos cada nodo de suministro junto a tus responsables de operaciones para detectar cuellos de botella, modelar escenarios con datos reales y priorizar automatizaciones. Integrando plataformas IoT y analítica avanzada reducimos tiempos de respuesta, trazamos incidencias y alineamos KPI críticos con los objetivos comerciales del territorio."
+    },
+    "art15_00_p2": {
+        "text": "Coordinamos financiación pública, formación personalizada y soporte postlanzamiento para que los equipos adopten la solución desde el primer sprint. Medimos satisfacción y resiliencia logística con dashboards compartidos que facilitan reportar a dirección y partners internacionales."
+    },
+    "art15_00_img1": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Panel con métricas logísticas en sala de control",
+        "title": "Panel de métricas logísticas en sala de control"
+    },
+    "art15_00_img2": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Equipo coordinando rutas multimodales con mapas digitales",
+        "title": "Coordinación de rutas multimodales con mapas digitales"
+    },
+    "artForm01_00_headerPrimary": {
+        "text": "Solicita información rápida"
+    },
+    "artForm01_00_headerSecondary": {
+        "text": "Completa el formulario"
+    },
+    "artForm01_00_intro_p": {
+        "text": "Comparte los datos clave de tu consulta y nuestro equipo de logística evaluará la mejor solución para tus envíos recurrentes. Responderemos con recomendaciones personalizadas sobre rutas, tarifas y herramientas digitales que impulsen tus operaciones diarias."
+    },
+    "artForm01_00_label_name": {
+        "text": "Nombre y apellidos"
+    },
+    "artForm01_00_ph_name": {
+        "placeholder": "Escribe tu nombre completo"
+    },
+    "artForm01_00_label_phone": {
+        "text": "Teléfono de contacto"
+    },
+    "artForm01_00_ph_phone": {
+        "placeholder": "Incluye tu teléfono"
+    },
+    "artForm01_00_label_mail": {
+        "text": "Correo electrónico"
+    },
+    "artForm01_00_ph_mail": {
+        "placeholder": "Introduce tu correo"
+    },
+    "artForm01_00_label_msg": {
+        "text": "Detalla tu consulta"
+    },
+    "artForm01_00_ph_msg": {
+        "placeholder": "Describe necesidades logísticas"
+    },
+    "artForm01_00_terms": {
+        "text": "Acepto recibir información comercial de la empresa conforme al aviso legal actualizado."
+    },
+    "artForm01_00_privacy": {
+        "text": "Política de privacidad"
+    },
+    "artForm01_00_label_captcha": {
+        "text": "Verificación"
+    },
+    "artForm01_00_ph_captcha": {
+        "placeholder": "Escribe el resultado"
+    },
+    "artForm01_00_submit": {
+        "value": "Enviar solicitud"
+    },
+    "artForm01_00_headerSecondary_side": {
+        "text": "También puedes contactar"
+    },
+    "artForm01_00_side_p": {
+        "text": "Si prefieres una atención inmediata, escríbenos o llámanos para coordinar recogidas urgentes, seguimiento de incidencias o asesoramiento sobre integraciones. Nuestro equipo operativo responde de lunes a viernes en horario ampliado para adaptarse a tus ventanas de carga y descarga."
+    },
+    "artForm01_00_contact_tel_href": "tel:+00000000000",
+    "artForm01_00_contact_tel_title": "Llamar por teléfono",
+    "artForm01_00_contact_tel_img": {
+        "src": "assets/img/system/tel.svg",
+        "alt": "Teléfono",
+        "title": "Teléfono"
+    },
+    "artForm01_00_contact_tel": {
+        "text": "Teléfono pendiente de actualización"
+    },
+    "artForm01_00_contact_mail_href": "mailto:info@ejemplo.com",
+    "artForm01_00_contact_mail_title": "Enviar correo",
+    "artForm01_00_contact_mail_img": {
+        "src": "assets/img/system/mail.svg",
+        "alt": "Mail",
+        "title": "Mail"
+    },
+    "artForm01_00_contact_mail": {
+        "text": "Escríbenos a info@ejemplo.com"
+    },
+    "artForm01_00_contact_addr_href": "https://maps.app.goo.gl/xxxxx",
+    "artForm01_00_contact_addr_title": "Cómo llegar",
+    "artForm01_00_contact_addr_img": {
+        "src": "assets/img/system/wp.svg",
+        "alt": "Dirección",
+        "title": "Dirección"
+    },
+    "artForm01_00_contact_addr": {
+        "text": "Dirección pendiente de actualización"
+    },
+    "artForm01_00_contact_web_href": "https://www.ejemplo.com",
+    "artForm01_00_contact_web_title": "Visitar web",
+    "artForm01_00_contact_web_img": {
+        "src": "assets/img/system/web.svg",
+        "alt": "Web",
+        "title": "Web"
+    },
+    "artForm01_00_contact_web": {
+        "text": "Accede a www.ejemplo.com"
+    },
+    "artForm01_00_map_src": "https://www.google.com/maps/embed?pb=...",
+    "artForm01_00_map_width": "600",
+    "artForm01_00_map_height": "300",
+    "artForm01_00_map_title": "Localización de la delegación principal",
+    "artForm01_00_sent_img": {
+        "src": "assets/img/system/mail.svg",
+        "alt": "Enviado",
+        "title": "Mensaje enviado"
+    },
+    "artForm01_00_headerSecondary_sent": {
+        "text": "Hemos recibido tu consulta"
+    },
+    "artForm01_00_sent_p1": {
+        "text": "Te contactaremos en menos de un día laborable."
+    },
+    "artForm01_00_sent_p2": {
+        "text": "Gracias por confiar en nuestro equipo."
+    },
+    "artForm01_00_new_query": {
+        "text": "Enviar otra solicitud"
+    },
+    "artSlider01_00_headerPrimary": {
+        "text": "Ideas y noticias de logística urbana"
+    },
+    "artSlider01_00_viewmore": {
+        "text": "Explorar publicaciones",
+        "href": "noticias"
+    },
+    "artSlider01_00_carda_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Vehículo eléctrico repartiendo al amanecer",
+        "title": "Vehículo eléctrico repartiendo al amanecer"
+    },
+    "artSlider01_00_carda_meta": {
+        "text": "12·06·2025"
+    },
+    "artSlider01_00_carda_h4": {
+        "text": "Nuevas rutas nocturnas con flota eléctrica"
+    },
+    "artSlider01_00_carda_tags": {
+        "text": "Última milla · movilidad eficiente"
+    },
+    "artSlider01_00_carda_read": {
+        "text": "Leer historia completa",
+        "href": "noticias/noticia-1"
+    },
+    "artSlider01_00_cardb_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Operarias revisando panel de envíos",
+        "title": "Operarias revisando panel de envíos"
+    },
+    "artSlider01_00_cardb_meta": {
+        "text": "08·06·2025"
+    },
+    "artSlider01_00_cardb_h4": {
+        "text": "Integrar analítica predictiva en almacenes"
+    },
+    "artSlider01_00_cardb_tags": {
+        "text": "Data driven · picking ágil"
+    },
+    "artSlider01_00_cardb_read": {
+        "text": "Conocer detalles",
+        "href": "noticias/noticia-2"
+    },
+    "artSlider01_00_cardc_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Dron inspeccionando cubierta del hub logístico",
+        "title": "Dron inspeccionando cubierta del hub logístico"
+    },
+    "artSlider01_00_cardc_meta": {
+        "text": "01·06·2025"
+    },
+    "artSlider01_00_cardc_h4": {
+        "text": "Prueba piloto de drones para inventario"
+    },
+    "artSlider01_00_cardc_tags": {
+        "text": "Innovación · control de stock"
+    },
+    "artSlider01_00_cardc_read": {
+        "text": "Descubrir proyecto",
+        "href": "noticias/noticia-3"
+    },
+    "artSlider01_00_cardd_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Terminal ferroviaria con contenedores verdes",
+        "title": "Terminal ferroviaria con contenedores verdes"
+    },
+    "artSlider01_00_cardd_meta": {
+        "text": "27·05·2025"
+    },
+    "artSlider01_00_cardd_h4": {
+        "text": "Corredor ferroviario reduce emisiones anuales"
+    },
+    "artSlider01_00_cardd_tags": {
+        "text": "Intermodalidad · huella neutra"
+    },
+    "artSlider01_00_cardd_read": {
+        "text": "Leer informe",
+        "href": "noticias/noticia-4"
+    },
+    "artSlider01_00_carde_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Equipo coordinando ventanas de carga digital",
+        "title": "Equipo coordinando ventanas de carga digital"
+    },
+    "artSlider01_00_carde_meta": {
+        "text": "20·05·2025"
+    },
+    "artSlider01_00_carde_h4": {
+        "text": "Sincronizar citas de muelle con software cloud"
+    },
+    "artSlider01_00_carde_tags": {
+        "text": "Operaciones · trazabilidad total"
+    },
+    "artSlider01_00_carde_read": {
+        "text": "Ver recomendaciones",
+        "href": "noticias/noticia-5"
+    },
+    "artSlider01_00_cardf_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Camión autónomo en autopista supervisada",
+        "title": "Camión autónomo en autopista supervisada"
+    },
+    "artSlider01_00_cardf_meta": {
+        "text": "14·05·2025"
+    },
+    "artSlider01_00_cardf_h4": {
+        "text": "Ensayo de conducción autónoma en larga distancia"
+    },
+    "artSlider01_00_cardf_tags": {
+        "text": "Innovación · seguridad vial"
+    },
+    "artSlider01_00_cardf_read": {
+        "text": "Ampliar información",
+        "href": "noticias/noticia-6"
+    },
+    "artSlider01_00_cardg_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Operario empaquetando retornos reutilizables",
+        "title": "Operario empaquetando retornos reutilizables"
+    },
+    "artSlider01_00_cardg_meta": {
+        "text": "07·05·2025"
+    },
+    "artSlider01_00_cardg_h4": {
+        "text": "Cómo optimizar logística inversa circular"
+    },
+    "artSlider01_00_cardg_tags": {
+        "text": "Devoluciones · economía circular"
+    },
+    "artSlider01_00_cardg_read": {
+        "text": "Leer guía",
+        "href": "noticias/noticia-7"
+    },
+    "artSlider01_00_cardh_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Panel KPI mostrando entregas en tiempo",
+        "title": "Panel KPI mostrando entregas en tiempo"
+    },
+    "artSlider01_00_cardh_meta": {
+        "text": "30·04·2025"
+    },
+    "artSlider01_00_cardh_h4": {
+        "text": "Cuadro de mando diario para e-commerce B2B"
+    },
+    "artSlider01_00_cardh_tags": {
+        "text": "KPIs · servicios industriales"
+    },
+    "artSlider01_00_cardh_read": {
+        "text": "Analizar métricas",
+        "href": "noticias/noticia-8"
+    },
+    "artSlider01_00_cardi_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Camiones frigoríficos cargando en plataforma",
+        "title": "Camiones frigoríficos cargando en plataforma"
+    },
+    "artSlider01_00_cardi_meta": {
+        "text": "22·04·2025"
+    },
+    "artSlider01_00_cardi_h4": {
+        "text": "Cadena de frío monitorizada en tiempo real"
+    },
+    "artSlider01_00_cardi_tags": {
+        "text": "Refrigerados · sensores IoT"
+    },
+    "artSlider01_00_cardi_read": {
+        "text": "Seguir leyendo",
+        "href": "noticias/noticia-9"
+    },
+    "artSlider01_00_cardj_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Operativa cross docking en nave automatizada",
+        "title": "Operativa cross docking en nave automatizada"
+    },
+    "artSlider01_00_cardj_meta": {
+        "text": "15·04·2025"
+    },
+    "artSlider01_00_cardj_h4": {
+        "text": "Mejorar cross docking con robots colaborativos"
+    },
+    "artSlider01_00_cardj_tags": {
+        "text": "Automatización · productividad"
+    },
+    "artSlider01_00_cardj_read": {
+        "text": "Leer caso",
+        "href": "noticias/noticia-10"
+    },
+    "artSlider02_00_headerPrimary": {
+        "text": "Experiencias formativas con partners industriales"
+    },
+    "artSlider02_00_prev": {
+        "text": "Anterior"
+    },
+    "artSlider02_00_next": {
+        "text": "Siguiente"
+    },
+    "artSlider02_00_slidea_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Equipo técnico testando sistemas automatizados",
+        "title": "Equipo técnico testando sistemas automatizados"
+    },
+    "artSlider02_00_slidea_h4": {
+        "text": "Demo de robotización para líneas mixtas"
+    },
+    "artSlider02_00_slideb_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Clientes probando paneles de monitorización logística",
+        "title": "Clientes probando paneles de monitorización logística"
+    },
+    "artSlider02_00_slideb_h4": {
+        "text": "Taller de analítica aplicada a operaciones"
+    },
+    "artSlider02_00_slidec_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Ponente explicando red de hubs multimodales",
+        "title": "Ponente explicando red de hubs multimodales"
+    },
+    "artSlider02_00_slidec_h4": {
+        "text": "Ponencia sobre conectividad multimodal 2025"
+    },
+    "artSlider02_00_slided_img": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Visita guiada a almacén con picking asistido",
+        "title": "Visita guiada a almacén con picking asistido"
+    },
+    "artSlider02_00_slided_h4": {
+        "text": "Recorrido práctico por almacén inteligente"
+    },
+    "artAccordion01_00_headerPrimary": {
+        "text": "Preguntas clave de matriculación"
+    },
+    "artAccordion01_00_itema_title": {
+        "text": "¿Qué documentos debo presentar?"
+    },
+    "artAccordion01_00_itema_content": {
+        "text": "Lleva DNI vigente, fotografía tamaño carnet, justificante de tasas y certificado psicotécnico actualizado; si ya tienes permisos previos, añade copia compulsada para agilizar el alta y evitar desplazamientos adicionales."
+    },
+    "artAccordion01_00_itemb_title": {
+        "text": "¿Cómo se organiza la teoría?"
+    },
+    "artAccordion01_00_itemb_content": {
+        "text": "Planificamos sesiones en vivo de dos horas cada tarde durante diez días laborables, reforzadas con cuestionarios descargables y tutoría online para que consolides normativa, señalización y maniobras antes de pasar a las prácticas obligatorias."
+    },
+    "artAccordion01_00_itemc_title": {
+        "text": "¿Qué opciones de pago tengo?"
+    },
+    "artAccordion01_00_itemc_content": {
+        "text": "Ofrecemos financiación interna sin intereses en tres cuotas mensuales, domiciliación bancaria flexible y acuerdos con entidades colaboradoras para adaptar el desembolso a tu calendario, siempre con asesoría para elegir el plan más conveniente."
+    },
+    "artZipper_00_h3": {
+        "text": "FAQs sobre logística integral"
+    },
+    "artZipper_00_a_h4": {
+        "text": "¿Cómo optimizamos rutas?"
+    },
+    "artZipper_00_b_h4": {
+        "text": "Beneficios para tu almacén"
+    },
+    "artZipper_00_c_h4": {
+        "text": "Pasos de integración digital"
+    },
+    "artZipper_00_d_h4": {
+        "text": "Errores que debemos evitar"
+    },
+    "artZipper_00_e_h4": {
+        "text": "Consejos de mantenimiento diario"
+    },
+    "moduleTest_00_h2_text": {
+        "text": "Prueba piloto controlada en 30 días"
+    },
+    "moduleTest_00_p_text": {
+        "text": "Validamos integraciones, definimos indicadores y formamos a tus equipos operativos con soporte continuo durante la prueba para medir reducción de errores, capacidad de reacción y eficiencia en costes antes del despliegue completo en toda la red multialmacén."
+    },
+    "art05_00_headerPrimary": {
+        "text": "Historias reales de confianza local certificada"
+    },
+    "art05_00_intro_p": {
+        "text": "Nuestros clientes describen cómo la instalación solar optimiza sus costes energéticos y refuerza su compromiso con la sostenibilidad, destacando la cercanía del equipo técnico y la monitorización continua que ofrecemos en cada proyecto residencial."
+    },
+    "art05_00_headerSecondary_a": {
+        "text": "Consumo optimizado en vivienda unifamiliar"
+    },
+    "art05_00_a_img": {
+        "src": "/assets/img/system/bookmark-outline.svg",
+        "alt": "Técnica revisando inversores solares en planta industrial",
+        "title": "Supervisión profesional de inversores industriales en operación"
+    },
+    "art05_00_a_p": {
+        "text": "Diseñamos campos solares escalables que se adaptan al consumo real de cada sede, priorizando inversores híbridos y cableado eficiente. El equipo coordina permisos y puesta en marcha sin detener los turnos críticos de producción."
+    },
+    "art05_00_a_firma": {
+        "text": "Laura Pérez"
+    },
+    "art05_00_headerSecondary_b": {
+        "text": "Cadena hotelera con autoconsumo activo"
+    },
+    "art05_00_b_img": {
+        "src": "/assets/img/system/bookmark-outline.svg",
+        "alt": "Gestora analizando panel de monitorización solar",
+        "title": "Seguimiento digital del autoconsumo en hoteles"
+    },
+    "art05_00_b_p": {
+        "text": "Automatizamos cubiertas y salas técnicas con paneles ligeros que respetan la estética del complejo. Gestionamos con la distribuidora el vertido de excedentes y ajustamos la curva de consumo según ocupación y demanda estacional."
+    },
+    "art05_00_b_firma": {
+        "text": "Carlos Medina"
+    },
+    "art05_00_headerSecondary_c": {
+        "text": "Cooperativa agro instala bombeo eficiente"
+    },
+    "art05_00_c_img": {
+        "src": "/assets/img/system/bookmark-outline.svg",
+        "alt": "Técnica revisa cuadros solares en cooperativa rural",
+        "title": "Supervisión de bombeo fotovoltaico cooperativo"
+    },
+    "art05_00_c_p": {
+        "text": "Implementamos bombeo solar en comunidades de regantes con variadores de frecuencia y depósitos inteligentes. La plataforma predice necesidades hídricas y coordina mantenimientos para evitar paradas en temporada alta de cosecha."
+    },
+    "art05_00_c_firma": {
+        "text": "Uxue Garaia"
+    },
+    "art05_00_headerSecondary_d": {
+        "text": "Industria alimentaria optimiza autoconsumo frío"
+    },
+    "art05_00_d_img": {
+        "src": "/assets/img/system/bookmark-outline.svg",
+        "alt": "Operario ajusta paneles solares en cubierta logística",
+        "title": "Mantenimiento fotovoltaico en planta alimentaria"
+    },
+    "art05_00_d_p": {
+        "text": "Reforzamos cubiertas con estructuras antiviento y sensores térmicos para mantener cámaras frigoríficas eficientes. Con contratos PPA internos garantizamos precios estables y certificamos la energía verde en auditorías de exportación."
+    },
+    "art05_00_d_firma": {
+        "text": "Nora Salvat"
+    },
+
+    "art03_00_b_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art03_00_b_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art03_00_b_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art03_00_b_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art03_00_c_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art03_00_c_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art03_00_c_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art03_00_c_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art03_00_d_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art03_00_d_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art03_00_d_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art03_00_d_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art03_00_a_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art03_00_a_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art03_00_a_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art03_00_a_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art04_00_b_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art04_00_b_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art04_00_b_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art04_00_b_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art04_00_c_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art04_00_c_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art04_00_c_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art04_00_c_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art04_00_a_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art04_00_a_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art04_00_a_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art04_00_a_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "artSlider02_00_slideb_avif_src01": "assets/img/dummy/dummy_900.avif",
+    "artSlider02_00_slideb_avif_src02": "assets/img/dummy/dummy_1800.avif",
+    "artSlider02_00_slideb_avif_sizes": "100vw",
+    "artSlider02_00_slideb_img_src01": "assets/img/dummy/dummy_900.avif",
+    "artSlider02_00_slideb_img_src02": "assets/img/dummy/dummy_1800.avif",
+    "artSlider02_00_slideb_img_sizes": "(max-width: 768px) 100vw, 1500px",
+    "artSlider02_00_slidec_avif_src01": "assets/img/dummy/dummy_900.avif",
+    "artSlider02_00_slidec_avif_src02": "assets/img/dummy/dummy_1800.avif",
+    "artSlider02_00_slidec_avif_sizes": "100vw",
+    "artSlider02_00_slidec_img_src01": "assets/img/dummy/dummy_900.avif",
+    "artSlider02_00_slidec_img_src02": "assets/img/dummy/dummy_1800.avif",
+    "artSlider02_00_slidec_img_sizes": "(max-width: 768px) 100vw, 1500px",
+    "artSlider02_00_slided_avif_src01": "assets/img/dummy/dummy_900.avif",
+    "artSlider02_00_slided_avif_src02": "assets/img/dummy/dummy_1800.avif",
+    "artSlider02_00_slided_avif_sizes": "100vw",
+    "artSlider02_00_slided_img_src01": "assets/img/dummy/dummy_900.avif",
+    "artSlider02_00_slided_img_src02": "assets/img/dummy/dummy_1800.avif",
+    "artSlider02_00_slided_img_sizes": "(max-width: 768px) 100vw, 1500px",
+    "artSlider02_00_slidea_avif_src01": "assets/img/dummy/dummy_900.avif",
+    "artSlider02_00_slidea_avif_src02": "assets/img/dummy/dummy_1800.avif",
+    "artSlider02_00_slidea_avif_sizes": "100vw",
+    "artSlider02_00_slidea_img_src01": "assets/img/dummy/dummy_900.avif",
+    "artSlider02_00_slidea_img_src02": "assets/img/dummy/dummy_1800.avif",
+    "artSlider02_00_slidea_img_sizes": "(max-width: 768px) 100vw, 1500px",
+    "art16_00_h3_1": {
+        "text": "Servicios logísticos avanzados"
+    },
+    "art16_00_h3_2": {
+        "text": "para cadenas sostenibles"
+    },
+    "art16_00_body_p": {
+        "text": "Optimizamos rutas, almacenaje y entregas con analítica en tiempo real para reducir costes, emisiones y reclamaciones mientras ofrecemos trazabilidad completa a tus clientes en cada etapa de la cadena regional."
+    },
+    "art16_00_bg_mobile": "assets/img/dummy/dummy_900.avif",
+    "art16_00_bg_tablet": "assets/img/dummy/dummy_1800.avif",
+    "art16_00_bg_desktop": "assets/img/dummy/dummy_2560.avif",
+    "art17_00_headerPrimary": {
+        "text": "Why choose us and how we work"
+    },
+    "art17_00_headerSecondary_a": {
+        "text": "Why us"
+    },
+    "art17_00_a_icon": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "Check ok icon",
+        "title": "Check ok icon"
+    },
+    "art17_00_a_list_a": {
+        "text": "100% independent advice"
+    },
+    "art17_00_a_list_b": {
+        "text": "No proprietary products or kickbacks"
+    },
+    "art17_00_a_list_c": {
+        "text": "Tailored strategy for the long term"
+    },
+    "art17_00_a_list_d": {
+        "text": "Advanced use of AI"
+    },
+    "art17_00_a_list_e": {
+        "text": "Deep macroeconomic analysis"
+    },
+    "art17_00_a_list_f": {
+        "text": "Full transparency on fees and process"
+    },
+    "art17_00_a_list_g": {
+        "text": "Luxury and sustainable focus (SRI3 index)"
+    },
+    "art17_00_headerSecondary_b": {
+        "text": "How we work with you"
+    },
+    "art17_00_b_icon": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "Check ok icon",
+        "title": "Check ok icon"
+    },
+    "art17_00_b_list_a": {
+        "text": "Personalised initial diagnosis"
+    },
+    "art17_00_b_list_b": {
+        "text": "Short- and mid-term strategic plan"
+    },
+    "art17_00_b_list_c": {
+        "text": "Close monitoring through KPIs"
+    },
+    "art17_00_b_list_d": {
+        "text": "Intuitive, easy-to-use technology"
+    },
+    "art17_00_b_list_e": {
+        "text": "Smooth, noise-free communication"
+    },
+    "art17_00_b_list_f": {
+        "text": "Ongoing financial training"
+    },
+    "moduleH1Type02_00_h1_text": {
+        "text": "Logística inteligente para flotas multiorigen europeas"
+    },
+    "moduleH1Type02_00_p01_text": {
+        "text": "Conectamos almacenes, última milla y partners europeos mediante integraciones EDI y seguimiento IoT para anticipar incidencias, redistribuir cargas y garantizar entregas just-in-time sin saturar tus recursos internos ni los equipos de atención posventa, manteniendo SLA críticos en campañas estacionales."
+    },
+    "moduleH1Type02_00_p02_text": {
+        "text": "Automatizamos previsiones de demanda, controlamos niveles de stock y activamos transportistas alternativos desde un único panel operativo, apoyándonos en analítica predictiva para reducir devoluciones, emisiones por ruta y tiempos de respuesta ante cualquier incidencia regional."
+    },
+    "moduleImgType01_00_img": {
+        "src": "assets/img/ilustraciones/te-ayudamos-juntos.avif",
+        "alt": "Alt dummy",
+        "title": "Title dummy"
+    },
+    "moduleImgType01_00_img_width": "900",
+    "moduleImgType01_00_img_height": "800",
+    "moduleImgType01_00_img_loading": "lazy",
+    "moduleImgType01_00_img_sizes": "",
+    "moduleImgType01_00_img_srcset01": "",
+    "moduleImgType01_00_img_srcset02": ""
+}
