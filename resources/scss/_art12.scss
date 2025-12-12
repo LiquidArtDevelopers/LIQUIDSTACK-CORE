@@ -45,6 +45,7 @@
             overflow: hidden;
             @media only screen and (min-width:c.$desktop){
                 padding: c.$padMax;
+                row-gap: 2rem;
             }
             &:hover{
                 transition: .1s;
@@ -97,8 +98,8 @@
             .ficha-icon{
                 filter: saturate(0) invert(1);
                 transition: .5s;
-                width: 250px;
-                height: 250px;
+                width: 100px;
+                height: 100px;
                 object-fit: contain;
             }
             >:nth-child(1){
