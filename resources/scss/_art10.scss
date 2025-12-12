@@ -56,10 +56,17 @@
                 >:not(img){
                     color: c.$color01;
                 }
+                >img{
+                    filter: initial
+                }
             }
             >:not(img){
                 color: c.$color00;
                 transition: .5s;         
+            }
+            >img{
+                filter: invert(1);
+                transition: .5s; 
             }
         }
     }
