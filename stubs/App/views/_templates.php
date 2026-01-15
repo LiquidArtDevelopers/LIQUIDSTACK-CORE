@@ -230,6 +230,18 @@
                     ?>
 
                     <?php
+                    // art15 Refactorizado (instancia 00)
+                    echo controller('art16', 0);
+                    ?>
+
+                    <?php
+                    // art15 Refactorizado (instancia 00)
+                    echo controller('art17', 0);
+                    ?>
+
+                    
+
+                    <?php
                     // artSlider01 Refactorizado (instancia 00)
                     echo controller('artSlider01', 0, ['items' => 10]);
                     ?>
