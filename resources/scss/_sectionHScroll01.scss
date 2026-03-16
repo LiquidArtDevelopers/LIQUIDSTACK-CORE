@@ -1,0 +1,144 @@
+@use '../config' as c;
+
+.sectionHScroll01 {
+  position: relative;
+  background: c.$color06bis;
+  color: c.$color00;
+  padding: 0;
+  min-height: 100dvh;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+
+  &-inner {
+    width: 100%;
+    margin: 0 auto;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: clamp(2rem, 4vw, 3.5rem);
+  }
+
+  &-head {
+    display: grid;
+    gap: 0.6rem;
+
+    h2,
+    h3,
+    h4 {
+      margin: 0;
+      font-size: clamp(2.2rem, 6vw, 4.8rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      background: c.$color02;
+      padding: 0.6rem 1.2rem;
+      color: #ffffff;
+    }
+  }
+
+  &-intro {
+    margin: 0;
+    max-width: 48rem;
+    color: rgba(c.$color00, 0.7);
+    font-size: clamp(1rem, 1.6vw, 1.15rem);
+    padding-left: clamp(0.8rem, 2vw, 1.6rem);
+  }
+
+  &-viewport {
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+  }
+
+  &-track {
+    display: flex;
+    gap: clamp(1.4rem, 3vw, 2.4rem);
+    align-items: flex-end;
+    padding-inline: clamp(1.6rem, 5vw, 5rem);
+  }
+
+  &-card {
+    flex: 0 0 auto;
+    width: clamp(26rem, 82vw, 48rem);
+    min-height: 76dvh;
+    background: c.$color03bis;
+    color: c.$color01;
+    display: grid;
+    padding: clamp(1.6rem, 3vw, 2.6rem);
+    border-radius: 0.2rem;
+    box-shadow: 0 1.4rem 3.6rem rgba(0, 0, 0, 0.35);
+  }
+
+  &-card:nth-child(2n) {
+    background: c.$color01;
+    color: c.$color00;
+  }
+
+  &-cardBody {
+    display: grid;
+    grid-template-rows: minmax(1.4rem, auto) minmax(5.2rem, auto) minmax(4.2rem, auto) minmax(8rem, 1fr);
+    gap: 1.1rem;
+    align-content: start;
+  }
+
+  &-cardIndex {
+    font-size: 1.1rem;
+    letter-spacing: 0.2em;
+  }
+
+  &-cardBody h3,
+  &-cardBody h4,
+  &-cardBody h5 {
+    margin: 0;
+    font-size: clamp(2.2rem, 4vw, 3.2rem);
+  }
+
+  &-cardBody p {
+    margin: 0;
+    font-size: clamp(0.95rem, 1.7vw, 1.2rem);
+    line-height: 1.6;
+  }
+
+  &-cardMedia {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: c.$color06;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+  }
+
+  &-card:nth-child(2n) {
+    .sectionHScroll01-cardIndex,
+    .sectionHScroll01-cardBody h3,
+    .sectionHScroll01-cardBody h4,
+    .sectionHScroll01-cardBody h5,
+    .sectionHScroll01-cardBody p {
+      color: c.$color00;
+    }
+  }
+
+  &-card:nth-child(2n+1) {
+    .sectionHScroll01-cardIndex,
+    .sectionHScroll01-cardBody h3,
+    .sectionHScroll01-cardBody h4,
+    .sectionHScroll01-cardBody h5,
+    .sectionHScroll01-cardBody p {
+      color: c.$color01;
+    }
+  }
+
+  @media (max-width: 700px) {
+    &-card {
+      width: 90vw;
+    }
+  }
+}

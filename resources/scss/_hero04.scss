@@ -1,0 +1,71 @@
+@use '../config' as c;
+
+.hero04 {
+  position: relative;
+  width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  min-height: 100svh;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  overflow: hidden;
+  background-color: c.$color06;
+  color: c.$color00;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at 50% 40%,
+      rgba(0, 0, 0, var(--hero04-overlay-weak, 0)),
+      rgba(0, 0, 0, var(--hero04-overlay-strong, 0))
+    );
+    z-index: 0;
+    pointer-events: none;
+  }
+}
+
+.hero04-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: var(--hero04-canvas-opacity, 1);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.hero04-overlay {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(2rem, 6vw, 5rem);
+  pointer-events: none;
+}
+
+.hero04-content {
+  display: flex;
+  justify-content: center;
+  width: min(68rem, 90vw);
+  text-align: center;
+  color: c.$color00;
+  pointer-events: auto;
+
+  > *:last-child {
+    margin-bottom: 0;
+  }
+
+  @media (min-width: c.$tablet) {
+    text-align: left;
+  }
+}

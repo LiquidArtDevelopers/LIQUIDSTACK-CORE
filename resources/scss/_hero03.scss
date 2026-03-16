@@ -1,0 +1,186 @@
+@use '../config' as c;
+
+.hero03 {
+  position: relative;
+  width: 100vw;
+  max-width: 100vw;
+  height: 100vh;
+  min-height: 100vh;
+  min-height: 100svh;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  overflow: hidden;
+  background-color: c.$color06;
+  color: c.$color00;
+  display: flex;
+  align-items: center;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      120deg,
+      rgba(0, 0, 0, var(--hero03-overlay-strong, 0.05)),
+      rgba(0, 0, 0, var(--hero03-overlay-soft, 0.02))
+    );
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .hero03-media {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    z-index: 2;
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+    gap: var(--hero03-gap, 0px);
+  }
+
+  .hero03-col {
+    position: relative;
+    flex: 1 1 0;
+    overflow: hidden;
+    min-width: 0;
+    height: 100%;
+
+    picture,
+    img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    img {
+      transform-origin: 50% 50%;
+      will-change: transform;
+      max-width: none;
+      width: calc(var(--hero03-cols, 6) * 100% + (var(--hero03-cols, 6) - 1) * var(--hero03-gap, 0px));
+    }
+  }
+
+  .hero03-swipe {
+    position: absolute;
+    inset: 0;
+    background-color: transparent;
+    opacity: 0;
+  }
+
+  .hero03-content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: clamp(2.5rem, 6vw, 5.5rem);
+    max-width: 100%;
+  }
+
+  .hero03-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    will-change: transform;
+  }
+
+  .hero03-logo {
+    width: clamp(120px, 18vw, 240px);
+    height: auto;
+    filter: var(--hero03-logo-filter, none);
+  }
+
+  .hero03-title {
+    font-family: c.$fuente02;
+    font-weight: 500;
+    font-size: clamp(1.2rem, 3vw, 2.4rem);
+    color: c.$color00;
+    margin: 0;
+  }
+
+  .hero03-foreground {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+    z-index: 4;
+    pointer-events: none;
+    gap: var(--hero03-gap, 0px);
+    font-family: c.$fuente01;
+    font-weight: 700;
+    color: c.$color00;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: clamp(8.4rem, 24vw, 30rem);
+    text-align: center;
+    padding: 0;
+    line-height: 0.85;
+    margin: 0;
+    text-shadow: 0 0 28px rgba(0, 0, 0, 0.35);
+  }
+
+  .hero03-foreground * {
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    line-height: inherit;
+  }
+
+  .hero03-front-col {
+    position: relative;
+    flex: 1 1 0;
+    overflow: hidden;
+    min-width: 0;
+    height: 100%;
+  }
+
+  .hero03-front-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--hero03-cols, 6) * 100% + (var(--hero03-cols, 6) - 1) * var(--hero03-gap, 0px));
+    height: 100%;
+    transform: translateX(calc(var(--hero03-col, 0) * -100% - var(--hero03-col, 0) * var(--hero03-gap, 0px)));
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    line-height: inherit;
+  }
+
+  .hero03-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    opacity: 0;
+    pointer-events: none;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: grayscale(1);
+      transform: scale(1.12);
+      transform-origin: center;
+      will-change: transform, opacity;
+    }
+  }
+
+  .hero03-brand {
+    position: relative;
+    z-index: 1;
+  }
+}

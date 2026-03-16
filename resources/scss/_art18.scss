@@ -1,0 +1,180 @@
+@use '../config' as c;
+
+.art18 {
+    width: 100%;
+    padding: 3rem;
+    background-color: c.$color01;
+    $bullet-fill: str-slice("#{c.$color03bis}", 2);
+    display: flex;
+    // flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    row-gap: 2rem;
+    @media only screen and (min-width: c.$tablet){
+        padding: 6rem;
+    }
+    @media only screen and (min-width: c.$desktop){
+        padding: 15rem;
+    }
+
+  ul {
+    list-style: none;
+  }
+
+  .flow > * + * {
+    margin-top: var(--flow-space, 1.25em);
+  }
+
+  .heading {
+    font-weight: 600;
+    font-size: 2.25em;
+    margin-bottom: 0.75em;
+    text-align: center;
+    color: c.$color00;
+    font-family: c.$fuente02;
+  }
+
+  .cards {
+    position: relative;
+    width: 100%;
+    @media only screen and (min-width: c.$tablet){
+        width: c.$anchoMedio;
+    }
+    @media only screen and (min-width: c.$desktop){
+        width: c.$anchoCorto;
+    }
+
+    .cards-inner {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2.5em;
+    }
+
+    .card {
+      --flow-space: 0.5em;
+      --hsl: var(--hue), var(--saturation), var(--lightness);
+      flex: 1 1 14rem;
+      padding: 1.5em 2em;
+      display: grid;
+      grid-template-rows: auto auto auto 1fr;
+      align-items: start;
+      gap: 1.25em;
+      color: c.$color03bis;
+      background-color: c.$color01bis;
+      border: 1px solid c.$color00bis2;
+      border-radius: 15px;
+
+      &:nth-child(3n + 1) {
+        --hue: 165;
+        --saturation: 82.26%;
+        --lightness: 51.37%;
+      }
+
+      &:nth-child(3n + 2) {
+        --hue: 291.34;
+        --saturation: 95.9%;
+        --lightness: 61.76%;
+      }
+
+      &:nth-child(3n) {
+        --hue: 338.69;
+        --saturation: 100%;
+        --lightness: 48.04%;
+      }
+
+      .card-heading {
+        font-size: 1.05em;
+        font-weight: 600;
+        color: c.$color00;
+        font-family: c.$fuente02;
+      }
+
+      .card-price {
+        font-size: 1.75em;
+        font-weight: 700;
+        color: c.$color00;
+        font-family: c.$fuente02;
+      }
+
+      .card-bullets {
+        line-height: 1.4;
+
+        li{
+            color: c.$color00;
+            font-size: 0.8rem;
+            &::before {
+                display: inline-block;
+                content: url("/assets/img/system/checkmark-sharp.svg");
+                transform: translatey(0.25ch);
+                margin-right: 1ch;
+                width: 20px;
+                filter: invert(1);
+            }
+        }
+      }
+
+      .cta {
+        display: block;
+        align-self: end;
+        margin: 1em 0 0.5em 0;
+        text-align: center;
+        text-decoration: none;
+        color: c.$color00;
+        background-color: c.$color01;
+        padding: 0.7em;
+        border-radius: 10px;
+        font-weight: 600;
+        font-family: c.$fuente02;
+        letter-spacing: initial;
+        font-size: 1.1rem;
+        line-height: 1.2;
+      }
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      user-select: none;
+      opacity: var(--opacity, 0);
+      -webkit-mask: radial-gradient(
+        25rem 25rem at var(--x) var(--y),
+        c.$color06 1%,
+        transparent 50%
+      );
+      mask: radial-gradient(
+        25rem 25rem at var(--x) var(--y),
+        c.$color06 1%,
+        transparent 50%
+      );
+      transition: 400ms mask ease;
+      will-change: mask;
+
+      .card {
+        background-color: hsla(var(--hsl), 0.15);
+        border-color: hsla(var(--hsl), 1);
+        box-shadow: 0 0 0 1px inset hsl(var(--hsl));
+      }
+
+      .cta {
+        display: block;
+        grid-row: -1;
+        width: 100%;
+        background-color: hsl(var(--hsl));
+        box-shadow: 0 0 0 1px hsl(var(--hsl));
+        font-family: c.$fuente02;
+      }
+    }
+
+    :not(.overlay) > .card {
+      transition: 400ms background ease;
+      will-change: background;
+
+      &:hover {
+        --lightness: 95%;
+        background: hsla(var(--hsl), 0.1);
+      }
+    }
+  }
+}

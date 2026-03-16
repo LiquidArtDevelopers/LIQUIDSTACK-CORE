@@ -1,0 +1,63 @@
+@use '../config' as c;
+
+.artMarquee01 {
+  width: 100%;
+  background-color: c.$color01;
+  color: c.$color00;
+  padding: 3rem 0;
+  overflow: hidden;
+
+  .marquee {
+    position: relative;
+    overflow: hidden;
+    padding: 0.75rem 0;
+  }
+
+  .marquee-track {
+    display: flex;
+    width: max-content;
+    will-change: transform;
+    
+  }
+
+  .marquee-group {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+    padding-right: 2.5rem;
+  }
+
+  .marquee-item {    
+    font-size: clamp(1.1rem, 5vw, 8rem);    
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: c.$color00;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    .marquee-text {
+      font-weight: 600;
+      font-family: c.$fuente01;
+      display: inline-block;
+      color: c.$color00;
+      font-size: clamp(1.1rem, 5vw, 8rem);
+    }
+
+    .marquee-icon {
+      width: 5rem;
+      height: 5rem;
+      object-fit: contain;
+      flex: 0 0 auto;
+      filter: invert(1);
+    }
+    
+    &::after {
+      content: "•";
+      font-weight: 400;
+      opacity: 0.6;
+      
+    }
+  }
+}

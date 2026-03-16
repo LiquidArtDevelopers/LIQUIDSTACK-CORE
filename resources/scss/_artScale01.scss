@@ -1,0 +1,84 @@
+@use '../config' as c;
+
+.artScale01 {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  align-self: stretch;
+  background-color: c.$color06;
+ 
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+
+  .artScale01-stage {
+    position: relative;
+    height: 100vh;
+    width: 100%;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+
+  .artScale01-media {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transform-origin: 50% 50%;
+    will-change: transform, opacity;
+  }
+
+  .artScale01-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .artScale01-media-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: c.$color01bis5;
+    opacity: 0.25;
+    pointer-events: none;
+  }
+
+  .artScale01-text {
+    position: relative;
+    z-index: 2;
+    text-transform: uppercase;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.6rem;
+    padding: 0 6vw;
+    pointer-events: none;    
+  }
+
+  .artScale01-text-line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    overflow: hidden;
+  }
+
+  .artScale01-text-word {
+    font-family: c.$fuente02;
+    font-weight: 600;
+    font-size: clamp(3rem, 11vw, 7rem);
+    line-height: 0.9;
+    letter-spacing: 0.02em;
+    display: inline-block;
+    color: c.$color00;
+  }
+
+  .artScale01-cta {
+    margin-top: 2rem;
+    pointer-events: auto;
+  }
+}

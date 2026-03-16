@@ -1,6 +1,6 @@
 # Liquid Stack Core
 
-Este paquete incluye tanto el núcleo PHP de Liquid Stack como los recursos de front reutilizables para JavaScript y SCSS.
+Este paquete incluye tanto el nucleo PHP de Liquid Stack como los recursos de front reutilizables para JavaScript, SCSS e imagenes.
 
 ## Versionado, changelog y avisos de release
 
@@ -16,6 +16,8 @@ Este paquete incluye tanto el núcleo PHP de Liquid Stack como los recursos de f
 
 Los recursos del paquete (`vendor/liquidstack/core/resources/js` y `vendor/liquidstack/core/resources/scss`) se copian automáticamente después de `composer install` y `composer update` hacia un directorio accesible para el proyecto. Por defecto se depositan en `src/js/resources` y `src/scss/resources` (además de mantener una copia en `vendor/liquidstack/core/resources`), pero puedes cambiar el destino indicando la variable de entorno `STACK_CORE_RESOURCES_TARGET` con una ruta absoluta o relativa al proyecto (por ejemplo, `src/resources`). Se mantiene `STACK_LIQUID_CORE_RESOURCES_TARGET` como alias heredado para facilitar la migración.
 
+Las imagenes reutilizables bajo `resources/img` tambien se sincronizan automaticamente a `public/assets/img/resources`. Si necesitas otro destino, define `STACK_CORE_RESOURCES_IMG_TARGET` (o el alias legado `STACK_LIQUID_CORE_RESOURCES_IMG_TARGET`) con una ruta absoluta o relativa al proyecto.
+
 Si necesitas relanzar la sincronización manualmente ejecuta el script Composer dedicado:
 
 ```bash
@@ -28,7 +30,7 @@ El alias heredado `composer stack-liquid-core:sync-resources` permanece disponib
 
 - **PHP agnóstico**: los controladores y templates reutilizables viven en `stubs/App/controllers` y `stubs/App/templates` y se copian automáticamente a `App/` tras `composer install`/`composer update`. Si existe un controlador homónimo en `App/controllers`, se prioriza como override local; en caso contrario se recurre al del core. Las herramientas CLI compartidas (`App/tools`) también se replican al proyecto para que puedan ejecutarse allí, de modo que el directorio `App/tools` reaparece en cada instalación aunque no se mantenga versionado.
 - **Entrypoint y helpers**: se sincronizan `public/index.php`, `App/config/helpers.php`, `App/app/url.php`, los scripts de idiomas y el sitemap. No se distribuye ningún `App/bootstrap.php`; en los proyectos cliente se puede eliminar con seguridad si quedó como rastro de versiones antiguas.
-- **Assets front**: continúan en `resources/js` y `resources/scss` y se copian con `liquidstack-core:sync-resources`.
+- **Assets front**: continuan en `resources/js`, `resources/scss` y `resources/img`; se copian con `liquidstack-core:sync-resources` (las imagenes se publican en `public/assets/img/resources` salvo override por entorno).
 
 Algunos módulos JS incluidos en `resources/js` emplean GSAP para animaciones.
 

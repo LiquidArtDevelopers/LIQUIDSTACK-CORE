@@ -1,4 +1,5 @@
 {
+
     "example": {
         "alt": "",
         "title": "link",
@@ -9,15 +10,19 @@
         "href": "",
         "src": ""
     },
+
     "title": {
         "text": "LAD Framework Templates"
     },
+
     "description": {
         "content": ""
     },
+
     "robots": {
         "content": "nofollow, noindex, max-snippet:-1, max-video-preview:-1, max-image-preview:large"
     },
+
     "hero00_bg_mobile": {
         "src": "assets/img/dummy/dummy_900.avif"
     },
@@ -30,18 +35,39 @@
     "hero00_bg_fallback": {
         "src": "assets/img/dummy/dummy_900.avif"
     },
+
     "hero02_video_webm": {
-        "src": "/assets/video/dummy.webm"
+        "src": "assets/video/dummy/dummy.webm"
     },
     "hero02_video_mp4": {
-        "src": "/assets/video/dummy.mp4"
-    },
-    "hero02_video_poster": {
-        "src": "assets/img/dummy/dummy_2560.avif"
+        "src": "assets/video/dummy/dummy.mp4"
     },
     "hero02_video_title": {
         "title": "Vídeo operaciones inteligentes"
     },
+
+    "hero03_00_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Hero cortina irudia",
+        "title": "Hero cortina irudia"
+    },
+    "hero03_00_bg": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Atzeko irudi lausotua",
+        "title": "Atzeko irudi lausotua"
+    },
+    "hero03_00_logo": {
+        "src": "assets/img/logos/logo-black.svg",
+        "alt": "Liquid Art Developers",
+        "title": "Liquid Art Developers"
+    },
+    "hero03_00_h1_text": {
+        "text": "Liquid Art Developers"
+    },
+    "hero03_00_front_text": {
+        "text": "Matrix Has You"
+    },
+
     "sect01_00_a_img01": {
         "src": "assets/img/system/bookmark-outline.svg",
         "alt": "Icono seguimiento clientes",
@@ -178,8 +204,6 @@
     },
     "sect02_00_a_img_srcset01": "assets/img/dummy/dummy_900.avif 900w",
     "sect02_00_a_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
-
-    
     "sect02_00_b_h3_text": {
         "text": "Producción audiovisual para lanzamientos globales"
     },
@@ -218,8 +242,6 @@
     },
     "sect02_00_c_img_srcset01": "assets/img/dummy/dummy_900.avif 900w",
     "sect02_00_c_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
-    
-    
 
     "sectTabs01_00_intro": {
         "text": "Accede a documentación técnica, protocolos de seguridad y plantillas contractuales listos para compartir con proveedores, delegaciones y clientes finales; actualizamos los archivos clave cada trimestre para mantener alineada tu red logística."
@@ -377,6 +399,7 @@
         "text": "Plantilla de rúbrica",
         "href": "example.pdf"
     },
+
     "moduleH1Type01_00_h1_text": {
         "text": "Encabezado H1"
     },
@@ -386,21 +409,27 @@
     "moduleH1Type01_00_p02_text": {
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minima optio cumque inventore perferendis similique…"
     },
+
     "moduleH2Type01_00_h2_text": {
         "text": "Sectores que transformamos con datos"
     },
+
     "moduleH2Type01_01_h2_text": {
         "text": "Soluciones modulares por vertical"
     },
+
     "moduleH2Type01_02_h2_text": {
         "text": "Descarga guías y recursos técnicos"
     },
+
     "moduleH2Type01_03_h2_text": {
         "text": "Historias reales de eficiencia logística"
     },
+
     "moduleH2Type01_04_h2_text": {
         "text": "Laguntza estrategikoa eta operatiboa"
     },
+
     "moduleButtonType01_00_cta": {
         "href": "#",
         "title": "Solicitar diagnóstico logístico"
@@ -413,6 +442,7 @@
         "alt": "Flecha avanzar",
         "title": "Flecha avanzar"
     },
+
     "moduleButtonType02_00_cta_link": {
         "href": "#",
         "title": "Explorar caso de éxito"
@@ -420,6 +450,7 @@
     "moduleButtonType02_00_cta_span": {
         "text": "Ver caso completo"
     },
+
     "art01_00_headerPrimary": {
         "text": "Encabezado variable h3 art01"
     },
@@ -453,6 +484,7 @@
         "alt": "Imagen dummy",
         "title": "Imagen dummy"
     },
+
     "art02_00_headerPrimary": {
         "text": "Encabezado variable h3 art02"
     },
@@ -487,6 +519,7 @@
     "art02_00_b_p": {
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
     },
+
     "art03_00_headerPrimary": {
         "text": "Coberturas industriales premium para proteger activos estratégicos clave"
     },
@@ -538,9 +571,6 @@
     "art03_00_c_p": {
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
     },
-    "art03_00_headerSecondary_d": {
-        "text": "Planes de continuidad certificados ISO"
-    },
     "art03_00_d_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
         "alt": "Sala de crisis ejecuta planes de contingencia certificados",
@@ -553,6 +583,7 @@
     "art03_00_d_p": {
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
     },
+
     "art04_00_headerPrimary": {
         "text": "Galería de proyectos y casos destacados"
     },
@@ -586,6 +617,7 @@
         "href": "#",
         "title": "Explorar fachada sostenible"
     },
+
     "art06_00_headerPrimary": {
         "text": "Soluciones solares que escalan con tu negocio"
     },
@@ -637,6 +669,7 @@
     },
     "art06_00_c_img_src01": "assets/img/dummy/dummy_900.avif 900w",
     "art06_00_c_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+
     "art07_00_bgHero_mobile": "assets/img/dummy/dummy_900.avif",
     "art07_00_bgHero_tablet": "assets/img/dummy/dummy_1800.avif",
     "art07_00_bgHero_desktop": "assets/img/dummy/dummy_2560.avif",
@@ -658,6 +691,7 @@
     "art07_00_cite": {
         "text": "Nuestros técnicos certifican instalaciones modulares que se adaptan a las dinámicas de producción y aseguran estabilidad energética incluso ante picos de demanda en cadena."
     },
+
     "art08_00_headerPrimary": {
         "text": "Estrategias solares para ampliar la competitividad industrial regional en Gipuzkoa"
     },
@@ -683,6 +717,7 @@
     "art08_00_b_p": {
         "text": "Gestionamos subvenciones autonómicas, coordinamos créditos verdes y modelizamos escenarios de retorno para que cada inversión fotovoltaica mantenga flujos de caja positivos desde el primer ejercicio fiscal sin comprometer la liquidez operativa."
     },
+
     "art09_00_headerPrimary": {
         "text": "Casos de interiorismo con retorno medible en retail"
     },
@@ -745,6 +780,7 @@
     "art09_00_c_desc": {
         "text": "Coordinamos promociones geolocalizadas, inventarios sincronizados y recogidas flexibles que impulsaron un 31 % las órdenes online con entrega en tienda durante el trimestre piloto."
     },
+
     "art10_00_headerPrimary": {
         "text": "Servicios modulares para activar equipos comerciales omnicanal ágiles"
     },
@@ -783,6 +819,7 @@
     },
     "art10_00_top_fill": "#ffffff",
     "art10_00_bottom_fill": "#ffffff",
+
     "art11_00_headerPrimary": {
         "text": "Nuestra experiencia en cifras"
     },
@@ -816,6 +853,7 @@
     "art11_00_span_optional": {
         "text": "El 100 % de nuestros alumnos termina aprobando, aunque el número de intentos pueda variar."
     },
+
     "art12_00_headerPrimary": {
         "text": "Estrategias modulares que optimizan tu canal digital de ventas"
     },
@@ -869,6 +907,7 @@
     },
     "art12_00_top_fill": "#ffffff",
     "art12_00_bottom_fill": "#ffffff",
+
     "art13_00_headerPrimary": {
         "text": "Clientes que impulsan nuestra innovación diaria conjunta"
     },
@@ -891,6 +930,7 @@
         "alt": "Equipo celebrando lanzamiento colaborativo global",
         "title": "Celebración interna junto a partners"
     },
+
     "art14_00_headerPrimary": {
         "text": "Servicios legales ágiles para la industria inteligente vasca"
     },
@@ -902,6 +942,7 @@
         "alt": "Abogada revisando contrato de innovación industrial estratégica",
         "title": "Revisión jurídica de innovación industrial estratégica"
     },
+
     "art15_00_headerPrimary": {
         "text": "Metodología integral para digitalizar cadenas logísticas complejas de Euskadi"
     },
@@ -921,6 +962,7 @@
         "alt": "Equipo coordinando rutas multimodales con mapas digitales",
         "title": "Coordinación de rutas multimodales con mapas digitales"
     },
+
     "artForm01_00_headerPrimary": {
         "text": "Solicita información rápida"
     },
@@ -1036,6 +1078,7 @@
     "artForm01_00_new_query": {
         "text": "Enviar otra solicitud"
     },
+
     "artSlider01_00_headerPrimary": {
         "text": "Ideas y noticias de logística urbana"
     },
@@ -1223,6 +1266,7 @@
         "text": "Leer caso",
         "href": "noticias/noticia-10"
     },
+
     "artSlider02_00_headerPrimary": {
         "text": "Experiencias formativas con partners industriales"
     },
@@ -1264,6 +1308,7 @@
     "artSlider02_00_slided_h4": {
         "text": "Recorrido práctico por almacén inteligente"
     },
+
     "artAccordion01_00_headerPrimary": {
         "text": "Preguntas clave de matriculación"
     },
@@ -1285,6 +1330,7 @@
     "artAccordion01_00_itemc_content": {
         "text": "Ofrecemos financiación interna sin intereses en tres cuotas mensuales, domiciliación bancaria flexible y acuerdos con entidades colaboradoras para adaptar el desembolso a tu calendario, siempre con asesoría para elegir el plan más conveniente."
     },
+
     "artZipper_00_h3": {
         "text": "FAQs sobre logística integral"
     },
@@ -1303,12 +1349,14 @@
     "artZipper_00_e_h4": {
         "text": "Consejos de mantenimiento diario"
     },
+
     "moduleTest_00_h2_text": {
         "text": "Prueba piloto controlada en 30 días"
     },
     "moduleTest_00_p_text": {
         "text": "Validamos integraciones, definimos indicadores y formamos a tus equipos operativos con soporte continuo durante la prueba para medir reducción de errores, capacidad de reacción y eficiencia en costes antes del despliegue completo en toda la red multialmacén."
     },
+
     "art05_00_headerPrimary": {
         "text": "Historias reales de confianza local certificada"
     },
@@ -1357,9 +1405,6 @@
     "art05_00_c_firma": {
         "text": "Uxue Garaia"
     },
-    "art05_00_headerSecondary_d": {
-        "text": "Industria alimentaria optimiza autoconsumo frío"
-    },
     "art05_00_d_img": {
         "src": "/assets/img/system/bookmark-outline.svg",
         "alt": "Operario ajusta paneles solares en cubierta logística",
@@ -1388,6 +1433,7 @@
     "art03_00_a_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art03_00_a_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art03_00_a_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+
     "art04_00_b_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art04_00_b_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art04_00_b_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
@@ -1400,6 +1446,7 @@
     "art04_00_a_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art04_00_a_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art04_00_a_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+
     "artSlider02_00_slideb_avif_src01": "assets/img/dummy/dummy_900.avif",
     "artSlider02_00_slideb_avif_src02": "assets/img/dummy/dummy_1800.avif",
     "artSlider02_00_slideb_avif_sizes": "100vw",
@@ -1424,6 +1471,7 @@
     "artSlider02_00_slidea_img_src01": "assets/img/dummy/dummy_900.avif",
     "artSlider02_00_slidea_img_src02": "assets/img/dummy/dummy_1800.avif",
     "artSlider02_00_slidea_img_sizes": "(max-width: 768px) 100vw, 1500px",
+
     "art16_00_h3_1": {
         "text": "Servicios logísticos avanzados"
     },
@@ -1436,6 +1484,7 @@
     "art16_00_bg_mobile": "assets/img/dummy/dummy_900.avif",
     "art16_00_bg_tablet": "assets/img/dummy/dummy_1800.avif",
     "art16_00_bg_desktop": "assets/img/dummy/dummy_2560.avif",
+
     "art17_00_headerPrimary": {
         "text": "Zergatik aukeratu eta nola lan egiten dugu"
     },
@@ -1453,21 +1502,6 @@
     "art17_00_a_list_b": {
         "text": "Produkturik edo akordiorik gabe"
     },
-    "art17_00_a_list_c": {
-        "text": "Estrategia pertsonalizatua eta epe luzera"
-    },
-    "art17_00_a_list_d": {
-        "text": "IA aurreratuaren erabilera"
-    },
-    "art17_00_a_list_e": {
-        "text": "Analisi makroekonomiko sakona"
-    },
-    "art17_00_a_list_f": {
-        "text": "Tasarien eta prozesuen gardentasun osoa"
-    },
-    "art17_00_a_list_g": {
-        "text": "Luxu eta iraunkortasun fokua (SRI3 indizea)"
-    },
     "art17_00_headerSecondary_b": {
         "text": "Zurekin lan egiteko modua"
     },
@@ -1482,18 +1516,285 @@
     "art17_00_b_list_b": {
         "text": "Epe labur eta ertainerako proposamen estrategikoa"
     },
-    "art17_00_b_list_c": {
-        "text": "Adierazleen jarraipen hurbila"
+
+    "art18_00_headerPrimary": {
+        "text": "Pricing"
     },
-    "art17_00_b_list_d": {
-        "text": "Teknologia intuitiboa eta erraza"
+    "art18_00_headerSecondary_a": {
+        "text": "Basic"
     },
-    "art17_00_b_list_e": {
-        "text": "Komunikazio arina eta zaratarik gabe"
+    "art18_00_a_price": {
+        "text": "$9.99"
     },
-    "art17_00_b_list_f": {
-        "text": "Finantza prestakuntza jarraitua"
+    "art18_00_a_list_a": {
+        "text": "Access to standard workouts and nutrition plans"
     },
+    "art18_00_a_list_b": {
+        "text": "Email support"
+    },
+    "art18_00_a_cta": {
+        "text": "Get Started",
+        "href": "#basic",
+        "title": "Get Started"
+    },
+    "art18_00_headerSecondary_b": {
+        "text": "Pro"
+    },
+    "art18_00_b_price": {
+        "text": "$19.99"
+    },
+    "art18_00_b_list_a": {
+        "text": "Access to advanced workouts and nutrition plans"
+    },
+    "art18_00_b_list_b": {
+        "text": "Priority Email support"
+    },
+    "art18_00_b_list_c": {
+        "text": "Exclusive access to live Q&A sessions"
+    },
+    "art18_00_b_cta": {
+        "text": "Upgrade to Pro",
+        "href": "#pro",
+        "title": "Upgrade to Pro"
+    },
+    "art18_00_headerSecondary_c": {
+        "text": "Ultimate"
+    },
+    "art18_00_c_price": {
+        "text": "$29.99"
+    },
+    "art18_00_c_list_a": {
+        "text": "Access to all premium workouts and nutrition plans"
+    },
+    "art18_00_c_list_b": {
+        "text": "24/7 Priority support"
+    },
+    "art18_00_c_list_c": {
+        "text": "1-on-1 virtual coaching session every month"
+    },
+    "art18_00_c_cta": {
+        "text": "Go Ultimate",
+        "href": "#ultimate",
+        "title": "Go Ultimate"
+    },
+    "artPricingGlass01_00_bg_text": {
+        "text": "Matrix"
+    },
+    "artPricingGlass01_00_headerSecondary_a": {
+        "text": "Free"
+    },
+    "artPricingGlass01_00_a_price": {
+        "text": "$0/mo"
+    },
+    "artPricingGlass01_00_a_sub": {
+        "text": "Starter Plan"
+    },
+    "artPricingGlass01_00_a_list_a": {
+        "text": "Access to core features"
+    },
+    "artPricingGlass01_00_a_list_b": {
+        "text": "Community email support"
+    },
+    "artPricingGlass01_00_a_list_c": {
+        "text": "Basic analytics dashboard"
+    },
+    "artPricingGlass01_00_a_list_d": {
+        "text": "Up to 3 projects"
+    },
+    "artPricingGlass01_00_a_list_e": {
+        "text": "Shared templates library"
+    },
+    "artPricingGlass01_00_a_cta": {
+        "text": "Get Started",
+        "href": "#free",
+        "title": "Start with the free plan"
+    },
+    "artPricingGlass01_00_headerSecondary_b": {
+        "text": "Standard"
+    },
+    "artPricingGlass01_00_b_price": {
+        "text": "$9.99/mo"
+    },
+    "artPricingGlass01_00_b_sub": {
+        "text": "Standard Plan"
+    },
+    "artPricingGlass01_00_b_list_a": {
+        "text": "Everything in Free, plus more"
+    },
+    "artPricingGlass01_00_b_list_b": {
+        "text": "Priority email support"
+    },
+    "artPricingGlass01_00_b_list_c": {
+        "text": "Advanced analytics insights"
+    },
+    "artPricingGlass01_00_b_list_d": {
+        "text": "Unlimited projects forever"
+    },
+    "artPricingGlass01_00_b_list_e": {
+        "text": "Team collaboration tools"
+    },
+    "artPricingGlass01_00_b_cta": {
+        "text": "Upgrade Now",
+        "href": "#standard",
+        "title": "Switch to the standard plan"
+    },
+    "artPricingGlass01_00_headerSecondary_c": {
+        "text": "Pro"
+    },
+    "artPricingGlass01_00_c_price": {
+        "text": "$19.99/mo"
+    },
+    "artPricingGlass01_00_c_sub": {
+        "text": "Pro Plan"
+    },
+    "artPricingGlass01_00_c_list_a": {
+        "text": "Dedicated success manager"
+    },
+    "artPricingGlass01_00_c_list_b": {
+        "text": "Custom integrations available"
+    },
+    "artPricingGlass01_00_c_list_c": {
+        "text": "SLA response times"
+    },
+    "artPricingGlass01_00_c_list_d": {
+        "text": "Security and compliance reports"
+    },
+    "artPricingGlass01_00_c_list_e": {
+        "text": "Early access to new features"
+    },
+    "artPricingGlass01_00_c_cta": {
+        "text": "Go Pro",
+        "href": "#pro",
+        "title": "Unlock the pro experience"
+    },
+
+    "artScatter01_00_label": {
+        "text": "Featured clients"
+    },
+    "artScatter01_00_text": {
+        "text": "Ministry of Public Security Ministry of Foreign Affairs Ministry of Culture Sports and Tourism Vingroup Bim Group Petrolimex Vietinbank Vietcombank Techcombank VPBank MB TPBank SHB HDBank MSB PJICO Viettel VNG VTC FPT Vinaphone Samsung LG Vietnam Airlines Bamboo Airways Sony Oppo Hyundai Sabeco Vinaconex and more..."
+    },
+
+    "artMarquee01_00_row1_item_text_a": {
+        "text": "Creative pulse"
+    },
+    "artMarquee01_00_row1_item_text_b": {
+        "text": "Bold direction"
+    },
+    "artMarquee01_00_row1_item_text_c": {
+        "text": "Fresh ideas"
+    },
+    "artMarquee01_00_row1_item_text_d": {
+        "text": "Focus forward"
+    },
+    "artMarquee01_00_row2_item_text_a": {
+        "text": "Build momentum"
+    },
+    "artMarquee01_00_row2_item_text_b": {
+        "text": "Design clarity"
+    },
+    "artMarquee01_00_row2_item_text_c": {
+        "text": "Move together"
+    },
+    "artMarquee01_00_row2_item_text_d": {
+        "text": "Lead with craft"
+    },
+
+    "artScale01_00_line1a": {
+        "text": "Ready to"
+    },
+    "artScale01_00_line1b": {
+        "text": "Create"
+    },
+    "artScale01_00_line2a": {
+        "text": "Your"
+    },
+    "artScale01_00_line2b": {
+        "text": "Brand"
+    },
+    "artScale01_00_line3": {
+        "text": "Breakthrough?"
+    },
+    "artScale01_00_video_webm": {
+        "src": "assets/video/dummy/dummy.webm"
+    },
+    "artScale01_00_video_mp4": {
+        "src": "assets/video/dummy/dummy.mp4"
+    },
+    "artScale01_00_video_title": {
+        "title": "Dummy scale reel"
+    },
+
+    "sectionParallax01_00_a_eyebrow": {
+        "text": "Strategy"
+    },
+    "sectionParallax01_00_a_title": {
+        "text": "Shape the signal"
+    },
+    "sectionParallax01_00_a_text": {
+        "text": "Align the narrative, define the audience, and set the release cadence."
+    },
+    "sectionParallax01_00_a_list_a": {
+        "text": "Audience mapping"
+    },
+    "sectionParallax01_00_a_list_b": {
+        "text": "Channel focus"
+    },
+    "sectionParallax01_00_a_list_c": {
+        "text": "Launch timing"
+    },
+    "sectionParallax01_00_a_cta": {
+        "text": "Explore",
+        "href": "#",
+        "title": "Explore this plan"
+    },
+    "sectionParallax01_00_b_eyebrow": {
+        "text": "Production"
+    },
+    "sectionParallax01_00_b_title": {
+        "text": "Build the engine"
+    },
+    "sectionParallax01_00_b_text": {
+        "text": "Craft the story system with modular assets ready for every platform."
+    },
+    "sectionParallax01_00_b_list_a": {
+        "text": "Modular visuals"
+    },
+    "sectionParallax01_00_b_list_b": {
+        "text": "Motion toolkit"
+    },
+    "sectionParallax01_00_b_list_c": {
+        "text": "Sound design"
+    },
+    "sectionParallax01_00_b_cta": {
+        "text": "View case",
+        "href": "#",
+        "title": "View production case"
+    },
+    "sectionParallax01_00_c_eyebrow": {
+        "text": "Momentum"
+    },
+    "sectionParallax01_00_c_title": {
+        "text": "Sustain the lift"
+    },
+    "sectionParallax01_00_c_text": {
+        "text": "Track performance, refine creative, and keep attention compounding."
+    },
+    "sectionParallax01_00_c_list_a": {
+        "text": "Weekly insights"
+    },
+    "sectionParallax01_00_c_list_b": {
+        "text": "Iteration sprints"
+    },
+    "sectionParallax01_00_c_list_c": {
+        "text": "Paid boosts"
+    },
+    "sectionParallax01_00_c_cta": {
+        "text": "Start now",
+        "href": "#",
+        "title": "Start the program"
+    },
+
     "moduleH1Type02_00_h1_text": {
         "text": "Logística inteligente para flotas multiorigen europeas"
     },
@@ -1503,6 +1804,7 @@
     "moduleH1Type02_00_p02_text": {
         "text": "Automatizamos previsiones de demanda, controlamos niveles de stock y activamos transportistas alternativos desde un único panel operativo, apoyándonos en analítica predictiva para reducir devoluciones, emisiones por ruta y tiempos de respuesta ante cualquier incidencia regional."
     },
+
     "moduleImgType01_00_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
         "alt": "Alt dummy",
@@ -1513,5 +1815,428 @@
     "moduleImgType01_00_img_loading": "lazy",
     "moduleImgType01_00_img_sizes": "",
     "moduleImgType01_00_img_srcset01": "",
-    "moduleImgType01_00_img_srcset02": ""
+    "moduleImgType01_00_img_srcset02": "",
+
+    "art18_00_a_list_c": {
+        "text": "Exclusive access to live Q&A sessions"
+    },
+    "art18_00_d_price": {
+        "text": "$9.99"
+    },
+    "art18_00_d_cta": {
+        "text": "Get Started",
+        "href": "#basic",
+        "title": "Get Started"
+    },
+    "art18_00_e_price": {
+        "text": "$9.99"
+    },
+    "art18_00_e_cta": {
+        "text": "Get Started",
+        "href": "#basic",
+        "title": "Get Started"
+    },
+
+    "sectionDiskSlider01_00_headerPrimary": {
+        "text": "WebGL disko likidoaren sliderra"
+    },
+    "sectionDiskSlider01_00_intro": {
+        "text": "Scroll egitean erdiko diskoa biratzen da, irudia deformatu eta hurrengo eszena uraren moduan agerraraziz."
+    },
+    "sectionDiskSlider01_00_hint": {
+        "text": "Egin scroll biratzeko"
+    },
+    "sectionDiskSlider01_00_slidea_img": {
+        "src": "assets/img/dummy/jornadas-hettich-2560.avif",
+        "alt": "Gainazal likidoak irudi teknologikoa deformatzen du",
+        "title": "Disko likidoa irudia deformatzen"
+    },
+    "sectionDiskSlider01_00_slidea_caption": {
+        "text": "Deformazio likidoa"
+    },
+    "sectionDiskSlider01_00_slideb_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Erdiko diskoak eszena digital berria erakusten du",
+        "title": "Diskoarekin WebGL trantsizioa"
+    },
+    "sectionDiskSlider01_00_slideb_caption": {
+        "text": "Agerraldi progresiboa"
+    },
+    "sectionDiskSlider01_00_slidec_img": {
+        "src": "assets/img/dummy/dummy_1800.avif",
+        "alt": "Uhin zirkularrak atzeko plano ilunean",
+        "title": "Uhin zirkularrak"
+    },
+    "sectionDiskSlider01_00_slidec_caption": {
+        "text": "Uhinak eta erliebea"
+    },
+    "sectionDiskSlider01_00_slided_img": {
+        "src": "assets/img/dummy/dummy_1800.avif",
+        "alt": "Disko argitsu batek zeharkatutako testura abstraktua",
+        "title": "Testura abstraktua diskoarekin"
+    },
+    "sectionDiskSlider01_00_slided_caption": {
+        "text": "Eszena aldaketa"
+    },
+    "sectionDiskSlider01_00_slidea_kicker": {
+        "text": "Etxebizitza"
+    },
+    "sectionDiskSlider01_00_slideb_kicker": {
+        "text": "Showroom"
+    },
+    "sectionDiskSlider01_00_slidec_kicker": {
+        "text": "Ekitaldiak"
+    },
+    "sectionDiskSlider01_00_slided_kicker": {
+        "text": "Arkitektura"
+    },
+    "sectionDiskSlider01_00_slidee_img": {
+        "src": "assets/img/dummy/jornadas-hettich-2560.avif",
+        "alt": "Gainazal likidoak irudi teknologikoa deformatzen du",
+        "title": "Disko likidoa irudia deformatzen"
+    },
+    "sectionDiskSlider01_00_slidee_caption": {
+        "text": "Deformazio likidoa"
+    },
+    "sectionDiskSlider01_00_slidee_kicker": {
+        "text": "Etxebizitza"
+    },
+
+    "sectionSkewGallery01_00_headerPrimary": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_intro": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itema_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "sectionSkewGallery01_00_itema_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itema_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemb_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "sectionSkewGallery01_00_itemb_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemb_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemc_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "sectionSkewGallery01_00_itemc_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemc_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemd_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "sectionSkewGallery01_00_itemd_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemd_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_iteme_img": {
+        "src": "assets/img/dummy/dummy05.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "sectionSkewGallery01_00_iteme_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_iteme_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemf_img": {
+        "src": "assets/img/dummy/dummy06.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "sectionSkewGallery01_00_itemf_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemf_text": {
+        "text": ""
+    },
+
+    "artWorksSkew01_00_headerPrimary": {
+        "text": "Proiektu hautatuak"
+    },
+    "artWorksSkew01_00_intro": {
+        "text": "Nabarmendutako lanen multzoa, sakontasun sentsazioarekin eta scrollari lotutako mugimenduarekin."
+    },
+    "artWorksSkew01_00_itema_index": {
+        "text": "01"
+    },
+    "artWorksSkew01_00_itema_title": {
+        "text": "Ipar Etxebizitza"
+    },
+    "artWorksSkew01_00_itema_subtitle": {
+        "text": "Arkitektura garaikidea"
+    },
+    "artWorksSkew01_00_itema_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "artWorksSkew01_00_itemb_index": {
+        "text": "02"
+    },
+    "artWorksSkew01_00_itemb_title": {
+        "text": "Erdiko Aintzira"
+    },
+    "artWorksSkew01_00_itemb_subtitle": {
+        "text": "Etxea eta paisaia"
+    },
+    "artWorksSkew01_00_itemb_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "artWorksSkew01_00_itemc_index": {
+        "text": "03"
+    },
+    "artWorksSkew01_00_itemc_title": {
+        "text": "Hiri Lorategiak"
+    },
+    "artWorksSkew01_00_itemc_subtitle": {
+        "text": "Birgaitze integrala"
+    },
+    "artWorksSkew01_00_itemc_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "artWorksSkew01_00_itemd_index": {
+        "text": "04"
+    },
+    "artWorksSkew01_00_itemd_title": {
+        "text": "Villa Horizonte"
+    },
+    "artWorksSkew01_00_itemd_subtitle": {
+        "text": "Etxebizitza diseinua"
+    },
+    "artWorksSkew01_00_itemd_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "artWorksSkew01_00_iteme_index": {
+        "text": "05"
+    },
+    "artWorksSkew01_00_iteme_title": {
+        "text": ""
+    },
+    "artWorksSkew01_00_iteme_subtitle": {
+        "text": ""
+    },
+    "artWorksSkew01_00_iteme_img": {
+        "src": "assets/img/dummy/dummy05.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "artWorksSkew01_00_itemf_index": {
+        "text": "06"
+    },
+    "artWorksSkew01_00_itemf_title": {
+        "text": ""
+    },
+    "artWorksSkew01_00_itemf_subtitle": {
+        "text": ""
+    },
+    "artWorksSkew01_00_itemf_img": {
+        "src": "assets/img/dummy/dummy06.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "artWorksSkew01_00_itema_link": {
+        "href": "#",
+        "title": "link",
+        "text": ""
+    },
+    "artWorksSkew01_00_itemb_link": {
+        "href": "#",
+        "title": "link",
+        "text": ""
+    },
+    "artWorksSkew01_00_itemc_link": {
+        "href": "#",
+        "title": "link",
+        "text": ""
+    },
+    "artWorksSkew01_00_itemd_link": {
+        "href": "#",
+        "title": "link",
+        "text": ""
+    },
+
+    "sectionHScroll01_00_headerPrimary": {
+        "text": "Matrixari buruz"
+    },
+    "sectionHScroll01_00_intro": {
+        "text": "Printzipioak eta erabakiak, simulazioan kodea gidatzen dutenak."
+    },
+    "sectionHScroll01_00_itema_index": {
+        "text": "01"
+    },
+    "sectionHScroll01_00_itema_title": {
+        "text": "Sistemaren esnatzea"
+    },
+    "sectionHScroll01_00_itema_text": {
+        "text": "Hartu pilula egokia eta apurtu inertzia. Kodea da errealitatea sartzen den arrakala."
+    },
+    "sectionHScroll01_00_itema_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "sectionHScroll01_00_itemb_index": {
+        "text": "02"
+    },
+    "sectionHScroll01_00_itemb_title": {
+        "text": "Kodearen arkitektura"
+    },
+    "sectionHScroll01_00_itemb_text": {
+        "text": "Ez dago lasterbiderik: geruza bakoitzak hurrengoa eusten du. Modularitatea kontrola ez galtzeko."
+    },
+    "sectionHScroll01_00_itemb_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "sectionHScroll01_00_itemc_index": {
+        "text": "03"
+    },
+    "sectionHScroll01_00_itemc_title": {
+        "text": "Erritmoa eta animazioa"
+    },
+    "sectionHScroll01_00_itemc_text": {
+        "text": "Denbora pertzepzioa da. Doitu kurbak eta abiadurak dena ondo joan dadin."
+    },
+    "sectionHScroll01_00_itemc_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "",
+        "title": "link"
+    },
+    "sectionHScroll01_00_itemd_index": {
+        "text": "04"
+    },
+    "sectionHScroll01_00_itemd_title": {
+        "text": "Sistemaren zarata"
+    },
+    "sectionHScroll01_00_itemd_text": {
+        "text": "Frame bakoitza optimizatu. Sistemak dardara egiten badu, begiak nabaritzen du."
+    },
+    "sectionHScroll01_00_itemd_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "",
+        "title": "link"
+    },
+
+    "artHeroScroll01_00_headerPrimary": {
+        "text": "The Matrix Is Watching"
+    },
+    "artHeroScroll01_00_intro": {
+        "text": "Reality bends when you choose the truth."
+    },
+    "artHeroScroll01_00_itema_index": {
+        "text": "01"
+    },
+    "artHeroScroll01_00_itema_word": {
+        "text": "Wake Up"
+    },
+    "artHeroScroll01_00_itema_title": {
+        "text": "Follow The White Rabbit"
+    },
+    "artHeroScroll01_00_itema_text": {
+        "text": "The signal is everywhere, if you listen."
+    },
+    "artHeroScroll01_00_itema_suba": {
+        "text": "There is no spoon"
+    },
+    "artHeroScroll01_00_itema_subb": {
+        "text": "Free your mind"
+    },
+    "artHeroScroll01_00_itema_subc": {
+        "text": "The Matrix has you"
+    },
+    "artHeroScroll01_00_itemb_index": {
+        "text": "02"
+    },
+    "artHeroScroll01_00_itemb_word": {
+        "text": "Red Pill"
+    },
+    "artHeroScroll01_00_itemb_title": {
+        "text": "Choice Is An Illusion"
+    },
+    "artHeroScroll01_00_itemb_text": {
+        "text": "Only you can walk through the door."
+    },
+    "artHeroScroll01_00_itemb_suba": {
+        "text": "I know kung fu"
+    },
+    "artHeroScroll01_00_itemb_subb": {
+        "text": "Your mind makes it real"
+    },
+    "artHeroScroll01_00_itemb_subc": {
+        "text": "Welcome to the real world"
+    },
+    "artHeroScroll01_00_itemc_index": {
+        "text": "03"
+    },
+    "artHeroScroll01_00_itemc_word": {
+        "text": "Blue Pill"
+    },
+    "artHeroScroll01_00_itemc_title": {
+        "text": "Ignorance Is Bliss"
+    },
+    "artHeroScroll01_00_itemc_text": {
+        "text": "Comfort is the easiest prison."
+    },
+    "artHeroScroll01_00_itemc_suba": {
+        "text": "You are the One"
+    },
+    "artHeroScroll01_00_itemc_subb": {
+        "text": "Believe"
+    },
+    "artHeroScroll01_00_itemc_subc": {
+        "text": "We are still here"
+    },
+    "artHeroScroll01_00_itemd_index": {
+        "text": "04"
+    },
+    "artHeroScroll01_00_itemd_word": {
+        "text": "Glitch"
+    },
+    "artHeroScroll01_00_itemd_title": {
+        "text": "The System Is Watching"
+    },
+    "artHeroScroll01_00_itemd_text": {
+        "text": "Everything that has a beginning has an end."
+    },
+    "artHeroScroll01_00_itemd_suba": {
+        "text": "Dodge this"
+    },
+    "artHeroScroll01_00_itemd_subb": {
+        "text": "The body cannot live without the mind"
+    },
+    "artHeroScroll01_00_itemd_subc": {
+        "text": "Fate has a sense of irony"
+    }
 }

@@ -1,0 +1,51 @@
+@use '../config' as c;
+
+.artScatter01 {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: c.$color01;
+  color: c.$color00;
+  position: relative;
+
+  .scatter-wrap {
+    max-width: 100%;
+    margin: 0 auto;
+    @media only screen and (min-width:c.$tablet){
+      max-width: c.$anchoMedio;
+    }
+    @media only screen and (min-width:c.$tablet){
+      max-width: c.$anchoCorto;
+    }
+  }
+
+  .scatter-label {
+    font-family: c.$fuente02;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    font-size: 0.85rem;
+    color: c.$color00;
+    margin-bottom: 1.5rem;
+  }
+
+  .scatter-text {
+    font-family: c.$fuente02;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    font-size: clamp(1.4rem, 2.8vw, 2.8rem);
+    line-height: clamp(1.8rem, 3vw, 4rem);
+    color: c.$color00;
+  }
+
+  .word {
+    display: inline-block;
+    will-change: transform, opacity;
+    font-size: clamp(1rem, 6vw, 3rem);
+    color: c.$color00;
+  }
+}

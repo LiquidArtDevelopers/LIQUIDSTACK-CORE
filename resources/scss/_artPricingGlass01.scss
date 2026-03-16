@@ -1,0 +1,268 @@
+@use '../config' as c;
+
+.artPricingGlass01 {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  height: 100vh;
+  min-height: 100svh;
+  height: 100svh;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  background: c.$color00;
+  color: c.$color01;
+  overflow: hidden;
+  --glass-title-font: #{c.$fuente01};
+  --glass-title-color: #{c.$color01};
+
+  .artPricingGlass01-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .artPricingGlass01-bgLabel {
+    position: absolute;
+    inset: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+    padding: 0;
+    margin: -1px;
+  }
+
+  .artPricingGlass01-inner {
+    position: relative;
+    z-index: 1;
+    width: min(92vw, 520px);
+    height: 100%;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    @media (min-width: c.$tablet) {
+      width: min(94vw, 920px);
+    }
+
+    @media (min-width: c.$desktop) {
+      width: min(1200px, 92vw);
+    }
+  }
+
+  .artPricingGlass01-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    align-items: stretch;
+    perspective: 1200px;
+
+    @media (min-width: c.$tablet) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    @media (min-width: c.$desktop) {
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: clamp(1.6rem, 3vw, 2.6rem);
+    }
+  }
+
+  .artPricingGlass01-card {
+    position: relative;
+    border-radius: clamp(1.4rem, 2vw, 2.2rem);
+    overflow: hidden;
+    isolation: isolate;
+    background: c.$color00;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1.2rem 2.4rem rgba(12, 18, 28, 0.14);
+    min-height: 0;
+    transform-style: preserve-3d;
+    will-change: transform;
+
+    @media (min-width: c.$desktop) {
+      box-shadow: 0 2.4rem 5rem rgba(12, 18, 28, 0.18);
+      min-height: 100%;
+    }
+  }
+
+  .artPricingGlass01-glass {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    z-index: 2;
+    overflow: hidden;
+  }
+
+  .artPricingGlass01-glass canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .artPricingGlass01-cardBody {
+    position: relative;
+    z-index: 3;
+    display: grid;
+    gap: 0.5rem;
+    padding: 1.2rem 1.1rem;
+    color: c.$color01;
+    align-items: center;
+    text-align: center;
+
+    @media (min-width: c.$tablet) {
+      padding: 1.4rem 1.2rem;
+      gap: 0.6rem;
+    }
+
+    @media (min-width: c.$desktop) {
+      gap: 0.8rem;
+      padding: clamp(2rem, 3.2vw, 2.8rem);
+    }
+  }
+
+  .artPricingGlass01-title {
+    margin: 0;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+
+    @media (min-width: c.$tablet) {
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+    }
+
+    @media (min-width: c.$desktop) {
+      font-size: clamp(1.3rem, 2.6vw, 1.8rem);
+      letter-spacing: 0.08em;
+    }
+  }
+
+  .artPricingGlass01-price {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+
+    @media (min-width: c.$tablet) {
+      font-size: 1.8rem;
+    }
+
+    @media (min-width: c.$desktop) {
+      font-size: clamp(2rem, 3.6vw, 2.8rem);
+    }
+  }
+
+  .artPricingGlass01-sub {
+    margin: 0;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: c.$color01bis;
+
+    @media (min-width: c.$tablet) {
+      font-size: 0.8rem;
+    }
+
+    @media (min-width: c.$desktop) {
+      font-size: 0.95rem;
+      letter-spacing: 0.16em;
+    }
+  }
+
+  .artPricingGlass01-list {
+    margin: 0.6rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.4rem;
+    width: 100%;
+    max-width: 16rem;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+
+    li {
+      position: relative;
+      padding-left: 1.4rem;
+      font-size: 0.75rem;
+      line-height: 1.2;
+      color: c.$color01bis;
+
+      &::before {
+        content: '-';
+        position: absolute;
+        left: 0;
+        top: 0;
+        color: c.$color01;
+      }
+
+      @media (min-width: c.$tablet) {
+        font-size: 0.8rem;
+        line-height: 1.25;
+        padding-left: 1.4rem;
+      }
+
+      @media (min-width: c.$desktop) {
+        font-size: 0.95rem;
+        line-height: normal;
+        padding-left: 1.8rem;
+      }
+    }
+
+    @media (min-width: c.$tablet) {
+      margin-top: 0.6rem;
+      gap: 0.45rem;
+      max-width: 18rem;
+    }
+
+    @media (min-width: c.$desktop) {
+      margin: 1rem 0 0;
+      gap: 0.7rem;
+      max-width: 20rem;
+    }
+  }
+
+  .artPricingGlass01-cta {
+    margin-top: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1.1rem;
+    border-radius: 999px;
+    background: c.$color03bis;
+    color: c.$color01;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+
+    @media (min-width: c.$tablet) {
+      padding: 0.7rem 1.2rem;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+    }
+
+    @media (min-width: c.$desktop) {
+      padding: 0.9rem 1.6rem;
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+    }
+  }
+
+  .artPricingGlass01-card:nth-child(2) {
+    .artPricingGlass01-cta {
+      background: c.$color01;
+      color: c.$color00;
+      border-color: transparent;
+    }
+  }
+}

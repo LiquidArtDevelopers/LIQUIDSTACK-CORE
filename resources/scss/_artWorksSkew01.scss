@@ -1,0 +1,150 @@
+@use '../config' as c;
+
+.artWorksSkew01 {
+  position: relative;
+  background: c.$color01;
+  color: c.$color00;
+  padding: clamp(5rem, 9vw, 9rem) 0;
+  overflow: hidden;
+
+  &-inner {
+    position: relative;
+    width: min(1200px, 90vw);
+    margin: 0 auto;
+    z-index: 2;
+  }
+
+  &-head {
+    margin-bottom: clamp(2rem, 6vw, 4rem);
+    text-align: center;
+
+    h2,
+    h3,
+    h4 {
+      margin: 0 0 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+  }
+
+  &-intro {
+    margin: 0 auto;
+    max-width: 46rem;
+    color: rgba(c.$color00, 0.75);
+    font-size: clamp(1rem, 1.8vw, 1.15rem);
+  }
+
+  &-list {
+    display: grid;
+    gap: clamp(4rem, 9vw, 7rem);
+  }
+
+  &-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-template-rows: 1fr;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  &-media {
+    grid-column: 3 / -1;
+    grid-row: 1;
+    border-radius: 0;
+    overflow: hidden;
+    background: c.$color06bis;
+    box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, 0.35);
+    z-index: 1;
+    display: block;
+    text-decoration: none;
+    position: relative;
+
+    img {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      filter: brightness(0.55);
+      transition: filter 0.35s ease;
+    }
+  }
+
+  &-meta {
+    grid-column: 1 / span 5;
+    grid-row: 1;
+    color: c.$color00;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    z-index: 2;
+    max-width: 22rem;
+    margin-right: -2.5rem;
+    pointer-events: none;
+    align-self: center;
+
+    h3,
+    h4,
+    h5 {
+      margin: 0.4rem 0 0.3rem;
+      font-size: clamp(1.6rem, 2.6vw, 2.6rem);
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      color: c.$color00;
+    }
+
+    p {
+      margin: 0;
+      font-size: clamp(0.95rem, 1.6vw, 1.2rem);
+      letter-spacing: 0.4em;
+      color: rgba(c.$color00, 0.85);
+    }
+  }
+
+  &-index {
+    font-size: 0.75rem;
+    letter-spacing: 0.4em;
+    opacity: 0.8;
+    color: c.$color00;
+  }
+
+  &-item.is-right {
+    .artWorksSkew01-media {
+      grid-column: 1 / span 10;
+    }
+
+    .artWorksSkew01-meta {
+      grid-column: 8 / -1;
+      text-align: right;
+      margin-right: 0;
+      margin-left: -2.5rem;
+      justify-self: end;
+    }
+  }
+
+  &-item:hover .artWorksSkew01-media img {
+    filter: brightness(1);
+  }
+
+  @media (max-width: 900px) {
+    &-item {
+      grid-template-columns: 1fr;
+    }
+
+    &-media,
+    &-item.is-right .artWorksSkew01-media {
+      grid-column: 1 / -1;
+      grid-row: auto;
+    }
+
+    &-meta,
+    &-item.is-right .artWorksSkew01-meta {
+      grid-column: 1 / -1;
+      grid-row: auto;
+      text-align: left;
+      letter-spacing: 0.12em;
+      margin: 0;
+      max-width: none;
+    }
+  }
+}

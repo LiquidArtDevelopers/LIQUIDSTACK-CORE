@@ -63,6 +63,20 @@ class Installer
                 }
             }
         }
+
+        $imagesSource      = $resourcesDir . '/img';
+        $imagesDestination = self::resolveImageResourceTarget($projectRoot);
+
+        if (!is_dir($imagesSource)) {
+            return;
+        }
+
+        try {
+            self::mirrorWithoutDeletion($filesystem, $imagesSource, $imagesDestination);
+            $io->write(sprintf('<info>Synced resources to %s</info>', $imagesDestination));
+        } catch (\Throwable $exception) {
+            $io->writeError(sprintf('<error>Failed to sync %s to %s: %s</error>', $imagesSource, $imagesDestination, $exception->getMessage()));
+        }
     }
 
     private static function syncProjectAssets(Event $event): void
@@ -179,6 +193,31 @@ class Installer
                 'scss' => $projectRoot . '/vendor/liquidstack/core/resources/scss',
             ],
         ];
+    }
+
+    /**
+     * Obtiene el destino donde se replicarÃ¡n las imÃ¡genes de recursos.
+     *
+     * Por defecto se copian en `public/assets/img/resources`. Si se define
+     * STACK_CORE_RESOURCES_IMG_TARGET, se tomarÃ¡ como ruta base absoluta o
+     * relativa al proyecto. Se mantiene STACK_LIQUID_CORE_RESOURCES_IMG_TARGET
+     * como alias heredado.
+     */
+    private static function resolveImageResourceTarget(string $projectRoot): string
+    {
+        $configured = getenv('STACK_CORE_RESOURCES_IMG_TARGET');
+
+        if (!is_string($configured) || $configured === '') {
+            $configured = getenv('STACK_LIQUID_CORE_RESOURCES_IMG_TARGET');
+        }
+
+        if (is_string($configured) && $configured !== '') {
+            return self::isAbsolutePath($configured)
+                ? rtrim($configured, DIRECTORY_SEPARATOR)
+                : $projectRoot . DIRECTORY_SEPARATOR . ltrim($configured, DIRECTORY_SEPARATOR);
+        }
+
+        return $projectRoot . DIRECTORY_SEPARATOR . 'public/assets/img/resources';
     }
 
     private static function startsWith(string $haystack, string $needle): bool

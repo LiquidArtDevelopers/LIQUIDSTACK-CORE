@@ -31,16 +31,37 @@
         "src": "assets/img/dummy/dummy_900.avif"
     },
     "hero02_video_webm": {
-        "src": "/assets/video/dummy.webm"
+        "src": "assets/video/dummy/dummy.webm"
     },
     "hero02_video_mp4": {
-        "src": "/assets/video/dummy.mp4"
+        "src": "assets/video/dummy/dummy.mp4"
     },
     "hero02_video_poster": {
         "src": "assets/img/dummy/dummy_2560.avif"
     },
     "hero02_video_title": {
         "title": "Vídeo operaciones inteligentes"
+    },
+    "hero03_00_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Curtain hero image",
+        "title": "Curtain hero image"
+    },
+    "hero03_00_bg": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Blurred backdrop image",
+        "title": "Blurred backdrop image"
+    },
+    "hero03_00_logo": {
+        "src": "assets/img/logos/logo-black.svg",
+        "alt": "Liquid Art Developers",
+        "title": "Liquid Art Developers"
+    },
+    "hero03_00_h1_text": {
+        "text": "Liquid Art Developers"
+    },
+    "hero03_00_front_text": {
+        "text": "Matrix Has You"
     },
     "sect01_00_a_img01": {
         "src": "assets/img/system/bookmark-outline.svg",
@@ -1493,6 +1514,324 @@
     },
     "art17_00_b_list_f": {
         "text": "Ongoing financial training"
+    },
+    "art18_00_headerPrimary": {
+        "text": "Pricing"
+    },
+    "art18_00_headerSecondary_a": {
+        "text": "Basic"
+    },
+    "art18_00_a_price": {
+        "text": "$9.99"
+    },
+    "art18_00_a_list_a": {
+        "text": "Access to standard workouts and nutrition plans"
+    },
+    "art18_00_a_list_b": {
+        "text": "Email support"
+    },
+    "art18_00_a_cta": {
+        "text": "Get Started",
+        "href": "#basic",
+        "title": "Get Started"
+    },
+    "art18_00_headerSecondary_b": {
+        "text": "Pro"
+    },
+    "art18_00_b_price": {
+        "text": "$19.99"
+    },
+    "art18_00_b_list_a": {
+        "text": "Access to advanced workouts and nutrition plans"
+    },
+    "art18_00_b_list_b": {
+        "text": "Priority Email support"
+    },
+    "art18_00_b_list_c": {
+        "text": "Exclusive access to live Q&A sessions"
+    },
+    "art18_00_b_cta": {
+        "text": "Upgrade to Pro",
+        "href": "#pro",
+        "title": "Upgrade to Pro"
+    },
+    "art18_00_headerSecondary_c": {
+        "text": "Ultimate"
+    },
+    "art18_00_c_price": {
+        "text": "$29.99"
+    },
+    "art18_00_c_list_a": {
+        "text": "Access to all premium workouts and nutrition plans"
+    },
+    "art18_00_c_list_b": {
+        "text": "24/7 Priority support"
+    },
+    "art18_00_c_list_c": {
+        "text": "1-on-1 virtual coaching session every month"
+    },
+    "art18_00_c_list_d": {
+        "text": "Exclusive content and early access to new features"
+    },
+    "art18_00_c_cta": {
+        "text": "Go Ultimate",
+        "href": "#ultimate",
+        "title": "Go Ultimate"
+    },
+    "artPricingGlass01_00_bg_text": {
+        "text": "Matrix"
+    },
+    "artPricingGlass01_00_headerSecondary_a": {
+        "text": "Free"
+    },
+    "artPricingGlass01_00_a_price": {
+        "text": "$0/mo"
+    },
+    "artPricingGlass01_00_a_sub": {
+        "text": "Starter Plan"
+    },
+    "artPricingGlass01_00_a_list_a": {
+        "text": "Access to core features"
+    },
+    "artPricingGlass01_00_a_list_b": {
+        "text": "Community email support"
+    },
+    "artPricingGlass01_00_a_list_c": {
+        "text": "Basic analytics dashboard"
+    },
+    "artPricingGlass01_00_a_list_d": {
+        "text": "Up to 3 projects"
+    },
+    "artPricingGlass01_00_a_list_e": {
+        "text": "Shared templates library"
+    },
+    "artPricingGlass01_00_a_cta": {
+        "text": "Get Started",
+        "href": "#free",
+        "title": "Start with the free plan"
+    },
+    "artPricingGlass01_00_headerSecondary_b": {
+        "text": "Standard"
+    },
+    "artPricingGlass01_00_b_price": {
+        "text": "$9.99/mo"
+    },
+    "artPricingGlass01_00_b_sub": {
+        "text": "Standard Plan"
+    },
+    "artPricingGlass01_00_b_list_a": {
+        "text": "Everything in Free, plus more"
+    },
+    "artPricingGlass01_00_b_list_b": {
+        "text": "Priority email support"
+    },
+    "artPricingGlass01_00_b_list_c": {
+        "text": "Advanced analytics insights"
+    },
+    "artPricingGlass01_00_b_list_d": {
+        "text": "Unlimited projects forever"
+    },
+    "artPricingGlass01_00_b_list_e": {
+        "text": "Team collaboration tools"
+    },
+    "artPricingGlass01_00_b_cta": {
+        "text": "Upgrade Now",
+        "href": "#standard",
+        "title": "Switch to the standard plan"
+    },
+    "artPricingGlass01_00_headerSecondary_c": {
+        "text": "Pro"
+    },
+    "artPricingGlass01_00_c_price": {
+        "text": "$19.99/mo"
+    },
+    "artPricingGlass01_00_c_sub": {
+        "text": "Pro Plan"
+    },
+    "artPricingGlass01_00_c_list_a": {
+        "text": "Dedicated success manager"
+    },
+    "artPricingGlass01_00_c_list_b": {
+        "text": "Custom integrations available"
+    },
+    "artPricingGlass01_00_c_list_c": {
+        "text": "SLA response times"
+    },
+    "artPricingGlass01_00_c_list_d": {
+        "text": "Security and compliance reports"
+    },
+    "artPricingGlass01_00_c_list_e": {
+        "text": "Early access to new features"
+    },
+    "artPricingGlass01_00_c_cta": {
+        "text": "Go Pro",
+        "href": "#pro",
+        "title": "Unlock the pro experience"
+    },
+
+    "artScatter01_00_label": {
+        "text": "Featured clients"
+    },
+    "artScatter01_00_text": {
+        "text": "Ministry of Public Security Ministry of Foreign Affairs Ministry of Culture Sports and Tourism Vingroup Bim Group Petrolimex Vietinbank Vietcombank Techcombank VPBank MB TPBank SHB HDBank MSB PJICO Viettel VNG VTC FPT Vinaphone Samsung LG Vietnam Airlines Bamboo Airways Sony Oppo Hyundai Sabeco Vinaconex and more..."
+    },
+    "artMarquee01_00_row1_item_text_a": {
+        "text": "Creative pulse"
+    },
+    "artMarquee01_00_row1_item_img_a": {
+        "src": "assets/img/logos/logo-color.svg",
+        "alt": "LAD logo",
+        "title": "LAD logo"
+    },
+    "artMarquee01_00_row1_item_text_b": {
+        "text": "Bold direction"
+    },
+    "artMarquee01_00_row1_item_img_b": {
+        "src": "assets/img/logos/logo-color.svg",
+        "alt": "LAD logo",
+        "title": "LAD logo"
+    },
+    "artMarquee01_00_row1_item_text_c": {
+        "text": "Fresh ideas"
+    },
+    "artMarquee01_00_row1_item_img_c": {
+        "src": "assets/img/logos/logo-color.svg",
+        "alt": "LAD logo",
+        "title": "LAD logo"
+    },
+    "artMarquee01_00_row1_item_text_d": {
+        "text": "Focus forward"
+    },
+    "artMarquee01_00_row1_item_img_d": {
+        "src": "assets/img/logos/logo-color.svg",
+        "alt": "LAD logo",
+        "title": "LAD logo"
+    },
+    "artMarquee01_00_row2_item_text_a": {
+        "text": "Build momentum"
+    },
+    "artMarquee01_00_row2_item_img_a": {
+        "src": "assets/img/logos/logo-color.svg",
+        "alt": "LAD logo",
+        "title": "LAD logo"
+    },
+    "artMarquee01_00_row2_item_text_b": {
+        "text": "Design clarity"
+    },
+    "artMarquee01_00_row2_item_img_b": {
+        "src": "assets/img/logos/logo-color.svg",
+        "alt": "LAD logo",
+        "title": "LAD logo"
+    },
+    "artMarquee01_00_row2_item_text_c": {
+        "text": "Move together"
+    },
+    "artMarquee01_00_row2_item_img_c": {
+        "src": "assets/img/logos/logo-color.svg",
+        "alt": "LAD logo",
+        "title": "LAD logo"
+    },
+    "artMarquee01_00_row2_item_text_d": {
+        "text": "Lead with craft"
+    },
+    "artMarquee01_00_row2_item_img_d": {
+        "src": "assets/img/logos/logo-color.svg",
+        "alt": "LAD logo",
+        "title": "LAD logo"
+    },
+
+    "artScale01_00_line1a": {
+        "text": "Ready to"
+    },
+    "artScale01_00_line1b": {
+        "text": "Create"
+    },
+    "artScale01_00_line2a": {
+        "text": "Your"
+    },
+    "artScale01_00_line2b": {
+        "text": "Brand"
+    },
+    "artScale01_00_line3": {
+        "text": "Breakthrough?"
+    },
+    "artScale01_00_video_webm": {
+        "src": "assets/video/dummy/dummy.webm"
+    },
+    "artScale01_00_video_mp4": {
+        "src": "assets/video/dummy/dummy.mp4"
+    },
+    "artScale01_00_video_title": {
+        "title": "Dummy scale reel"
+    },
+    "sectionParallax01_00_a_eyebrow": {
+        "text": "Strategy"
+    },
+    "sectionParallax01_00_a_title": {
+        "text": "Shape the signal"
+    },
+    "sectionParallax01_00_a_text": {
+        "text": "Align the narrative, define the audience, and set the release cadence."
+    },
+    "sectionParallax01_00_a_list_a": {
+        "text": "Audience mapping"
+    },
+    "sectionParallax01_00_a_list_b": {
+        "text": "Channel focus"
+    },
+    "sectionParallax01_00_a_list_c": {
+        "text": "Launch timing"
+    },
+    "sectionParallax01_00_a_cta": {
+        "text": "Explore",
+        "href": "#",
+        "title": "Explore this plan"
+    },
+    "sectionParallax01_00_b_eyebrow": {
+        "text": "Production"
+    },
+    "sectionParallax01_00_b_title": {
+        "text": "Build the engine"
+    },
+    "sectionParallax01_00_b_text": {
+        "text": "Craft the story system with modular assets ready for every platform."
+    },
+    "sectionParallax01_00_b_list_a": {
+        "text": "Modular visuals"
+    },
+    "sectionParallax01_00_b_list_b": {
+        "text": "Motion toolkit"
+    },
+    "sectionParallax01_00_b_list_c": {
+        "text": "Sound design"
+    },
+    "sectionParallax01_00_b_cta": {
+        "text": "View case",
+        "href": "#",
+        "title": "View production case"
+    },
+    "sectionParallax01_00_c_eyebrow": {
+        "text": "Momentum"
+    },
+    "sectionParallax01_00_c_title": {
+        "text": "Sustain the lift"
+    },
+    "sectionParallax01_00_c_text": {
+        "text": "Track performance, refine creative, and keep attention compounding."
+    },
+    "sectionParallax01_00_c_list_a": {
+        "text": "Weekly insights"
+    },
+    "sectionParallax01_00_c_list_b": {
+        "text": "Iteration sprints"
+    },
+    "sectionParallax01_00_c_list_c": {
+        "text": "Paid boosts"
+    },
+    "sectionParallax01_00_c_cta": {
+        "text": "Start now",
+        "href": "#",
+        "title": "Start the program"
     },
     "moduleH1Type02_00_h1_text": {
         "text": "Logística inteligente para flotas multiorigen europeas"

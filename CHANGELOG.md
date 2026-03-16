@@ -4,6 +4,7 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Añadido
+- `src/Core/Composer/Installer.php` sincroniza tambien `resources/img` hacia `public/assets/img/resources` durante `composer install`/`composer update`; puedes sobrescribir el destino con `STACK_CORE_RESOURCES_IMG_TARGET` (alias legado: `STACK_LIQUID_CORE_RESOURCES_IMG_TARGET`).
 - `App/tools/build-sitemap.php` ahora crea/actualiza `public/robots.txt` y garantiza que la entrada del sitemap apunte al host de producción definido en las variables de entorno.
 
 ### Corregido

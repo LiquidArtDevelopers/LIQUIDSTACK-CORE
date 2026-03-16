@@ -1,7 +1,7 @@
 {
     "example": {
         "alt": "",
-        "title": "link",
+        "title": "The system is watching.",
         "text": "",
         "placeholder": "",
         "value": "",
@@ -10,7 +10,7 @@
         "src": ""
     },
     "title": {
-        "text": "LAD Framework Templates"
+        "text": "I know kung fu."
     },
     "description": {
         "content": ""
@@ -31,609 +31,618 @@
         "src": "assets/img/dummy/dummy_900.avif"
     },
     "hero02_video_webm": {
-        "src": "/assets/video/dummy.webm"
+        "src": "assets/video/dummy/dummy.webm"
     },
     "hero02_video_mp4": {
-        "src": "/assets/video/dummy.mp4"
-    },
-    "hero02_video_poster": {
-        "src": "assets/img/dummy/dummy_2560.avif"
+        "src": "assets/video/dummy/dummy.mp4"
     },
     "hero02_video_title": {
-        "title": "Vídeo operaciones inteligentes"
+        "title": "There is no spoon."
+    },
+    "hero03_00_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Imagen hero cortina",
+        "title": "Imagen hero cortina"
+    },
+    "hero03_00_bg": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Imagen fondo difuminada",
+        "title": "Imagen fondo difuminada"
+    },
+    "hero03_00_logo": {
+        "src": "assets/img/logos/logo-black.svg",
+        "alt": "Liquid Art Developers",
+        "title": "Liquid Art Developers"
+    },
+    "hero03_00_h1_text": {
+        "text": "Liquid Art Developers"
+    },
+    "hero03_00_front_text": {
+        "text": "Matrix Has You"
     },
     "sect01_00_a_img01": {
         "src": "assets/img/system/bookmark-outline.svg",
-        "alt": "Icono seguimiento clientes",
-        "title": "Icono seguimiento de clientes"
+        "alt": "Follow the white rabbit.",
+        "title": "Follow the white rabbit."
     },
     "sect01_00_a_h3_text": {
-        "text": "Integración ágil de showroom digital"
+        "text": "Free your mind."
     },
     "sect01_00_a_p01_text": {
-        "text": "Conectamos catálogos, visitas guiadas y paneles compartidos para que tu equipo comercial cierre acuerdos sin fricciones y mantenga la narrativa visual en cada demostración."
+        "text": "Everything that has a beginning has an end."
     },
     "sect01_00_a_p02_text": {
-        "text": "Aportamos métricas de seguimiento y soporte remoto continuo para nutrir oportunidades tras cada evento híbrido."
+        "text": "Your mind makes it real."
     },
     "sect01_00_a_img02": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Equipo analizando panel de métricas",
-        "title": "Equipo analiza panel de métricas"
+        "alt": "You are the One.",
+        "title": "Wake up, Neo."
     },
     "sect01_00_a_img03": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Clientes revisando catálogo interactivo",
-        "title": "Clientes revisan catálogo interactivo"
+        "alt": "Ignorance is bliss.",
+        "title": "Reality is a prison."
     },
     "sect01_00_a_img04": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Showroom híbrido con asistentes conectados",
-        "title": "Showroom híbrido para asistentes conectados"
+        "alt": "Dodge this.",
+        "title": "Follow the white rabbit."
     },
     "sect01_00_b_img01": {
         "src": "assets/img/system/bookmark-outline.svg",
-        "alt": "Icono agenda automatizada",
-        "title": "Icono de agenda automatizada"
+        "alt": "The system is watching.",
+        "title": "Red pill or blue pill."
     },
     "sect01_00_b_h3_text": {
-        "text": "Flujos automatizados de seguimiento comercial"
+        "text": "Reality is a prison."
     },
     "sect01_00_b_p01_text": {
-        "text": "Orquestamos workflows que sincronizan visitas, firmas electrónicas, presupuestos y reporting financiero para sostener oportunidades complejas sin depender de tareas manuales repetitivas."
+        "text": "There is a difference between knowing the path and walking the path."
     },
     "sect01_00_b_p02_text": {
-        "text": "Enlazamos CRM, mailing y chat proactivo para activar respuestas rápidas cuando surge un nuevo requisito."
+        "text": "Unfortunately, no one can be told what the Matrix is. You have to see it for yourself."
     },
     "sect01_00_b_img02": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Panel con hitos automatizados activos",
-        "title": "Panel muestra hitos automatizados activos"
+        "alt": "Dodge this.",
+        "title": "Free your mind."
     },
     "sect01_00_b_img03": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Equipo coordinando seguimiento multicanal integrado",
-        "title": "Equipo coordina seguimiento multicanal integrado"
+        "alt": "Welcome to the real world.",
+        "title": "I know kung fu."
     },
     "sect01_00_b_img04": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Representación de workflow comercial inteligente",
-        "title": "Workflow comercial inteligente en ejecución"
+        "alt": "There is no spoon.",
+        "title": "Wake up, Neo."
     },
     "sect01_00_c_img01": {
         "src": "assets/img/system/bookmark-outline.svg",
-        "alt": "Icono experiencia inmersiva",
-        "title": "Icono de experiencia inmersiva"
+        "alt": "The system is watching.",
+        "title": "Wake up, Neo."
     },
     "sect01_00_c_h3_text": {
-        "text": "Experiencias phygital guiadas en directo"
+        "text": "There is no spoon."
     },
     "sect01_00_c_p01_text": {
-        "text": "Diseñamos recorridos combinando streaming, chat moderado y pruebas táctiles para que cada asistente experimente la solución como si estuviera en planta."
+        "text": "Hope is a human delusion: both your greatest strength and your greatest weakness."
     },
     "sect01_00_c_p02_text": {
-        "text": "Incluimos resúmenes descargables y agendas de talleres para mantener viva la conversación tras el tour."
+        "text": "The Matrix is everywhere. It is all around us."
     },
     "sect01_00_c_img02": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Visitantes probando módulos interactivos conectados",
-        "title": "Visitantes prueban módulos interactivos conectados"
+        "alt": "The Matrix has you.",
+        "title": "The system is watching."
     },
     "sect01_00_c_img03": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Guía facilitando demostración phygital colaborativa",
-        "title": "Guía facilita demostración phygital colaborativa"
+        "alt": "Ignorance is bliss.",
+        "title": "There is no spoon."
     },
     "sect01_00_c_img04": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Escenario inmersivo con señalética dinámica",
-        "title": "Escenario inmersivo muestra señalética dinámica"
+        "alt": "Red pill or blue pill.",
+        "title": "Free your mind."
     },
     "sect01_00_d_img01": {
         "src": "assets/img/system/bookmark-outline.svg",
-        "alt": "Icono formación continua",
-        "title": "Icono de formación continua"
+        "alt": "Wake up, Neo.",
+        "title": "I know kung fu."
     },
     "sect01_00_d_h3_text": {
-        "text": "Academia para partners certificados"
+        "text": "Red pill or blue pill."
     },
     "sect01_00_d_p01_text": {
-        "text": "Creamos itinerarios modulares con sesiones técnicas, cápsulas de producto y evaluaciones para acreditar a distribuidores y reforzar la consistencia del mensaje comercial."
+        "text": "Everything that has a beginning has an end."
     },
     "sect01_00_d_p02_text": {
-        "text": "Ofrecemos foros privados y soporte experto para resolver dudas avanzadas y compartir mejores prácticas."
+        "text": "Fate, it seems, is not without a sense of irony."
     },
     "sect01_00_d_img02": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Sesión formativa con instructores certificados",
-        "title": "Sesión formativa para partners certificados"
+        "alt": "Dodge this.",
+        "title": "You are the One."
     },
     "sect01_00_d_img03": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Participantes evaluando módulos técnicos especializados",
-        "title": "Participantes evalúan módulos técnicos especializados"
+        "alt": "Red pill or blue pill.",
+        "title": "You are the One."
     },
     "sect01_00_d_img04": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Plataforma académica con progreso gamificado",
-        "title": "Plataforma académica muestra progreso gamificado"
+        "alt": "The system is watching.",
+        "title": "Ignorance is bliss."
     },
-
     "sect02_00_a_h3_text": {
-        "text": "Producción audiovisual para lanzamientos globales"
+        "text": "Free your mind."
     },
     "sect02_00_a_p01_text": {
-        "text": "Planificamos rodajes multicámara, traducciones simultáneas y espacios virtuales para amplificar cada lanzamiento sin depender de la logística presencial tradicional y reforzar la comunidad profesional."
+        "text": "Fate, it seems, is not without a sense of irony."
     },
     "sect02_00_a_p02_text": {
-        "text": "Gestionamos clipping, boletines y sesiones de preguntas para prolongar la conversación internacional digital después del estreno."
+        "text": "Unfortunately, no one can be told what the Matrix is. You have to see it for yourself."
     },
     "sect02_00_a_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Equipo creativo coordinando rodaje inmersivo global",
-        "title": "Equipo creativo coordina rodaje inmersivo global"
+        "alt": "Believe.",
+        "title": "Wake up, Neo."
     },
     "sect02_00_a_img_sizes": {
-        "text": "(max-width: 899px) 1000px, 1500px"
+        "text": "Ignorance is bliss."
     },
     "sect02_00_a_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
     "sect02_00_a_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
-
-    
     "sect02_00_b_h3_text": {
-        "text": "Producción audiovisual para lanzamientos globales"
+        "text": "Believe."
     },
     "sect02_00_b_p01_text": {
-        "text": "Planificamos rodajes multicámara, traducciones simultáneas y espacios virtuales para amplificar cada lanzamiento sin depender de la logística presencial tradicional y reforzar la comunidad profesional."
+        "text": "Fate, it seems, is not without a sense of irony."
     },
     "sect02_00_b_p02_text": {
-        "text": "Gestionamos clipping, boletines y sesiones de preguntas para prolongar la conversación internacional digital después del estreno."
+        "text": "To deny our own impulses is to deny the very thing that makes us human."
     },
     "sect02_00_b_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Equipo creativo coordinando rodaje inmersivo global",
-        "title": "Equipo creativo coordina rodaje inmersivo global"
+        "alt": "There is no spoon.",
+        "title": "Choice is an illusion."
     },
     "sect02_00_b_img_sizes": {
-        "text": "(max-width: 899px) 1000px, 1500px"
+        "text": "Ignorance is bliss."
     },
     "sect02_00_b_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
-    "sect02_00_b_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",    
+    "sect02_00_b_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
     "sect02_00_c_h3_text": {
-        "text": "Analítica de visitas y monetización"
+        "text": "Welcome to the real world."
     },
     "sect02_00_c_p01_text": {
-        "text": "Implementamos cuadros de mando, atribución asistida y modelos de conversión para medir el impacto económico de cada experiencia en vivo y digital de alto valor."
+        "text": "You take the blue pill, the story ends. You take the red pill, you stay in Wonderland."
     },
     "sect02_00_c_p02_text": {
-        "text": "Integramos CRM, facturación y encuestas para detectar palancas de upselling y ajustar campañas en tiempo real."
+        "text": "We are still here."
     },
     "sect02_00_c_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Panel financiero comparando métricas de experiencias",
-        "title": "Panel financiero compara métricas de experiencias"
+        "alt": "The Matrix has you.",
+        "title": "Red pill or blue pill."
     },
     "sect02_00_c_img_sizes": {
-        "text": "(max-width: 899px) 1000px, 1500px"
+        "text": "Free your mind."
     },
     "sect02_00_c_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
     "sect02_00_c_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
-    
-    
-
     "sectTabs01_00_intro": {
-        "text": "Accede a documentación técnica, protocolos de seguridad y plantillas contractuales listos para compartir con proveedores, delegaciones y clientes finales; actualizamos los archivos clave cada trimestre para mantener alineada tu red logística."
+        "text": "Your mind makes it real."
     },
     "sectTabs01_00_a_id": {
-        "text": "protocolos-operativos"
+        "text": "Dodge this."
     },
     "sectTabs01_00_a_nav": {
-        "text": "Protocolos clave"
+        "text": "Wake up, Neo."
     },
     "sectTabs01_00_a_h3": {
-        "text": "Protocolos operativos para delegaciones críticas de transporte"
+        "text": "Dodge this."
     },
     "sectTabs01_00_a_b1_h4": {
-        "text": "Protocolos de seguridad en muelles compartidos"
+        "text": "Free your mind."
     },
     "sectTabs01_00_a_b1_h5": {
-        "text": "Checklist diario para prevenir incidencias y coordinar accesos entre turnos y transportistas externos."
+        "text": "Hope is a human delusion: both your greatest strength and your greatest weakness."
     },
     "sectTabs01_00_a_b1_l1": {
-        "text": "Descargar checklist",
+        "text": "There is no spoon.",
         "href": "example.pdf"
     },
     "sectTabs01_00_a_b1_l2": {
-        "text": "Guía de accesos",
+        "text": "Dodge this.",
         "href": "example.pdf"
     },
     "sectTabs01_00_a_b2_h4": {
-        "text": "Gestión logística de mercancía sensible"
+        "text": "Welcome to the real world."
     },
     "sectTabs01_00_a_b2_h5": {
-        "text": "Plantilla para declarar incidencias térmicas, roturas y lotes sujetos a trazabilidad reforzada."
+        "text": "Remember: all I'm offering is the truth. Nothing more."
     },
     "sectTabs01_00_a_b2_l1": {
-        "text": "Formulario incidencias",
+        "text": "You are the One.",
         "href": "example.pdf"
     },
     "sectTabs01_00_a_b2_l2": {
-        "text": "Protocolo cadena fría",
+        "text": "The system is watching.",
         "href": "example.pdf"
     },
     "sectTabs01_00_a_b3_h4": {
-        "text": "Coordinación con partners estratégicos regionales"
+        "text": "You are the One."
     },
     "sectTabs01_00_a_b3_h5": {
-        "text": "Modelo de reunión semanal para compartir KPIs críticos, cuellos de botella y acciones preventivas conjuntas."
+        "text": "You take the blue pill, the story ends. You take the red pill, you stay in Wonderland."
     },
     "sectTabs01_00_a_b3_l1": {
-        "text": "Agenda semanal",
+        "text": "Red pill or blue pill.",
         "href": "example.pdf"
     },
     "sectTabs01_00_a_b3_l2": {
-        "text": "Resumen KPI",
+        "text": "Follow the white rabbit.",
         "href": "example.pdf"
     },
     "sectTabs01_00_b_id": {
-        "text": "documentos-comerciales"
+        "text": "You are the One."
     },
     "sectTabs01_00_b_nav": {
-        "text": "Docs comerciales"
+        "text": "Dodge this."
     },
     "sectTabs01_00_b_h3": {
-        "text": "Documentación contractual para nuevos operadores logísticos regionales"
+        "text": "The system is watching."
     },
     "sectTabs01_00_b_b1_h4": {
-        "text": "Acuerdos marco de servicio nacional"
+        "text": "Wake up, Neo."
     },
     "sectTabs01_00_b_b1_h5": {
-        "text": "Modelo contractual con cláusulas SLA, penalizaciones y anexos de cobertura geográfica anual."
+        "text": "Everything that has a beginning has an end."
     },
     "sectTabs01_00_b_b1_l1": {
-        "text": "Descargar contrato",
+        "text": "The system is watching.",
         "href": "example.pdf"
     },
     "sectTabs01_00_b_b1_l2": {
-        "text": "Anexo de coberturas",
+        "text": "Red pill or blue pill.",
         "href": "example.pdf"
     },
     "sectTabs01_00_b_b2_h4": {
-        "text": "Tarifarios escalables por volumen mensual"
+        "text": "Choice is an illusion."
     },
     "sectTabs01_00_b_b2_h5": {
-        "text": "Hoja de tarifas con tramos por peso, servicios urgentes y recargos aplicables por temporada."
+        "text": "You take the blue pill, the story ends. You take the red pill, you stay in Wonderland."
     },
     "sectTabs01_00_b_b2_l1": {
-        "text": "Tabla vigente",
+        "text": "Welcome to the real world.",
         "href": "example.pdf"
     },
     "sectTabs01_00_b_b2_l2": {
-        "text": "Detalle de recargos",
+        "text": "Free your mind.",
         "href": "example.pdf"
     },
     "sectTabs01_00_b_b3_h4": {
-        "text": "Brief comercial para onboarding regional"
+        "text": "I know kung fu."
     },
     "sectTabs01_00_b_b3_h5": {
-        "text": "Resumen para nuevos partners con propuesta de valor, diferenciadores digitales y apoyo de preventa."
+        "text": "You have to let it all go, Neo: fear, doubt, and disbelief."
     },
     "sectTabs01_00_b_b3_l1": {
-        "text": "Presentación PDF",
+        "text": "Choice is an illusion.",
         "href": "example.pdf"
     },
     "sectTabs01_00_b_b3_l2": {
-        "text": "Script de llamadas",
+        "text": "The system is watching.",
         "href": "example.pdf"
     },
     "sectTabs01_00_c_id": {
-        "text": "recursos-formacion"
+        "text": "The Matrix has you."
     },
     "sectTabs01_00_c_nav": {
-        "text": "Recursos training"
+        "text": "Dodge this."
     },
     "sectTabs01_00_c_h3": {
-        "text": "Formación continua para equipos de almacén y reparto"
+        "text": "Follow the white rabbit."
     },
     "sectTabs01_00_c_b1_h4": {
-        "text": "Capacitaciones para operativa de almacén"
+        "text": "Reality is a prison."
     },
     "sectTabs01_00_c_b1_h5": {
-        "text": "Agenda trimestral de workshops sobre WMS, preparación de pedidos y control de inventario sin papel."
+        "text": "Remember: all I'm offering is the truth. Nothing more."
     },
     "sectTabs01_00_c_b1_l1": {
-        "text": "Calendario talleres",
+        "text": "Reality is a prison.",
         "href": "example.pdf"
     },
     "sectTabs01_00_c_b1_l2": {
-        "text": "Ficha de contenidos",
+        "text": "Believe.",
         "href": "example.pdf"
     },
     "sectTabs01_00_c_b2_h4": {
-        "text": "Manuales de ruta y experiencia cliente"
+        "text": "I know kung fu."
     },
     "sectTabs01_00_c_b2_h5": {
-        "text": "Material descargable con guiones de entrega, registro fotográfico y pautas de trato profesional."
+        "text": "The body cannot live without the mind."
     },
     "sectTabs01_00_c_b2_l1": {
-        "text": "Kit entregas",
+        "text": "Dodge this.",
         "href": "example.pdf"
     },
     "sectTabs01_00_c_b2_l2": {
-        "text": "Guía de trato",
+        "text": "I know kung fu.",
         "href": "example.pdf"
     },
     "sectTabs01_00_c_b3_h4": {
-        "text": "Evaluaciones y certificaciones internas anuales"
+        "text": "Reality is a prison."
     },
     "sectTabs01_00_c_b3_h5": {
-        "text": "Test online y rúbricas para medir adopción de procesos, manejo de incidencias y estándares de imagen."
+        "text": "The Matrix is everywhere. It is all around us."
     },
     "sectTabs01_00_c_b3_l1": {
-        "text": "Evaluación online",
+        "text": "I know kung fu.",
         "href": "example.pdf"
     },
     "sectTabs01_00_c_b3_l2": {
-        "text": "Plantilla de rúbrica",
+        "text": "There is no spoon.",
         "href": "example.pdf"
     },
     "moduleH1Type01_00_h1_text": {
-        "text": "Encabezado H1"
+        "text": "Liquid Art Developers"
     },
     "moduleH1Type01_00_p01_text": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsa, ex!"
+        "text": "Wake up, Neo."
     },
     "moduleH1Type01_00_p02_text": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minima optio cumque inventore perferendis similique…"
+        "text": "To deny our own impulses is to deny the very thing that makes us human."
     },
     "moduleH2Type01_00_h2_text": {
-        "text": "Sectores que transformamos con datos"
+        "text": "Welcome to the real world."
     },
     "moduleH2Type01_01_h2_text": {
-        "text": "Soluciones modulares por vertical"
+        "text": "There is no spoon."
     },
     "moduleH2Type01_02_h2_text": {
-        "text": "Descarga guías y recursos técnicos"
+        "text": "Free your mind."
     },
     "moduleH2Type01_03_h2_text": {
-        "text": "Historias reales de eficiencia logística"
+        "text": "Ignorance is bliss."
     },
     "moduleH2Type01_04_h2_text": {
-        "text": "Acompañamiento estratégico y operativo"
+        "text": "Wake up, Neo."
     },
     "moduleButtonType01_00_cta": {
         "href": "#",
-        "title": "Solicitar diagnóstico logístico"
+        "title": "Wake up, Neo."
     },
     "moduleButtonType01_00_cta_span": {
-        "text": "Planifica demo"
+        "text": "Ignorance is bliss."
     },
     "moduleButtonType01_00_cta_img": {
         "src": "assets/img/system/arrow-forward-outline.svg",
-        "alt": "Flecha avanzar",
-        "title": "Flecha avanzar"
+        "alt": "Believe.",
+        "title": "Free your mind."
     },
     "moduleButtonType02_00_cta_link": {
         "href": "#",
-        "title": "Explorar caso de éxito"
+        "title": "Choice is an illusion."
     },
     "moduleButtonType02_00_cta_span": {
-        "text": "Ver caso completo"
+        "text": "Follow the white rabbit."
     },
     "art01_00_headerPrimary": {
-        "text": "Encabezado variable h3 art01"
+        "text": "The Matrix has you."
     },
     "art01_00_intro_p": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Harum culpa sapiente placeat? Voluptatibus optio maiores vel nemo, voluptatem repellat iure?"
+        "text": "To deny our own impulses is to deny the very thing that makes us human."
     },
     "art01_00_a_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Imagen dummy",
-        "title": "Imagen dummy"
+        "alt": "Dodge this.",
+        "title": "Choice is an illusion."
     },
     "art01_00_headerSecondary_a": {
-        "text": "Encabezado variable h4 art01"
+        "text": "You are the One."
     },
     "art01_00_a_p": {
-        "text": "Lorem ipsum, dolor sit amet consectetur adipisicing elit. Ipsum officia, voluptatem aperiam nemo dicta quisquam ullam"
+        "text": "Everything that has a beginning has an end."
     },
     "art01_00_b_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Imagen dummy",
-        "title": "Imagen dummy"
+        "alt": "Dodge this.",
+        "title": "Red pill or blue pill."
     },
     "art01_00_headerSecondary_b": {
-        "text": "Encabezado variable h4 art01"
+        "text": "Ignorance is bliss."
     },
     "art01_00_b_p": {
-        "text": "Lorem ipsum, dolor sit amet consectetur adipisicing elit. Ipsum officia, voluptatem aperiam nemo dicta quisquam ullam"
+        "text": "The Matrix is everywhere. It is all around us."
     },
     "art01_00_hero_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Imagen dummy",
-        "title": "Imagen dummy"
+        "alt": "You are the One.",
+        "title": "Free your mind."
     },
     "art02_00_headerPrimary": {
-        "text": "Encabezado variable h3 art02"
+        "text": "Red pill or blue pill."
     },
     "art02_00_intro_p": {
-        "text": "Lorem ipsum dolor sit."
+        "text": "Red pill or blue pill."
     },
     "art02_00_p1": {
-        "text": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Cum expedita quam laudantium voluptatem consectetur nobis nemo."
+        "text": "Fate, it seems, is not without a sense of irony."
     },
     "art02_00_p2": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Odit recusandae voluptatem tempore, tempora assumenda temporibus quasi at ducimus velit."
+        "text": "It is not the spoon that bends. It is only yourself."
     },
     "art02_00_headerSecondary_a": {
-        "text": "Encabezado variable h4 art02"
+        "text": "The Matrix has you."
     },
     "art02_00_a_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Imagen dummy",
-        "title": "Imagen dummy"
+        "alt": "The system is watching.",
+        "title": "Red pill or blue pill."
     },
     "art02_00_a_p": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+        "text": "To deny our own impulses is to deny the very thing that makes us human."
     },
     "art02_00_headerSecondary_b": {
-        "text": "Encabezado variable h4 art02"
+        "text": "Choice is an illusion."
     },
     "art02_00_b_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Imagen dummy",
-        "title": "Imagen dummy"
+        "alt": "Follow the white rabbit.",
+        "title": "Reality is a prison."
     },
     "art02_00_b_p": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+        "text": "To deny our own impulses is to deny the very thing that makes us human."
     },
     "art03_00_headerPrimary": {
-        "text": "Coberturas industriales premium para proteger activos estratégicos clave"
+        "text": "Ignorance is bliss."
     },
     "art03_00_intro_p": {
-        "text": "Fortalecemos la resiliencia operativa con pólizas modulares que cubren maquinaria crítica, interrupciones prolongadas y requisitos normativos, asegurando continuidad financiera mientras alineamos la estrategia de riesgos con tus objetivos de crecimiento."
+        "text": "We are still here."
     },
     "art03_00_headerSecondary_a": {
-        "text": "Análisis pericial para activos críticos"
+        "text": "Choice is an illusion."
     },
     "art03_00_a_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Equipo técnico auditando almacén de alto rendimiento",
-        "title": "Supervisión pericial con tecnología avanzada"
+        "alt": "Red pill or blue pill.",
+        "title": "Follow the white rabbit."
     },
     "art03_00_a_link": {
         "href": "#",
-        "title": "Explorar programa de aseguramiento"
+        "title": "Choice is an illusion."
     },
     "art03_00_a_p": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+        "text": "Fate, it seems, is not without a sense of irony."
     },
     "art03_00_headerSecondary_b": {
-        "text": "Monitorización predictiva de siniestros"
+        "text": "There is no spoon."
     },
     "art03_00_b_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Panel de control analiza riesgos operativos críticos",
-        "title": "Modelado predictivo para prevenir incidencias"
+        "alt": "There is no spoon.",
+        "title": "Reality is a prison."
     },
     "art03_00_b_link": {
         "href": "#",
-        "title": "Ver protocolos de respuesta rápida"
+        "title": "Follow the white rabbit."
     },
     "art03_00_b_p": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+        "text": "You take the blue pill, the story ends. You take the red pill, you stay in Wonderland."
     },
     "art03_00_headerSecondary_c": {
-        "text": "Cobertura logística y cadena global"
+        "text": "Choice is an illusion."
     },
     "art03_00_c_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Centro logístico coordina envíos internacionales sensibles",
-        "title": "Cadena global alineada con normativas vigentes"
+        "alt": "The Matrix has you.",
+        "title": "There is no spoon."
     },
     "art03_00_c_link": {
         "href": "#",
-        "title": "Consultar auditoría integral anual"
+        "title": "Ignorance is bliss."
     },
     "art03_00_c_p": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
-    },
-    "art03_00_headerSecondary_d": {
-        "text": "Planes de continuidad certificados ISO"
+        "text": "You have to let it all go, Neo: fear, doubt, and disbelief."
     },
     "art03_00_d_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Sala de crisis ejecuta planes de contingencia certificados",
-        "title": "Continuidad operativa avalada por auditorías ISO"
+        "alt": "Red pill or blue pill.",
+        "title": "Free your mind."
     },
     "art03_00_d_link": {
         "href": "#",
-        "title": "Descubrir beneficios para plantas"
+        "title": "You are the One."
     },
     "art03_00_d_p": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+        "text": "Remember: all I'm offering is the truth. Nothing more."
     },
     "art04_00_headerPrimary": {
-        "text": "Galería de proyectos y casos destacados"
+        "text": "Dodge this."
     },
     "art04_00_intro_p": {
-        "text": "Seleccionamos intervenciones recientes que ilustran nuestra capacidad para integrar seguridad, eficiencia energética y narrativa visual en entornos industriales con altos requisitos de cumplimiento."
+        "text": "Fate, it seems, is not without a sense of irony."
     },
     "art04_00_a_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Operario ajusta luminarias inteligentes en planta",
-        "title": "Calibración lumínica segura y certificada"
+        "alt": "Welcome to the real world.",
+        "title": "You are the One."
     },
     "art04_00_a_link": {
         "href": "#",
-        "title": "Ver caso iluminación"
+        "title": "Ignorance is bliss."
     },
     "art04_00_b_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Ingeniera supervisa centro de control energético",
-        "title": "Supervisión energética con métricas en vivo"
+        "alt": "You are the One.",
+        "title": "The Matrix has you."
     },
     "art04_00_b_link": {
         "href": "#",
-        "title": "Abrir control energético"
+        "title": "You are the One."
     },
     "art04_00_c_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Fachada industrial renovada con señalética sostenible",
-        "title": "Señalética sostenible guiando flujos seguros"
+        "alt": "Dodge this.",
+        "title": "Believe."
     },
     "art04_00_c_link": {
         "href": "#",
-        "title": "Explorar fachada sostenible"
+        "title": "Wake up, Neo."
     },
     "art06_00_headerPrimary": {
-        "text": "Soluciones solares que escalan con tu negocio"
+        "text": "Follow the white rabbit."
     },
     "art06_00_headerSecondary_a": {
-        "text": "Ingeniería fotovoltaica modular a medida"
+        "text": "Reality is a prison."
     },
     "art06_00_a_p": {
-        "text": "Diseñamos campos solares escalables que se adaptan al consumo real de cada sede, priorizando inversores híbridos y cableado eficiente. El equipo coordina permisos y puesta en marcha sin detener los turnos críticos de producción."
+        "text": "You take the blue pill, the story ends. You take the red pill, you stay in Wonderland."
     },
     "art06_00_a_avif_src01": "assets/img/dummy/dummy_900.avif 900w",
     "art06_00_a_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art06_00_a_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Técnica revisando inversores solares en planta industrial",
-        "title": "Supervisión profesional de inversores industriales en operación"
+        "alt": "Wake up, Neo.",
+        "title": "Wake up, Neo."
     },
     "art06_00_a_img_src01": "assets/img/dummy/dummy_900.avif 900w",
     "art06_00_a_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art06_00_headerSecondary_b": {
-        "text": "Monitorización proactiva de rendimiento"
+        "text": "Ignorance is bliss."
     },
     "art06_00_b_p": {
-        "text": "Supervisamos la producción en tiempo real con alertas automáticas que detectan incidencias y envían partes al servicio técnico. Los clientes acceden a paneles con métricas históricas, comparativas climáticas y recomendaciones de ajuste."
+        "text": "You have to let it all go, Neo: fear, doubt, and disbelief."
     },
     "art06_00_b_avif_src01": "assets/img/dummy/dummy_900.avif 900w",
     "art06_00_b_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art06_00_b_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Analista controlando métricas de autoconsumo empresarial",
-        "title": "Plataforma con métricas solares en tiempo real"
+        "alt": "There is no spoon.",
+        "title": "Red pill or blue pill."
     },
     "art06_00_b_img_src01": "assets/img/dummy/dummy_900.avif 900w",
     "art06_00_b_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art06_00_cite": {
-        "text": "\"La auditoría energética y el soporte posventa de IT Lanak nos permitieron duplicar el ahorro previsto en menos de un año.\""
+        "text": "Remember: all I'm offering is the truth. Nothing more."
     },
     "art06_00_headerSecondary_c": {
-        "text": "Financiación verde flexible y local"
+        "text": "Red pill or blue pill."
     },
     "art06_00_c_p": {
-        "text": "Integramos fórmulas de renting energético, ayudas públicas y certificados de autoconsumo para reducir la inversión inicial. Nuestro equipo financiero asesora sobre amortizaciones y beneficios fiscales específicos del tejido empresarial local."
+        "text": "Unfortunately, no one can be told what the Matrix is. You have to see it for yourself."
     },
     "art06_00_c_avif_src01": "assets/img/dummy/dummy_900.avif 900w",
     "art06_00_c_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art06_00_c_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Consultora presentando opciones de financiación verde",
-        "title": "Reunión sobre incentivos fiscales para autoconsumo"
+        "alt": "Believe.",
+        "title": "Follow the white rabbit."
     },
     "art06_00_c_img_src01": "assets/img/dummy/dummy_900.avif 900w",
     "art06_00_c_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
@@ -644,734 +653,730 @@
     "art07_00_bgMatrix_tablet": "assets/img/dummy/dummy_1800.avif",
     "art07_00_bgMatrix_desktop": "assets/img/dummy/dummy_2560.avif",
     "art07_00_h3_1": {
-        "text": "Plan integral solar"
+        "text": "Choice is an illusion."
     },
     "art07_00_h3_2": {
-        "text": "en barrios industriales"
+        "text": "Welcome to the real world."
     },
     "art07_00_intro_p": {
-        "text": "Coordinamos diagnósticos energéticos, rediseñamos cubiertas con paneles fotovoltaicos y gestionamos ayudas para reducir hasta un 40 % el consumo eléctrico anual de cada planta productiva involucrada activada."
+        "text": "Hope is a human delusion: both your greatest strength and your greatest weakness."
     },
     "art07_00_h4": {
-        "text": "Resultados auditables en solo doce meses"
+        "text": "There is no spoon."
     },
     "art07_00_cite": {
-        "text": "Nuestros técnicos certifican instalaciones modulares que se adaptan a las dinámicas de producción y aseguran estabilidad energética incluso ante picos de demanda en cadena."
+        "text": "Your mind makes it real."
     },
     "art08_00_headerPrimary": {
-        "text": "Estrategias solares para ampliar la competitividad industrial regional en Gipuzkoa"
+        "text": "The body cannot live without the mind."
     },
     "art08_00_a_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Render de placas solares sobre nave logística automatizada",
-        "title": "Fotovoltaica industrial conectada a sistemas de control inteligente"
+        "alt": "Red pill or blue pill.",
+        "title": "Wake up, Neo."
     },
     "art08_00_headerSecondary_a": {
-        "text": "Diagnóstico integral y dimensionamiento de tejados activos"
+        "text": "Choice is an illusion."
     },
     "art08_00_a_p": {
-        "text": "Analizamos consumos históricos, calculamos cargas estructurales y definimos configuraciones híbridas que permiten integrar almacenamiento, monitorización en tiempo real y contratos PPA adaptados al perfil de demanda de cada línea de producción."
+        "text": "We are still here."
     },
     "art08_00_b_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Equipo instalando inversores trifásicos en centro de control",
-        "title": "Comisionado eléctrico con pruebas de seguridad industrial avanzada"
+        "alt": "Ignorance is bliss.",
+        "title": "Believe."
     },
     "art08_00_headerSecondary_b": {
-        "text": "Integración financiera y retorno asegurado del proyecto"
+        "text": "Ignorance is bliss."
     },
     "art08_00_b_p": {
-        "text": "Gestionamos subvenciones autonómicas, coordinamos créditos verdes y modelizamos escenarios de retorno para que cada inversión fotovoltaica mantenga flujos de caja positivos desde el primer ejercicio fiscal sin comprometer la liquidez operativa."
+        "text": "Everything that has a beginning has an end."
     },
     "art09_00_headerPrimary": {
-        "text": "Casos de interiorismo con retorno medible en retail"
+        "text": "Free your mind."
     },
     "art09_00_p1": {
-        "text": "Analizamos implantaciones híbridas con datos de afluencia, conversiones cruzadas y fidelización para replicar experiencias omnicanal que eleven la permanencia media por visita en cada tienda."
+        "text": "Unfortunately, no one can be told what the Matrix is. You have to see it for yourself."
     },
     "art09_00_span": {
-        "text": "Consulta el informe"
+        "text": "Believe."
     },
     "art09_00_link": {
         "href": "https://ejemplo.com",
-        "title": "Descubre métricas completas del proyecto",
-        "text": "Ver informe"
+        "title": "You are the One.",
+        "text": "There is no spoon."
     },
     "art09_00_headerSecondary_a": {
-        "text": "Rediseño flagship centro Bilbao"
+        "text": "You are the One."
     },
     "art09_00_a_img1": {
         "src": "assets/img/system/star-outline.svg",
-        "alt": "Equipo planificando visual merchandising modular",
-        "title": "Simulación de flujo en tienda piloto"
+        "alt": "Welcome to the real world.",
+        "title": "I know kung fu."
     },
     "art09_00_a_img2": {
         "src": "assets/img/dummy/dummy_1200.avif",
-        "alt": "Render 3D de zona de experiencia",
-        "title": "Vista cenital de la experiencia inmersiva"
+        "alt": "Free your mind.",
+        "title": "Choice is an illusion."
     },
     "art09_00_a_desc": {
-        "text": "Reordenamos la circulación principal con señalética dinámica y pruebas de producto asistidas que incrementaron un 18 % las ventas cruzadas y redujeron el tiempo de espera medio en caja."
+        "text": "Your mind makes it real."
     },
     "art09_00_headerSecondary_b": {
-        "text": "Plan piloto showroom Barcelona"
+        "text": "Ignorance is bliss."
     },
     "art09_00_b_img1": {
         "src": "assets/img/system/star-outline.svg",
-        "alt": "Consultores analizando panel de trazabilidad",
-        "title": "Evaluación diaria de indicadores prioritarios"
+        "alt": "Choice is an illusion.",
+        "title": "Follow the white rabbit."
     },
     "art09_00_b_img2": {
         "src": "assets/img/dummy/dummy_1200.avif",
-        "alt": "Equipo asesorando a personal de tienda",
-        "title": "Sesión táctica con responsables de ventas"
+        "alt": "I know kung fu.",
+        "title": "You are the One."
     },
     "art09_00_b_desc": {
-        "text": "Aplicamos recorridos asistidos y formación express sobre argumentarios que aumentaron un 22 % las ventas vinculadas y mejoraron la valoración NPS en ocho puntos."
+        "text": "Hope is a human delusion: both your greatest strength and your greatest weakness."
     },
     "art09_00_headerSecondary_c": {
-        "text": "Activación omnicanal para franquicias"
+        "text": "Red pill or blue pill."
     },
     "art09_00_c_img1": {
         "src": "assets/img/system/star-outline.svg",
-        "alt": "Dashboard monitorizando campañas locales activas",
-        "title": "Panel central con ratios de conversión"
+        "alt": "You are the One.",
+        "title": "Dodge this."
     },
     "art09_00_c_img2": {
         "src": "assets/img/dummy/dummy_1200.avif",
-        "alt": "Escaparate digital con testimonios en directo",
-        "title": "Pantalla mostrando reseñas verificadas"
+        "alt": "Ignorance is bliss.",
+        "title": "Free your mind."
     },
     "art09_00_c_desc": {
-        "text": "Coordinamos promociones geolocalizadas, inventarios sincronizados y recogidas flexibles que impulsaron un 31 % las órdenes online con entrega en tienda durante el trimestre piloto."
+        "text": "Fate, it seems, is not without a sense of irony."
     },
     "art10_00_headerPrimary": {
-        "text": "Servicios modulares para activar equipos comerciales omnicanal ágiles"
+        "text": "There is no spoon."
     },
     "art10_00_headerSecondary_a": {
-        "text": "Diagnóstico táctico en tienda"
+        "text": "You are the One."
     },
     "art10_00_a_img": {
         "src": "assets/img/system/star-outline.svg",
-        "alt": "Icono checklist de operaciones ágiles",
-        "title": "Verificación diaria de aperturas eficientes"
+        "alt": "I know kung fu.",
+        "title": "You are the One."
     },
     "art10_00_a_p": {
-        "text": "Auditamos rutinas operativas y configuramos listas dinámicas de tareas para habilitar aperturas ágiles con menos incidencias durante las primeras semanas."
+        "text": "To deny our own impulses is to deny the very thing that makes us human."
     },
     "art10_00_headerSecondary_b": {
-        "text": "Soporte formativo bajo demanda"
+        "text": "I know kung fu."
     },
     "art10_00_b_img": {
         "src": "assets/img/system/star-outline.svg",
-        "alt": "Icono monitor con aula virtual",
-        "title": "Panel activo de formación continua"
+        "alt": "Wake up, Neo.",
+        "title": "Wake up, Neo."
     },
     "art10_00_b_p": {
-        "text": "Implementamos cápsulas microlearning y seguimiento de hitos comerciales que elevaron un 19 % el ticket medio de los lanzamientos regionales."
+        "text": "The body cannot live without the mind."
     },
     "art10_00_headerSecondary_c": {
-        "text": "Automatización de reporting comercial"
+        "text": "The system is watching."
     },
     "art10_00_c_img": {
         "src": "assets/img/system/star-outline.svg",
-        "alt": "Icono gráfico con alertas activas",
-        "title": "Seguimiento inteligente de indicadores clave"
+        "alt": "The Matrix has you.",
+        "title": "There is no spoon."
     },
     "art10_00_c_p": {
-        "text": "Integramos dashboards predictivos con alertas de stock y campañas para reducir un 28 % las roturas y acelerar la reposición prioritaria."
+        "text": "The body cannot live without the mind."
     },
     "art10_00_top_fill": "#ffffff",
     "art10_00_bottom_fill": "#ffffff",
     "art11_00_headerPrimary": {
-        "text": "Nuestra experiencia en cifras"
+        "text": "I know kung fu."
     },
     "art11_00_a_target": {
         "value": "998"
     },
     "art11_00_a_suffix": {
-        "text": "k+"
+        "text": "Reality is a prison."
     },
     "art11_00_a_label": {
-        "text": "GOAL1"
+        "text": "Wake up, Neo."
     },
     "art11_00_b_target": {
         "value": "998"
     },
     "art11_00_b_suffix": {
-        "text": "k+"
+        "text": "The system is watching."
     },
     "art11_00_b_label": {
-        "text": "GOAL2"
+        "text": "Wake up, Neo."
     },
     "art11_00_c_target": {
         "value": "998"
     },
     "art11_00_c_suffix": {
-        "text": "k+"
+        "text": "Red pill or blue pill."
     },
     "art11_00_c_label": {
-        "text": "GOAL3"
+        "text": "Wake up, Neo."
     },
     "art11_00_span_optional": {
-        "text": "El 100 % de nuestros alumnos termina aprobando, aunque el número de intentos pueda variar."
+        "text": "Everything that has a beginning has an end."
     },
     "art12_00_headerPrimary": {
-        "text": "Estrategias modulares que optimizan tu canal digital de ventas"
+        "text": "The system is watching."
     },
     "art12_00_headerSecondary_a": {
-        "text": "Onboarding ágil de partners"
+        "text": "Reality is a prison."
     },
     "art12_00_a_img": {
         "src": "assets/img/system/star-outline.svg",
-        "alt": "Icono proceso de activación",
-        "title": "Proceso de activación guiado"
+        "alt": "Wake up, Neo.",
+        "title": "Free your mind."
     },
     "art12_00_a_imgBack": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Equipo configurando paneles colaborativos digitales",
-        "title": "Panel colaborativo listo para partners"
+        "alt": "Choice is an illusion.",
+        "title": "Believe."
     },
     "art12_00_a_p": {
-        "text": "Integramos catálogos y flujos legales en semanas, liberando a tu equipo comercial para enfocarse en captar distribuidores estratégicos."
+        "text": "Fate, it seems, is not without a sense of irony."
     },
     "art12_00_headerSecondary_b": {
-        "text": "Soporte proactivo multilingüe"
+        "text": "Welcome to the real world."
     },
     "art12_00_b_img": {
         "src": "assets/img/system/star-outline.svg",
-        "alt": "Icono de asistencia continua",
-        "title": "Asistencia continua para socios"
+        "alt": "Choice is an illusion.",
+        "title": "Believe."
     },
     "art12_00_b_imgBack": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Analistas revisando panel global colaborativo",
-        "title": "Panel global activo en directo"
+        "alt": "Free your mind.",
+        "title": "Ignorance is bliss."
     },
     "art12_00_b_p": {
-        "text": "Monitorizamos incidencias y ventas en tiempo real para escalar respuestas, priorizar oportunidades premium y blindar la satisfacción de tus partners."
+        "text": "I can only show you the door. You're the one that has to walk through it."
     },
     "art12_00_headerSecondary_c": {
-        "text": "Datos accionables seguros"
+        "text": "Welcome to the real world."
     },
     "art12_00_c_img": {
         "src": "assets/img/system/star-outline.svg",
-        "alt": "Icono control de datos",
-        "title": "Control seguro de datos"
+        "alt": "Welcome to the real world.",
+        "title": "Dodge this."
     },
     "art12_00_c_imgBack": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Dashboard con métricas protegidas críticas",
-        "title": "Dashboard protegido para escalado global"
+        "alt": "Follow the white rabbit.",
+        "title": "You are the One."
     },
     "art12_00_c_p": {
-        "text": "Automatizamos reporting, alertas antifraude y conciliaciones para que cada partner acceda solo a los datos relevantes y trace planes de crecimiento."
+        "text": "I can only show you the door. You're the one that has to walk through it."
     },
     "art12_00_top_fill": "#ffffff",
     "art12_00_bottom_fill": "#ffffff",
     "art13_00_headerPrimary": {
-        "text": "Clientes que impulsan nuestra innovación diaria conjunta"
+        "text": "There is no spoon."
     },
     "art13_00_a_quote": {
-        "text": "Tras migrar con AvT logramos integrar canales físicos y digitales sin fricciones. El equipo nos guio en automatizaciones críticas y definió métricas compartidas que hoy permiten a cada partner acceder a reportes fiables y coordinar lanzamientos conjuntos estratégicos."
+        "text": "Hope is a human delusion: both your greatest strength and your greatest weakness."
     },
     "art13_00_a_author_img": {
         "src": "assets/img/system/check-OK.svg",
-        "alt": "Retrato de Laura Méndez",
-        "title": "Laura Méndez en evento"
+        "alt": "The system is watching.",
+        "title": "Choice is an illusion."
     },
     "art13_00_a_author_name": {
-        "text": "Laura Méndez"
+        "text": "The system is watching."
     },
     "art13_00_a_author_stars": {
-        "text": "Valoración 5/5"
+        "text": "Believe."
     },
     "art13_00_a_side_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Equipo celebrando lanzamiento colaborativo global",
-        "title": "Celebración interna junto a partners"
+        "alt": "There is no spoon.",
+        "title": "I know kung fu."
     },
     "art14_00_headerPrimary": {
-        "text": "Servicios legales ágiles para la industria inteligente vasca"
+        "text": "Red pill or blue pill."
     },
     "art14_00_p": {
-        "text": "Nuestro equipo combina asesoría jurídica tecnológica con conocimiento industrial para acelerar implantaciones seguras en Bizkaia. Coordinamos evaluaciones regulatorias, contratos de innovación y formación preventiva para que tus lanzamientos conecten con partners locales y cumplan la norma europea sin fricciones operativas. Supervisamos auditorías de datos, licencias y cláusulas de ciberseguridad que blindan el crecimiento sostenible de cada planta."
+        "text": "Your mind makes it real."
     },
     "art14_00_img": {
-        "src": "assets/img/logos/logo-business-b.svg",
-        "alt": "Abogada revisando contrato de innovación industrial estratégica",
-        "title": "Revisión jurídica de innovación industrial estratégica"
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Red pill or blue pill.",
+        "title": "Red pill or blue pill."
     },
     "art15_00_headerPrimary": {
-        "text": "Metodología integral para digitalizar cadenas logísticas complejas de Euskadi"
+        "text": "Reality is a prison."
     },
     "art15_00_p1": {
-        "text": "Analizamos cada nodo de suministro junto a tus responsables de operaciones para detectar cuellos de botella, modelar escenarios con datos reales y priorizar automatizaciones. Integrando plataformas IoT y analítica avanzada reducimos tiempos de respuesta, trazamos incidencias y alineamos KPI críticos con los objetivos comerciales del territorio."
+        "text": "It is not the spoon that bends. It is only yourself."
     },
     "art15_00_p2": {
-        "text": "Coordinamos financiación pública, formación personalizada y soporte postlanzamiento para que los equipos adopten la solución desde el primer sprint. Medimos satisfacción y resiliencia logística con dashboards compartidos que facilitan reportar a dirección y partners internacionales."
+        "text": "I can only show you the door. You're the one that has to walk through it."
     },
     "art15_00_img1": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Panel con métricas logísticas en sala de control",
-        "title": "Panel de métricas logísticas en sala de control"
+        "alt": "Reality is a prison.",
+        "title": "The Matrix has you."
     },
     "art15_00_img2": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Equipo coordinando rutas multimodales con mapas digitales",
-        "title": "Coordinación de rutas multimodales con mapas digitales"
+        "alt": "Ignorance is bliss.",
+        "title": "Follow the white rabbit."
     },
     "artForm01_00_headerPrimary": {
-        "text": "Solicita información rápida"
+        "text": "There is no spoon."
     },
     "artForm01_00_headerSecondary": {
-        "text": "Completa el formulario"
+        "text": "Reality is a prison."
     },
     "artForm01_00_intro_p": {
-        "text": "Comparte los datos clave de tu consulta y nuestro equipo de logística evaluará la mejor solución para tus envíos recurrentes. Responderemos con recomendaciones personalizadas sobre rutas, tarifas y herramientas digitales que impulsen tus operaciones diarias."
+        "text": "Your mind makes it real."
     },
     "artForm01_00_label_name": {
-        "text": "Nombre y apellidos"
+        "text": "Red pill or blue pill."
     },
     "artForm01_00_ph_name": {
-        "placeholder": "Escribe tu nombre completo"
+        "placeholder": "The Matrix has you."
     },
     "artForm01_00_label_phone": {
-        "text": "Teléfono de contacto"
+        "text": "Follow the white rabbit."
     },
     "artForm01_00_ph_phone": {
-        "placeholder": "Incluye tu teléfono"
+        "placeholder": "You are the One."
     },
     "artForm01_00_label_mail": {
-        "text": "Correo electrónico"
+        "text": "The Matrix has you."
     },
     "artForm01_00_ph_mail": {
-        "placeholder": "Introduce tu correo"
+        "placeholder": "The Matrix has you."
     },
     "artForm01_00_label_msg": {
-        "text": "Detalla tu consulta"
+        "text": "You are the One."
     },
     "artForm01_00_ph_msg": {
-        "placeholder": "Describe necesidades logísticas"
+        "placeholder": "There is no spoon."
     },
     "artForm01_00_terms": {
-        "text": "Acepto recibir información comercial de la empresa conforme al aviso legal actualizado."
+        "text": "To deny our own impulses is to deny the very thing that makes us human."
     },
     "artForm01_00_privacy": {
-        "text": "Política de privacidad"
+        "text": "There is no spoon."
     },
     "artForm01_00_label_captcha": {
-        "text": "Verificación"
+        "text": "Believe."
     },
     "artForm01_00_ph_captcha": {
-        "placeholder": "Escribe el resultado"
+        "placeholder": "The system is watching."
     },
     "artForm01_00_submit": {
-        "value": "Enviar solicitud"
+        "value": "Believe."
     },
     "artForm01_00_headerSecondary_side": {
-        "text": "También puedes contactar"
+        "text": "Red pill or blue pill."
     },
     "artForm01_00_side_p": {
-        "text": "Si prefieres una atención inmediata, escríbenos o llámanos para coordinar recogidas urgentes, seguimiento de incidencias o asesoramiento sobre integraciones. Nuestro equipo operativo responde de lunes a viernes en horario ampliado para adaptarse a tus ventanas de carga y descarga."
+        "text": "To deny our own impulses is to deny the very thing that makes us human."
     },
-    "artForm01_00_contact_tel_href": "tel:+00000000000",
-    "artForm01_00_contact_tel_title": "Llamar por teléfono",
+    "artForm01_00_contact_tel_href": "The system is watching.",
+    "artForm01_00_contact_tel_title": "The Matrix has you.",
     "artForm01_00_contact_tel_img": {
         "src": "assets/img/system/tel.svg",
-        "alt": "Teléfono",
-        "title": "Teléfono"
+        "alt": "Red pill or blue pill.",
+        "title": "The system is watching."
     },
     "artForm01_00_contact_tel": {
-        "text": "Teléfono pendiente de actualización"
+        "text": "Dodge this."
     },
     "artForm01_00_contact_mail_href": "mailto:info@ejemplo.com",
-    "artForm01_00_contact_mail_title": "Enviar correo",
+    "artForm01_00_contact_mail_title": "Believe.",
     "artForm01_00_contact_mail_img": {
         "src": "assets/img/system/mail.svg",
-        "alt": "Mail",
-        "title": "Mail"
+        "alt": "Dodge this.",
+        "title": "There is no spoon."
     },
     "artForm01_00_contact_mail": {
-        "text": "Escríbenos a info@ejemplo.com"
+        "text": "Choice is an illusion."
     },
     "artForm01_00_contact_addr_href": "https://maps.app.goo.gl/xxxxx",
-    "artForm01_00_contact_addr_title": "Cómo llegar",
+    "artForm01_00_contact_addr_title": "Free your mind.",
     "artForm01_00_contact_addr_img": {
         "src": "assets/img/system/wp.svg",
-        "alt": "Dirección",
-        "title": "Dirección"
+        "alt": "Wake up, Neo.",
+        "title": "Choice is an illusion."
     },
     "artForm01_00_contact_addr": {
-        "text": "Dirección pendiente de actualización"
+        "text": "The system is watching."
     },
     "artForm01_00_contact_web_href": "https://www.ejemplo.com",
-    "artForm01_00_contact_web_title": "Visitar web",
+    "artForm01_00_contact_web_title": "Choice is an illusion.",
     "artForm01_00_contact_web_img": {
         "src": "assets/img/system/web.svg",
-        "alt": "Web",
-        "title": "Web"
+        "alt": "You are the One.",
+        "title": "Wake up, Neo."
     },
     "artForm01_00_contact_web": {
-        "text": "Accede a www.ejemplo.com"
+        "text": "Wake up, Neo."
     },
     "artForm01_00_map_src": "https://www.google.com/maps/embed?pb=...",
     "artForm01_00_map_width": "600",
     "artForm01_00_map_height": "300",
-    "artForm01_00_map_title": "Localización de la delegación principal",
+    "artForm01_00_map_title": "The system is watching.",
     "artForm01_00_sent_img": {
         "src": "assets/img/system/mail.svg",
-        "alt": "Enviado",
-        "title": "Mensaje enviado"
+        "alt": "Choice is an illusion.",
+        "title": "The system is watching."
     },
     "artForm01_00_headerSecondary_sent": {
-        "text": "Hemos recibido tu consulta"
+        "text": "Free your mind."
     },
     "artForm01_00_sent_p1": {
-        "text": "Te contactaremos en menos de un día laborable."
+        "text": "Wake up, Neo."
     },
     "artForm01_00_sent_p2": {
-        "text": "Gracias por confiar en nuestro equipo."
+        "text": "The Matrix has you."
     },
     "artForm01_00_new_query": {
-        "text": "Enviar otra solicitud"
+        "text": "Believe."
     },
     "artSlider01_00_headerPrimary": {
-        "text": "Ideas y noticias de logística urbana"
+        "text": "Believe."
     },
     "artSlider01_00_viewmore": {
-        "text": "Explorar publicaciones",
+        "text": "Ignorance is bliss.",
         "href": "noticias"
     },
     "artSlider01_00_carda_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Vehículo eléctrico repartiendo al amanecer",
-        "title": "Vehículo eléctrico repartiendo al amanecer"
+        "alt": "Follow the white rabbit.",
+        "title": "Believe."
     },
     "artSlider01_00_carda_meta": {
-        "text": "12·06·2025"
+        "text": "Red pill or blue pill."
     },
     "artSlider01_00_carda_h4": {
-        "text": "Nuevas rutas nocturnas con flota eléctrica"
+        "text": "Choice is an illusion."
     },
     "artSlider01_00_carda_tags": {
-        "text": "Última milla · movilidad eficiente"
+        "text": "The system is watching."
     },
     "artSlider01_00_carda_read": {
-        "text": "Leer historia completa",
+        "text": "Welcome to the real world.",
         "href": "noticias/noticia-1"
     },
     "artSlider01_00_cardb_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Operarias revisando panel de envíos",
-        "title": "Operarias revisando panel de envíos"
+        "alt": "Wake up, Neo.",
+        "title": "Free your mind."
     },
     "artSlider01_00_cardb_meta": {
-        "text": "08·06·2025"
+        "text": "You are the One."
     },
     "artSlider01_00_cardb_h4": {
-        "text": "Integrar analítica predictiva en almacenes"
+        "text": "The system is watching."
     },
     "artSlider01_00_cardb_tags": {
-        "text": "Data driven · picking ágil"
+        "text": "There is no spoon."
     },
     "artSlider01_00_cardb_read": {
-        "text": "Conocer detalles",
+        "text": "Reality is a prison.",
         "href": "noticias/noticia-2"
     },
     "artSlider01_00_cardc_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Dron inspeccionando cubierta del hub logístico",
-        "title": "Dron inspeccionando cubierta del hub logístico"
+        "alt": "There is no spoon.",
+        "title": "Ignorance is bliss."
     },
     "artSlider01_00_cardc_meta": {
-        "text": "01·06·2025"
+        "text": "You are the One."
     },
     "artSlider01_00_cardc_h4": {
-        "text": "Prueba piloto de drones para inventario"
+        "text": "Choice is an illusion."
     },
     "artSlider01_00_cardc_tags": {
-        "text": "Innovación · control de stock"
+        "text": "The Matrix has you."
     },
     "artSlider01_00_cardc_read": {
-        "text": "Descubrir proyecto",
+        "text": "Free your mind.",
         "href": "noticias/noticia-3"
     },
     "artSlider01_00_cardd_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Terminal ferroviaria con contenedores verdes",
-        "title": "Terminal ferroviaria con contenedores verdes"
+        "alt": "Choice is an illusion.",
+        "title": "Follow the white rabbit."
     },
     "artSlider01_00_cardd_meta": {
-        "text": "27·05·2025"
+        "text": "I know kung fu."
     },
     "artSlider01_00_cardd_h4": {
-        "text": "Corredor ferroviario reduce emisiones anuales"
+        "text": "Reality is a prison."
     },
     "artSlider01_00_cardd_tags": {
-        "text": "Intermodalidad · huella neutra"
+        "text": "There is no spoon."
     },
     "artSlider01_00_cardd_read": {
-        "text": "Leer informe",
+        "text": "You are the One.",
         "href": "noticias/noticia-4"
     },
     "artSlider01_00_carde_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Equipo coordinando ventanas de carga digital",
-        "title": "Equipo coordinando ventanas de carga digital"
+        "alt": "Dodge this.",
+        "title": "Choice is an illusion."
     },
     "artSlider01_00_carde_meta": {
-        "text": "20·05·2025"
+        "text": "The Matrix has you."
     },
     "artSlider01_00_carde_h4": {
-        "text": "Sincronizar citas de muelle con software cloud"
+        "text": "Ignorance is bliss."
     },
     "artSlider01_00_carde_tags": {
-        "text": "Operaciones · trazabilidad total"
+        "text": "Follow the white rabbit."
     },
     "artSlider01_00_carde_read": {
-        "text": "Ver recomendaciones",
+        "text": "The system is watching.",
         "href": "noticias/noticia-5"
     },
     "artSlider01_00_cardf_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Camión autónomo en autopista supervisada",
-        "title": "Camión autónomo en autopista supervisada"
+        "alt": "Dodge this.",
+        "title": "Free your mind."
     },
     "artSlider01_00_cardf_meta": {
-        "text": "14·05·2025"
+        "text": "There is no spoon."
     },
     "artSlider01_00_cardf_h4": {
-        "text": "Ensayo de conducción autónoma en larga distancia"
+        "text": "Ignorance is bliss."
     },
     "artSlider01_00_cardf_tags": {
-        "text": "Innovación · seguridad vial"
+        "text": "There is no spoon."
     },
     "artSlider01_00_cardf_read": {
-        "text": "Ampliar información",
+        "text": "Believe.",
         "href": "noticias/noticia-6"
     },
     "artSlider01_00_cardg_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Operario empaquetando retornos reutilizables",
-        "title": "Operario empaquetando retornos reutilizables"
+        "alt": "Dodge this.",
+        "title": "Believe."
     },
     "artSlider01_00_cardg_meta": {
-        "text": "07·05·2025"
+        "text": "I know kung fu."
     },
     "artSlider01_00_cardg_h4": {
-        "text": "Cómo optimizar logística inversa circular"
+        "text": "Reality is a prison."
     },
     "artSlider01_00_cardg_tags": {
-        "text": "Devoluciones · economía circular"
+        "text": "Red pill or blue pill."
     },
     "artSlider01_00_cardg_read": {
-        "text": "Leer guía",
+        "text": "I know kung fu.",
         "href": "noticias/noticia-7"
     },
     "artSlider01_00_cardh_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Panel KPI mostrando entregas en tiempo",
-        "title": "Panel KPI mostrando entregas en tiempo"
+        "alt": "I know kung fu.",
+        "title": "Ignorance is bliss."
     },
     "artSlider01_00_cardh_meta": {
-        "text": "30·04·2025"
+        "text": "The system is watching."
     },
     "artSlider01_00_cardh_h4": {
-        "text": "Cuadro de mando diario para e-commerce B2B"
+        "text": "Follow the white rabbit."
     },
     "artSlider01_00_cardh_tags": {
-        "text": "KPIs · servicios industriales"
+        "text": "You are the One."
     },
     "artSlider01_00_cardh_read": {
-        "text": "Analizar métricas",
+        "text": "Dodge this.",
         "href": "noticias/noticia-8"
     },
     "artSlider01_00_cardi_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Camiones frigoríficos cargando en plataforma",
-        "title": "Camiones frigoríficos cargando en plataforma"
+        "alt": "Reality is a prison.",
+        "title": "Choice is an illusion."
     },
     "artSlider01_00_cardi_meta": {
-        "text": "22·04·2025"
+        "text": "Ignorance is bliss."
     },
     "artSlider01_00_cardi_h4": {
-        "text": "Cadena de frío monitorizada en tiempo real"
+        "text": "Dodge this."
     },
     "artSlider01_00_cardi_tags": {
-        "text": "Refrigerados · sensores IoT"
+        "text": "Dodge this."
     },
     "artSlider01_00_cardi_read": {
-        "text": "Seguir leyendo",
+        "text": "Welcome to the real world.",
         "href": "noticias/noticia-9"
     },
     "artSlider01_00_cardj_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Operativa cross docking en nave automatizada",
-        "title": "Operativa cross docking en nave automatizada"
+        "alt": "Reality is a prison.",
+        "title": "The system is watching."
     },
     "artSlider01_00_cardj_meta": {
-        "text": "15·04·2025"
+        "text": "Ignorance is bliss."
     },
     "artSlider01_00_cardj_h4": {
-        "text": "Mejorar cross docking con robots colaborativos"
+        "text": "Ignorance is bliss."
     },
     "artSlider01_00_cardj_tags": {
-        "text": "Automatización · productividad"
+        "text": "Ignorance is bliss."
     },
     "artSlider01_00_cardj_read": {
-        "text": "Leer caso",
+        "text": "The system is watching.",
         "href": "noticias/noticia-10"
     },
     "artSlider02_00_headerPrimary": {
-        "text": "Experiencias formativas con partners industriales"
+        "text": "Choice is an illusion."
     },
     "artSlider02_00_prev": {
-        "text": "Anterior"
+        "text": "You are the One."
     },
     "artSlider02_00_next": {
-        "text": "Siguiente"
+        "text": "Wake up, Neo."
     },
     "artSlider02_00_slidea_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Equipo técnico testando sistemas automatizados",
-        "title": "Equipo técnico testando sistemas automatizados"
+        "alt": "Follow the white rabbit.",
+        "title": "Dodge this."
     },
     "artSlider02_00_slidea_h4": {
-        "text": "Demo de robotización para líneas mixtas"
+        "text": "Dodge this."
     },
     "artSlider02_00_slideb_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Clientes probando paneles de monitorización logística",
-        "title": "Clientes probando paneles de monitorización logística"
+        "alt": "The Matrix has you.",
+        "title": "You are the One."
     },
     "artSlider02_00_slideb_h4": {
-        "text": "Taller de analítica aplicada a operaciones"
+        "text": "I know kung fu."
     },
     "artSlider02_00_slidec_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Ponente explicando red de hubs multimodales",
-        "title": "Ponente explicando red de hubs multimodales"
+        "alt": "Red pill or blue pill.",
+        "title": "Red pill or blue pill."
     },
     "artSlider02_00_slidec_h4": {
-        "text": "Ponencia sobre conectividad multimodal 2025"
+        "text": "Red pill or blue pill."
     },
     "artSlider02_00_slided_img": {
         "src": "assets/img/dummy/dummy_900.avif",
-        "alt": "Visita guiada a almacén con picking asistido",
-        "title": "Visita guiada a almacén con picking asistido"
+        "alt": "Ignorance is bliss.",
+        "title": "Red pill or blue pill."
     },
     "artSlider02_00_slided_h4": {
-        "text": "Recorrido práctico por almacén inteligente"
+        "text": "Ignorance is bliss."
     },
     "artAccordion01_00_headerPrimary": {
-        "text": "Preguntas clave de matriculación"
+        "text": "Dodge this."
     },
     "artAccordion01_00_itema_title": {
-        "text": "¿Qué documentos debo presentar?"
+        "text": "Free your mind."
     },
     "artAccordion01_00_itema_content": {
-        "text": "Lleva DNI vigente, fotografía tamaño carnet, justificante de tasas y certificado psicotécnico actualizado; si ya tienes permisos previos, añade copia compulsada para agilizar el alta y evitar desplazamientos adicionales."
+        "text": "I can only show you the door. You're the one that has to walk through it."
     },
     "artAccordion01_00_itemb_title": {
-        "text": "¿Cómo se organiza la teoría?"
+        "text": "Follow the white rabbit."
     },
     "artAccordion01_00_itemb_content": {
-        "text": "Planificamos sesiones en vivo de dos horas cada tarde durante diez días laborables, reforzadas con cuestionarios descargables y tutoría online para que consolides normativa, señalización y maniobras antes de pasar a las prácticas obligatorias."
+        "text": "You take the blue pill, the story ends. You take the red pill, you stay in Wonderland."
     },
     "artAccordion01_00_itemc_title": {
-        "text": "¿Qué opciones de pago tengo?"
+        "text": "The system is watching."
     },
     "artAccordion01_00_itemc_content": {
-        "text": "Ofrecemos financiación interna sin intereses en tres cuotas mensuales, domiciliación bancaria flexible y acuerdos con entidades colaboradoras para adaptar el desembolso a tu calendario, siempre con asesoría para elegir el plan más conveniente."
+        "text": "There is a difference between knowing the path and walking the path."
     },
     "artZipper_00_h3": {
-        "text": "FAQs sobre logística integral"
+        "text": "You are the One."
     },
     "artZipper_00_a_h4": {
-        "text": "¿Cómo optimizamos rutas?"
+        "text": "The Matrix has you."
     },
     "artZipper_00_b_h4": {
-        "text": "Beneficios para tu almacén"
+        "text": "Ignorance is bliss."
     },
     "artZipper_00_c_h4": {
-        "text": "Pasos de integración digital"
+        "text": "Dodge this."
     },
     "artZipper_00_d_h4": {
-        "text": "Errores que debemos evitar"
+        "text": "Dodge this."
     },
     "artZipper_00_e_h4": {
-        "text": "Consejos de mantenimiento diario"
+        "text": "The system is watching."
     },
     "moduleTest_00_h2_text": {
-        "text": "Prueba piloto controlada en 30 días"
+        "text": "You are the One."
     },
     "moduleTest_00_p_text": {
-        "text": "Validamos integraciones, definimos indicadores y formamos a tus equipos operativos con soporte continuo durante la prueba para medir reducción de errores, capacidad de reacción y eficiencia en costes antes del despliegue completo en toda la red multialmacén."
+        "text": "You take the blue pill, the story ends. You take the red pill, you stay in Wonderland."
     },
     "art05_00_headerPrimary": {
-        "text": "Historias reales de confianza local certificada"
+        "text": "Free your mind."
     },
     "art05_00_intro_p": {
-        "text": "Nuestros clientes describen cómo la instalación solar optimiza sus costes energéticos y refuerza su compromiso con la sostenibilidad, destacando la cercanía del equipo técnico y la monitorización continua que ofrecemos en cada proyecto residencial."
+        "text": "You take the blue pill, the story ends. You take the red pill, you stay in Wonderland."
     },
     "art05_00_headerSecondary_a": {
-        "text": "Consumo optimizado en vivienda unifamiliar"
+        "text": "The Matrix has you."
     },
     "art05_00_a_img": {
         "src": "/assets/img/system/bookmark-outline.svg",
-        "alt": "Técnica revisando inversores solares en planta industrial",
-        "title": "Supervisión profesional de inversores industriales en operación"
+        "alt": "Believe.",
+        "title": "Ignorance is bliss."
     },
     "art05_00_a_p": {
-        "text": "Diseñamos campos solares escalables que se adaptan al consumo real de cada sede, priorizando inversores híbridos y cableado eficiente. El equipo coordina permisos y puesta en marcha sin detener los turnos críticos de producción."
+        "text": "We are still here."
     },
     "art05_00_a_firma": {
-        "text": "Laura Pérez"
+        "text": "I know kung fu."
     },
     "art05_00_headerSecondary_b": {
-        "text": "Cadena hotelera con autoconsumo activo"
+        "text": "Choice is an illusion."
     },
     "art05_00_b_img": {
         "src": "/assets/img/system/bookmark-outline.svg",
-        "alt": "Gestora analizando panel de monitorización solar",
-        "title": "Seguimiento digital del autoconsumo en hoteles"
+        "alt": "Choice is an illusion.",
+        "title": "Welcome to the real world."
     },
     "art05_00_b_p": {
-        "text": "Automatizamos cubiertas y salas técnicas con paneles ligeros que respetan la estética del complejo. Gestionamos con la distribuidora el vertido de excedentes y ajustamos la curva de consumo según ocupación y demanda estacional."
+        "text": "The body cannot live without the mind."
     },
     "art05_00_b_firma": {
-        "text": "Carlos Medina"
+        "text": "The system is watching."
     },
     "art05_00_headerSecondary_c": {
-        "text": "Cooperativa agro instala bombeo eficiente"
+        "text": "You are the One."
     },
     "art05_00_c_img": {
         "src": "/assets/img/system/bookmark-outline.svg",
-        "alt": "Técnica revisa cuadros solares en cooperativa rural",
-        "title": "Supervisión de bombeo fotovoltaico cooperativo"
+        "alt": "Ignorance is bliss.",
+        "title": "Believe."
     },
     "art05_00_c_p": {
-        "text": "Implementamos bombeo solar en comunidades de regantes con variadores de frecuencia y depósitos inteligentes. La plataforma predice necesidades hídricas y coordina mantenimientos para evitar paradas en temporada alta de cosecha."
+        "text": "Fate, it seems, is not without a sense of irony."
     },
     "art05_00_c_firma": {
-        "text": "Uxue Garaia"
-    },
-    "art05_00_headerSecondary_d": {
-        "text": "Industria alimentaria optimiza autoconsumo frío"
+        "text": "Red pill or blue pill."
     },
     "art05_00_d_img": {
         "src": "/assets/img/system/bookmark-outline.svg",
-        "alt": "Operario ajusta paneles solares en cubierta logística",
-        "title": "Mantenimiento fotovoltaico en planta alimentaria"
+        "alt": "Believe.",
+        "title": "Welcome to the real world."
     },
     "art05_00_d_p": {
-        "text": "Reforzamos cubiertas con estructuras antiviento y sensores térmicos para mantener cámaras frigoríficas eficientes. Con contratos PPA internos garantizamos precios estables y certificamos la energía verde en auditorías de exportación."
+        "text": "I can only show you the door. You're the one that has to walk through it."
     },
     "art05_00_d_firma": {
-        "text": "Nora Salvat"
+        "text": "Choice is an illusion."
     },
-
     "art03_00_b_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art03_00_b_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art03_00_b_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
@@ -1425,93 +1430,756 @@
     "artSlider02_00_slidea_img_src02": "assets/img/dummy/dummy_1800.avif",
     "artSlider02_00_slidea_img_sizes": "(max-width: 768px) 100vw, 1500px",
     "art16_00_h3_1": {
-        "text": "Servicios logísticos avanzados"
+        "text": "Choice is an illusion."
     },
     "art16_00_h3_2": {
-        "text": "para cadenas sostenibles"
+        "text": "You are the One."
     },
     "art16_00_body_p": {
-        "text": "Optimizamos rutas, almacenaje y entregas con analítica en tiempo real para reducir costes, emisiones y reclamaciones mientras ofrecemos trazabilidad completa a tus clientes en cada etapa de la cadena regional."
+        "text": "Your mind makes it real."
     },
     "art16_00_bg_mobile": "assets/img/dummy/dummy_900.avif",
     "art16_00_bg_tablet": "assets/img/dummy/dummy_1800.avif",
     "art16_00_bg_desktop": "assets/img/dummy/dummy_2560.avif",
     "art17_00_headerPrimary": {
-        "text": "Por qué confiar y cómo trabajamos"
+        "text": "Red pill or blue pill."
     },
     "art17_00_headerSecondary_a": {
-        "text": "Por qué nosotros"
+        "text": "There is no spoon."
     },
     "art17_00_a_icon": {
         "src": "assets/img/system/shield-checkmark-outline.svg",
-        "alt": "Icono check ok",
-        "title": "Icono check ok"
+        "alt": "There is no spoon.",
+        "title": "I know kung fu."
     },
     "art17_00_a_list_a": {
-        "text": "Asesoramiento 100% independiente"
+        "text": "Dodge this."
     },
     "art17_00_a_list_b": {
-        "text": "Sin productos propios ni convenios"
-    },
-    "art17_00_a_list_c": {
-        "text": "Estrategia personalizada y largo plazo"
-    },
-    "art17_00_a_list_d": {
-        "text": "Uso avanzado de IA"
-    },
-    "art17_00_a_list_e": {
-        "text": "Análisis macroeconómico y profundo"
-    },
-    "art17_00_a_list_f": {
-        "text": "Transparencia total de tarifas, procesos..."
-    },
-    "art17_00_a_list_g": {
-        "text": "Enfoque de lujo y sostenible (Índice SRI3)"
+        "text": "Dodge this."
     },
     "art17_00_headerSecondary_b": {
-        "text": "Así trabajamos contigo"
+        "text": "Believe."
     },
     "art17_00_b_icon": {
         "src": "assets/img/system/shield-checkmark-outline.svg",
-        "alt": "Icono check ok",
-        "title": "Icono check ok"
+        "alt": "Free your mind.",
+        "title": "The Matrix has you."
     },
     "art17_00_b_list_a": {
-        "text": "Diagnóstico inicial personalizado"
+        "text": "Believe."
     },
     "art17_00_b_list_b": {
-        "text": "Propuesta estratégica a corto y medio"
+        "text": "Ignorance is bliss."
     },
-    "art17_00_b_list_c": {
-        "text": "Seguimiento cercano por indicadores"
+    "art18_00_headerPrimary": {
+        "text": "Believe."
     },
-    "art17_00_b_list_d": {
-        "text": "Tecnología intuitiva y fácil de usar"
+    "art18_00_headerSecondary_a": {
+        "text": "Welcome to the real world."
     },
-    "art17_00_b_list_e": {
-        "text": "Comunicación fluida y sin ruido"
+    "art18_00_a_price": {
+        "text": "Reality is a prison."
     },
-    "art17_00_b_list_f": {
-        "text": "Formación financiera constante"
+    "art18_00_a_list_a": {
+        "text": "Free your mind."
+    },
+    "art18_00_a_list_b": {
+        "text": "There is no spoon."
+    },
+    "art18_00_a_cta": {
+        "text": "Dodge this.",
+        "href": "#basic",
+        "title": "Ignorance is bliss."
+    },
+    "art18_00_headerSecondary_b": {
+        "text": "The Matrix has you."
+    },
+    "art18_00_b_price": {
+        "text": "Follow the white rabbit."
+    },
+    "art18_00_b_list_a": {
+        "text": "You are the One."
+    },
+    "art18_00_b_list_b": {
+        "text": "Ignorance is bliss."
+    },
+    "art18_00_b_list_c": {
+        "text": "You are the One."
+    },
+    "art18_00_b_cta": {
+        "text": "Red pill or blue pill.",
+        "href": "#pro",
+        "title": "You are the One."
+    },
+    "art18_00_headerSecondary_c": {
+        "text": "Choice is an illusion."
+    },
+    "art18_00_c_price": {
+        "text": "Choice is an illusion."
+    },
+    "art18_00_c_list_a": {
+        "text": "Reality is a prison."
+    },
+    "art18_00_c_list_b": {
+        "text": "Believe."
+    },
+    "art18_00_c_list_c": {
+        "text": "Red pill or blue pill."
+    },
+    "art18_00_c_cta": {
+        "text": "The system is watching.",
+        "href": "#ultimate",
+        "title": "Choice is an illusion."
+    },
+    "artPricingGlass01_00_bg_text": {
+        "text": "Matrix"
+    },
+    "artPricingGlass01_00_headerSecondary_a": {
+        "text": "Free"
+    },
+    "artPricingGlass01_00_a_price": {
+        "text": "0 ?/mes"
+    },
+    "artPricingGlass01_00_a_sub": {
+        "text": "Plan inicial"
+    },
+    "artPricingGlass01_00_a_list_a": {
+        "text": "Acceso a funciones esenciales"
+    },
+    "artPricingGlass01_00_a_list_b": {
+        "text": "Soporte por correo comunitario"
+    },
+    "artPricingGlass01_00_a_list_c": {
+        "text": "Panel b?sico de anal?ticas"
+    },
+    "artPricingGlass01_00_a_list_d": {
+        "text": "Hasta 3 proyectos activos"
+    },
+    "artPricingGlass01_00_a_list_e": {
+        "text": "Biblioteca compartida de plantillas"
+    },
+    "artPricingGlass01_00_a_cta": {
+        "text": "Empieza ahora",
+        "href": "#free",
+        "title": "Comienza con el plan gratis"
+    },
+    "artPricingGlass01_00_headerSecondary_b": {
+        "text": "Estandar"
+    },
+    "artPricingGlass01_00_b_price": {
+        "text": "9,99 ?/mes"
+    },
+    "artPricingGlass01_00_b_sub": {
+        "text": "Plan est?ndar"
+    },
+    "artPricingGlass01_00_b_list_a": {
+        "text": "Todo lo del plan gratis"
+    },
+    "artPricingGlass01_00_b_list_b": {
+        "text": "Soporte prioritario por email"
+    },
+    "artPricingGlass01_00_b_list_c": {
+        "text": "Anal?ticas avanzadas en tiempo real"
+    },
+    "artPricingGlass01_00_b_list_d": {
+        "text": "Proyectos ilimitados para equipos"
+    },
+    "artPricingGlass01_00_b_list_e": {
+        "text": "Herramientas de colaboraci?n"
+    },
+    "artPricingGlass01_00_b_cta": {
+        "text": "Mejorar plan",
+        "href": "#standard",
+        "title": "Pasa al plan est?ndar"
+    },
+    "artPricingGlass01_00_headerSecondary_c": {
+        "text": "Pro"
+    },
+    "artPricingGlass01_00_c_price": {
+        "text": "19,99 ?/mes"
+    },
+    "artPricingGlass01_00_c_sub": {
+        "text": "Plan profesional"
+    },
+    "artPricingGlass01_00_c_list_a": {
+        "text": "Gestor de ?xito dedicado"
+    },
+    "artPricingGlass01_00_c_list_b": {
+        "text": "Integraciones personalizadas disponibles"
+    },
+    "artPricingGlass01_00_c_list_c": {
+        "text": "Tiempos de respuesta SLA"
+    },
+    "artPricingGlass01_00_c_list_d": {
+        "text": "Reportes de seguridad y cumplimiento"
+    },
+    "artPricingGlass01_00_c_list_e": {
+        "text": "Acceso anticipado a nuevas funciones"
+    },
+    "artPricingGlass01_00_c_cta": {
+        "text": "Hazte Pro",
+        "href": "#pro",
+        "title": "Desbloquea la experiencia Pro"
+    },
+    "artScatter01_00_label": {
+        "text": "Choice is an illusion."
+    },
+    "artScatter01_00_text": {
+        "text": "No hay destino escrito en el código, sino en cada decisión que tomas. La realidad que conoces es una jaula cómoda; abrirla exige valor, pero también verdad. Si eliges ver, el miedo se disuelve y la voluntad se vuelve arma. No te ofrezco certezas, solo el camino para descubrir quién eres. Cuando cruces el umbral, entenderás que la libertad no se recibe: se conquista con cada paso."
+    },
+    "artMarquee01_00_row1_item_text_a": {
+        "text": "Free your mind."
+    },
+    "artMarquee01_00_row1_item_text_b": {
+        "text": "Believe."
+    },
+    "artMarquee01_00_row1_item_text_c": {
+        "text": "There is no spoon."
+    },
+    "artMarquee01_00_row1_item_text_d": {
+        "text": "Follow the white rabbit."
+    },
+    "artMarquee01_00_row2_item_text_a": {
+        "text": "Red pill or blue pill."
+    },
+    "artMarquee01_00_row2_item_text_b": {
+        "text": "Welcome to the real world."
+    },
+    "artMarquee01_00_row2_item_text_c": {
+        "text": "Ignorance is bliss."
+    },
+    "artMarquee01_00_row2_item_text_d": {
+        "text": "The system is watching."
+    },
+    "artScale01_00_line1a": {
+        "text": "Reality is a prison."
+    },
+    "artScale01_00_line1b": {
+        "text": "Ignorance is bliss."
+    },
+    "artScale01_00_line2a": {
+        "text": "Choice is an illusion."
+    },
+    "artScale01_00_line2b": {
+        "text": "Believe."
+    },
+    "artScale01_00_line3": {
+        "text": "Follow the white rabbit."
+    },
+    "artScale01_00_video_webm": {
+        "src": "assets/video/dummy/dummy.webm"
+    },
+    "artScale01_00_video_mp4": {
+        "src": "assets/video/dummy/dummy.mp4"
+    },
+    "artScale01_00_video_title": {
+        "title": "Wake up, Neo."
+    },
+    "sectionParallax01_00_a_eyebrow": {
+        "text": "Red pill or blue pill."
+    },
+    "sectionParallax01_00_a_title": {
+        "text": "There is no spoon."
+    },
+    "sectionParallax01_00_a_text": {
+        "text": "You are the One."
+    },
+    "sectionParallax01_00_a_list_a": {
+        "text": "Ignorance is bliss."
+    },
+    "sectionParallax01_00_a_list_b": {
+        "text": "There is no spoon."
+    },
+    "sectionParallax01_00_a_list_c": {
+        "text": "Choice is an illusion."
+    },
+    "sectionParallax01_00_a_cta": {
+        "text": "Red pill or blue pill.",
+        "href": "#",
+        "title": "Welcome to the real world."
+    },
+    "sectionParallax01_00_b_eyebrow": {
+        "text": "The system is watching."
+    },
+    "sectionParallax01_00_b_title": {
+        "text": "You are the One."
+    },
+    "sectionParallax01_00_b_text": {
+        "text": "Wake up, Neo."
+    },
+    "sectionParallax01_00_b_list_a": {
+        "text": "Ignorance is bliss."
+    },
+    "sectionParallax01_00_b_list_b": {
+        "text": "Believe."
+    },
+    "sectionParallax01_00_b_list_c": {
+        "text": "Reality is a prison."
+    },
+    "sectionParallax01_00_b_cta": {
+        "text": "I know kung fu.",
+        "href": "#",
+        "title": "I know kung fu."
+    },
+    "sectionParallax01_00_c_eyebrow": {
+        "text": "Reality is a prison."
+    },
+    "sectionParallax01_00_c_title": {
+        "text": "I know kung fu."
+    },
+    "sectionParallax01_00_c_text": {
+        "text": "The Matrix has you."
+    },
+    "sectionParallax01_00_c_list_a": {
+        "text": "Ignorance is bliss."
+    },
+    "sectionParallax01_00_c_list_b": {
+        "text": "Dodge this."
+    },
+    "sectionParallax01_00_c_list_c": {
+        "text": "Follow the white rabbit."
+    },
+    "sectionParallax01_00_c_cta": {
+        "text": "Welcome to the real world.",
+        "href": "#",
+        "title": "Reality is a prison."
     },
     "moduleH1Type02_00_h1_text": {
-        "text": "Logística inteligente para flotas multiorigen europeas"
+        "text": "Free your mind."
     },
     "moduleH1Type02_00_p01_text": {
-        "text": "Conectamos almacenes, última milla y partners europeos mediante integraciones EDI y seguimiento IoT para anticipar incidencias, redistribuir cargas y garantizar entregas just-in-time sin saturar tus recursos internos ni los equipos de atención posventa, manteniendo SLA críticos en campañas estacionales."
+        "text": "Remember: all I'm offering is the truth. Nothing more."
     },
     "moduleH1Type02_00_p02_text": {
-        "text": "Automatizamos previsiones de demanda, controlamos niveles de stock y activamos transportistas alternativos desde un único panel operativo, apoyándonos en analítica predictiva para reducir devoluciones, emisiones por ruta y tiempos de respuesta ante cualquier incidencia regional."
+        "text": "Hope is a human delusion: both your greatest strength and your greatest weakness."
     },
     "moduleImgType01_00_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Alt dummy",
-        "title": "Title dummy"
+        "alt": "Choice is an illusion.",
+        "title": "Dodge this."
     },
     "moduleImgType01_00_img_width": "900",
     "moduleImgType01_00_img_height": "800",
     "moduleImgType01_00_img_loading": "lazy",
     "moduleImgType01_00_img_sizes": "",
     "moduleImgType01_00_img_srcset01": "",
-    "moduleImgType01_00_img_srcset02": ""
+    "moduleImgType01_00_img_srcset02": "",
+    "art18_00_a_list_c": {
+        "text": "There is no spoon."
+    },
+    "art18_00_d_price": {
+        "text": "You are the One."
+    },
+    "art18_00_d_cta": {
+        "text": "Believe.",
+        "href": "#basic",
+        "title": "There is no spoon."
+    },
+    "art18_00_e_price": {
+        "text": "Wake up, Neo."
+    },
+    "art18_00_e_cta": {
+        "text": "You are the One.",
+        "href": "#basic",
+        "title": "The Matrix has you."
+    },
+    "sectionDiskSlider01_00_headerPrimary": {
+        "text": "You are the One."
+    },
+    "sectionDiskSlider01_00_intro": {
+        "text": "There is a difference between knowing the path and walking the path."
+    },
+    "sectionDiskSlider01_00_hint": {
+        "text": "You are the One."
+    },
+    "sectionDiskSlider01_00_slidea_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Welcome to the real world.",
+        "title": "Reality is a prison."
+    },
+    "sectionDiskSlider01_00_slidea_caption": {
+        "text": "Dodge this."
+    },
+    "sectionDiskSlider01_00_slideb_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "The system is watching.",
+        "title": "Free your mind."
+    },
+    "sectionDiskSlider01_00_slideb_caption": {
+        "text": "Dodge this."
+    },
+    "sectionDiskSlider01_00_slidec_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Reality is a prison.",
+        "title": "Ignorance is bliss."
+    },
+    "sectionDiskSlider01_00_slidec_caption": {
+        "text": "I know kung fu."
+    },
+    "sectionDiskSlider01_00_slided_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Red pill or blue pill.",
+        "title": "Believe."
+    },
+    "sectionDiskSlider01_00_slided_caption": {
+        "text": "The Matrix has you."
+    },
+    "sectionDiskSlider01_00_slidea_kicker": {
+        "text": "Red pill or blue pill."
+    },
+    "sectionDiskSlider01_00_slideb_kicker": {
+        "text": "Believe."
+    },
+    "sectionDiskSlider01_00_slidec_kicker": {
+        "text": "Dodge this."
+    },
+    "sectionDiskSlider01_00_slided_kicker": {
+        "text": "I know kung fu."
+    },
+    "sectionDiskSlider01_00_slidee_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "The system is watching.",
+        "title": "Reality is a prison."
+    },
+    "sectionDiskSlider01_00_slidee_caption": {
+        "text": "The Matrix has you."
+    },
+    "sectionDiskSlider01_00_slidee_kicker": {
+        "text": "Choice is an illusion."
+    },
+    "sectionSkewGallery01_00_headerPrimary": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_intro": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itema_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "sectionSkewGallery01_00_itema_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itema_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemb_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "sectionSkewGallery01_00_itemb_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemb_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemc_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "sectionSkewGallery01_00_itemc_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemc_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemd_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "sectionSkewGallery01_00_itemd_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemd_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_iteme_img": {
+        "src": "assets/img/dummy/dummy05.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "sectionSkewGallery01_00_iteme_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_iteme_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemf_img": {
+        "src": "assets/img/dummy/dummy06.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "sectionSkewGallery01_00_itemf_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemf_text": {
+        "text": ""
+    },
+    "artWorksSkew01_00_headerPrimary": {
+        "text": "Ignorance is bliss."
+    },
+    "artWorksSkew01_00_intro": {
+        "text": "Fate, it seems, is not without a sense of irony."
+    },
+    "artWorksSkew01_00_itema_index": {
+        "text": "01"
+    },
+    "artWorksSkew01_00_itema_title": {
+        "text": "Choice is an illusion."
+    },
+    "artWorksSkew01_00_itema_subtitle": {
+        "text": "I know kung fu."
+    },
+    "artWorksSkew01_00_itema_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "artWorksSkew01_00_itemb_index": {
+        "text": "02"
+    },
+    "artWorksSkew01_00_itemb_title": {
+        "text": "There is no spoon."
+    },
+    "artWorksSkew01_00_itemb_subtitle": {
+        "text": "Wake up, Neo."
+    },
+    "artWorksSkew01_00_itemb_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "artWorksSkew01_00_itemc_index": {
+        "text": "03"
+    },
+    "artWorksSkew01_00_itemc_title": {
+        "text": "Follow the white rabbit."
+    },
+    "artWorksSkew01_00_itemc_subtitle": {
+        "text": "Free your mind."
+    },
+    "artWorksSkew01_00_itemc_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "artWorksSkew01_00_itemd_index": {
+        "text": "04"
+    },
+    "artWorksSkew01_00_itemd_title": {
+        "text": "The Matrix has you."
+    },
+    "artWorksSkew01_00_itemd_subtitle": {
+        "text": "Ignorance is bliss."
+    },
+    "artWorksSkew01_00_itemd_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "artWorksSkew01_00_iteme_index": {
+        "text": "05"
+    },
+    "artWorksSkew01_00_iteme_title": {
+        "text": ""
+    },
+    "artWorksSkew01_00_iteme_subtitle": {
+        "text": ""
+    },
+    "artWorksSkew01_00_iteme_img": {
+        "src": "assets/img/dummy/dummy05.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "artWorksSkew01_00_itemf_index": {
+        "text": "06"
+    },
+    "artWorksSkew01_00_itemf_title": {
+        "text": ""
+    },
+    "artWorksSkew01_00_itemf_subtitle": {
+        "text": ""
+    },
+    "artWorksSkew01_00_itemf_img": {
+        "src": "assets/img/dummy/dummy06.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "artWorksSkew01_00_itema_link": {
+        "href": "#",
+        "title": "The system is watching.",
+        "text": ""
+    },
+    "artWorksSkew01_00_itemb_link": {
+        "href": "#",
+        "title": "The system is watching.",
+        "text": ""
+    },
+    "artWorksSkew01_00_itemc_link": {
+        "href": "#",
+        "title": "The system is watching.",
+        "text": ""
+    },
+    "artWorksSkew01_00_itemd_link": {
+        "href": "#",
+        "title": "The system is watching.",
+        "text": ""
+    },
+    "sectionHScroll01_00_headerPrimary": {
+        "text": "Believe."
+    },
+    "sectionHScroll01_00_intro": {
+        "text": "The Matrix has you."
+    },
+    "sectionHScroll01_00_itema_index": {
+        "text": "01"
+    },
+    "sectionHScroll01_00_itema_title": {
+        "text": "The Matrix has you."
+    },
+    "sectionHScroll01_00_itema_text": {
+        "text": "Everything that has a beginning has an end."
+    },
+    "sectionHScroll01_00_itema_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "sectionHScroll01_00_itemb_index": {
+        "text": "02"
+    },
+    "sectionHScroll01_00_itemb_title": {
+        "text": "Wake up, Neo."
+    },
+    "sectionHScroll01_00_itemb_text": {
+        "text": "Everything that has a beginning has an end."
+    },
+    "sectionHScroll01_00_itemb_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "sectionHScroll01_00_itemc_index": {
+        "text": "03"
+    },
+    "sectionHScroll01_00_itemc_title": {
+        "text": "Reality is a prison."
+    },
+    "sectionHScroll01_00_itemc_text": {
+        "text": "The system is watching."
+    },
+    "sectionHScroll01_00_itemc_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "sectionHScroll01_00_itemd_index": {
+        "text": "04"
+    },
+    "sectionHScroll01_00_itemd_title": {
+        "text": "Dodge this."
+    },
+    "sectionHScroll01_00_itemd_text": {
+        "text": "Wake up, Neo."
+    },
+    "sectionHScroll01_00_itemd_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "artHeroScroll01_00_headerPrimary": {
+        "text": "The Matrix Is Watching"
+    },
+    "artHeroScroll01_00_intro": {
+        "text": "Reality bends when you choose the truth."
+    },
+    "artHeroScroll01_00_itema_index": {
+        "text": "01"
+    },
+    "artHeroScroll01_00_itema_word": {
+        "text": "Wake Up"
+    },
+    "artHeroScroll01_00_itema_title": {
+        "text": "Follow The White Rabbit"
+    },
+    "artHeroScroll01_00_itema_text": {
+        "text": "The signal is everywhere, if you listen."
+    },
+    "artHeroScroll01_00_itema_suba": {
+        "text": "There is no spoon"
+    },
+    "artHeroScroll01_00_itema_subb": {
+        "text": "Free your mind"
+    },
+    "artHeroScroll01_00_itema_subc": {
+        "text": "The Matrix has you"
+    },
+    "artHeroScroll01_00_itemb_index": {
+        "text": "02"
+    },
+    "artHeroScroll01_00_itemb_word": {
+        "text": "Red Pill"
+    },
+    "artHeroScroll01_00_itemb_title": {
+        "text": "Choice Is An Illusion"
+    },
+    "artHeroScroll01_00_itemb_text": {
+        "text": "Only you can walk through the door."
+    },
+    "artHeroScroll01_00_itemb_suba": {
+        "text": "I know kung fu"
+    },
+    "artHeroScroll01_00_itemb_subb": {
+        "text": "Your mind makes it real"
+    },
+    "artHeroScroll01_00_itemb_subc": {
+        "text": "Welcome to the real world"
+    },
+    "artHeroScroll01_00_itemc_index": {
+        "text": "03"
+    },
+    "artHeroScroll01_00_itemc_word": {
+        "text": "Blue Pill"
+    },
+    "artHeroScroll01_00_itemc_title": {
+        "text": "Ignorance Is Bliss"
+    },
+    "artHeroScroll01_00_itemc_text": {
+        "text": "Comfort is the easiest prison."
+    },
+    "artHeroScroll01_00_itemc_suba": {
+        "text": "You are the One"
+    },
+    "artHeroScroll01_00_itemc_subb": {
+        "text": "Believe"
+    },
+    "artHeroScroll01_00_itemc_subc": {
+        "text": "We are still here"
+    },
+    "artHeroScroll01_00_itemd_index": {
+        "text": "04"
+    },
+    "artHeroScroll01_00_itemd_word": {
+        "text": "Glitch"
+    },
+    "artHeroScroll01_00_itemd_title": {
+        "text": "The System Is Watching"
+    },
+    "artHeroScroll01_00_itemd_text": {
+        "text": "Everything that has a beginning has an end."
+    },
+    "artHeroScroll01_00_itemd_suba": {
+        "text": "Dodge this"
+    },
+    "artHeroScroll01_00_itemd_subb": {
+        "text": "The body cannot live without the mind"
+    },
+    "artHeroScroll01_00_itemd_subc": {
+        "text": "Fate has a sense of irony"
+    }
 }

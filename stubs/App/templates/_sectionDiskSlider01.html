@@ -1,0 +1,54 @@
+<section class="sectionDiskSlider01 {classVar}"
+  data-disk-slider
+  data-disk-step-vh="{step-vh}"
+  data-disk-radius="{disk-radius}"
+  data-disk-strength="{disk-strength}"
+  data-disk-scroll-power="{disk-scroll-power}"
+  data-disk-hold-delay="{disk-hold-delay}"
+  data-disk-parallax-shift="{disk-parallax-shift}"
+  data-disk-noise-strength="{disk-noise-strength}"
+  data-disk-noise-scale="{disk-noise-scale}"
+  data-disk-noise-speed="{disk-noise-speed}"
+  data-disk-noise-edge="{disk-noise-edge}"
+  data-disk-mask-sin-strength="{disk-mask-sin-strength}"
+  data-disk-mask-sin-speed="{disk-mask-sin-speed}"
+  data-disk-mask-sin-frequency="{disk-mask-sin-frequency}"
+  data-disk-mask-softness="{disk-mask-softness}"
+  data-disk-vignette-strength="{disk-vignette-strength}"
+  data-disk-vignette-power="{disk-vignette-power}"
+  data-disk-edge-color="{disk-edge-color}"
+  data-disk-edge-mix="{disk-edge-mix}"
+  data-disk-mouse-strength="{disk-mouse-strength}">
+  <div class="sectionDiskSlider01-inner">
+    <header class="sectionDiskSlider01-header" aria-hidden="true">
+      {header-primary}
+      <p class="sectionDiskSlider01-intro" data-lang="{intro-dl}">{intro-text}</p>
+    </header>
+
+    <div class="sectionDiskSlider01-stage">
+      <div class="sectionDiskSlider01-canvasWrap">
+        <canvas data-disk-canvas aria-hidden="true"></canvas>
+      </div>
+
+      <div class="sectionDiskSlider01-center" data-disk-center>
+        <div class="sectionDiskSlider01-centerInner">
+          <p class="sectionDiskSlider01-centerKicker" data-disk-center-kicker></p>
+          <p class="sectionDiskSlider01-centerTitle" data-disk-center-title></p>
+        </div>
+      </div>
+      <div class="sectionDiskSlider01-overlay" aria-hidden="true">
+        <div class="sectionDiskSlider01-overlayDisk"></div>
+        <svg class="sectionDiskSlider01-progress" data-disk-progress viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="sectionDiskSlider01-progressRing" data-disk-progress-ring cx="50" cy="50" r="48"></circle>
+        </svg>
+        <div class="sectionDiskSlider01-hint">
+          <span data-lang="{hint-dl}">{hint-text}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sectionDiskSlider01-slides" data-disk-slides>
+      {slides}
+    </div>
+  </div>
+</section>

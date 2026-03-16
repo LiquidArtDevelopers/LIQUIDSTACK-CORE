@@ -3,6 +3,22 @@ import "./_global.js";
 import initArtSlider01 from './resources/_artSlider01.js';
 import initArtSlider02 from './resources/_artSlider02.js';
 import initArtZipper from './resources/_artZipper.js';
+import initArt18 from './resources/_art18.js'
+import initArtPricingGlass01 from './resources/_artPricingGlass01.js'
+import initArtScatter01 from './resources/_artScatter01.js'
+import initArtMarquee01 from './resources/_artMarquee01.js'
+import initArtScale01 from './resources/_artScale01.js'
+import initAniBackground01 from './resources/_aniBackground01.js'
+import initSectionParallax01 from './resources/_sectionParallax01.js'
+import initSectionParticles01 from './resources/_sectionParticles01.js'
+import initSectionDiskSlider01 from './resources/_sectionDiskSlider01.js'
+import initSectionSkewGallery01 from './resources/_sectionSkewGallery01.js'
+import initSectionHScroll01 from './resources/_sectionHScroll01.js'
+import initArtWorksSkew01 from './resources/_artWorksSkew01.js'
+import initArtHeroScroll01 from './resources/_artHeroScroll01.js'
+import initHero03 from './resources/_hero03.js'
+import initHero04 from './resources/_hero04.js'
+import initHero05 from './resources/_hero05.js'
 
 // parallax
 import ScrollTrigger from 'gsap/ScrollTrigger';
@@ -25,6 +41,22 @@ doc.addEventListener('DOMContentLoaded',()=>{
     initArtSlider01()
     initArtSlider02()
     initArtZipper()
+    initArt18()
+    initArtPricingGlass01()
+    initArtScatter01()
+    initArtMarquee01()
+    initArtScale01()
+    initAniBackground01()
+    initSectionParallax01()
+    initSectionParticles01()
+    initSectionDiskSlider01()
+    initSectionSkewGallery01()
+    initSectionHScroll01()
+    initArtWorksSkew01()
+    initArtHeroScroll01()
+    initHero03()
+    initHero04()
+    initHero05()
 
     // GSAP PARALLAX SCROLL--
     /* ── función que cambia la imagen según ancho ────────────────── */
