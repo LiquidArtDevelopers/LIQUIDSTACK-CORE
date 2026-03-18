@@ -15,12 +15,101 @@ class Installer
     {
         self::syncProjectAssets($event);
         self::syncResources($event);
+        self::syncFrontendDependencies($event);
     }
 
     public static function postUpdate(Event $event): void
     {
         self::syncProjectAssets($event);
         self::syncResources($event);
+        self::syncFrontendDependencies($event);
+    }
+
+    public static function syncFrontendDependencies(Event $event): void
+    {
+        $io          = $event->getIO();
+        $composer    = $event->getComposer();
+        $vendorDir   = rtrim($composer->getConfig()->get('vendor-dir'), DIRECTORY_SEPARATOR);
+        $projectRoot = dirname($vendorDir);
+        $packageRoot = dirname(__DIR__, 3);
+
+        $coreManifestPath  = $packageRoot . '/package.core.json';
+        $projectPackagePath = $projectRoot . '/package.json';
+
+        if (!is_file($coreManifestPath)) {
+            $io->writeError(sprintf('<warning>Skipping frontend dependency sync: missing manifest %s</warning>', $coreManifestPath));
+            return;
+        }
+
+        if (!is_file($projectPackagePath)) {
+            $io->write(sprintf('<info>Skipping frontend dependency sync: missing %s</info>', $projectPackagePath));
+            return;
+        }
+
+        $coreManifest = self::decodeJsonFile($coreManifestPath);
+        if ($coreManifest === null) {
+            $io->writeError(sprintf('<error>Skipping frontend dependency sync: invalid JSON in %s</error>', $coreManifestPath));
+            return;
+        }
+
+        $projectPackage = self::decodeJsonFile($projectPackagePath);
+        if ($projectPackage === null) {
+            $io->writeError(sprintf('<error>Skipping frontend dependency sync: invalid JSON in %s</error>', $projectPackagePath));
+            return;
+        }
+
+        $sections = ['dependencies', 'devDependencies'];
+        $added    = [];
+
+        foreach ($sections as $section) {
+            $required = $coreManifest[$section] ?? null;
+            if (!is_array($required) || $required === []) {
+                continue;
+            }
+
+            $hadSection = array_key_exists($section, $projectPackage);
+            if (!isset($projectPackage[$section]) || !is_array($projectPackage[$section])) {
+                $projectPackage[$section] = [];
+            }
+
+            foreach ($required as $name => $version) {
+                if (!is_string($name) || $name === '') {
+                    continue;
+                }
+
+                if (self::dependencyExistsAnywhere($projectPackage, $name)) {
+                    continue;
+                }
+
+                $normalizedVersion = is_string($version) && $version !== '' ? $version : '*';
+                $projectPackage[$section][$name] = $normalizedVersion;
+                $added[] = sprintf('%s@%s', $name, $normalizedVersion);
+            }
+
+            if ($projectPackage[$section] === [] && !$hadSection) {
+                unset($projectPackage[$section]);
+            }
+        }
+
+        if ($added === []) {
+            $io->write('<info>Frontend dependencies already up to date in package.json</info>');
+            return;
+        }
+
+        $encoded = json_encode($projectPackage, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        if (!is_string($encoded)) {
+            $io->writeError('<error>Skipping frontend dependency sync: unable to encode merged package.json</error>');
+            return;
+        }
+
+        $written = @file_put_contents($projectPackagePath, $encoded . PHP_EOL);
+        if ($written === false) {
+            $io->writeError(sprintf('<error>Failed to write merged dependencies to %s</error>', $projectPackagePath));
+            return;
+        }
+
+        $io->write(sprintf('<info>Added frontend dependencies to package.json: %s</info>', implode(', ', $added)));
+        $io->write('<comment>Run npm install/yarn install/pnpm install to fetch new packages.</comment>');
     }
 
     public static function syncResources(Event $event): void
@@ -223,6 +312,33 @@ class Installer
     private static function startsWith(string $haystack, string $needle): bool
     {
         return strncmp($haystack, $needle, strlen($needle)) === 0;
+    }
+
+    private static function decodeJsonFile(string $path): ?array
+    {
+        $raw = file_get_contents($path);
+        if ($raw === false) {
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    private static function dependencyExistsAnywhere(array $package, string $name): bool
+    {
+        foreach (['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as $section) {
+            if (!isset($package[$section]) || !is_array($package[$section])) {
+                continue;
+            }
+
+            if (array_key_exists($name, $package[$section])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static function mirrorWithoutDeletion(

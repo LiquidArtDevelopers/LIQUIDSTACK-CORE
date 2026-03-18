@@ -22,6 +22,9 @@
     "scripts": {
         "liquidstack-core:sync-resources": [
             "App\\Core\\Composer\\Installer::syncResources"
+        ],
+        "liquidstack-core:sync-frontend-deps": [
+            "App\\Core\\Composer\\Installer::syncFrontendDependencies"
         ]
     },
     "extra": {

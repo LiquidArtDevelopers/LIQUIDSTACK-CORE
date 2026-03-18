@@ -26,6 +26,21 @@ composer liquidstack-core:sync-resources
 
 El alias heredado `composer stack-liquid-core:sync-resources` permanece disponible para proyectos que aún no hayan actualizado sus scripts.
 
+## Sincronización de dependencias frontend
+
+Durante `composer install` y `composer update`, el core revisa `package.core.json` y fusiona sus dependencias en el `package.json` del proyecto consumidor.
+
+- Solo agrega paquetes faltantes en `dependencies`/`devDependencies`.
+- No reemplaza versiones ya definidas por el proyecto ni elimina paquetes existentes.
+- Si el proyecto no tiene `package.json`, la sincronización se omite con aviso.
+- Cuando añadas un recurso que requiera paquetes nuevos, decláralos primero en `package.core.json`.
+
+Puedes relanzar esta parte manualmente con:
+
+```bash
+composer liquidstack-core:sync-frontend-deps
+```
+
 ## Qué entra en el core y cómo se replica en los proyectos
 
 - **PHP agnóstico**: los controladores y templates reutilizables viven en `stubs/App/controllers` y `stubs/App/templates` y se copian automáticamente a `App/` tras `composer install`/`composer update`. Si existe un controlador homónimo en `App/controllers`, se prioriza como override local; en caso contrario se recurre al del core. Las herramientas CLI compartidas (`App/tools`) también se replican al proyecto para que puedan ejecutarse allí, de modo que el directorio `App/tools` reaparece en cada instalación aunque no se mantenga versionado.
