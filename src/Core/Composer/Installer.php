@@ -242,14 +242,14 @@ class Installer
     }
 
     /**
-     * Obtiene los destinos a los que se replicarán los assets front.
+     * Obtiene los destinos a los que se replicaran los assets front.
      *
      * Por defecto se copian a `src/js/resources` y `src/scss/resources` para
-     * que Vite recomponga cualquier archivo eliminado y, además, se mantiene
+     * que Vite recomponga cualquier archivo eliminado y, ademas, se mantiene
      * una copia en `vendor/liquidstack/core/resources` para importaciones
      * directas. Si se define la variable de entorno
-     * STACK_CORE_RESOURCES_TARGET, se tomará como raíz (absoluta o
-     * relativa al proyecto) y se crearán las carpetas `js` y `scss` bajo dicha
+     * STACK_CORE_RESOURCES_TARGET, se tomara como raiz (absoluta o
+     * relativa al proyecto) y se crearan las carpetas `js` y `scss` bajo dicha
      * ruta. Se mantiene compatibilidad con STACK_LIQUID_CORE_RESOURCES_TARGET
      * como alias heredado.
      */
@@ -285,10 +285,10 @@ class Installer
     }
 
     /**
-     * Obtiene el destino donde se replicarÃ¡n las imÃ¡genes de recursos.
+     * Obtiene el destino donde se replicaran las imagenes de recursos.
      *
-     * Por defecto se copian en `public/assets/img/resources`. Si se define
-     * STACK_CORE_RESOURCES_IMG_TARGET, se tomarÃ¡ como ruta base absoluta o
+     * Por defecto se copian en `public/assets/img`. Si se define
+     * STACK_CORE_RESOURCES_IMG_TARGET, se tomara como ruta base absoluta o
      * relativa al proyecto. Se mantiene STACK_LIQUID_CORE_RESOURCES_IMG_TARGET
      * como alias heredado.
      */
@@ -306,7 +306,7 @@ class Installer
                 : $projectRoot . DIRECTORY_SEPARATOR . ltrim($configured, DIRECTORY_SEPARATOR);
         }
 
-        return $projectRoot . DIRECTORY_SEPARATOR . 'public/assets/img/resources';
+        return $projectRoot . DIRECTORY_SEPARATOR . 'public/assets/img';
     }
 
     private static function startsWith(string $haystack, string $needle): bool

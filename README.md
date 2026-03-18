@@ -1,91 +1,167 @@
 # Liquid Stack Core
 
-Este paquete incluye tanto el nucleo PHP de Liquid Stack como los recursos de front reutilizables para JavaScript, SCSS e imagenes.
+`liquidstack/core` es el paquete comun para proyectos Liquid Stack.
+Centraliza:
 
-## Versionado, changelog y avisos de release
+- Nucleo PHP (arranque, routing, helpers).
+- Stubs backend reutilizables (`stubs/App`, `stubs/public`).
+- Recursos frontend reutilizables (`resources/js`, `resources/scss`, `resources/img`).
+- Dependencias frontend minimas del core (`package.core.json`).
 
-`liquidstack/core` adopta versionado semántico desde la `1.0.0`. Los cambios deben registrarse en `CHANGELOG.md` junto con los pasos de actualización recomendados para proyectos cliente.
-- Cada release debe añadir en este README un breve aviso con breaking changes o nuevas deprecaciones para que los integradores tengan la guía a mano durante los despliegues.
-- Cuando se marquen APIs como `@deprecated`, indica la versión de retirada esperada y mantén la compatibilidad hasta la siguiente versión mayor.
+## Como sincroniza en proyectos cliente
 
-### Avisos de release
+Al ejecutar `composer install` o `composer update` en un proyecto que consume este paquete:
 
-- **1.0.0**: Se formaliza el esquema SemVer, se publica el `CHANGELOG.md` y se documenta la política de deprecación. Ejecuta la suite de pruebas (`composer test`) después de actualizar.
+1. Se copian stubs backend desde `stubs/` al proyecto.
+2. Se copian recursos frontend:
+- `resources/js` -> `src/js/resources` (y copia en `vendor/liquidstack/core/resources/js`).
+- `resources/scss` -> `src/scss/resources` (y copia en `vendor/liquidstack/core/resources/scss`).
+- `resources/img` -> `public/assets/img`.
+3. Se fusionan dependencias de `package.core.json` en el `package.json` del proyecto consumidor.
 
-## Sincronización de assets
+Scripts disponibles:
 
-Los recursos del paquete (`vendor/liquidstack/core/resources/js` y `vendor/liquidstack/core/resources/scss`) se copian automáticamente después de `composer install` y `composer update` hacia un directorio accesible para el proyecto. Por defecto se depositan en `src/js/resources` y `src/scss/resources` (además de mantener una copia en `vendor/liquidstack/core/resources`), pero puedes cambiar el destino indicando la variable de entorno `STACK_CORE_RESOURCES_TARGET` con una ruta absoluta o relativa al proyecto (por ejemplo, `src/resources`). Se mantiene `STACK_LIQUID_CORE_RESOURCES_TARGET` como alias heredado para facilitar la migración.
+```bash
+composer liquidstack-core:sync-resources
+composer liquidstack-core:sync-frontend-deps
+```
 
-Las imagenes reutilizables bajo `resources/img` tambien se sincronizan automaticamente a `public/assets/img/resources`. Si necesitas otro destino, define `STACK_CORE_RESOURCES_IMG_TARGET` (o el alias legado `STACK_LIQUID_CORE_RESOURCES_IMG_TARGET`) con una ruta absoluta o relativa al proyecto.
+Alias legado soportado:
 
-Si necesitas relanzar la sincronización manualmente ejecuta el script Composer dedicado:
+```bash
+composer stack-liquid-core:sync-resources
+```
+
+Variables de entorno soportadas:
+
+- `STACK_CORE_RESOURCES_TARGET` (alias: `STACK_LIQUID_CORE_RESOURCES_TARGET`).
+- `STACK_CORE_RESOURCES_IMG_TARGET` (alias: `STACK_LIQUID_CORE_RESOURCES_IMG_TARGET`).
+
+## Checklist: traer un recurso nuevo desde liquidstack_base
+
+Usa esta lista cada vez que subas un recurso nuevo al core.
+
+### 1) Frontend del recurso
+
+- Anadir JS en `resources/js`.
+- Anadir SCSS en `resources/scss`.
+- Si el recurso requiere imagenes:
+- Dummies generales en `resources/img/dummy`.
+- Imagenes especificas del recurso en `resources/img/resources/<nombreRecurso>`.
+
+## Nota de estructura de imagenes
+
+Esa estructura se conserva en destino. Ejemplo:
+
+- Origen: `resources/img/resources/aniBackground01/*`
+- Destino: `public/assets/img/resources/aniBackground01/*`
+
+### 2) Registro del recurso en plantillas base del core
+
+- Actualizar `src/js/templates.js` (imports + init del recurso).
+- Actualizar `src/scss/templates.scss` (imports SCSS del recurso).
+
+## Importante sobre `src/scss/_config.scss`, `src/scss/_global.scss` y `src/js/_global.js`
+
+Esos archivos **no** se sincronizan automaticamente a proyectos cliente en el instalador actual.
+Solo se sincronizan de `src/`:
+
+- `src/js/templates.js`
+- `src/scss/templates.scss`
+
+Por tanto:
+
+- Los archivos `_config.scss` y `_global.scss` del proyecto cliente no se pisan.
+- En este core se mantienen como referencia/base para desarrollo, pero no como override forzado en clientes.
+
+### 3) Backend/stubs del recurso
+
+- Actualizar idiomas de templates en:
+- `stubs/App/config/languages/templates/es.json`
+- `stubs/App/config/languages/templates/en.json`
+- `stubs/App/config/languages/templates/eu.json`
+- Anadir controlador en `stubs/App/controllers/<recurso>.php`.
+- Anadir template en `stubs/App/templates/_<recurso>.html`.
+- Actualizar `stubs/App/views/_templates.php` para mostrar el ejemplo del recurso.
+
+### 4) Dependencias NPM del recurso
+
+Si el recurso necesita librerias nuevas (ejemplo `three`):
+
+- Declararlas en `package.core.json`.
+
+Reglas de fusion en proyecto cliente:
+
+- Solo agrega paquetes faltantes.
+- No borra paquetes del proyecto.
+- No reemplaza versiones ya declaradas por el proyecto.
+
+## Guia de trabajo local (localhost:1309)
+
+Este repositorio no trae una app completa para renderizar por si solo.
+La forma recomendada es trabajar con un proyecto laboratorio basado en `liquidstack_base` usando este core local enlazado.
+
+### Paso 1) Preparar proyecto laboratorio
+
+En el `composer.json` del proyecto laboratorio, usar repositorio `path` hacia este core local:
+
+```json
+{
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../LIQUIDSTACK-CORE",
+      "options": { "symlink": true }
+    }
+  ]
+}
+```
+
+Luego:
+
+```bash
+composer update liquidstack/core
+```
+
+Con `symlink: true`, los cambios que hagas en este repo se reflejan en el proyecto laboratorio.
+
+### Paso 2) Instalar frontend del laboratorio
+
+```bash
+npm install
+```
+
+### Paso 3) Levantar Vite en puerto 1309
+
+```bash
+npm run dev -- --host localhost --port 1309
+```
+
+Si el script `dev` del laboratorio ya fija host/port, basta con `npm run dev`.
+
+### Paso 4) Refrescar sincronizaciones cuando toque
+
+Si cambias recursos en `resources/`:
 
 ```bash
 composer liquidstack-core:sync-resources
 ```
 
-El alias heredado `composer stack-liquid-core:sync-resources` permanece disponible para proyectos que aún no hayan actualizado sus scripts.
-
-## Sincronización de dependencias frontend
-
-Durante `composer install` y `composer update`, el core revisa `package.core.json` y fusiona sus dependencias en el `package.json` del proyecto consumidor.
-
-- Solo agrega paquetes faltantes en `dependencies`/`devDependencies`.
-- No reemplaza versiones ya definidas por el proyecto ni elimina paquetes existentes.
-- Si el proyecto no tiene `package.json`, la sincronización se omite con aviso.
-- Cuando añadas un recurso que requiera paquetes nuevos, decláralos primero en `package.core.json`.
-
-Puedes relanzar esta parte manualmente con:
+Si cambias dependencias en `package.core.json`:
 
 ```bash
 composer liquidstack-core:sync-frontend-deps
 ```
 
-## Qué entra en el core y cómo se replica en los proyectos
+Si cambias stubs o `src/js/templates.js` / `src/scss/templates.scss`, ejecuta:
 
-- **PHP agnóstico**: los controladores y templates reutilizables viven en `stubs/App/controllers` y `stubs/App/templates` y se copian automáticamente a `App/` tras `composer install`/`composer update`. Si existe un controlador homónimo en `App/controllers`, se prioriza como override local; en caso contrario se recurre al del core. Las herramientas CLI compartidas (`App/tools`) también se replican al proyecto para que puedan ejecutarse allí, de modo que el directorio `App/tools` reaparece en cada instalación aunque no se mantenga versionado.
-- **Entrypoint y helpers**: se sincronizan `public/index.php`, `App/config/helpers.php`, `App/app/url.php`, los scripts de idiomas y el sitemap. No se distribuye ningún `App/bootstrap.php`; en los proyectos cliente se puede eliminar con seguridad si quedó como rastro de versiones antiguas.
-- **Assets front**: continuan en `resources/js`, `resources/scss` y `resources/img`; se copian con `liquidstack-core:sync-resources` (las imagenes se publican en `public/assets/img/resources` salvo override por entorno).
-
-Algunos módulos JS incluidos en `resources/js` emplean GSAP para animaciones.
-
-Para migrar código agnóstico que todavía resida en un proyecto cliente, muévelo a la ruta equivalente bajo `stubs/App/` y ajusta la versión del paquete. Tras publicar la nueva versión, un `composer update liquidstack/core` en los proyectos heredados desplegará los cambios sin tocar sus carpetas específicas (`App/files`, `App/models`, `App/views`, `App/config`, etc.).
-
-## Dónde actualizar el core y cómo publicarlo
-
-- El código fuente del core vive en el paquete `liquidstack/core` (este repositorio). Cualquier cambio agnóstico debe aplicarse aquí, dentro de `stubs/` para PHP o `resources/` para assets front (en versiones antiguas estas rutas tenían nombres distintos; migrar a las rutas actuales cuando corresponda).
-- Una vez incorporados los cambios, sube la nueva versión del paquete al repositorio VCS que comparten los proyectos cliente (por ejemplo, el repo remoto configurado para `liquidstack/core`) y etiqueta con SemVer (`git tag 1.0.X`).
-- En los proyectos que consumen el stack, ejecuta `composer update liquidstack/core` para que Composer tome la nueva release y refresque controladores, templates, tools y assets agnósticos.
-
-## Integración con Vite
-
-Para consumir los assets desde Vite añade un alias que apunte al directorio donde se han copiado (por defecto `vendor/liquidstack/core`):
-
-```js
-import { defineConfig } from "vite";
-import { resolve } from "path";
-
-export default defineConfig({
-  resolve: {
-    alias: {
-      "~liquidstack-core": resolve(__dirname, "vendor/liquidstack/core"),
-    },
-  },
-});
+```bash
+composer update liquidstack/core
 ```
 
-Con el alias creado puedes importar directamente los recursos empaquetados:
+## Publicacion de cambios del core
 
-```scss
-@use "~liquidstack-core/src/scss/_global.scss";
-@use "~liquidstack-core/resources/scss/_artAccordion01.scss";
-```
-
-```js
-import "~liquidstack-core/src/js/_global.js";
-import "~liquidstack-core/resources/js/_toast.js";
-```
-
-Los archivos de configuración global (`_config.scss`, `_global.scss` y `_global.js`) se ubican ahora fuera de `resources` para reflejar que su contenido debe adaptarse a cada proyecto. Puedes importarlos directamente desde `src/` o usarlos como punto de partida para tus propias variantes.
-
-Si cambiaste el destino con `STACK_CORE_RESOURCES_TARGET` (o su alias legado `STACK_LIQUID_CORE_RESOURCES_TARGET`), ajusta el alias para que apunte a esa ruta antes de compilar con Vite.
+1. Subir cambios al repo de `liquidstack/core`.
+2. Etiquetar version SemVer.
+3. En cada proyecto cliente: `composer update liquidstack/core`.
+4. Ejecutar instalacion frontend del proyecto (`npm install`, `pnpm install` o `yarn install`) si se anadieron dependencias.
