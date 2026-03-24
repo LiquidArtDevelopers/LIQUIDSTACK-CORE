@@ -5,6 +5,36 @@ import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 const TAU = Math.PI * 2;
 const MOBILE_BP = 768;
 const TABLET_BP = 1200;
+const CASIO_WEEKDAY_SHORT = Object.freeze(['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']);
+const CASIO_CLASSIC_DEFAULT_LAYOUT = Object.freeze({
+  dayRect: { x: 0.08, y: 0.09, width: 0.3, height: 0.2 },
+  dateRect: { x: 0.56, y: 0.09, width: 0.36, height: 0.2 },
+  timeRect: { x: 0.06, y: 0.36, width: 0.88, height: 0.56 },
+});
+const BACK_TO_FUTURE_DEFAULT_LAYOUT = Object.freeze({
+  rows: [
+    { x: 0, y: 0, width: 1, height: 0.158 }, // DESTINATION TIME (futuro)
+    { x: 0, y: 0.411, width: 1, height: 0.158 }, // PRESENT TIME (dinamico)
+    { x: 0, y: 0.842, width: 1, height: 0.158 }, // LAST TIME DEPARTED (pasado)
+  ],
+  columns: {
+    monthRect: { x: 0.001, y: 0, width: 0.176, height: 1 },
+    dayRect: { x: 0.216, y: 0, width: 0.112, height: 1 },
+    yearRect: { x: 0.365, y: 0, width: 0.241, height: 1 },
+    ampmRect: { x: 0.657, y: 0.03, width: 0.08, height: 0.94 },
+    hourRect: { x: 0.771, y: 0, width: 0.111, height: 1 },
+    minuteRect: { x: 0.905, y: 0, width: 0.095, height: 1 },
+    colonRect: { x: 0.892, y: 0.2, width: 0.009, height: 0.6 },
+  },
+  periodDots: {
+    am: { x: 0.7148, y: 0.4842 },
+    pm: { x: 0.7148, y: 0.6007 },
+  },
+});
+const BACK_TO_FUTURE_STATIC = Object.freeze({
+  future: { year: 2026, month: 9, day: 13, hour24: 10, minute: 0 },
+  past: { year: 2022, month: 9, day: 13, hour24: 7, minute: 0 },
+});
 // Config global del recurso por clase .aniBackground01.
 // Rangos recomendados:
 // - countDesktop/countTablet/countMobile: 8 - 500
@@ -311,7 +341,8 @@ function mountAniBackground01(root, config = ANI_BACKGROUND01_DEFAULTS) {
       const blinkColon = now.getSeconds() % 2 === 0;
       digitalClocks.forEach((clock) => {
         const updateType = drawDigitalTime(clock, now, blinkColon);
-        if (updateType === 'digits') {
+        const shouldPulse = clock.pulseOnDigits ?? !clock.useSeconds;
+        if (updateType === 'digits' && shouldPulse) {
           pulseDigitalClock(clock);
         }
       });
@@ -842,6 +873,7 @@ function mountAniBackground01(root, config = ANI_BACKGROUND01_DEFAULTS) {
 
     const digitalClock = {
       type: 'digital',
+      family: preset.family || preset.name,
       group,
       canvas: textCanvas,
       ctx: textCtx,
@@ -851,6 +883,14 @@ function mountAniBackground01(root, config = ANI_BACKGROUND01_DEFAULTS) {
       segmentDisplay: Boolean(preset.segmentDisplay),
       segmentOnColor: preset.segmentOnColor || toCssColor(accent),
       segmentOffColor: preset.segmentOffColor || 'rgba(200, 220, 240, 0.16)',
+      pulseOnDigits: preset.pulseOnDigits,
+      blinkMainColon: Boolean(preset.blinkMainColon),
+      casioLayout: preset.casioLayout || null,
+      btfLayout: preset.btfLayout || null,
+      dayLabels:
+        Array.isArray(preset.dayLabels) && preset.dayLabels.length === 7
+          ? preset.dayLabels
+          : CASIO_WEEKDAY_SHORT,
       segmentLayout: null,
       lastDigitsFrame: '',
       lastColonState: null,
@@ -2197,6 +2237,13 @@ function drawDigitalTime(clock, now, blinkColon) {
     return 'none';
   }
 
+  if (clock.family === 'casio-classic') {
+    return drawCasioClassicTime(clock, now, blinkColon);
+  }
+  if (clock.family === 'back-to-future') {
+    return drawBackToFutureTime(clock, now, blinkColon);
+  }
+
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
   const ss = String(now.getSeconds()).padStart(2, '0');
@@ -2249,8 +2296,389 @@ function drawDigitalTime(clock, now, blinkColon) {
   return 'none';
 }
 
-function drawSevenSegmentDisplay(ctx, value, width, height, options = {}) {
-  const layout = buildSevenSegmentLayout(value, width, height);
+function drawCasioClassicTime(clock, now, blinkColon) {
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const colon = clock.blinkMainColon && !blinkColon ? ' ' : ':';
+  const timeValue = `${hh}${colon}${mm}:${ss}`;
+  const weekday = (clock.dayLabels || CASIO_WEEKDAY_SHORT)[now.getDay()] || 'SU';
+  const dateValue = `${now.getMonth() + 1}-${now.getDate()}`;
+  const frame = `${weekday}|${dateValue}|${timeValue}`;
+
+  if (frame === clock.lastFrame) {
+    return 'none';
+  }
+
+  const ctx = clock.ctx;
+  const { width, height } = clock.canvas;
+  const layout = clock.casioLayout || CASIO_CLASSIC_DEFAULT_LAYOUT;
+
+  const dayRect = normalizeRect(layout.dayRect, width, height, { x: 0.08, y: 0.09, width: 0.3, height: 0.2 });
+  const dateRect = normalizeRect(layout.dateRect, width, height, {
+    x: 0.56,
+    y: 0.09,
+    width: 0.36,
+    height: 0.2,
+  });
+  const timeRect = normalizeRect(layout.timeRect, width, height, {
+    x: 0.06,
+    y: 0.36,
+    width: 0.88,
+    height: 0.56,
+  });
+
+  ctx.clearRect(0, 0, width, height);
+
+  // Tinte suave para simular la pantalla LCD.
+  fillRoundRect(
+    ctx,
+    width * 0.01,
+    height * 0.02,
+    width * 0.98,
+    height * 0.96,
+    Math.max(4, Math.round(height * 0.05)),
+    'rgba(234, 241, 236, 0.12)'
+  );
+
+  ctx.fillStyle = clock.color;
+  ctx.textBaseline = 'middle';
+  ctx.font = `700 ${Math.round(height * 0.22)}px "IBM Plex Mono", monospace`;
+  ctx.textAlign = 'left';
+  ctx.fillText(weekday, dayRect.x, dayRect.y + dayRect.height * 0.56);
+  ctx.textAlign = 'right';
+  ctx.fillText(dateValue, dateRect.x + dateRect.width, dateRect.y + dateRect.height * 0.56);
+
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+  ctx.lineWidth = Math.max(1, Math.round(height * 0.014));
+  ctx.beginPath();
+  ctx.moveTo(width * 0.05, height * 0.33);
+  ctx.lineTo(width * 0.95, height * 0.33);
+  ctx.stroke();
+
+  ctx.save();
+  ctx.translate(timeRect.x, timeRect.y);
+  drawSevenSegmentDisplay(ctx, timeValue, timeRect.width, timeRect.height, {
+    onColor: clock.segmentOnColor || clock.color,
+    offColor: clock.segmentOffColor || 'rgba(0, 0, 0, 0.08)',
+  });
+  ctx.restore();
+
+  clock.segmentLayout = null;
+  clock.lastDigitsFrame = `${hh}${mm}${ss}`;
+  clock.lastColonState = blinkColon;
+  clock.lastFrame = frame;
+  clock.texture.needsUpdate = true;
+  return 'digits';
+}
+
+function drawBackToFutureTime(clock, now, blinkColon) {
+  const present = formatBackToFutureParts(now);
+  const future = formatBackToFutureStaticParts(BACK_TO_FUTURE_STATIC.future);
+  const past = formatBackToFutureStaticParts(BACK_TO_FUTURE_STATIC.past);
+  const frameDigits = `${future.frame}|${present.frame}|${past.frame}`;
+  const ctx = clock.ctx;
+  const { width, height } = clock.canvas;
+  const layout = clock.btfLayout || BACK_TO_FUTURE_DEFAULT_LAYOUT;
+  const rowsSource = Array.isArray(layout.rows) && layout.rows.length >= 3 ? layout.rows : BACK_TO_FUTURE_DEFAULT_LAYOUT.rows;
+  const colsSource =
+    layout.columns && typeof layout.columns === 'object' ? layout.columns : BACK_TO_FUTURE_DEFAULT_LAYOUT.columns;
+  const rows = rowsSource.map((row, index) =>
+    normalizeRect(row, width, height, BACK_TO_FUTURE_DEFAULT_LAYOUT.rows[index])
+  );
+  const periodDots = resolveBackToFuturePeriodDots(
+    layout.periodDots || BACK_TO_FUTURE_DEFAULT_LAYOUT.periodDots,
+    width,
+    height
+  );
+
+  const segmentOptions = {
+    onColor: clock.segmentOnColor || 'rgba(255, 255, 255, 0.96)',
+    offColor: clock.segmentOffColor || 'rgba(255, 255, 255, 0.08)',
+    fitWidthRatio: 0.96,
+    digitWidthCapRatio: 0.24,
+    digitHeightRatio: 0.8,
+    digitGapRatio: 0.12,
+  };
+
+  if (frameDigits !== clock.lastDigitsFrame || !clock.btfRects) {
+    ctx.clearRect(0, 0, width, height);
+    drawBackToFutureRow(ctx, rows[0], future, colsSource, segmentOptions, true, false, null);
+    const presentColonRect = drawBackToFutureRow(
+      ctx,
+      rows[1],
+      present,
+      colsSource,
+      segmentOptions,
+      blinkColon,
+      true,
+      periodDots
+    );
+    drawBackToFutureRow(ctx, rows[2], past, colsSource, segmentOptions, true, false, null);
+    clock.btfRects = { presentColonRect };
+    clock.lastDigitsFrame = frameDigits;
+    clock.lastColonState = blinkColon;
+    clock.lastFrame = `${frameDigits}|${blinkColon ? 1 : 0}`;
+    clock.texture.needsUpdate = true;
+    return 'digits';
+  }
+
+  if (clock.lastColonState !== blinkColon) {
+    const clearPadding = 2;
+    const activeColonRect =
+      clock.btfRects?.presentColonRect ||
+      resolveBackToFutureRowRect(rows[1], colsSource.colonRect, BACK_TO_FUTURE_DEFAULT_LAYOUT.columns.colonRect);
+    ctx.clearRect(
+      activeColonRect.x - clearPadding,
+      activeColonRect.y - clearPadding,
+      activeColonRect.width + clearPadding * 2,
+      activeColonRect.height + clearPadding * 2
+    );
+    drawColonSegment(
+      ctx,
+      activeColonRect.x,
+      activeColonRect.y,
+      activeColonRect.width,
+      activeColonRect.height,
+      segmentOptions.onColor,
+      segmentOptions.offColor,
+      blinkColon
+    );
+    clock.lastColonState = blinkColon;
+    clock.lastFrame = `${frameDigits}|${blinkColon ? 1 : 0}`;
+    clock.texture.needsUpdate = true;
+    return 'colon';
+  }
+
+  return 'none';
+}
+
+function drawBackToFutureRow(
+  ctx,
+  rowRect,
+  parts,
+  columns,
+  segmentOptions,
+  colonActive,
+  showPeriodIndicator,
+  periodDots
+) {
+  const cols = columns || BACK_TO_FUTURE_DEFAULT_LAYOUT.columns;
+  const monthRect = resolveBackToFutureRowRect(rowRect, cols.monthRect, BACK_TO_FUTURE_DEFAULT_LAYOUT.columns.monthRect);
+  const dayRect = resolveBackToFutureRowRect(rowRect, cols.dayRect, BACK_TO_FUTURE_DEFAULT_LAYOUT.columns.dayRect);
+  const yearRect = resolveBackToFutureRowRect(rowRect, cols.yearRect, BACK_TO_FUTURE_DEFAULT_LAYOUT.columns.yearRect);
+  const hourRect = resolveBackToFutureRowRect(rowRect, cols.hourRect, BACK_TO_FUTURE_DEFAULT_LAYOUT.columns.hourRect);
+  const minuteRect = resolveBackToFutureRowRect(
+    rowRect,
+    cols.minuteRect,
+    BACK_TO_FUTURE_DEFAULT_LAYOUT.columns.minuteRect
+  );
+  const colonRect = resolveBackToFutureRowRect(rowRect, cols.colonRect, BACK_TO_FUTURE_DEFAULT_LAYOUT.columns.colonRect);
+  const ampmRect = resolveBackToFutureRowRect(rowRect, cols.ampmRect, BACK_TO_FUTURE_DEFAULT_LAYOUT.columns.ampmRect);
+  const monthDayOptions = {
+    ...segmentOptions,
+    fitWidthRatio: 0.985,
+    digitWidthCapRatio: 0.3,
+    digitGapRatio: 0.1,
+  };
+  const hourMinuteOptions = {
+    ...segmentOptions,
+    fitWidthRatio: 0.99,
+    digitWidthCapRatio: 0.42,
+    digitHeightRatio: 0.88,
+    digitGapRatio: 0.08,
+  };
+
+  drawSevenSegmentDisplay(
+    ctx,
+    parts.month,
+    monthRect.width,
+    monthRect.height,
+    monthDayOptions,
+    monthRect.x,
+    monthRect.y
+  );
+  drawSevenSegmentDisplay(
+    ctx,
+    parts.day,
+    dayRect.width,
+    dayRect.height,
+    monthDayOptions,
+    dayRect.x,
+    dayRect.y
+  );
+  drawSevenSegmentDisplay(ctx, parts.year, yearRect.width, yearRect.height, segmentOptions, yearRect.x, yearRect.y);
+  drawSevenSegmentDisplay(
+    ctx,
+    parts.hour,
+    hourRect.width,
+    hourRect.height,
+    hourMinuteOptions,
+    hourRect.x,
+    hourRect.y
+  );
+  drawSevenSegmentDisplay(
+    ctx,
+    parts.minute,
+    minuteRect.width,
+    minuteRect.height,
+    hourMinuteOptions,
+    minuteRect.x,
+    minuteRect.y
+  );
+
+  drawColonSegment(
+    ctx,
+    colonRect.x,
+    colonRect.y,
+    colonRect.width,
+    colonRect.height,
+    segmentOptions.onColor,
+    segmentOptions.offColor,
+    colonActive
+  );
+
+  drawBackToFutureAmPm(
+    ctx,
+    ampmRect,
+    parts.isPm,
+    segmentOptions.onColor,
+    segmentOptions.offColor,
+    Boolean(showPeriodIndicator),
+    periodDots
+  );
+
+  return colonRect;
+}
+
+function drawBackToFutureAmPm(ctx, ampmRect, isPm, onColor, offColor, showIndicator = false, periodDots = null) {
+  const amY = ampmRect.y + ampmRect.height * 0.29;
+  const pmY = ampmRect.y + ampmRect.height * 0.74;
+
+  if (!showIndicator) {
+    return;
+  }
+
+  const fallbackDotX = ampmRect.x + ampmRect.width * 0.92;
+  const fallbackAmY = amY;
+  const fallbackPmY = pmY;
+  const dotRadius = Math.max(2, ampmRect.width * 0.12);
+  const amPoint = periodDots?.am || { x: fallbackDotX, y: fallbackAmY };
+  const pmPoint = periodDots?.pm || { x: fallbackDotX, y: fallbackPmY };
+  const activePoint = isPm ? pmPoint : amPoint;
+
+  // Punto activo negro (solo en PRESENT TIME).
+  ctx.fillStyle = '#000000';
+  ctx.beginPath();
+  ctx.arc(activePoint.x, activePoint.y, dotRadius, 0, TAU);
+  ctx.fill();
+}
+
+function resolveBackToFuturePeriodDots(periodDots, width, height) {
+  if (!periodDots || typeof periodDots !== 'object') {
+    return null;
+  }
+
+  const toPoint = (point) => {
+    if (!point || typeof point !== 'object') {
+      return null;
+    }
+    const x = Number(point.x);
+    const y = Number(point.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return null;
+    }
+    return {
+      x: x * width,
+      y: y * height,
+    };
+  };
+
+  const am = toPoint(periodDots.am);
+  const pm = toPoint(periodDots.pm);
+  if (!am || !pm) {
+    return null;
+  }
+  return { am, pm };
+}
+
+function resolveBackToFutureRowRect(rowRect, relativeRect, fallbackRelativeRect) {
+  const source =
+    relativeRect && typeof relativeRect === 'object' ? relativeRect : fallbackRelativeRect || { x: 0, y: 0, width: 1, height: 1 };
+  const safe = {
+    x: Number.isFinite(Number(source.x)) ? Number(source.x) : 0,
+    y: Number.isFinite(Number(source.y)) ? Number(source.y) : 0,
+    width: Number.isFinite(Number(source.width)) ? Number(source.width) : 1,
+    height: Number.isFinite(Number(source.height)) ? Number(source.height) : 1,
+  };
+
+  return {
+    x: rowRect.x + safe.x * rowRect.width,
+    y: rowRect.y + safe.y * rowRect.height,
+    width: Math.max(6, safe.width * rowRect.width),
+    height: Math.max(6, safe.height * rowRect.height),
+  };
+}
+
+function formatBackToFutureParts(dateObj) {
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  const year = String(dateObj.getFullYear());
+  const minute = String(dateObj.getMinutes()).padStart(2, '0');
+  const hour24 = dateObj.getHours();
+  const isPm = hour24 >= 12;
+  const hour12 = hour24 % 12 || 12;
+  const hour = String(hour12).padStart(2, '0');
+  return {
+    month,
+    day,
+    year,
+    hour,
+    minute,
+    isPm,
+    frame: `${month}${day}${year}${hour}${minute}${isPm ? 'P' : 'A'}`,
+  };
+}
+
+function formatBackToFutureStaticParts(staticConfig) {
+  const month = String(staticConfig.month).padStart(2, '0');
+  const day = String(staticConfig.day).padStart(2, '0');
+  const year = String(staticConfig.year);
+  const minute = String(staticConfig.minute).padStart(2, '0');
+  const hour24 = staticConfig.hour24;
+  const isPm = hour24 >= 12;
+  const hour12 = hour24 % 12 || 12;
+  const hour = String(hour12).padStart(2, '0');
+  return {
+    month,
+    day,
+    year,
+    hour,
+    minute,
+    isPm,
+    frame: `${month}${day}${year}${hour}${minute}${isPm ? 'P' : 'A'}`,
+  };
+}
+
+function normalizeRect(rect, width, height, fallback) {
+  const source = rect && typeof rect === 'object' ? rect : fallback;
+  const x = Number(source.x);
+  const y = Number(source.y);
+  const rectWidth = Number(source.width);
+  const rectHeight = Number(source.height);
+  if (![x, y, rectWidth, rectHeight].every(Number.isFinite)) {
+    return normalizeRect(fallback, width, height, fallback);
+  }
+  return {
+    x: x * width,
+    y: y * height,
+    width: Math.max(8, rectWidth * width),
+    height: Math.max(6, rectHeight * height),
+  };
+}
+
+function drawSevenSegmentDisplay(ctx, value, width, height, options = {}, offsetX = 0, offsetY = 0) {
+  const layout = buildSevenSegmentLayout(value, width, height, offsetX, offsetY, options);
   layout.items.forEach((item) => {
     if (item.type === 'colon') {
       drawColonSegment(
@@ -2281,7 +2709,7 @@ function drawSevenSegmentDisplay(ctx, value, width, height, options = {}) {
 }
 
 function drawSevenSegmentColons(ctx, value, layout, options = {}) {
-  const currentLayout = layout || buildSevenSegmentLayout(value, ctx.canvas.width, ctx.canvas.height);
+  const currentLayout = layout || buildSevenSegmentLayout(value, ctx.canvas.width, ctx.canvas.height, 0, 0);
   const nextChars = value.split('');
   const clearPadding = 2;
 
@@ -2311,15 +2739,28 @@ function drawSevenSegmentColons(ctx, value, layout, options = {}) {
   });
 }
 
-function buildSevenSegmentLayout(value, width, height) {
+function buildSevenSegmentLayout(value, width, height, offsetX = 0, offsetY = 0, layoutOptions = {}) {
   const chars = value.split('');
   const colonCount = chars.reduce((acc, char) => (char === ':' || char === ' ' ? acc + 1 : acc), 0);
   const digitCount = chars.length - colonCount;
-  const digitWidth = Math.min(width * 0.18, (width * 0.82) / Math.max(digitCount, 1));
-  const digitHeight = height * 0.74;
-  const digitGap = digitWidth * 0.2;
-  const colonWidth = digitWidth * 0.38;
-  const colonGap = digitWidth * 0.09;
+
+  // Ajuste de ancho para que combinaciones largas (ej. HH:MM:SS) no toquen bordes.
+  const fitWidth = width * THREE.MathUtils.clamp(layoutOptions.fitWidthRatio ?? 0.92, 0.7, 1);
+  const digitGapRatio = THREE.MathUtils.clamp(layoutOptions.digitGapRatio ?? 0.2, 0.05, 0.35);
+  const colonWidthRatio = THREE.MathUtils.clamp(layoutOptions.colonWidthRatio ?? 0.38, 0.2, 0.55);
+  const colonGapRatio = THREE.MathUtils.clamp(layoutOptions.colonGapRatio ?? 0.09, 0.02, 0.2);
+  const digitHeightRatio = THREE.MathUtils.clamp(layoutOptions.digitHeightRatio ?? 0.74, 0.55, 0.92);
+  const digitWidthCapRatio = THREE.MathUtils.clamp(layoutOptions.digitWidthCapRatio ?? 0.18, 0.12, 0.32);
+  const widthFactor =
+    digitCount +
+    Math.max(0, digitCount - 1) * digitGapRatio +
+    colonCount * (colonWidthRatio + colonGapRatio * 2);
+  const fittedDigitWidth = fitWidth / Math.max(widthFactor, 1);
+  const digitWidth = Math.max(8, Math.min(width * digitWidthCapRatio, fittedDigitWidth));
+  const digitHeight = height * digitHeightRatio;
+  const digitGap = digitWidth * digitGapRatio;
+  const colonWidth = digitWidth * colonWidthRatio;
+  const colonGap = digitWidth * colonGapRatio;
 
   const totalWidth =
     digitCount * digitWidth +
@@ -2335,8 +2776,8 @@ function buildSevenSegmentLayout(value, width, height) {
       items.push({
         type: 'colon',
         active: char === ':',
-        x: cursorX,
-        y: originY,
+        x: offsetX + cursorX,
+        y: offsetY + originY,
         width: colonWidth,
         height: digitHeight,
       });
@@ -2347,8 +2788,8 @@ function buildSevenSegmentLayout(value, width, height) {
     items.push({
       type: 'digit',
       char,
-      x: cursorX,
-      y: originY,
+      x: offsetX + cursorX,
+      y: offsetY + originY,
       width: digitWidth,
       height: digitHeight,
     });
@@ -2804,6 +3245,105 @@ function getDigitalPresets() {
         right: 610,
         top: 450,
         bottom: 526,
+      },
+    },
+    {
+      name: 'casio-classic',
+      family: 'casio-classic',
+      famous: true,
+      bodyShape: 'rounded',
+      width: 1.18,
+      height: 1.64,
+      cornerRadius: 0.2,
+      showSeconds: true,
+      segmentDisplay: true,
+      blinkMainColon: false,
+      segmentOnColor: 'rgba(0, 0, 0, 0.92)',
+      segmentOffColor: 'rgba(0, 0, 0, 0.08)',
+      textColor: '#0b0b0b',
+      textCanvasWidth: 720,
+      textCanvasHeight: 390,
+      sizeBoost: 1.08,
+      weight: 1,
+      sizeVariants: [0.58, 0.78, 1, 1.24, 1.56],
+      variantWeights: [0.76, 1, 1.08, 1, 0.78],
+      caseImage: '/assets/img/resources/aniBackground01/clock-casio-clasic.png',
+      caseImageWidth: 1.72,
+      caseImageHeight: 2.31,
+      caseImageAspect: 567 / 762,
+      caseOpacity: 1,
+      caseImageAnchorX: 0.5,
+      caseImageAnchorY: 0.5,
+      caseImageOffsetY: 0,
+      caseImagePixelWidth: 567,
+      caseImagePixelHeight: 762,
+      screenRect: {
+        left: 157,
+        right: 362,
+        top: 295,
+        bottom: 406,
+      },
+      casioLayout: {
+        dayRect: { x: 0.08, y: 0.08, width: 0.3, height: 0.2 },
+        dateRect: { x: 0.55, y: 0.08, width: 0.37, height: 0.2 },
+        timeRect: { x: 0.05, y: 0.35, width: 0.9, height: 0.58 },
+      },
+    },
+    {
+      name: 'back-to-future',
+      family: 'back-to-future',
+      famous: true,
+      bodyShape: 'rounded',
+      width: 2.34,
+      height: 1.56,
+      cornerRadius: 0.14,
+      showSeconds: false,
+      segmentDisplay: true,
+      pulseOnDigits: false,
+      segmentOnColor: 'rgba(255, 255, 255, 0.96)',
+      segmentOffColor: 'rgba(255, 255, 255, 0.08)',
+      textColor: '#ffffff',
+      textCanvasWidth: 1800,
+      textCanvasHeight: 880,
+      sizeBoost: 1.1,
+      weight: 1,
+      sizeVariants: [0.58, 0.82, 1, 1.2, 1.42],
+      variantWeights: [0.72, 1, 1.1, 1, 0.76],
+      caseImage: '/assets/img/resources/aniBackground01/clock-back-to-future.png',
+      caseImageWidth: 2.76,
+      caseImageHeight: 1.84,
+      caseImageAspect: 1536 / 1024,
+      caseOpacity: 1,
+      caseImageAnchorX: 0.5,
+      caseImageAnchorY: 0.5,
+      caseImageOffsetY: 0,
+      caseImagePixelWidth: 1536,
+      caseImagePixelHeight: 1024,
+      screenRect: {
+        left: 209,
+        right: 1373,
+        top: 212,
+        bottom: 813,
+      },
+      btfLayout: {
+        rows: [
+          { x: 0, y: 0, width: 1, height: 0.158 },
+          { x: 0, y: 0.411, width: 1, height: 0.158 },
+          { x: 0, y: 0.842, width: 1, height: 0.158 },
+        ],
+        columns: {
+          monthRect: { x: 0.001, y: 0, width: 0.176, height: 1 },
+          dayRect: { x: 0.216, y: 0, width: 0.112, height: 1 },
+          yearRect: { x: 0.365, y: 0, width: 0.241, height: 1 },
+          ampmRect: { x: 0.657, y: 0.03, width: 0.08, height: 0.94 },
+          hourRect: { x: 0.771, y: 0, width: 0.111, height: 1 },
+          minuteRect: { x: 0.905, y: 0, width: 0.095, height: 1 },
+          colonRect: { x: 0.892, y: 0.2, width: 0.009, height: 0.6 },
+        },
+        periodDots: {
+          am: { x: 0.7148, y: 0.4842 },
+          pm: { x: 0.7148, y: 0.6007 },
+        },
       },
     },
   ];
