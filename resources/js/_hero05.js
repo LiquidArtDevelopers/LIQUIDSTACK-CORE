@@ -11,7 +11,7 @@ const HERO05_DEFAULTS = Object.freeze({
   maxPixelRatio: 1.35,
   targetFps: 120,
   maxSimSteps: 3,
-  maxUvShift: 0.038,
+  maxUvShift: 0.052,
 });
 
 const activeInstances = [];
@@ -89,6 +89,7 @@ function createHero05Instance(root, canvas) {
   let prevWave = new Float32Array(simLength);
   let currWave = new Float32Array(simLength);
   let nextWave = new Float32Array(simLength);
+  let viewportAspect = 1;
 
   const displacementData = new Uint8Array(simLength * 4);
   for (let i = 0; i < simLength; i += 1) {
@@ -154,23 +155,32 @@ function createHero05Instance(root, canvas) {
       void main() {
         vec4 disp = texture2D(uDisplacement, vUv);
         vec2 normalXY = disp.ba * 2.0 - 1.0;
+        float waveHeight = disp.r * 2.0 - 1.0;
+        float waveSlope = length(normalXY);
+        float waveEnergy = clamp(abs(waveHeight) * 1.55 + waveSlope * 1.2, 0.0, 1.9);
         float nz = sqrt(max(0.0001, 1.0 - dot(normalXY, normalXY)));
         vec3 normal = normalize(vec3(normalXY, nz));
 
-        vec2 dUvRaw = normal.xy * normal.z * (uIntensity * 0.42 + 0.02);
+        vec2 dUvRaw = normal.xy * normal.z * (uIntensity * (0.34 + waveEnergy * 0.46) + 0.018);
         float rawLen = length(dUvRaw);
         vec2 dUv = rawLen > uMaxShift ? dUvRaw * (uMaxShift / rawLen) : dUvRaw;
         vec2 uv = vUv + dUv;
 
-        float st = smoothstep(0.0, 0.22, length(dUv) * 1.35);
-        float chromaAmount = uChroma * uChromaPulse * st * (0.001 + st * 0.012);
+        float st = smoothstep(0.025, 0.92, waveEnergy);
+        float ringMask = smoothstep(0.07, 0.18, abs(waveHeight)) * (1.0 - smoothstep(0.18, 0.34, abs(waveHeight)));
+        float crestMask = clamp(pow(ringMask, 0.78), 0.0, 1.0);
+        float chromaPulse = clamp(uChromaPulse * 0.9 + crestMask * 1.1 + waveSlope * 0.16, 0.0, 1.6);
+        float chromaAmount = uChroma * chromaPulse * (0.00035 + crestMask * 0.0045 + st * 0.0025);
         vec2 chromaDir = rawLen > 0.00001 ? normalize(dUv) : vec2(0.0);
-        float wobble = sin(uTime * 1.7 + disp.r * 24.0) * 0.0012 * st * uChromaPulse;
+        float wobble = sin(uTime * 1.7 + waveHeight * 20.0) * 0.00085 * st * chromaPulse;
 
+        vec3 centerColor = sampleBase(uv);
         vec3 color;
-        color.r = sampleBase(uv + chromaDir * chromaAmount + vec2(wobble, 0.0)).r;
-        color.g = sampleBase(uv).g;
-        color.b = sampleBase(uv - chromaDir * chromaAmount - vec2(wobble, 0.0)).b;
+        color.r = sampleBase(uv + chromaDir * chromaAmount + normalXY * chromaAmount * 0.42 + vec2(wobble, 0.0)).r;
+        color.g = centerColor.g;
+        color.b = sampleBase(uv - chromaDir * chromaAmount - normalXY * chromaAmount * 0.42 - vec2(wobble, 0.0)).b;
+        float chromaMix = clamp((0.08 + st * 0.08 + crestMask * 0.85) * uChroma, 0.0, 0.62);
+        color = mix(centerColor, color, chromaMix);
 
         vec3 blurSample = vec3(0.0);
         blurSample += sampleBase(uv + vec2(uTexel.x, 0.0));
@@ -178,7 +188,11 @@ function createHero05Instance(root, canvas) {
         blurSample += sampleBase(uv + vec2(0.0, uTexel.y));
         blurSample += sampleBase(uv - vec2(0.0, uTexel.y));
         blurSample *= 0.25;
-        color = mix(color, blurSample, st * 0.28);
+        color = mix(color, blurSample, st * 0.18 + crestMask * 0.09);
+
+        float spectral = crestMask * chromaPulse * uChroma * 0.09;
+        color += vec3(spectral * 0.12, spectral * 0.04, -spectral * 0.08);
+        color = clamp(color, 0.0, 1.0);
 
         vec3 lightDir = normalize(vec3(-0.2, 0.45, 1.0));
         float spec = pow(max(0.0, dot(normal, lightDir)), 18.0) * 0.22;
@@ -251,7 +265,7 @@ function createHero05Instance(root, canvas) {
       pointer.y = 1 - ny;
       pointer.speed = clamp(speed * 65, 0.08, 1.6);
       pointer.active = true;
-      chromaPulse = Math.min(1, chromaPulse + pointer.speed * 0.5);
+      chromaPulse = Math.min(1.2, chromaPulse + pointer.speed * 0.45);
     },
     { signal, passive: true }
   );
@@ -273,8 +287,8 @@ function createHero05Instance(root, canvas) {
       pointer.speed = Math.max(pointer.speed, 0.55);
       pointer.active = true;
 
-      addSplash(pointer.x, pointer.y, settings.dropForce * 0.24);
-      chromaPulse = 1;
+      addSplash(pointer.x, pointer.y, settings.dropForce * 0.3);
+      chromaPulse = Math.max(chromaPulse, 1.0);
     },
     { signal, passive: true }
   );
@@ -334,8 +348,8 @@ function createHero05Instance(root, canvas) {
     uniforms.uTime.value = elapsedTime;
     uniforms.uIntensity.value = intro.value;
     uniforms.uChroma.value = settings.chroma;
-    chromaPulse *= Math.exp(-delta * 10.5);
-    uniforms.uChromaPulse.value = clamp(chromaPulse, 0, 1);
+    chromaPulse *= Math.exp(-delta * 6.8);
+    uniforms.uChromaPulse.value = clamp(chromaPulse, 0, 1.4);
 
     renderer.render(scene, camera);
     rafId = requestAnimationFrame(renderLoop);
@@ -345,6 +359,7 @@ function createHero05Instance(root, canvas) {
     const width = Math.max(1, root.clientWidth);
     const height = Math.max(1, root.clientHeight);
     const pixelRatio = Math.min(window.devicePixelRatio || 1, HERO05_DEFAULTS.maxPixelRatio);
+    viewportAspect = width / height;
 
     renderer.setPixelRatio(pixelRatio);
     renderer.setSize(width, height, false);
@@ -452,6 +467,11 @@ function createHero05Instance(root, canvas) {
   }
 
   function advanceWaves(iterations) {
+    const safeAspect = Math.max(0.0001, viewportAspect);
+    const weightX = 1 / (safeAspect * safeAspect);
+    const weightY = 1;
+    const weightSum = weightX + weightY;
+
     if (pointer.active) {
       const speedCurve = 1 - Math.exp(-pointer.speed * 1.8);
       const impulse = settings.dropForce * speedCurve * (0.95 + iterations * 0.18);
@@ -467,9 +487,10 @@ function createHero05Instance(root, canvas) {
         const rowOffset = y * simSize;
         for (let x = 1; x < simSize - 1; x += 1) {
           const i = rowOffset + x;
-          const wave =
-            ((currWave[i - 1] + currWave[i + 1] + currWave[i - simSize] + currWave[i + simSize]) * 0.5 - prevWave[i]) *
-            settings.damping;
+          const waveNeighbors =
+            ((currWave[i - 1] + currWave[i + 1]) * weightX + (currWave[i - simSize] + currWave[i + simSize]) * weightY) /
+            weightSum;
+          const wave = (waveNeighbors - prevWave[i]) * settings.damping;
           nextWave[i] = wave;
         }
       }
@@ -495,6 +516,7 @@ function createHero05Instance(root, canvas) {
     const centerY = Math.floor(ny * (simSize - 1));
     const radius = Math.max(2, Math.floor(simSize * settings.dropRadius));
     const radiusSq = radius * radius;
+    const safeAspect = Math.max(0.0001, viewportAspect);
 
     for (let y = -radius; y <= radius; y += 1) {
       const py = centerY + y;
@@ -506,7 +528,7 @@ function createHero05Instance(root, canvas) {
         if (px <= 1 || px >= simSize - 1) {
           continue;
         }
-        const distSq = x * x + y * y;
+        const distSq = (x * safeAspect) * (x * safeAspect) + y * y;
         if (distSq > radiusSq) {
           continue;
         }
@@ -544,6 +566,8 @@ function createHero05Instance(root, canvas) {
   }
 
   function writeDisplacementTexture() {
+    const safeAspect = Math.max(0.0001, viewportAspect);
+
     for (let i = 0; i < simLength; i += 1) {
       const value = clamp(currWave[i], -1, 1);
       const x = i % simSize;
@@ -553,7 +577,7 @@ function createHero05Instance(root, canvas) {
       const idxB = Math.max(0, y - 1) * simSize + x;
       const idxT = Math.min(simSize - 1, y + 1) * simSize + x;
 
-      const nx = clamp((currWave[idxL] - currWave[idxR]) * 1.2, -1, 1);
+      const nx = clamp(((currWave[idxL] - currWave[idxR]) * 1.2) / safeAspect, -1, 1);
       const ny = clamp((currWave[idxB] - currWave[idxT]) * 1.2, -1, 1);
 
       const offset = i * 4;
