@@ -1577,6 +1577,7 @@
         "href": "#ultimate",
         "title": "Go Ultimate"
     },
+
     "artPricingGlass01_00_bg_text": {
         "text": "Matrix"
     },
@@ -1597,12 +1598,6 @@
     },
     "artPricingGlass01_00_a_list_c": {
         "text": "Basic analytics dashboard"
-    },
-    "artPricingGlass01_00_a_list_d": {
-        "text": "Up to 3 projects"
-    },
-    "artPricingGlass01_00_a_list_e": {
-        "text": "Shared templates library"
     },
     "artPricingGlass01_00_a_cta": {
         "text": "Get Started",
@@ -1627,12 +1622,6 @@
     "artPricingGlass01_00_b_list_c": {
         "text": "Advanced analytics insights"
     },
-    "artPricingGlass01_00_b_list_d": {
-        "text": "Unlimited projects forever"
-    },
-    "artPricingGlass01_00_b_list_e": {
-        "text": "Team collaboration tools"
-    },
     "artPricingGlass01_00_b_cta": {
         "text": "Upgrade Now",
         "href": "#standard",
@@ -1655,12 +1644,6 @@
     },
     "artPricingGlass01_00_c_list_c": {
         "text": "SLA response times"
-    },
-    "artPricingGlass01_00_c_list_d": {
-        "text": "Security and compliance reports"
-    },
-    "artPricingGlass01_00_c_list_e": {
-        "text": "Early access to new features"
     },
     "artPricingGlass01_00_c_cta": {
         "text": "Go Pro",
@@ -2238,5 +2221,52 @@
     },
     "artHeroScroll01_00_itemd_subc": {
         "text": "Fate has a sense of irony"
+    },
+
+    "art19_00_headerPrimary": "",
+    "art19_00_clickHint": "",
+    "art19_00_slidea_img": {
+        "src": "",
+        "alt": "",
+        "title": "link"
+    },
+    "art19_00_slideb_img": {
+        "src": "",
+        "alt": "",
+        "title": "link"
+    },
+    "art19_00_slidec_img": {
+        "src": "",
+        "alt": "",
+        "title": "link"
+    },
+    "art19_00_slided_img": {
+        "src": "",
+        "alt": "",
+        "title": "link"
+    },
+    "art19_00_slidea_h3": {
+        "text": ""
+    },
+    "art19_00_slideb_h3": {
+        "text": ""
+    },
+    "art19_00_slidec_h3": {
+        "text": ""
+    },
+    "art19_00_slided_h3": {
+        "text": ""
+    },
+    "art19_00_slidea_p": {
+        "text": ""
+    },
+    "art19_00_slideb_p": {
+        "text": ""
+    },
+    "art19_00_slidec_p": {
+        "text": ""
+    },
+    "art19_00_slided_p": {
+        "text": ""
     }
 }

@@ -13,11 +13,11 @@ function controller_hero05(int $i = 0, array $params = []): string
         '{classVar}'           => "hero05_{$pad}_classVar",
         '{hero05-text}'        => 'Liquid Matrix',
         '{hero05-content}'     => '',
-        '{hero05-distortion}'  => '0.12',
-        '{hero05-chroma}'      => '0.9',
+        '{hero05-distortion}'  => '0.16',
+        '{hero05-chroma}'      => '1.25',
         '{hero05-damping}'     => '0.985',
         '{hero05-radius}'      => '0.08',
-        '{hero05-force}'       => '1.15',
+        '{hero05-force}'       => '1.25',
         '{hero05-sim}'         => '256',
     ];
 

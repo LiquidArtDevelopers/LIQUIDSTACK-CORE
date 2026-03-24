@@ -1,4 +1,5 @@
 {
+
     "example": {
         "alt": "",
         "title": "The system is watching.",
@@ -9,15 +10,19 @@
         "href": "",
         "src": ""
     },
+
     "title": {
         "text": "I know kung fu."
     },
+
     "description": {
         "content": ""
     },
+
     "robots": {
         "content": "nofollow, noindex, max-snippet:-1, max-video-preview:-1, max-image-preview:large"
     },
+
     "hero00_bg_mobile": {
         "src": "assets/img/dummy/dummy_900.avif"
     },
@@ -30,6 +35,7 @@
     "hero00_bg_fallback": {
         "src": "assets/img/dummy/dummy_900.avif"
     },
+
     "hero02_video_webm": {
         "src": "assets/video/dummy/dummy.webm"
     },
@@ -39,6 +45,7 @@
     "hero02_video_title": {
         "title": "There is no spoon."
     },
+
     "hero03_00_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
         "alt": "Imagen hero cortina",
@@ -60,6 +67,7 @@
     "hero03_00_front_text": {
         "text": "Matrix Has You"
     },
+
     "sect01_00_a_img01": {
         "src": "assets/img/system/bookmark-outline.svg",
         "alt": "Follow the white rabbit.",
@@ -176,6 +184,7 @@
         "alt": "The system is watching.",
         "title": "Ignorance is bliss."
     },
+
     "sect02_00_a_h3_text": {
         "text": "Free your mind."
     },
@@ -233,6 +242,7 @@
     },
     "sect02_00_c_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
     "sect02_00_c_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
+
     "sectTabs01_00_intro": {
         "text": "Your mind makes it real."
     },
@@ -389,6 +399,7 @@
         "text": "There is no spoon.",
         "href": "example.pdf"
     },
+
     "moduleH1Type01_00_h1_text": {
         "text": "Liquid Art Developers"
     },
@@ -398,21 +409,27 @@
     "moduleH1Type01_00_p02_text": {
         "text": "To deny our own impulses is to deny the very thing that makes us human."
     },
+
     "moduleH2Type01_00_h2_text": {
         "text": "Welcome to the real world."
     },
+
     "moduleH2Type01_01_h2_text": {
         "text": "There is no spoon."
     },
+
     "moduleH2Type01_02_h2_text": {
         "text": "Free your mind."
     },
+
     "moduleH2Type01_03_h2_text": {
         "text": "Ignorance is bliss."
     },
+
     "moduleH2Type01_04_h2_text": {
         "text": "Wake up, Neo."
     },
+
     "moduleButtonType01_00_cta": {
         "href": "#",
         "title": "Wake up, Neo."
@@ -425,6 +442,7 @@
         "alt": "Believe.",
         "title": "Free your mind."
     },
+
     "moduleButtonType02_00_cta_link": {
         "href": "#",
         "title": "Choice is an illusion."
@@ -432,6 +450,7 @@
     "moduleButtonType02_00_cta_span": {
         "text": "Follow the white rabbit."
     },
+
     "art01_00_headerPrimary": {
         "text": "The Matrix has you."
     },
@@ -465,6 +484,7 @@
         "alt": "You are the One.",
         "title": "Free your mind."
     },
+
     "art02_00_headerPrimary": {
         "text": "Red pill or blue pill."
     },
@@ -499,6 +519,7 @@
     "art02_00_b_p": {
         "text": "To deny our own impulses is to deny the very thing that makes us human."
     },
+
     "art03_00_headerPrimary": {
         "text": "Ignorance is bliss."
     },
@@ -562,6 +583,7 @@
     "art03_00_d_p": {
         "text": "Remember: all I'm offering is the truth. Nothing more."
     },
+
     "art04_00_headerPrimary": {
         "text": "Dodge this."
     },
@@ -595,6 +617,7 @@
         "href": "#",
         "title": "Wake up, Neo."
     },
+
     "art06_00_headerPrimary": {
         "text": "Follow the white rabbit."
     },
@@ -646,6 +669,7 @@
     },
     "art06_00_c_img_src01": "assets/img/dummy/dummy_900.avif 900w",
     "art06_00_c_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+
     "art07_00_bgHero_mobile": "assets/img/dummy/dummy_900.avif",
     "art07_00_bgHero_tablet": "assets/img/dummy/dummy_1800.avif",
     "art07_00_bgHero_desktop": "assets/img/dummy/dummy_2560.avif",
@@ -667,6 +691,7 @@
     "art07_00_cite": {
         "text": "Your mind makes it real."
     },
+
     "art08_00_headerPrimary": {
         "text": "The body cannot live without the mind."
     },
@@ -692,6 +717,7 @@
     "art08_00_b_p": {
         "text": "Everything that has a beginning has an end."
     },
+
     "art09_00_headerPrimary": {
         "text": "Free your mind."
     },
@@ -754,6 +780,7 @@
     "art09_00_c_desc": {
         "text": "Fate, it seems, is not without a sense of irony."
     },
+
     "art10_00_headerPrimary": {
         "text": "There is no spoon."
     },
@@ -792,6 +819,7 @@
     },
     "art10_00_top_fill": "#ffffff",
     "art10_00_bottom_fill": "#ffffff",
+
     "art11_00_headerPrimary": {
         "text": "I know kung fu."
     },
@@ -825,6 +853,7 @@
     "art11_00_span_optional": {
         "text": "Everything that has a beginning has an end."
     },
+
     "art12_00_headerPrimary": {
         "text": "The system is watching."
     },
@@ -878,6 +907,7 @@
     },
     "art12_00_top_fill": "#ffffff",
     "art12_00_bottom_fill": "#ffffff",
+
     "art13_00_headerPrimary": {
         "text": "There is no spoon."
     },
@@ -900,6 +930,7 @@
         "alt": "There is no spoon.",
         "title": "I know kung fu."
     },
+
     "art14_00_headerPrimary": {
         "text": "Red pill or blue pill."
     },
@@ -911,6 +942,7 @@
         "alt": "Red pill or blue pill.",
         "title": "Red pill or blue pill."
     },
+
     "art15_00_headerPrimary": {
         "text": "Reality is a prison."
     },
@@ -930,6 +962,7 @@
         "alt": "Ignorance is bliss.",
         "title": "Follow the white rabbit."
     },
+
     "artForm01_00_headerPrimary": {
         "text": "There is no spoon."
     },
@@ -1045,6 +1078,7 @@
     "artForm01_00_new_query": {
         "text": "Believe."
     },
+
     "artSlider01_00_headerPrimary": {
         "text": "Believe."
     },
@@ -1232,6 +1266,7 @@
         "text": "The system is watching.",
         "href": "noticias/noticia-10"
     },
+
     "artSlider02_00_headerPrimary": {
         "text": "Choice is an illusion."
     },
@@ -1273,6 +1308,7 @@
     "artSlider02_00_slided_h4": {
         "text": "Ignorance is bliss."
     },
+
     "artAccordion01_00_headerPrimary": {
         "text": "Dodge this."
     },
@@ -1294,6 +1330,7 @@
     "artAccordion01_00_itemc_content": {
         "text": "There is a difference between knowing the path and walking the path."
     },
+
     "artZipper_00_h3": {
         "text": "You are the One."
     },
@@ -1312,12 +1349,14 @@
     "artZipper_00_e_h4": {
         "text": "The system is watching."
     },
+
     "moduleTest_00_h2_text": {
         "text": "You are the One."
     },
     "moduleTest_00_p_text": {
         "text": "You take the blue pill, the story ends. You take the red pill, you stay in Wonderland."
     },
+
     "art05_00_headerPrimary": {
         "text": "Free your mind."
     },
@@ -1377,6 +1416,7 @@
     "art05_00_d_firma": {
         "text": "Choice is an illusion."
     },
+
     "art03_00_b_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art03_00_b_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art03_00_b_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
@@ -1393,6 +1433,7 @@
     "art03_00_a_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art03_00_a_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art03_00_a_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+
     "art04_00_b_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art04_00_b_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art04_00_b_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
@@ -1405,6 +1446,7 @@
     "art04_00_a_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art04_00_a_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art04_00_a_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+
     "artSlider02_00_slideb_avif_src01": "assets/img/dummy/dummy_900.avif",
     "artSlider02_00_slideb_avif_src02": "assets/img/dummy/dummy_1800.avif",
     "artSlider02_00_slideb_avif_sizes": "100vw",
@@ -1429,6 +1471,7 @@
     "artSlider02_00_slidea_img_src01": "assets/img/dummy/dummy_900.avif",
     "artSlider02_00_slidea_img_src02": "assets/img/dummy/dummy_1800.avif",
     "artSlider02_00_slidea_img_sizes": "(max-width: 768px) 100vw, 1500px",
+
     "art16_00_h3_1": {
         "text": "Choice is an illusion."
     },
@@ -1441,6 +1484,7 @@
     "art16_00_bg_mobile": "assets/img/dummy/dummy_900.avif",
     "art16_00_bg_tablet": "assets/img/dummy/dummy_1800.avif",
     "art16_00_bg_desktop": "assets/img/dummy/dummy_2560.avif",
+
     "art17_00_headerPrimary": {
         "text": "Red pill or blue pill."
     },
@@ -1472,6 +1516,7 @@
     "art17_00_b_list_b": {
         "text": "Ignorance is bliss."
     },
+
     "art18_00_headerPrimary": {
         "text": "Believe."
     },
@@ -1532,6 +1577,7 @@
         "href": "#ultimate",
         "title": "Choice is an illusion."
     },
+
     "artPricingGlass01_00_bg_text": {
         "text": "Matrix"
     },
@@ -1552,12 +1598,6 @@
     },
     "artPricingGlass01_00_a_list_c": {
         "text": "Panel b?sico de anal?ticas"
-    },
-    "artPricingGlass01_00_a_list_d": {
-        "text": "Hasta 3 proyectos activos"
-    },
-    "artPricingGlass01_00_a_list_e": {
-        "text": "Biblioteca compartida de plantillas"
     },
     "artPricingGlass01_00_a_cta": {
         "text": "Empieza ahora",
@@ -1582,12 +1622,6 @@
     "artPricingGlass01_00_b_list_c": {
         "text": "Anal?ticas avanzadas en tiempo real"
     },
-    "artPricingGlass01_00_b_list_d": {
-        "text": "Proyectos ilimitados para equipos"
-    },
-    "artPricingGlass01_00_b_list_e": {
-        "text": "Herramientas de colaboraci?n"
-    },
     "artPricingGlass01_00_b_cta": {
         "text": "Mejorar plan",
         "href": "#standard",
@@ -1611,23 +1645,19 @@
     "artPricingGlass01_00_c_list_c": {
         "text": "Tiempos de respuesta SLA"
     },
-    "artPricingGlass01_00_c_list_d": {
-        "text": "Reportes de seguridad y cumplimiento"
-    },
-    "artPricingGlass01_00_c_list_e": {
-        "text": "Acceso anticipado a nuevas funciones"
-    },
     "artPricingGlass01_00_c_cta": {
         "text": "Hazte Pro",
         "href": "#pro",
         "title": "Desbloquea la experiencia Pro"
     },
+
     "artScatter01_00_label": {
         "text": "Choice is an illusion."
     },
     "artScatter01_00_text": {
         "text": "No hay destino escrito en el código, sino en cada decisión que tomas. La realidad que conoces es una jaula cómoda; abrirla exige valor, pero también verdad. Si eliges ver, el miedo se disuelve y la voluntad se vuelve arma. No te ofrezco certezas, solo el camino para descubrir quién eres. Cuando cruces el umbral, entenderás que la libertad no se recibe: se conquista con cada paso."
     },
+
     "artMarquee01_00_row1_item_text_a": {
         "text": "Free your mind."
     },
@@ -1652,6 +1682,7 @@
     "artMarquee01_00_row2_item_text_d": {
         "text": "The system is watching."
     },
+
     "artScale01_00_line1a": {
         "text": "Reality is a prison."
     },
@@ -1676,6 +1707,7 @@
     "artScale01_00_video_title": {
         "title": "Wake up, Neo."
     },
+
     "sectionParallax01_00_a_eyebrow": {
         "text": "Red pill or blue pill."
     },
@@ -1745,6 +1777,7 @@
         "href": "#",
         "title": "Reality is a prison."
     },
+
     "moduleH1Type02_00_h1_text": {
         "text": "Free your mind."
     },
@@ -1754,6 +1787,7 @@
     "moduleH1Type02_00_p02_text": {
         "text": "Hope is a human delusion: both your greatest strength and your greatest weakness."
     },
+
     "moduleImgType01_00_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
         "alt": "Choice is an illusion.",
@@ -1765,6 +1799,7 @@
     "moduleImgType01_00_img_sizes": "",
     "moduleImgType01_00_img_srcset01": "",
     "moduleImgType01_00_img_srcset02": "",
+
     "art18_00_a_list_c": {
         "text": "There is no spoon."
     },
@@ -1784,6 +1819,7 @@
         "href": "#basic",
         "title": "The Matrix has you."
     },
+
     "sectionDiskSlider01_00_headerPrimary": {
         "text": "You are the One."
     },
@@ -1848,6 +1884,7 @@
     "sectionDiskSlider01_00_slidee_kicker": {
         "text": "Choice is an illusion."
     },
+
     "sectionSkewGallery01_00_headerPrimary": {
         "text": ""
     },
@@ -1920,6 +1957,7 @@
     "sectionSkewGallery01_00_itemf_text": {
         "text": ""
     },
+
     "artWorksSkew01_00_headerPrimary": {
         "text": "Ignorance is bliss."
     },
@@ -2030,6 +2068,7 @@
         "title": "The system is watching.",
         "text": ""
     },
+
     "sectionHScroll01_00_headerPrimary": {
         "text": "Believe."
     },
@@ -2092,6 +2131,7 @@
         "alt": "",
         "title": "The system is watching."
     },
+
     "artHeroScroll01_00_headerPrimary": {
         "text": "The Matrix Is Watching"
     },
@@ -2181,5 +2221,52 @@
     },
     "artHeroScroll01_00_itemd_subc": {
         "text": "Fate has a sense of irony"
+    },
+
+    "art19_00_headerPrimary": "",
+    "art19_00_clickHint": "",
+    "art19_00_slidea_img": {
+        "src": "",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "art19_00_slideb_img": {
+        "src": "",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "art19_00_slidec_img": {
+        "src": "",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "art19_00_slided_img": {
+        "src": "",
+        "alt": "",
+        "title": "The system is watching."
+    },
+    "art19_00_slidea_h3": {
+        "text": ""
+    },
+    "art19_00_slideb_h3": {
+        "text": ""
+    },
+    "art19_00_slidec_h3": {
+        "text": ""
+    },
+    "art19_00_slided_h3": {
+        "text": ""
+    },
+    "art19_00_slidea_p": {
+        "text": ""
+    },
+    "art19_00_slideb_p": {
+        "text": ""
+    },
+    "art19_00_slidec_p": {
+        "text": ""
+    },
+    "art19_00_slided_p": {
+        "text": ""
     }
 }

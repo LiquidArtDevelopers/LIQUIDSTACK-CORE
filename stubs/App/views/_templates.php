@@ -60,10 +60,10 @@
             echo controller('hero05', 0, [
                 '{hero05-text}' => 'Liquid Matrix',
                 '{hero05-distortion}' => '0.15',
-                '{hero05-chroma}' => '1',
+                '{hero05-chroma}' => '1.3',
                 '{hero05-damping}' => '0.99',
                 '{hero05-radius}' => '0.03',
-                '{hero05-force}' => '1',
+                '{hero05-force}' => '1.2',
                 '{hero05-sim}' => '512',
             ]);
             ?>
@@ -242,7 +242,7 @@
                         'matrix_bg_row_spacing' => '1',
                         'matrix_font_scale' => '0.40',
                         'matrix_speed' => '5',
-                        'matrix_word_src' => '/assets/img/particles/matrix.png',
+                        'matrix_word_src' => '/assets/img/resources/sectionParticles01/matrix.png',
                         'matrix_word_count' => '6000',
                         'matrix_word_letter_gap' => '0',
                         'matrix_word_particle_scale' => '1',
@@ -607,6 +607,32 @@
                             'b' => 3,
                             'c' => 4
                         ],
+                    ]);
+                    ?>
+
+                    <?php
+                    // art19 (min/max):
+                    // - items: 2 - 26 (slides).
+                    // - Header principal: key art19_00_headerPrimary (o placeholder {header-primary}).
+                    // - Titulos/subtitulos por slide: art19_00_slide[a..z]_[h3|p].
+                    // - Imagen por slide: art19_00_slide[a..z]_img (src/alt/title).
+                    // - {wave-distortion}: 0.05 - 0.5 (intensidad de refraccion).
+                    // - {wave-chroma}: 0 - 2 (aberracion cromatica del frente de onda).
+                    // - {wave-damping}: 0.92 - 0.999 (persistencia del oleaje).
+                    // - {wave-radius}: 0.02 - 0.2 (radio de impacto del clic).
+                    // - {wave-force}: 0.2 - 3 (energia inicial del impacto).
+                    // - {wave-duration}: 0.45 - 8 (duracion de la transicion de imagen).
+                    // - {wave-sim}: 96 - 512 (resolucion de simulacion).
+                    // Resumen: slider por clic que revela la siguiente imagen con ondas de agua desde el punto pulsado.
+                    echo controller('art19', 0, [
+                        'items' => 4,
+                        '{wave-distortion}' => '0.18',
+                        '{wave-chroma}' => '2',
+                        '{wave-damping}' => '0.997',
+                        '{wave-radius}' => '0.09',
+                        '{wave-force}' => '1.35',
+                        '{wave-duration}' => '4.2',
+                        '{wave-sim}' => '256',
                     ]);
                     ?>
 

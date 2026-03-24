@@ -1,0 +1,33 @@
+<article class="art19 {classVar}"
+  data-art19
+  data-art19-distortion="{wave-distortion}"
+  data-art19-chroma="{wave-chroma}"
+  data-art19-damping="{wave-damping}"
+  data-art19-radius="{wave-radius}"
+  data-art19-force="{wave-force}"
+  data-art19-duration="{wave-duration}"
+  data-art19-sim="{wave-sim}">
+  {header-primary}
+
+  <div class="art19-stage" data-art19-stage>
+    <canvas class="art19-canvas" data-art19-canvas aria-hidden="true"></canvas>
+    <button class="art19-hitArea" type="button" data-art19-hit data-lang="{click-dl}" aria-label="{click-text}"></button>
+
+    <div class="art19-caption" data-art19-caption>
+      <div class="art19-captionLayer is-current" data-art19-layer-current>
+        <span class="art19-captionIndex" data-art19-caption-index>01</span>
+        <h3 class="art19-captionTitle" data-art19-caption-title></h3>
+        <p class="art19-captionSub" data-art19-caption-sub></p>
+      </div>
+      <div class="art19-captionLayer is-next" data-art19-layer-next aria-hidden="true">
+        <span class="art19-captionIndex" data-art19-caption-index>01</span>
+        <h3 class="art19-captionTitle" data-art19-caption-title></h3>
+        <p class="art19-captionSub" data-art19-caption-sub></p>
+      </div>
+    </div>
+  </div>
+
+  <ul class="art19-data" data-art19-data hidden>
+    {items}
+  </ul>
+</article>
