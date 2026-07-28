@@ -7,6 +7,7 @@
  * - Encabezados de tarjeta: 4-9 palabras orientadas a un beneficio.
  * - Contenido de tarjeta: se inyecta con {a-content}, {b-content} o {c-content}.
  * - La variante cambia la presentación; cada índice define sus medios *_img.
+ * - La raíz expone art02little--items-N para adaptar la rejilla a 1-3 tarjetas.
  */
 function controller_art02little(int $i = 0, array $params = []): string
 {
@@ -170,6 +171,7 @@ function controller_art02little(int $i = 0, array $params = []): string
     $vars = [
         '{classVar}'       => "art02little_{$pad}_classVar",
         '{variant-class}'  => 'art02little--' . $variant,
+        '{items-class}'    => 'art02little--items-' . $itemsCount,
         '{header-primary}' => '<h' . $baseLevel . ' data-lang="' . $headerKey
             . '">' . $headerText . '</h' . $baseLevel . '>',
         '{intro}'          => $introHtml,

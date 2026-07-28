@@ -115,6 +115,10 @@ controller('nombre', $index, [
 - Usar nesting dentro del selector del recurso, incluidos los `@media`.
 - Usar `@media (min-width: c.$tablet)` y `@media (min-width: c.$desktop)`; evitar `max-width` salvo motivo concreto.
 - Usar variables de configuración para colores, tipografías, medidas y breakpoints siempre que existan.
+- Si una rejilla depende de `items`, no fijar una cantidad de columnas que
+  contradiga al controlador. Preferir `auto-fit` cuando conserve el diseño o
+  emitir un modificador saneado `recurso--items-N` y cubrir en SCSS los rangos
+  admitidos.
 - Evitar selectores globales y dependencias de una vista concreta.
 
 ### JavaScript
