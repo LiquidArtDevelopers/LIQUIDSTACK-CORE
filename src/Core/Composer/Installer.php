@@ -3,18 +3,23 @@
 namespace App\Core\Composer;
 
 use App\Core\Support\Paths;
+use Composer\IO\IOInterface;
 use Composer\Script\Event;
 use FilesystemIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Filesystem\Path;
 
 class Installer
 {
+    private const AGENT_SKILLS_MANIFEST = '.liquidstack-core-skills.json';
+
     public static function postInstall(Event $event): void
     {
         self::syncProjectAssets($event);
         self::syncResources($event);
+        self::syncAgentGuidance($event);
         self::syncFrontendDependencies($event);
     }
 
@@ -22,7 +27,193 @@ class Installer
     {
         self::syncProjectAssets($event);
         self::syncResources($event);
+        self::syncAgentGuidance($event);
         self::syncFrontendDependencies($event);
+    }
+
+    public static function syncAgentGuidance(Event $event): void
+    {
+        $io = $event->getIO();
+
+        try {
+            $composer    = $event->getComposer();
+            $vendorDir   = rtrim((string) $composer->getConfig()->get('vendor-dir'), DIRECTORY_SEPARATOR);
+            $projectRoot = dirname($vendorDir);
+            $packageRoot = dirname(__DIR__, 3);
+            $sourceRoot  = $packageRoot . '/.codex';
+
+            if (!is_dir($sourceRoot)) {
+                $io->writeError(sprintf(
+                    '<warning>Skipping agent guidance sync: source directory not found: %s</warning>',
+                    $sourceRoot
+                ));
+                return;
+            }
+
+            $filesystem   = new Filesystem();
+            $configSource = $sourceRoot . '/config.toml';
+            $configTarget = $projectRoot . '/.codex/config.toml';
+
+            if (!is_file($configSource)) {
+                $io->writeError(sprintf(
+                    '<warning>Skipping core agent config: source file not found: %s</warning>',
+                    $configSource
+                ));
+            } else {
+                try {
+                    self::assertSafeAgentPath($projectRoot, $configTarget);
+
+                    if (file_exists($configTarget)) {
+                        $io->write(sprintf(
+                            '<info>Preserved existing project agent config: %s</info>',
+                            $configTarget
+                        ));
+                    } else {
+                        $filesystem->mkdir(dirname($configTarget), 0775);
+                        $filesystem->copy($configSource, $configTarget, false);
+                        $io->write(sprintf('<info>Installed core agent config: %s</info>', $configTarget));
+                    }
+                } catch (\Throwable $exception) {
+                    $io->writeError(sprintf(
+                        '<error>Failed to install core agent config at %s: %s</error>',
+                        $configTarget,
+                        $exception->getMessage()
+                    ));
+                }
+            }
+
+            $skillsSource = $sourceRoot . '/skills';
+
+            if (!is_dir($skillsSource)) {
+                $io->writeError(sprintf(
+                    '<warning>Skipping core agent skills: source directory not found: %s</warning>',
+                    $skillsSource
+                ));
+                return;
+            }
+
+            $skillsTarget = $projectRoot . '/.codex/skills';
+            $manifestPath = $skillsTarget . DIRECTORY_SEPARATOR . self::AGENT_SKILLS_MANIFEST;
+
+            $io->write(sprintf('<info>Using canonical .codex/skills directory: %s</info>', $skillsTarget));
+
+            try {
+                self::assertSafeAgentPath($projectRoot, $skillsTarget);
+                $filesystem->mkdir($skillsTarget, 0775);
+                self::assertSafeAgentPath($projectRoot, $manifestPath);
+            } catch (\Throwable $exception) {
+                $io->writeError(sprintf(
+                    '<error>Failed to prepare agent skills directory %s: %s</error>',
+                    $skillsTarget,
+                    $exception->getMessage()
+                ));
+                return;
+            }
+
+            $previouslyManaged = self::readManagedAgentSkills($manifestPath, $io) ?? [];
+            $coreSkills        = self::discoverCoreAgentSkills($skillsSource, $io);
+
+            if ($coreSkills === null) {
+                return;
+            }
+
+            $allCoreSkillsSynced = true;
+
+            foreach ($coreSkills as $skillName => $sourcePath) {
+                $destinationPath = $skillsTarget . DIRECTORY_SEPARATOR . $skillName;
+
+                try {
+                    // Deletion is deliberately scoped to one CORE-owned skill.
+                    // Never mirror with deletion enabled at the shared skills root.
+                    self::assertSafeAgentTree($projectRoot, $destinationPath);
+                    $filesystem->mirror($sourcePath, $destinationPath, null, [
+                        'override' => true,
+                        'delete'   => true,
+                    ]);
+                    $io->write(sprintf('<info>Synced core agent skill: %s</info>', $skillName));
+                } catch (\Throwable $exception) {
+                    $allCoreSkillsSynced = false;
+                    $io->writeError(sprintf(
+                        '<error>Failed to sync core agent skill %s to %s: %s</error>',
+                        $skillName,
+                        $destinationPath,
+                        $exception->getMessage()
+                    ));
+                }
+            }
+
+            $currentSkillNames  = array_keys($coreSkills);
+            $manifestSkillNames = $currentSkillNames;
+
+            foreach (array_diff($previouslyManaged, $currentSkillNames) as $retiredSkillName) {
+                if (!self::isSafeAgentSkillName($retiredSkillName)) {
+                    $io->writeError(sprintf(
+                        '<warning>Skipped unsafe retired core skill name from manifest: %s</warning>',
+                        $retiredSkillName
+                    ));
+                    continue;
+                }
+
+                $retiredPath = $skillsTarget . DIRECTORY_SEPARATOR . $retiredSkillName;
+
+                if (!file_exists($retiredPath) && !is_link($retiredPath)) {
+                    continue;
+                }
+
+                try {
+                    self::assertSafeAgentTree($projectRoot, $retiredPath);
+
+                    if (!is_dir($retiredPath)) {
+                        $manifestSkillNames[] = $retiredSkillName;
+                        $io->writeError(sprintf(
+                            '<warning>Preserved retired core skill path because it is not a regular directory: %s</warning>',
+                            $retiredPath
+                        ));
+                        continue;
+                    }
+
+                    $filesystem->remove($retiredPath);
+                    $io->write(sprintf('<info>Removed retired core agent skill: %s</info>', $retiredSkillName));
+                } catch (\Throwable $exception) {
+                    $manifestSkillNames[] = $retiredSkillName;
+                    $io->writeError(sprintf(
+                        '<error>Failed to remove retired core agent skill %s: %s</error>',
+                        $retiredPath,
+                        $exception->getMessage()
+                    ));
+                }
+            }
+
+            $manifestUpdated = false;
+
+            try {
+                $manifestSkillNames = array_values(array_unique($manifestSkillNames));
+                sort($manifestSkillNames, SORT_STRING);
+
+                $manifest = json_encode(
+                    ['managed' => $manifestSkillNames],
+                    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+                );
+                $filesystem->dumpFile($manifestPath, $manifest . PHP_EOL);
+                $io->write(sprintf('<info>Updated core agent skills manifest: %s</info>', $manifestPath));
+                $manifestUpdated = true;
+            } catch (\Throwable $exception) {
+                $io->writeError(sprintf(
+                    '<error>Failed to update core agent skills manifest %s: %s</error>',
+                    $manifestPath,
+                    $exception->getMessage()
+                ));
+            }
+
+            if ($allCoreSkillsSynced && $manifestUpdated) {
+                self::removeAlternateManagedAgentSkills($filesystem, $projectRoot, $io);
+            }
+        } catch (\Throwable $exception) {
+            $io->writeError(sprintf(
+                '<error>Agent guidance sync failed without interrupting Composer: %s</error>',
+                $exception->getMessage()
+            ));
+        }
     }
 
     public static function syncFrontendDependencies(Event $event): void
@@ -339,6 +530,355 @@ class Installer
         }
 
         return false;
+    }
+
+    private static function removeAlternateManagedAgentSkills(
+        Filesystem $filesystem,
+        string $projectRoot,
+        IOInterface $io
+    ): void {
+        $alternateTarget = $projectRoot . '/.agents/skills';
+        $manifestPath    = $alternateTarget . DIRECTORY_SEPARATOR . self::AGENT_SKILLS_MANIFEST;
+
+        if (!file_exists($manifestPath) && !is_link($manifestPath)) {
+            return;
+        }
+
+        try {
+            self::assertSafeAgentPath($projectRoot, $alternateTarget);
+            self::assertSafeAgentPath($projectRoot, $manifestPath);
+        } catch (\Throwable $exception) {
+            $io->writeError(sprintf(
+                '<warning>Preserved alternate managed agent skills because their path is unsafe: %s</warning>',
+                $exception->getMessage()
+            ));
+            return;
+        }
+
+        $managedSkills = self::readManagedAgentSkills($manifestPath, $io);
+
+        if ($managedSkills === null) {
+            return;
+        }
+
+        $remainingSkills = [];
+
+        foreach ($managedSkills as $skillName) {
+            if (!self::isSafeAgentSkillName($skillName)) {
+                $remainingSkills[] = $skillName;
+                $io->writeError(sprintf(
+                    '<warning>Preserved unsafe skill name in alternate CORE manifest: %s</warning>',
+                    $skillName
+                ));
+                continue;
+            }
+
+            $skillPath = $alternateTarget . DIRECTORY_SEPARATOR . $skillName;
+
+            if (!file_exists($skillPath) && !is_link($skillPath)) {
+                continue;
+            }
+
+            try {
+                self::assertSafeAgentTree($projectRoot, $skillPath);
+
+                if (!is_dir($skillPath)) {
+                    $remainingSkills[] = $skillName;
+                    $io->writeError(sprintf(
+                        '<warning>Preserved alternate managed skill because it is not a regular directory: %s</warning>',
+                        $skillPath
+                    ));
+                    continue;
+                }
+
+                $filesystem->remove($skillPath);
+                $io->write(sprintf('<info>Removed alternate managed agent skill: %s</info>', $skillName));
+            } catch (\Throwable $exception) {
+                $remainingSkills[] = $skillName;
+                $io->writeError(sprintf(
+                    '<warning>Preserved alternate managed agent skill %s: %s</warning>',
+                    $skillName,
+                    $exception->getMessage()
+                ));
+            }
+        }
+
+        try {
+            if ($remainingSkills === []) {
+                $filesystem->remove($manifestPath);
+                $io->write('<info>Removed obsolete alternate CORE skills manifest from .agents/skills</info>');
+                return;
+            }
+
+            $remainingSkills = array_values(array_unique($remainingSkills));
+            sort($remainingSkills, SORT_STRING);
+
+            $manifest = json_encode(
+                ['managed' => $remainingSkills],
+                JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+            );
+            $filesystem->dumpFile($manifestPath, $manifest . PHP_EOL);
+        } catch (\Throwable $exception) {
+            $io->writeError(sprintf(
+                '<warning>Failed to update alternate CORE skills manifest %s: %s</warning>',
+                $manifestPath,
+                $exception->getMessage()
+            ));
+        }
+    }
+
+    private static function assertSafeAgentTree(string $projectRoot, string $path): void
+    {
+        self::assertSafeAgentPath($projectRoot, $path);
+
+        if (!is_dir($path)) {
+            return;
+        }
+
+        $pendingDirectories = [$path];
+
+        while ($pendingDirectories !== []) {
+            $directory = array_pop($pendingDirectories);
+            $iterator  = new FilesystemIterator($directory, FilesystemIterator::SKIP_DOTS);
+
+            foreach ($iterator as $item) {
+                $itemPath = $item->getPathname();
+                self::assertSafeAgentPath($projectRoot, $itemPath);
+
+                if ($item->isDir()) {
+                    $pendingDirectories[] = $itemPath;
+                }
+            }
+        }
+    }
+
+    private static function assertSafeAgentPath(string $projectRoot, string $path): void
+    {
+        $projectRealPath = realpath($projectRoot);
+
+        if ($projectRealPath === false) {
+            throw new \RuntimeException(sprintf('Unable to resolve project root: %s', $projectRoot));
+        }
+
+        $projectPath = self::normalizeAgentPath($projectRoot);
+        $targetPath  = self::normalizeAgentPath($path);
+        $projectKey  = self::comparableAgentPath($projectPath);
+        $targetKey   = self::comparableAgentPath($targetPath);
+        $prefix      = $projectKey . (str_ends_with($projectKey, '/') ? '' : '/');
+
+        if ($targetKey !== $projectKey && !str_starts_with($targetKey, $prefix)) {
+            throw new \RuntimeException(sprintf('Agent path escapes the project root: %s', $path));
+        }
+
+        if ($targetKey === $projectKey) {
+            return;
+        }
+
+        $relativePath = ltrim(substr($targetPath, strlen($projectPath)), '/');
+        $segments     = explode('/', $relativePath);
+        $currentPath  = rtrim($projectRoot, '/\\');
+        $expectedPath = self::normalizeAgentPath($projectRealPath);
+
+        foreach ($segments as $segment) {
+            if ($segment === '' || $segment === '.' || $segment === '..') {
+                throw new \RuntimeException(sprintf('Agent path contains an unsafe segment: %s', $path));
+            }
+
+            $currentPath  = rtrim($currentPath, '/\\') . DIRECTORY_SEPARATOR . $segment;
+            $expectedPath = rtrim($expectedPath, '/') . '/' . $segment;
+
+            if (!file_exists($currentPath) && !is_link($currentPath)) {
+                continue;
+            }
+
+            if (self::isRedirectingAgentEntry($currentPath)) {
+                throw new \RuntimeException(sprintf(
+                    'Agent path contains a symbolic link or redirected junction: %s',
+                    $currentPath
+                ));
+            }
+
+            $resolvedPath = realpath($currentPath);
+
+            if (
+                $resolvedPath === false
+                || self::comparableAgentPath($resolvedPath) !== self::comparableAgentPath($expectedPath)
+            ) {
+                throw new \RuntimeException(sprintf(
+                    'Agent path contains a redirected directory or junction: %s',
+                    $currentPath
+                ));
+            }
+        }
+    }
+
+    private static function normalizeAgentPath(string $path): string
+    {
+        $path = self::stripWindowsAgentPathPrefix($path);
+        $path = Path::canonicalize($path);
+
+        if ($path === '/' || preg_match('/\A[A-Za-z]:\/\z/', $path) === 1) {
+            return $path;
+        }
+
+        return rtrim($path, '/');
+    }
+
+    private static function comparableAgentPath(string $path): string
+    {
+        $path = self::normalizeAgentPath($path);
+
+        return DIRECTORY_SEPARATOR === '\\' ? strtolower($path) : $path;
+    }
+
+    private static function isRedirectingAgentEntry(string $path): bool
+    {
+        clearstatcache(true, $path);
+
+        if (is_link($path)) {
+            return true;
+        }
+
+        if (DIRECTORY_SEPARATOR !== '\\') {
+            return false;
+        }
+
+        $target = @readlink($path);
+
+        if (!is_string($target) || $target === '') {
+            return false;
+        }
+
+        if (!Path::isAbsolute(self::stripWindowsAgentPathPrefix($target))) {
+            $target = dirname($path) . DIRECTORY_SEPARATOR . $target;
+        }
+
+        return self::comparableAgentPath($target) !== self::comparableAgentPath($path);
+    }
+
+    private static function stripWindowsAgentPathPrefix(string $path): string
+    {
+        if (DIRECTORY_SEPARATOR !== '\\') {
+            return $path;
+        }
+
+        $path = str_replace('/', '\\', $path);
+
+        if (strncasecmp($path, '\\\\?\\UNC\\', 8) === 0) {
+            return '\\\\' . substr($path, 8);
+        }
+
+        if (strncmp($path, '\\\\?\\', 4) === 0 || strncmp($path, '\\??\\', 4) === 0) {
+            return substr($path, 4);
+        }
+
+        return $path;
+    }
+
+    /**
+     * @return array<string, string>|null
+     */
+    private static function discoverCoreAgentSkills(string $skillsSource, IOInterface $io): ?array
+    {
+        $skills = [];
+
+        try {
+            $iterator = new FilesystemIterator($skillsSource, FilesystemIterator::SKIP_DOTS);
+
+            foreach ($iterator as $item) {
+                if (!$item->isDir()) {
+                    continue;
+                }
+
+                $skillName = $item->getFilename();
+                $skillPath = $item->getPathname();
+
+                if (!is_file($skillPath . DIRECTORY_SEPARATOR . 'SKILL.md')) {
+                    continue;
+                }
+
+                if (!self::isSafeAgentSkillName($skillName)) {
+                    $io->writeError(sprintf(
+                        '<warning>Skipping core agent skill with unsafe directory name: %s</warning>',
+                        $skillName
+                    ));
+                    continue;
+                }
+
+                try {
+                    self::assertSafeAgentTree($skillsSource, $skillPath);
+                } catch (\Throwable $exception) {
+                    $io->writeError(sprintf(
+                        '<warning>Skipping core agent skill with redirected files: %s (%s)</warning>',
+                        $skillName,
+                        $exception->getMessage()
+                    ));
+                    continue;
+                }
+
+                $skills[$skillName] = $skillPath;
+            }
+        } catch (\Throwable $exception) {
+            $io->writeError(sprintf(
+                '<error>Failed to discover core agent skills in %s; existing managed skills were left unchanged: %s</error>',
+                $skillsSource,
+                $exception->getMessage()
+            ));
+            return null;
+        }
+
+        ksort($skills, SORT_STRING);
+
+        return $skills;
+    }
+
+    /**
+     * @return list<string>|null
+     */
+    private static function readManagedAgentSkills(string $manifestPath, IOInterface $io): array
+    {
+        if (!is_file($manifestPath)) {
+            return [];
+        }
+
+        $raw = @file_get_contents($manifestPath);
+
+        if ($raw === false) {
+            $io->writeError(sprintf(
+                '<warning>Unable to read core agent skills manifest; no retired skills will be removed: %s</warning>',
+                $manifestPath
+            ));
+            return null;
+        }
+
+        $decoded = json_decode($raw, true);
+
+        if (!is_array($decoded) || !isset($decoded['managed']) || !is_array($decoded['managed'])) {
+            $io->writeError(sprintf(
+                '<warning>Invalid core agent skills manifest; no retired skills will be removed: %s</warning>',
+                $manifestPath
+            ));
+            return null;
+        }
+
+        $managed = [];
+
+        foreach ($decoded['managed'] as $skillName) {
+            if (!is_string($skillName)) {
+                continue;
+            }
+
+            // Keep unsafe entries so the deletion loop can explicitly report
+            // that they were rejected instead of silently trusting the JSON.
+            $managed[] = $skillName;
+        }
+
+        return array_values(array_unique($managed));
+    }
+
+    private static function isSafeAgentSkillName(string $skillName): bool
+    {
+        return preg_match('/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/', $skillName) === 1;
     }
 
     private static function mirrorWithoutDeletion(

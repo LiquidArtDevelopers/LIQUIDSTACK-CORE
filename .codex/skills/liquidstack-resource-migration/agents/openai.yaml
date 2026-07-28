@@ -1,0 +1,4 @@
+interface:
+  display_name: "LiquidStack Resource Migration"
+  short_description: "Promoción de recursos a LiquidStack CORE"
+  default_prompt: "Use $liquidstack-resource-migration para promover este recurso probado a CORE con todos sus registros."

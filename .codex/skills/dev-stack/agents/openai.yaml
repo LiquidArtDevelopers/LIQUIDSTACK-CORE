@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dev Stack"
+  short_description: "Recursos y controladores LiquidStack PHP/Vite"
+  default_prompt: "Use $dev-stack para crear o revisar un recurso completo del stack y validar su hidratación."

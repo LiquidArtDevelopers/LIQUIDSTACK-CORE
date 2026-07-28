@@ -1,0 +1,4 @@
+interface:
+  display_name: "SEO Content"
+  short_description: "Copy SEO guiado por datos del proyecto"
+  default_prompt: "Use $seo-content para redactar o revisar contenido SEO sin inventar datos del cliente."

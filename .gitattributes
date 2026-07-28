@@ -1,0 +1,6 @@
+# Mantener los ficheros de texto con LF tambien en Windows.
+* text=auto eol=lf
+
+# Los scripts nativos de Windows conservan CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
