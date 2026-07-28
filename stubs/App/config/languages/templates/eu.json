@@ -65,7 +65,7 @@
         "text": "Liquid Art Developers"
     },
     "hero03_00_front_text": {
-        "text": "Matrix Has You"
+        "text": "hero03 · Matrix Has You"
     },
 
     "sect01_00_a_img01": {
@@ -401,7 +401,7 @@
     },
 
     "moduleH1Type01_00_h1_text": {
-        "text": "Encabezado H1"
+        "text": "hero01 · moduleH1Type01"
     },
     "moduleH1Type01_00_p01_text": {
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsa, ex!"
@@ -410,24 +410,134 @@
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minima optio cumque inventore perferendis similique…"
     },
 
+    "moduleH1Type01_01_h1_text": {
+        "text": "hero00 · moduleH1Type01"
+    },
+    "moduleH1Type01_01_p01_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsa, ex!"
+    },
+    "moduleH1Type01_01_p02_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minima optio cumque inventore perferendis similique…"
+    },
+
+    "moduleH1Type01_02_h1_text": {
+        "text": "hero02 · moduleH1Type01"
+    },
+    "moduleH1Type01_02_p01_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsa, ex!"
+    },
+    "moduleH1Type01_02_p02_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minima optio cumque inventore perferendis similique…"
+    },
+
+    "moduleH1Type01_03_h1_text": {
+        "text": "hero04 · moduleH1Type01"
+    },
+    "moduleH1Type01_03_p01_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsa, ex!"
+    },
+    "moduleH1Type01_03_p02_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minima optio cumque inventore perferendis similique…"
+    },
+
     "moduleH2Type01_00_h2_text": {
-        "text": "Sectores que transformamos con datos"
+        "text": "sect01 · moduleH2Type01"
     },
 
     "moduleH2Type01_01_h2_text": {
-        "text": "Soluciones modulares por vertical"
+        "text": "sect02 · moduleH2Type01"
     },
 
     "moduleH2Type01_02_h2_text": {
-        "text": "Descarga guías y recursos técnicos"
+        "text": "sectTabs01 · moduleH2Type01"
     },
 
     "moduleH2Type01_03_h2_text": {
-        "text": "Historias reales de eficiencia logística"
+        "text": "moduleH2Type01"
     },
 
     "moduleH2Type01_04_h2_text": {
-        "text": "Laguntza estrategikoa eta operatiboa"
+        "text": "art17 · moduleH2Type01"
+    },
+
+    "moduleH2Type01_05_h2_text": {
+        "text": "art02little · icon · moduleList01 · moduleH2Type01"
+    },
+
+    "moduleH2Type01_06_h2_text": {
+        "text": "sectionParticles01 · moduleH2Type01"
+    },
+
+    "moduleH2Type01_07_h2_text": {
+        "text": "Soluciones modulares por vertical"
+    },
+
+    "moduleH2Type01_08_h2_text": {
+        "text": "Descarga guías y recursos técnicos"
+    },
+
+    "moduleParrafo01_00_p_text": {
+        "text": "Modulu honek paragrafo independente bat edozein txarteletan txertatzeko aukera ematen du."
+    },
+    "moduleParrafo01_01_p_text": {
+        "text": "Eduki modularrak egitura malgua, berrerabilgarria eta erraz eskalatzeko modukoa mantentzen du."
+    },
+
+    "moduleList01_00_a_li_text": {
+        "text": "Txartel bakoitzerako eduki independentea."
+    },
+    "moduleList01_00_b_li_text": {
+        "text": "Elementu nabarmen batetik hirura."
+    },
+    "moduleList01_00_c_li_text": {
+        "text": "Hierarkia semantiko moldagarria."
+    },
+    "moduleList01_00_d_li_text": {
+        "text": "Diseinu moldagarria tamaina guztietan."
+    },
+    "moduleList01_00_e_li_text": {
+        "text": "Irudiak edo ikonoak erabiltzeko aukera."
+    },
+    "moduleList01_00_f_li_text": {
+        "text": "Modulu berrerabilgarrien bidezko konposizioa."
+    },
+
+    "moduleList01_01_a_li_text": {
+        "text": "Goiburu nagusi konfiguragarria."
+    },
+    "moduleList01_01_b_li_text": {
+        "text": "Barne-goiburu eskalagarriak."
+    },
+    "moduleList01_01_c_li_text": {
+        "text": "Eduki-modulu trukagarriak."
+    },
+    "moduleList01_01_d_li_text": {
+        "text": "Ikusizko aldaera integratuak."
+    },
+    "moduleList01_01_e_li_text": {
+        "text": "Elementu kopuru konfiguragarria."
+    },
+    "moduleList01_01_f_li_text": {
+        "text": "HTML egitura semantikoa."
+    },
+
+    "moduleList01_02_a_li_text": {
+        "text": "Elementu bakoitzerako eduki espezifikoa."
+    },
+    "moduleList01_02_b_li_text": {
+        "text": "Gehienez hiru txartel nabarmen."
+    },
+    "moduleList01_02_c_li_text": {
+        "text": "Portaera moldagarri koherentea."
+    },
+    "moduleList01_02_d_li_text": {
+        "text": "Egitura eta edukia argi bereizita."
+    },
+    "moduleList01_02_e_li_text": {
+        "text": "Orri desberdinetan erraz berrerabiltzeko."
+    },
+    "moduleList01_02_f_li_text": {
+        "text": "Hazteko prest dagoen konfigurazioa."
     },
 
     "moduleButtonType01_00_cta": {
@@ -452,7 +562,7 @@
     },
 
     "art01_00_headerPrimary": {
-        "text": "Encabezado variable h3 art01"
+        "text": "art01"
     },
     "art01_00_intro_p": {
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Harum culpa sapiente placeat? Voluptatibus optio maiores vel nemo, voluptatem repellat iure?"
@@ -486,7 +596,7 @@
     },
 
     "art02_00_headerPrimary": {
-        "text": "Encabezado variable h3 art02"
+        "text": "art02"
     },
     "art02_00_intro_p": {
         "text": "Lorem ipsum dolor sit."
@@ -520,8 +630,82 @@
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
     },
 
+    "art02little_00_headerPrimary": {
+        "text": "art02little · image · moduleParrafo01"
+    },
+    "art02little_00_intro_p": {
+        "text": "Elementu nabarmen bat, bi edo hirurentzako baliabide malgua."
+    },
+    "art02little_00_p1": {
+        "text": "Txartel bakoitzak eduki independentea onartzen du modulu berrerabilgarri baten bidez."
+    },
+    "art02little_00_p2": {
+        "text": "Konposizioa automatikoki egokitzen zaio elementu kopuruari."
+    },
+    "art02little_00_headerSecondary_a": {
+        "text": "Lehen elementu nabarmena"
+    },
+    "art02little_00_a_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Lehen elementuaren proba-irudia",
+        "title": "Lehen elementu nabarmena"
+    },
+    "art02little_00_headerSecondary_b": {
+        "text": "Bigarren elementu nabarmena"
+    },
+    "art02little_00_b_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Bigarren elementuaren proba-irudia",
+        "title": "Bigarren elementu nabarmena"
+    },
+    "art02little_00_headerSecondary_c": {
+        "text": "Hirugarren elementu nabarmena"
+    },
+    "art02little_00_c_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Hirugarren elementuaren proba-irudia",
+        "title": "Hirugarren elementu nabarmena"
+    },
+
+    "art02little_01_headerPrimary": {
+        "text": "art02little · icon · moduleList01"
+    },
+    "art02little_01_intro_p": {
+        "text": "Elementu bakoitzak eduki-modulu independente bat jaso dezake."
+    },
+    "art02little_01_p1": {
+        "text": "Goiburu nagusia kanpoko osagai baten bidez ere eman daiteke."
+    },
+    "art02little_01_p2": {
+        "text": "Barneko goiburuen hierarkia automatikoki egokitzen da."
+    },
+    "art02little_01_headerSecondary_a": {
+        "text": "Eduki malgua"
+    },
+    "art02little_01_a_img": {
+        "src": "assets/img/system/compass-outline.svg",
+        "alt": "Iparrorratzaren ikonoa",
+        "title": "Orientazioa"
+    },
+    "art02little_01_headerSecondary_b": {
+        "text": "Egitura semantikoa"
+    },
+    "art02little_01_b_img": {
+        "src": "assets/img/system/people.svg",
+        "alt": "Taldearen ikonoa",
+        "title": "Pertsonak"
+    },
+    "art02little_01_headerSecondary_c": {
+        "text": "Elementu eskalagarriak"
+    },
+    "art02little_01_c_img": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "Ezkutu egiaztatuaren ikonoa",
+        "title": "Babesa"
+    },
+
     "art03_00_headerPrimary": {
-        "text": "Coberturas industriales premium para proteger activos estratégicos clave"
+        "text": "art03"
     },
     "art03_00_intro_p": {
         "text": "Fortalecemos la resiliencia operativa con pólizas modulares que cubren maquinaria crítica, interrupciones prolongadas y requisitos normativos, asegurando continuidad financiera mientras alineamos la estrategia de riesgos con tus objetivos de crecimiento."
@@ -585,7 +769,7 @@
     },
 
     "art04_00_headerPrimary": {
-        "text": "Galería de proyectos y casos destacados"
+        "text": "art04"
     },
     "art04_00_intro_p": {
         "text": "Seleccionamos intervenciones recientes que ilustran nuestra capacidad para integrar seguridad, eficiencia energética y narrativa visual en entornos industriales con altos requisitos de cumplimiento."
@@ -619,7 +803,7 @@
     },
 
     "art06_00_headerPrimary": {
-        "text": "Soluciones solares que escalan con tu negocio"
+        "text": "art06"
     },
     "art06_00_headerSecondary_a": {
         "text": "Ingeniería fotovoltaica modular a medida"
@@ -677,7 +861,7 @@
     "art07_00_bgMatrix_tablet": "assets/img/dummy/dummy_1800.avif",
     "art07_00_bgMatrix_desktop": "assets/img/dummy/dummy_2560.avif",
     "art07_00_h3_1": {
-        "text": "Plan integral solar"
+        "text": "art07"
     },
     "art07_00_h3_2": {
         "text": "en barrios industriales"
@@ -693,7 +877,7 @@
     },
 
     "art08_00_headerPrimary": {
-        "text": "Estrategias solares para ampliar la competitividad industrial regional en Gipuzkoa"
+        "text": "art08"
     },
     "art08_00_a_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
@@ -719,7 +903,7 @@
     },
 
     "art09_00_headerPrimary": {
-        "text": "Casos de interiorismo con retorno medible en retail"
+        "text": "art09"
     },
     "art09_00_p1": {
         "text": "Analizamos implantaciones híbridas con datos de afluencia, conversiones cruzadas y fidelización para replicar experiencias omnicanal que eleven la permanencia media por visita en cada tienda."
@@ -782,7 +966,7 @@
     },
 
     "art10_00_headerPrimary": {
-        "text": "Servicios modulares para activar equipos comerciales omnicanal ágiles"
+        "text": "art10"
     },
     "art10_00_headerSecondary_a": {
         "text": "Diagnóstico táctico en tienda"
@@ -821,7 +1005,7 @@
     "art10_00_bottom_fill": "#ffffff",
 
     "art11_00_headerPrimary": {
-        "text": "Nuestra experiencia en cifras"
+        "text": "art11"
     },
     "art11_00_a_target": {
         "value": "998"
@@ -855,7 +1039,7 @@
     },
 
     "art12_00_headerPrimary": {
-        "text": "Estrategias modulares que optimizan tu canal digital de ventas"
+        "text": "art12"
     },
     "art12_00_headerSecondary_a": {
         "text": "Onboarding ágil de partners"
@@ -909,7 +1093,7 @@
     "art12_00_bottom_fill": "#ffffff",
 
     "art13_00_headerPrimary": {
-        "text": "Clientes que impulsan nuestra innovación diaria conjunta"
+        "text": "art13"
     },
     "art13_00_a_quote": {
         "text": "Tras migrar con AvT logramos integrar canales físicos y digitales sin fricciones. El equipo nos guio en automatizaciones críticas y definió métricas compartidas que hoy permiten a cada partner acceder a reportes fiables y coordinar lanzamientos conjuntos estratégicos."
@@ -932,7 +1116,7 @@
     },
 
     "art14_00_headerPrimary": {
-        "text": "Servicios legales ágiles para la industria inteligente vasca"
+        "text": "art14"
     },
     "art14_00_p": {
         "text": "Nuestro equipo combina asesoría jurídica tecnológica con conocimiento industrial para acelerar implantaciones seguras en Bizkaia. Coordinamos evaluaciones regulatorias, contratos de innovación y formación preventiva para que tus lanzamientos conecten con partners locales y cumplan la norma europea sin fricciones operativas. Supervisamos auditorías de datos, licencias y cláusulas de ciberseguridad que blindan el crecimiento sostenible de cada planta."
@@ -944,7 +1128,7 @@
     },
 
     "art15_00_headerPrimary": {
-        "text": "Metodología integral para digitalizar cadenas logísticas complejas de Euskadi"
+        "text": "art15"
     },
     "art15_00_p1": {
         "text": "Analizamos cada nodo de suministro junto a tus responsables de operaciones para detectar cuellos de botella, modelar escenarios con datos reales y priorizar automatizaciones. Integrando plataformas IoT y analítica avanzada reducimos tiempos de respuesta, trazamos incidencias y alineamos KPI críticos con los objetivos comerciales del territorio."
@@ -964,7 +1148,7 @@
     },
 
     "artForm01_00_headerPrimary": {
-        "text": "Solicita información rápida"
+        "text": "artForm01"
     },
     "artForm01_00_headerSecondary": {
         "text": "Completa el formulario"
@@ -1080,7 +1264,7 @@
     },
 
     "artSlider01_00_headerPrimary": {
-        "text": "Ideas y noticias de logística urbana"
+        "text": "artSlider01"
     },
     "artSlider01_00_viewmore": {
         "text": "Explorar publicaciones",
@@ -1268,7 +1452,7 @@
     },
 
     "artSlider02_00_headerPrimary": {
-        "text": "Experiencias formativas con partners industriales"
+        "text": "artSlider02"
     },
     "artSlider02_00_prev": {
         "text": "Anterior"
@@ -1310,7 +1494,7 @@
     },
 
     "artAccordion01_00_headerPrimary": {
-        "text": "Preguntas clave de matriculación"
+        "text": "artAccordion01"
     },
     "artAccordion01_00_itema_title": {
         "text": "¿Qué documentos debo presentar?"
@@ -1332,7 +1516,7 @@
     },
 
     "artZipper_00_h3": {
-        "text": "FAQs sobre logística integral"
+        "text": "artZipper"
     },
     "artZipper_00_a_h4": {
         "text": "¿Cómo optimizamos rutas?"
@@ -1351,14 +1535,14 @@
     },
 
     "moduleTest_00_h2_text": {
-        "text": "Prueba piloto controlada en 30 días"
+        "text": "moduleTest"
     },
     "moduleTest_00_p_text": {
         "text": "Validamos integraciones, definimos indicadores y formamos a tus equipos operativos con soporte continuo durante la prueba para medir reducción de errores, capacidad de reacción y eficiencia en costes antes del despliegue completo en toda la red multialmacén."
     },
 
     "art05_00_headerPrimary": {
-        "text": "Historias reales de confianza local certificada"
+        "text": "art05"
     },
     "art05_00_intro_p": {
         "text": "Nuestros clientes describen cómo la instalación solar optimiza sus costes energéticos y refuerza su compromiso con la sostenibilidad, destacando la cercanía del equipo técnico y la monitorización continua que ofrecemos en cada proyecto residencial."
@@ -1473,7 +1657,7 @@
     "artSlider02_00_slidea_img_sizes": "(max-width: 768px) 100vw, 1500px",
 
     "art16_00_h3_1": {
-        "text": "Servicios logísticos avanzados"
+        "text": "art16"
     },
     "art16_00_h3_2": {
         "text": "para cadenas sostenibles"
@@ -1486,7 +1670,7 @@
     "art16_00_bg_desktop": "assets/img/dummy/dummy_2560.avif",
 
     "art17_00_headerPrimary": {
-        "text": "Zergatik aukeratu eta nola lan egiten dugu"
+        "text": "art17"
     },
     "art17_00_headerSecondary_a": {
         "text": "Zergatik gu"
@@ -1518,7 +1702,7 @@
     },
 
     "art18_00_headerPrimary": {
-        "text": "Pricing"
+        "text": "art18"
     },
     "art18_00_headerSecondary_a": {
         "text": "Basic"
@@ -1582,7 +1766,7 @@
         "text": "Matrix"
     },
     "artPricingGlass01_00_headerSecondary_a": {
-        "text": "Free"
+        "text": "artPricingGlass01 · Free"
     },
     "artPricingGlass01_00_a_price": {
         "text": "$0/mo"
@@ -1712,7 +1896,7 @@
         "text": "Strategy"
     },
     "sectionParallax01_00_a_title": {
-        "text": "Shape the signal"
+        "text": "sectionParallax01 · Shape the signal"
     },
     "sectionParallax01_00_a_text": {
         "text": "Align the narrative, define the audience, and set the release cadence."
@@ -1779,7 +1963,7 @@
     },
 
     "moduleH1Type02_00_h1_text": {
-        "text": "Logística inteligente para flotas multiorigen europeas"
+        "text": "moduleH1Type02"
     },
     "moduleH1Type02_00_p01_text": {
         "text": "Conectamos almacenes, última milla y partners europeos mediante integraciones EDI y seguimiento IoT para anticipar incidencias, redistribuir cargas y garantizar entregas just-in-time sin saturar tus recursos internos ni los equipos de atención posventa, manteniendo SLA críticos en campañas estacionales."
@@ -1821,7 +2005,7 @@
     },
 
     "sectionDiskSlider01_00_headerPrimary": {
-        "text": "WebGL disko likidoaren sliderra"
+        "text": "sectionDiskSlider01"
     },
     "sectionDiskSlider01_00_intro": {
         "text": "Scroll egitean erdiko diskoa biratzen da, irudia deformatu eta hurrengo eszena uraren moduan agerraraziz."
@@ -1886,7 +2070,7 @@
     },
 
     "sectionSkewGallery01_00_headerPrimary": {
-        "text": ""
+        "text": "sectionSkewGallery01"
     },
     "sectionSkewGallery01_00_intro": {
         "text": ""
@@ -1959,7 +2143,7 @@
     },
 
     "artWorksSkew01_00_headerPrimary": {
-        "text": "Proiektu hautatuak"
+        "text": "artWorksSkew01"
     },
     "artWorksSkew01_00_intro": {
         "text": "Nabarmendutako lanen multzoa, sakontasun sentsazioarekin eta scrollari lotutako mugimenduarekin."
@@ -2070,7 +2254,7 @@
     },
 
     "sectionHScroll01_00_headerPrimary": {
-        "text": "Matrixari buruz"
+        "text": "sectionHScroll01"
     },
     "sectionHScroll01_00_intro": {
         "text": "Printzipioak eta erabakiak, simulazioan kodea gidatzen dutenak."
@@ -2133,7 +2317,7 @@
     },
 
     "artHeroScroll01_00_headerPrimary": {
-        "text": "The Matrix Is Watching"
+        "text": "artHeroScroll01"
     },
     "artHeroScroll01_00_intro": {
         "text": "Reality bends when you choose the truth."
@@ -2223,7 +2407,9 @@
         "text": "Fate has a sense of irony"
     },
 
-    "art19_00_headerPrimary": "",
+    "art19_00_headerPrimary": {
+        "text": "art19"
+    },
     "art19_00_clickHint": "",
     "art19_00_slidea_img": {
         "src": "",

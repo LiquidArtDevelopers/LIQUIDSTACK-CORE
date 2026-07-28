@@ -65,7 +65,7 @@
         "text": "Liquid Art Developers"
     },
     "hero03_00_front_text": {
-        "text": "Matrix Has You"
+        "text": "hero03 · Matrix Has You"
     },
 
     "sect01_00_a_img01": {
@@ -401,7 +401,7 @@
     },
 
     "moduleH1Type01_00_h1_text": {
-        "text": "Liquid Art Developers"
+        "text": "hero01 · moduleH1Type01"
     },
     "moduleH1Type01_00_p01_text": {
         "text": "Wake up, Neo."
@@ -410,24 +410,134 @@
         "text": "To deny our own impulses is to deny the very thing that makes us human."
     },
 
+    "moduleH1Type01_01_h1_text": {
+        "text": "hero00 · moduleH1Type01"
+    },
+    "moduleH1Type01_01_p01_text": {
+        "text": "Wake up, Neo."
+    },
+    "moduleH1Type01_01_p02_text": {
+        "text": "To deny our own impulses is to deny the very thing that makes us human."
+    },
+
+    "moduleH1Type01_02_h1_text": {
+        "text": "hero02 · moduleH1Type01"
+    },
+    "moduleH1Type01_02_p01_text": {
+        "text": "Wake up, Neo."
+    },
+    "moduleH1Type01_02_p02_text": {
+        "text": "To deny our own impulses is to deny the very thing that makes us human."
+    },
+
+    "moduleH1Type01_03_h1_text": {
+        "text": "hero04 · moduleH1Type01"
+    },
+    "moduleH1Type01_03_p01_text": {
+        "text": "Wake up, Neo."
+    },
+    "moduleH1Type01_03_p02_text": {
+        "text": "To deny our own impulses is to deny the very thing that makes us human."
+    },
+
     "moduleH2Type01_00_h2_text": {
-        "text": "Welcome to the real world."
+        "text": "sect01 · moduleH2Type01"
     },
 
     "moduleH2Type01_01_h2_text": {
-        "text": "There is no spoon."
+        "text": "sect02 · moduleH2Type01"
     },
 
     "moduleH2Type01_02_h2_text": {
-        "text": "Free your mind."
+        "text": "sectTabs01 · moduleH2Type01"
     },
 
     "moduleH2Type01_03_h2_text": {
-        "text": "Ignorance is bliss."
+        "text": "moduleH2Type01"
     },
 
     "moduleH2Type01_04_h2_text": {
-        "text": "Wake up, Neo."
+        "text": "art17 · moduleH2Type01"
+    },
+
+    "moduleH2Type01_05_h2_text": {
+        "text": "art02little · icon · moduleList01 · moduleH2Type01"
+    },
+
+    "moduleH2Type01_06_h2_text": {
+        "text": "sectionParticles01 · moduleH2Type01"
+    },
+
+    "moduleH2Type01_07_h2_text": {
+        "text": "There is no spoon."
+    },
+
+    "moduleH2Type01_08_h2_text": {
+        "text": "Free your mind."
+    },
+
+    "moduleParrafo01_00_p_text": {
+        "text": "Este módulo permite inyectar un párrafo independiente dentro de cualquier tarjeta."
+    },
+    "moduleParrafo01_01_p_text": {
+        "text": "El contenido modular mantiene la estructura flexible, reutilizable y fácil de escalar."
+    },
+
+    "moduleList01_00_a_li_text": {
+        "text": "Contenido independiente para cada tarjeta."
+    },
+    "moduleList01_00_b_li_text": {
+        "text": "De uno a tres elementos destacados."
+    },
+    "moduleList01_00_c_li_text": {
+        "text": "Jerarquía semántica adaptable."
+    },
+    "moduleList01_00_d_li_text": {
+        "text": "Diseño responsive en todos los tamaños."
+    },
+    "moduleList01_00_e_li_text": {
+        "text": "Compatibilidad con imágenes o iconos."
+    },
+    "moduleList01_00_f_li_text": {
+        "text": "Composición mediante módulos reutilizables."
+    },
+
+    "moduleList01_01_a_li_text": {
+        "text": "Encabezado principal configurable."
+    },
+    "moduleList01_01_b_li_text": {
+        "text": "Encabezados internos escalables."
+    },
+    "moduleList01_01_c_li_text": {
+        "text": "Módulos de contenido intercambiables."
+    },
+    "moduleList01_01_d_li_text": {
+        "text": "Variantes visuales integradas."
+    },
+    "moduleList01_01_e_li_text": {
+        "text": "Número de elementos configurable."
+    },
+    "moduleList01_01_f_li_text": {
+        "text": "Estructura HTML semántica."
+    },
+
+    "moduleList01_02_a_li_text": {
+        "text": "Contenido específico para cada elemento."
+    },
+    "moduleList01_02_b_li_text": {
+        "text": "Un máximo de tres tarjetas destacadas."
+    },
+    "moduleList01_02_c_li_text": {
+        "text": "Comportamiento responsive consistente."
+    },
+    "moduleList01_02_d_li_text": {
+        "text": "Separación clara entre estructura y contenido."
+    },
+    "moduleList01_02_e_li_text": {
+        "text": "Reutilización sencilla en distintas páginas."
+    },
+    "moduleList01_02_f_li_text": {
+        "text": "Configuración preparada para crecer."
     },
 
     "moduleButtonType01_00_cta": {
@@ -452,7 +562,7 @@
     },
 
     "art01_00_headerPrimary": {
-        "text": "The Matrix has you."
+        "text": "art01"
     },
     "art01_00_intro_p": {
         "text": "To deny our own impulses is to deny the very thing that makes us human."
@@ -486,7 +596,7 @@
     },
 
     "art02_00_headerPrimary": {
-        "text": "Red pill or blue pill."
+        "text": "art02"
     },
     "art02_00_intro_p": {
         "text": "Red pill or blue pill."
@@ -520,8 +630,82 @@
         "text": "To deny our own impulses is to deny the very thing that makes us human."
     },
 
+    "art02little_00_headerPrimary": {
+        "text": "art02little · image · moduleParrafo01"
+    },
+    "art02little_00_intro_p": {
+        "text": "Un recurso flexible para mostrar uno, dos o tres elementos destacados."
+    },
+    "art02little_00_p1": {
+        "text": "Cada tarjeta admite contenido independiente mediante un módulo reutilizable."
+    },
+    "art02little_00_p2": {
+        "text": "La composición se adapta automáticamente al número de elementos."
+    },
+    "art02little_00_headerSecondary_a": {
+        "text": "Primer elemento destacado"
+    },
+    "art02little_00_a_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Imagen de demostración del primer elemento",
+        "title": "Primer elemento destacado"
+    },
+    "art02little_00_headerSecondary_b": {
+        "text": "Segundo elemento destacado"
+    },
+    "art02little_00_b_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Imagen de demostración del segundo elemento",
+        "title": "Segundo elemento destacado"
+    },
+    "art02little_00_headerSecondary_c": {
+        "text": "Tercer elemento destacado"
+    },
+    "art02little_00_c_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Imagen de demostración del tercer elemento",
+        "title": "Tercer elemento destacado"
+    },
+
+    "art02little_01_headerPrimary": {
+        "text": "art02little · icon · moduleList01"
+    },
+    "art02little_01_intro_p": {
+        "text": "Cada elemento puede recibir un módulo de contenido independiente."
+    },
+    "art02little_01_p1": {
+        "text": "El encabezado principal también puede proporcionarse desde un componente externo."
+    },
+    "art02little_01_p2": {
+        "text": "La jerarquía de encabezados interiores se adapta automáticamente."
+    },
+    "art02little_01_headerSecondary_a": {
+        "text": "Contenido flexible"
+    },
+    "art02little_01_a_img": {
+        "src": "assets/img/system/compass-outline.svg",
+        "alt": "Icono de brújula",
+        "title": "Orientación"
+    },
+    "art02little_01_headerSecondary_b": {
+        "text": "Estructura semántica"
+    },
+    "art02little_01_b_img": {
+        "src": "assets/img/system/people.svg",
+        "alt": "Icono de equipo",
+        "title": "Personas"
+    },
+    "art02little_01_headerSecondary_c": {
+        "text": "Elementos escalables"
+    },
+    "art02little_01_c_img": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "Icono de escudo verificado",
+        "title": "Protección"
+    },
+
     "art03_00_headerPrimary": {
-        "text": "Ignorance is bliss."
+        "text": "art03"
     },
     "art03_00_intro_p": {
         "text": "We are still here."
@@ -585,7 +769,7 @@
     },
 
     "art04_00_headerPrimary": {
-        "text": "Dodge this."
+        "text": "art04"
     },
     "art04_00_intro_p": {
         "text": "Fate, it seems, is not without a sense of irony."
@@ -619,7 +803,7 @@
     },
 
     "art06_00_headerPrimary": {
-        "text": "Follow the white rabbit."
+        "text": "art06"
     },
     "art06_00_headerSecondary_a": {
         "text": "Reality is a prison."
@@ -677,7 +861,7 @@
     "art07_00_bgMatrix_tablet": "assets/img/dummy/dummy_1800.avif",
     "art07_00_bgMatrix_desktop": "assets/img/dummy/dummy_2560.avif",
     "art07_00_h3_1": {
-        "text": "Choice is an illusion."
+        "text": "art07"
     },
     "art07_00_h3_2": {
         "text": "Welcome to the real world."
@@ -693,7 +877,7 @@
     },
 
     "art08_00_headerPrimary": {
-        "text": "The body cannot live without the mind."
+        "text": "art08"
     },
     "art08_00_a_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
@@ -719,7 +903,7 @@
     },
 
     "art09_00_headerPrimary": {
-        "text": "Free your mind."
+        "text": "art09"
     },
     "art09_00_p1": {
         "text": "Unfortunately, no one can be told what the Matrix is. You have to see it for yourself."
@@ -782,7 +966,7 @@
     },
 
     "art10_00_headerPrimary": {
-        "text": "There is no spoon."
+        "text": "art10"
     },
     "art10_00_headerSecondary_a": {
         "text": "You are the One."
@@ -821,7 +1005,7 @@
     "art10_00_bottom_fill": "#ffffff",
 
     "art11_00_headerPrimary": {
-        "text": "I know kung fu."
+        "text": "art11"
     },
     "art11_00_a_target": {
         "value": "998"
@@ -855,7 +1039,7 @@
     },
 
     "art12_00_headerPrimary": {
-        "text": "The system is watching."
+        "text": "art12"
     },
     "art12_00_headerSecondary_a": {
         "text": "Reality is a prison."
@@ -909,7 +1093,7 @@
     "art12_00_bottom_fill": "#ffffff",
 
     "art13_00_headerPrimary": {
-        "text": "There is no spoon."
+        "text": "art13"
     },
     "art13_00_a_quote": {
         "text": "Hope is a human delusion: both your greatest strength and your greatest weakness."
@@ -932,7 +1116,7 @@
     },
 
     "art14_00_headerPrimary": {
-        "text": "Red pill or blue pill."
+        "text": "art14"
     },
     "art14_00_p": {
         "text": "Your mind makes it real."
@@ -944,7 +1128,7 @@
     },
 
     "art15_00_headerPrimary": {
-        "text": "Reality is a prison."
+        "text": "art15"
     },
     "art15_00_p1": {
         "text": "It is not the spoon that bends. It is only yourself."
@@ -964,7 +1148,7 @@
     },
 
     "artForm01_00_headerPrimary": {
-        "text": "There is no spoon."
+        "text": "artForm01"
     },
     "artForm01_00_headerSecondary": {
         "text": "Reality is a prison."
@@ -1080,7 +1264,7 @@
     },
 
     "artSlider01_00_headerPrimary": {
-        "text": "Believe."
+        "text": "artSlider01"
     },
     "artSlider01_00_viewmore": {
         "text": "Ignorance is bliss.",
@@ -1268,7 +1452,7 @@
     },
 
     "artSlider02_00_headerPrimary": {
-        "text": "Choice is an illusion."
+        "text": "artSlider02"
     },
     "artSlider02_00_prev": {
         "text": "You are the One."
@@ -1310,7 +1494,7 @@
     },
 
     "artAccordion01_00_headerPrimary": {
-        "text": "Dodge this."
+        "text": "artAccordion01"
     },
     "artAccordion01_00_itema_title": {
         "text": "Free your mind."
@@ -1332,7 +1516,7 @@
     },
 
     "artZipper_00_h3": {
-        "text": "You are the One."
+        "text": "artZipper"
     },
     "artZipper_00_a_h4": {
         "text": "The Matrix has you."
@@ -1351,14 +1535,14 @@
     },
 
     "moduleTest_00_h2_text": {
-        "text": "You are the One."
+        "text": "moduleTest"
     },
     "moduleTest_00_p_text": {
         "text": "You take the blue pill, the story ends. You take the red pill, you stay in Wonderland."
     },
 
     "art05_00_headerPrimary": {
-        "text": "Free your mind."
+        "text": "art05"
     },
     "art05_00_intro_p": {
         "text": "You take the blue pill, the story ends. You take the red pill, you stay in Wonderland."
@@ -1473,7 +1657,7 @@
     "artSlider02_00_slidea_img_sizes": "(max-width: 768px) 100vw, 1500px",
 
     "art16_00_h3_1": {
-        "text": "Choice is an illusion."
+        "text": "art16"
     },
     "art16_00_h3_2": {
         "text": "You are the One."
@@ -1486,7 +1670,7 @@
     "art16_00_bg_desktop": "assets/img/dummy/dummy_2560.avif",
 
     "art17_00_headerPrimary": {
-        "text": "Red pill or blue pill."
+        "text": "art17"
     },
     "art17_00_headerSecondary_a": {
         "text": "There is no spoon."
@@ -1518,7 +1702,7 @@
     },
 
     "art18_00_headerPrimary": {
-        "text": "Believe."
+        "text": "art18"
     },
     "art18_00_headerSecondary_a": {
         "text": "Welcome to the real world."
@@ -1582,7 +1766,7 @@
         "text": "Matrix"
     },
     "artPricingGlass01_00_headerSecondary_a": {
-        "text": "Free"
+        "text": "artPricingGlass01 · Free"
     },
     "artPricingGlass01_00_a_price": {
         "text": "0 ?/mes"
@@ -1712,7 +1896,7 @@
         "text": "Red pill or blue pill."
     },
     "sectionParallax01_00_a_title": {
-        "text": "There is no spoon."
+        "text": "sectionParallax01 · There is no spoon."
     },
     "sectionParallax01_00_a_text": {
         "text": "You are the One."
@@ -1779,7 +1963,7 @@
     },
 
     "moduleH1Type02_00_h1_text": {
-        "text": "Free your mind."
+        "text": "moduleH1Type02"
     },
     "moduleH1Type02_00_p01_text": {
         "text": "Remember: all I'm offering is the truth. Nothing more."
@@ -1821,7 +2005,7 @@
     },
 
     "sectionDiskSlider01_00_headerPrimary": {
-        "text": "You are the One."
+        "text": "sectionDiskSlider01"
     },
     "sectionDiskSlider01_00_intro": {
         "text": "There is a difference between knowing the path and walking the path."
@@ -1886,7 +2070,7 @@
     },
 
     "sectionSkewGallery01_00_headerPrimary": {
-        "text": ""
+        "text": "sectionSkewGallery01"
     },
     "sectionSkewGallery01_00_intro": {
         "text": ""
@@ -1959,7 +2143,7 @@
     },
 
     "artWorksSkew01_00_headerPrimary": {
-        "text": "Ignorance is bliss."
+        "text": "artWorksSkew01"
     },
     "artWorksSkew01_00_intro": {
         "text": "Fate, it seems, is not without a sense of irony."
@@ -2070,7 +2254,7 @@
     },
 
     "sectionHScroll01_00_headerPrimary": {
-        "text": "Believe."
+        "text": "sectionHScroll01"
     },
     "sectionHScroll01_00_intro": {
         "text": "The Matrix has you."
@@ -2133,7 +2317,7 @@
     },
 
     "artHeroScroll01_00_headerPrimary": {
-        "text": "The Matrix Is Watching"
+        "text": "artHeroScroll01"
     },
     "artHeroScroll01_00_intro": {
         "text": "Reality bends when you choose the truth."
@@ -2223,7 +2407,9 @@
         "text": "Fate has a sense of irony"
     },
 
-    "art19_00_headerPrimary": "",
+    "art19_00_headerPrimary": {
+        "text": "art19"
+    },
     "art19_00_clickHint": "",
     "art19_00_slidea_img": {
         "src": "",

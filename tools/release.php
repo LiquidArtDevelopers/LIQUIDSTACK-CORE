@@ -160,6 +160,16 @@ final class ReleaseCommand
 
         [$behind, $ahead] = $this->branchDistance($remote, $branch);
 
+        if ($behind > 0 && $ahead > 0) {
+            throw new \RuntimeException(sprintf(
+                'La rama local y %s/%s han divergido: hay %d commit(s) local(es) por subir y %d commit(s) remoto(s) por integrar. git pull --ff-only no puede resolver este estado; conserva una referencia de respaldo y reconcilia ambos historiales antes de publicar.',
+                $remote,
+                $branch,
+                $ahead,
+                $behind
+            ));
+        }
+
         if ($behind > 0) {
             throw new \RuntimeException(sprintf(
                 'La rama local está %d commit(s) por detrás de %s/%s. Ejecuta git pull --ff-only antes de publicar.',

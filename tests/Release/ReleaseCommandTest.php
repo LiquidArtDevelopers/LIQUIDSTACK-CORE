@@ -151,6 +151,58 @@ final class ReleaseCommandTest extends TestCase
         );
     }
 
+    public function testReleaseExplainsWhenLocalAndRemoteMainHaveDiverged(): void
+    {
+        [$remoteRoot, $repositoryRoot] = $this->createReleaseRepository();
+        $publisherRoot = $this->fixtureRoot
+            . DIRECTORY_SEPARATOR
+            . 'publisher-'
+            . bin2hex(random_bytes(6));
+
+        $this->runChecked([
+            'git',
+            'clone',
+            '--branch',
+            'main',
+            $remoteRoot,
+            $publisherRoot,
+        ], $this->fixtureRoot);
+        $this->runChecked(
+            ['git', 'config', 'user.name', 'LiquidStack Remote Test'],
+            $publisherRoot
+        );
+        $this->runChecked(
+            ['git', 'config', 'user.email', 'remote@example.invalid'],
+            $publisherRoot
+        );
+        $this->filesystem->dumpFile(
+            $publisherRoot . '/remote-change.txt',
+            "Remote change\n"
+        );
+        $this->runChecked(['git', 'add', 'remote-change.txt'], $publisherRoot);
+        $this->runChecked(['git', 'commit', '-m', 'Remote change'], $publisherRoot);
+        $this->runChecked(['git', 'push', 'origin', 'main'], $publisherRoot);
+
+        [$exitCode, $output] = $this->runProcess([
+            PHP_BINARY,
+            'tools/release.php',
+            '--version=v1.5.0',
+            '--yes',
+            '--skip-tests',
+        ], $repositoryRoot);
+
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString('han divergido', $output);
+        self::assertStringContainsString(
+            'git pull --ff-only no puede resolver este estado',
+            $output
+        );
+        self::assertStringContainsString(
+            'hay 1 commit(s) local(es) por subir y 1 commit(s) remoto(s) por integrar',
+            $output
+        );
+    }
+
     public function testComposerEntrypointForwardsArgumentsAndExitCodes(): void
     {
         $projectRoot = dirname(__DIR__, 2);

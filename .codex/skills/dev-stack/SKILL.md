@@ -25,16 +25,32 @@ Un recurso reutilizable completo suele incluir:
 - `src/scss/resources/_<recurso>.scss`
 - `src/js/resources/_<recurso>.js` solo si necesita comportamiento
 - imports SCSS/JS en la entrada de la vista
-- ejemplo e hidratación en `App/views/_templates.php`
+- ejemplo e hidratación en `App/views/_showroom.php`; `_templates.php` debe
+  cargar el mismo catálogo como alias compatible
 - valores de referencia en `App/config/languages/templates/{es,eu,en}.json`, según los idiomas presentes
 
 Seguir siempre el patrón real del repositorio si una ruta difiere.
 
 ## Contrato del recurso
 
+### Semántica estructural obligatoria
+
+Determinar la familia semántica antes de escribir el template. Las etiquetas no son contenedores de layout intercambiables:
+
+| Raíz del recurso | Encabezado natural | Unidades interiores | Encabezado interior natural |
+| --- | --- | --- | --- |
+| `section` | `h2` | `article` | `h3` |
+| `article` | `h3` | `div` | `h4` |
+
+- En un recurso raíz `section`, usar `article` para segregar unidades de contenido autónomas.
+- En un recurso raíz `article`, usar `div` para cards, items y wrappers internos. No introducir `section` ni `header` como simples cajas visuales.
+- Usar otra región semántica únicamente cuando el contenido cumpla realmente su función HTML y el patrón de la familia lo contemple.
+- Inspeccionar un recurso hermano y fijar antes de implementar: raíz, nivel base, etiqueta de item y nivel hijo.
+- Inyectar otro nivel de encabezado no cambia la raíz ni las etiquetas de los items; solo escala los encabezados interiores de forma relativa.
+
 ### Template HTML
 
-- Mantener la naturaleza semántica del recurso (`article`, `section`, `header`, etc.).
+- Mantener la naturaleza semántica definida en la tabla anterior.
 - Usar placeholders para todo contenido y atributo dinámico.
 - Evitar encabezados rígidos cuando el recurso deba adaptarse a distintas posiciones de la jerarquía.
 - Permitir un número variable de items cuando corresponda; no duplicar manualmente bloques que el controlador puede generar.
@@ -56,7 +72,18 @@ controller('nombre', $index, [
 - `$params` reúne reemplazos de placeholders y opciones del controlador.
 - `items` controla los elementos repetibles y debe viajar dentro de `$params`, no como cuarto argumento.
 - `header_level` fija el nivel principal cuando no puede inferirse del placeholder inyectado.
-- Registrar en `App/views/_templates.php` una instancia completa y funcional que actúe como contrato de referencia.
+- Registrar en `App/views/_showroom.php` una instancia completa y funcional
+  que actúe como contrato de referencia, y comprobar que `_templates.php`
+  carga el mismo catálogo.
+- Hacer que el copy del encabezado principal del ejemplo contenga el
+  identificador exacto del recurso (`art02`, `sectionHScroll01`, etc.) para
+  localizarlo con la búsqueda del navegador. Si se inyecta un encabezado
+  externo, usar una instancia propia y mencionar también los módulos
+  relevantes cuando identifiquen la composición.
+- Mantener el lorem/Matrix en el cuerpo y en los encabezados interiores, y
+  conservar las imágenes dummy existentes. Un recurso visual o atómico sin
+  encabezado por contrato no debe recibir un encabezado semánticamente falso
+  dentro de su template solo para rotular el catálogo.
 
 ### Controlador PHP
 
@@ -70,10 +97,15 @@ controller('nombre', $index, [
 
 ### Idiomas e hidratación
 
-- Conservar en los JSON de `templates` valores dummy para todos los items mostrados en `_templates.php`.
+- Conservar en los JSON de `templates` valores dummy para todos los items
+  mostrados en `_showroom.php`; ambas rutas deben usar el contenido
+  `templates`.
 - No borrar ni inventar valores dummy acordados con un cliente.
 - Mantener cada `data-lang` como objeto con las propiedades necesarias (`text`, `alt`, `title`, `href`, etc.); evitar entradas planas si el recurso necesita atributos.
-- Ejecutar `php tools/update-languages.php <vista>` o la ruta equivalente del proyecto después de registrar el controlador en una vista.
+- Para el showroom canónico, ejecutar
+  `php App/tools/update-languages.php templates` o la ruta equivalente: tanto
+  `/showroom` como `/templates` usan el slug de contenido `templates`.
+- Para cualquier otra vista, hidratar el slug real configurado en `content`.
 - Revisar el diff de los JSON: el script no sustituye la validación humana.
 
 ### SCSS
@@ -92,15 +124,19 @@ controller('nombre', $index, [
 - Acotar selectores a la raíz del recurso y soportar varias instancias.
 - Basar items variables en índices/elementos del DOM, no en claves de idioma usadas como `data-*`.
 - Limpiar listeners, animaciones, timelines, `ScrollTrigger`, RAF, observadores o WebGL cuando el recurso pueda reinicializarse.
-- Registrar import e inicialización tanto en la entrada de la vista como en `src/js/templates.js` cuando el showroom de templates lo necesite.
+- Registrar import e inicialización tanto en la entrada de la vista como en
+  `src/js/templates.js` cuando el showroom lo necesite.
 
 ## Jerarquía de encabezados
 
 La vista consumidora decide el nivel semántico. Si se inyecta `{header-primary}` con un nivel distinto, recalcular los descendientes de forma relativa y limitar el resultado a `h6`.
 
+El nivel por defecto depende de la raíz: `2` para un recurso `section` y `3` para un recurso `article`. La inyección de otro nivel cambia los encabezados, no las etiquetas estructurales del recurso.
+
 Usar el helper compartido del stack:
 
 ```php
+// Recurso raíz article: h3 principal y h4 hijo por defecto.
 $headerLevels = resolve_header_levels($params, '{header-primary}', 3);
 $primaryTag   = 'h' . $headerLevels['base'];
 $secondaryTag = 'h' . $headerLevels['child'];

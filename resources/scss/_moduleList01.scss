@@ -1,0 +1,47 @@
+@use '../config' as c;
+
+.moduleList01 {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+    list-style: none;
+
+    .moduleList01-item {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: 1.35rem minmax(0, 1fr);
+        align-items: start;
+        gap: .75rem;
+
+        > span:last-child {
+            line-height: 1.45;
+        }
+    }
+
+    .moduleList01-marker {
+        width: 1.25rem;
+        height: 1.25rem;
+        margin-top: .1rem;
+        border: 2px solid c.$color04;
+        border-radius: 50%;
+        position: relative;
+
+        &::after {
+            content: '';
+            width: .45rem;
+            height: .22rem;
+            border-bottom: 2px solid c.$color02;
+            border-left: 2px solid c.$color02;
+            position: absolute;
+            top: 42%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+        }
+    }
+
+    @media (min-width: c.$tablet) {
+        gap: 1.25rem;
+    }
+}

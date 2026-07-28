@@ -17,7 +17,8 @@ Localizaciones habituales en este entorno, que deben verificarse antes de usarse
 
 - BASE: `C:\xampp\htdocs\__LIQUIDSTACK\LIQUIDSTACK-BASE`
 - CORE: `C:\xampp\htdocs\__LIQUIDSTACK\LIQUIDSTACK-CORE`
-- showroom BASE: `http://localhost:1309/es/templates`
+- showroom BASE: `http://localhost:1309/es/showroom` (con `/es/templates`
+  como alias compatible)
 
 En otros entornos, localizar CORE mediante Composer, el repositorio configurado o las instrucciones del proyecto; no inventar rutas.
 
@@ -60,7 +61,7 @@ Copiar o adaptar:
 | `App/templates/_<recurso>.html` | `stubs/App/templates/_<recurso>.html` |
 | `App/controllers/<recurso>.php` | `stubs/App/controllers/<recurso>.php` |
 | `App/config/languages/templates/*.json` | `stubs/App/config/languages/templates/*.json` |
-| ejemplo de `App/views/_templates.php` | `stubs/App/views/_templates.php` |
+| ejemplo de `App/views/_showroom.php` | `stubs/App/views/_showroom.php` |
 
 Actualizar además:
 
@@ -70,12 +71,26 @@ Actualizar además:
 - `resources/img` con dummies reutilizables, no imágenes privadas de cliente
 - README/CHANGELOG de CORE cuando cambie el contrato público o la actualización requiera pasos
 
-No es necesario inventariar individualmente cada recurso en el Installer mientras esté dentro de estos directorios ya sincronizados; sí es obligatorio registrar el showroom, el controlador y la hidratación.
+No es necesario inventariar individualmente cada recurso en el Installer
+mientras esté dentro de estos directorios ya sincronizados; sí es obligatorio
+registrar el showroom canónico, mantener `_templates.php` como acceso
+compatible, registrar el controlador y comprobar la hidratación. Ambas rutas
+usan normalmente el bundle y los idiomas `templates`.
+
+CORE no debe copiar ni sobrescribir `App/config/routes/get.php` o
+`App/config/rutas.js` completos: contienen rutas propias de cada consumidor.
+Si se incorpora `/showroom`, registrar o documentar en cada proyecto una ruta
+con `resources => templates`, `content => templates` y la vista
+`_showroom.php`; mapear igualmente esa URL a `templates` en `rutas.js`.
 
 ### Idiomas
 
 - Mantener el mismo prefijo que el controlador.
 - Conservar `$pad`, `$letter`, objetos `data-lang` y valores dummy de referencia.
+- Conservar en el showroom el identificador exacto del recurso dentro del
+  encabezado principal de su ejemplo. Si el encabezado es un módulo inyectado,
+  mantener índices independientes para no mezclar rótulos de recursos
+  distintos.
 - Fusionar JSON por clave; no sustituir a ciegas archivos completos si CORE contiene otros recursos.
 - Incluir todos los idiomas base existentes en CORE.
 
@@ -83,7 +98,7 @@ No es necesario inventariar individualmente cada recurso en el Installer mientra
 
 1. Ejecutar `php -l` en controladores y vistas modificados.
 2. Validar JSON.
-3. Compilar frontend y probar el showroom.
+3. Compilar frontend y probar `/showroom` y el alias `/templates`.
 4. Probar múltiples instancias e items.
 5. Revisar mobile, tablet y desktop.
 6. Verificar limpieza de JS, accesibilidad y jerarquía de encabezados.

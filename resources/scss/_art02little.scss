@@ -1,0 +1,225 @@
+@use '../config' as c;
+
+.art02little {
+    width: c.$anchoFull;
+    padding: c.$padMax 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(2rem, 5vw, 4rem);
+
+    .art02little-info,
+    .art02little-copy {
+        width: 100%;
+        padding: 0 c.$padMin;
+    }
+
+    .art02little-info {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .art02little-headingSlot {
+        width: 100%;
+
+        > h1,
+        > h2,
+        > h3,
+        > h4,
+        > h5,
+        > h6 {
+            width: 100%;
+        }
+    }
+
+    .art02little-intro {
+        color: c.$color01bis;
+    }
+
+    .art02little-copy {
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .art02little-cards {
+        width: 100%;
+        max-width: c.$textMax;
+        padding: 0 c.$padMin;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: c.$padMax;
+    }
+
+    .art02little-card {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+
+        &:only-child {
+            width: 100%;
+            max-width: 42rem;
+            justify-self: center;
+        }
+    }
+
+    .art02little-cardTitle {
+        width: 100%;
+        margin: 0;
+        color: c.$color02;
+        order: 2;
+    }
+
+    .art02little-cardMedia {
+        display: block;
+        order: 1;
+    }
+
+    .art02little-cardContent {
+        width: 100%;
+        min-width: 0;
+        order: 3;
+    }
+
+    .moduleList01 {
+        gap: 1rem;
+
+        .moduleList01-marker {
+            margin-top: .15em;
+            border: 0;
+            border-radius: 0;
+            background: url('/assets/img/system/check-OK.svg') center / contain no-repeat;
+
+            &::after {
+                content: none;
+            }
+        }
+    }
+
+    .art02little-card > a,
+    .art02little-card > button {
+        margin-top: auto;
+        order: 4;
+    }
+
+    &--image {
+        .art02little-cardMedia {
+            width: 80%;
+            height: auto;
+            aspect-ratio: auto;
+            align-self: center;
+            border-radius: 15px;
+            object-fit: contain;
+            object-position: center;
+        }
+    }
+
+    &--icon {
+        .art02little-cards {
+            max-width: c.$textMax;
+        }
+
+        .art02little-card {
+            align-items: center;
+        }
+
+        .art02little-cardTitle {
+            text-align: center;
+        }
+
+        .art02little-cardMedia {
+            width: 20%;
+            height: auto;
+            object-fit: contain;
+            object-position: center;
+            filter: none;
+        }
+
+        .art02little-cardContent {
+            text-align: left;
+        }
+    }
+
+    &--image,
+    &--icon {
+        .art02little-cardTitle {
+            font-size: clamp(1rem, 3vw, 2rem);
+        }
+    }
+
+    @media (min-width: c.$tablet) {
+        width: c.$anchoMedio;
+
+        .art02little-info,
+        .art02little-copy {
+            width: c.$anchoMedio;
+            max-width: c.$textMax;
+            padding: 0;
+        }
+
+        .art02little-cards {
+            padding: 0;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .art02little-card:last-child:nth-child(odd):not(:only-child) {
+            width: calc((100% - c.$padMax) / 2);
+            grid-column: 1 / -1;
+            justify-self: center;
+        }
+
+        .art02little-card:only-child {
+            grid-column: 1 / -1;
+        }
+
+        &--image {
+            .art02little-cards {
+                grid-template-columns: repeat(2, minmax(0, 45%));
+                justify-content: space-between;
+            }
+        }
+
+        &--icon {
+            .art02little-cards {
+                grid-template-columns: repeat(2, minmax(0, 40%));
+                justify-content: center;
+            }
+
+            .art02little-cardMedia {
+                width: 30%;
+                filter: invert(67%) sepia(25%) saturate(641%) hue-rotate(1deg) brightness(99%) contrast(88%);
+            }
+        }
+    }
+
+    @media (min-width: c.$desktop) {
+        .art02little-info,
+        .art02little-copy {
+            width: c.$anchoCorto;
+            min-width: c.$textMin;
+        }
+
+        .art02little-cards {
+            grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+        }
+
+        .art02little-card:last-child:nth-child(odd):not(:only-child) {
+            width: 100%;
+            grid-column: auto;
+        }
+
+        &--image {
+            .art02little-cards {
+                grid-template-columns: repeat(2, minmax(0, 45%));
+            }
+        }
+
+        &--icon {
+            .art02little-cards {
+                grid-template-columns: repeat(2, minmax(0, 40%));
+            }
+        }
+    }
+}

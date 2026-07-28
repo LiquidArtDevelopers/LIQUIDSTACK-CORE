@@ -56,9 +56,9 @@
         height: calc(100% + $pad);
         display: flex;
         flex-direction: column;
-        row-gap: 1.5rem;
+        gap: 1.5rem;
         @media only screen and (min-width:c.$tablet){
-            column-gap: 2rem;
+            gap: 2rem;
             flex-direction: row;
             flex-wrap: wrap;
             justify-content: space-between;
@@ -66,7 +66,7 @@
         @media only screen and (min-width:c.$desktop){
             width: 80%;
             min-width: c.$textMax;
-            column-gap: 3rem;
+            gap: 3rem;
             padding-top: 4rem;
         }
         >.art02-card{
@@ -87,7 +87,7 @@
             }
             >:nth-child(1){ //Normalmente es el encabezado
                 font-size: clamp(1rem, 3vw, 1.1rem);
-                height: calc(clamp(1.3rem, 3.3vw, 1.3rem) * 4);
+                height: calc(clamp(1.3rem, 3.3vw, 1.3rem) * 3);
                 color: c.$color02;
                 order: 2;
                 font-weight: lighter;

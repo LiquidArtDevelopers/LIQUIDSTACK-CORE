@@ -14,6 +14,9 @@ Centraliza:
 Al ejecutar `composer install` o `composer update` en un proyecto que consume este paquete:
 
 1. Se copian stubs backend desde `stubs/` al proyecto.
+   Los archivos homónimos gestionados por CORE se actualizan; los archivos
+   adicionales del proyecto se conservan porque la sincronización no borra
+   elementos que solo existen en el consumidor.
 2. Se copian recursos frontend:
 - `resources/js` -> `src/js/resources` (y copia en `vendor/liquidstack/core/resources/js`).
 - `resources/scss` -> `src/scss/resources` (y copia en `vendor/liquidstack/core/resources/scss`).
@@ -66,7 +69,7 @@ Variables de entorno soportadas:
 - `STACK_CORE_RESOURCES_TARGET` (alias: `STACK_LIQUID_CORE_RESOURCES_TARGET`).
 - `STACK_CORE_RESOURCES_IMG_TARGET` (alias: `STACK_LIQUID_CORE_RESOURCES_IMG_TARGET`).
 
-## Checklist: traer un recurso nuevo desde liquidstack_base
+## Checklist: promover un recurso nuevo a CORE
 
 Usa esta lista cada vez que subas un recurso nuevo al core.
 
@@ -76,6 +79,7 @@ Usa esta lista cada vez que subas un recurso nuevo al core.
 - Anadir SCSS en `resources/scss`.
 - Si el recurso requiere imagenes:
 - Dummies generales en `resources/img/dummy`.
+- Iconos de sistema reutilizables en `resources/img/system`.
 - Imagenes especificas del recurso en `resources/img/resources/<nombreRecurso>`.
 
 ## Nota de estructura de imagenes
@@ -111,7 +115,42 @@ Por tanto:
 - `stubs/App/config/languages/templates/eu.json`
 - Anadir controlador en `stubs/App/controllers/<recurso>.php`.
 - Anadir template en `stubs/App/templates/_<recurso>.html`.
-- Actualizar `stubs/App/views/_templates.php` para mostrar el ejemplo del recurso.
+- Registrar la composición en `stubs/App/views/_showroom.php`.
+- Hacer que el encabezado principal del ejemplo contenga el identificador
+  exacto del recurso para poder localizarlo con la busqueda del navegador. Si
+  el encabezado se inyecta desde otro modulo, usar un indice independiente y
+  mencionar los modulos relevantes en el rotulo.
+- Conservar el lorem/Matrix de cuerpo e interiores y las imagenes dummy. No
+  anadir un encabezado semanticamente falso dentro de un recurso visual que no
+  lo tenga por contrato.
+- Comprobar también `/templates`: `stubs/App/views/_templates.php` es el alias
+  histórico que carga el mismo showroom.
+
+### Showroom canónico y ruta compatible
+
+`_showroom.php` es el catálogo canónico de recursos. `_templates.php` se
+mantiene como alias para no romper los stacks que todavía acceden a
+`/{lang}/templates`. Ambas vistas usan el bundle y los idiomas `templates`.
+
+El instalador sincroniza las vistas, pero deliberadamente no sobrescribe
+`App/config/routes/get.php` ni `App/config/rutas.js`, porque contienen rutas
+propias de cada proyecto. Para exponer también `/showroom`, registra en el
+consumidor una ruta equivalente a esta para cada idioma:
+
+```php
+'/es/showroom' => [
+    'resources' => 'templates',
+    'content'   => 'templates',
+    'view'      => '../App/views/_showroom.php',
+],
+```
+
+En `App/config/rutas.js`, la ruta homóloga debe apuntar igualmente a
+`templates`:
+
+```js
+'/es/showroom': 'templates',
+```
 
 ### 4) Dependencias NPM del recurso
 
@@ -124,6 +163,15 @@ Reglas de fusion en proyecto cliente:
 - Solo agrega paquetes faltantes.
 - No borra paquetes del proyecto.
 - No reemplaza versiones ya declaradas por el proyecto.
+
+### 5) Validación antes de publicar
+
+- Ejecutar `php -l` sobre los controladores y vistas añadidos.
+- Validar los JSON de `templates` en todos los idiomas base.
+- Compilar `src/scss/templates.scss`.
+- Ejecutar `composer test`.
+- Probar `/showroom` y `/templates` en un consumidor enlazado, sin usar como
+  fixture un proyecto que tenga cambios locales coincidentes.
 
 ## Guia de trabajo local (localhost:1309)
 
@@ -210,6 +258,13 @@ simultaneamente `main` y la etiqueta. El comando:
 6. muestra commit, remoto y etiqueta y pide confirmacion;
 7. crea un tag anotado y ejecuta un `git push --atomic`;
 8. elimina el tag local recien creado si el push falla.
+
+Una vez completado `composer release`, el commit ya forma parte de
+`origin/main` y tiene una etiqueta asociada. Para añadir cambios posteriores,
+crea un commit nuevo; no uses `git commit --amend` sobre el commit publicado.
+Si la rama local y `origin/main` aparecen como divergidas, no uses
+`git pull --ff-only` ni `git push --force`: conserva primero una referencia de
+respaldo y reconcilia el historial antes de volver a publicar.
 
 Ejemplo desde la etiqueta historica `v1.4.01`:
 

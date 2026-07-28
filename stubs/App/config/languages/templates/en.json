@@ -61,7 +61,7 @@
         "text": "Liquid Art Developers"
     },
     "hero03_00_front_text": {
-        "text": "Matrix Has You"
+        "text": "hero03 · Matrix Has You"
     },
     "sect01_00_a_img01": {
         "src": "assets/img/system/bookmark-outline.svg",
@@ -399,7 +399,7 @@
         "href": "example.pdf"
     },
     "moduleH1Type01_00_h1_text": {
-        "text": "Encabezado H1"
+        "text": "hero01 · moduleH1Type01"
     },
     "moduleH1Type01_00_p01_text": {
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsa, ex!"
@@ -407,21 +407,133 @@
     "moduleH1Type01_00_p02_text": {
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minima optio cumque inventore perferendis similique…"
     },
+
+    "moduleH1Type01_01_h1_text": {
+        "text": "hero00 · moduleH1Type01"
+    },
+    "moduleH1Type01_01_p01_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsa, ex!"
+    },
+    "moduleH1Type01_01_p02_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minima optio cumque inventore perferendis similique…"
+    },
+
+    "moduleH1Type01_02_h1_text": {
+        "text": "hero02 · moduleH1Type01"
+    },
+    "moduleH1Type01_02_p01_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsa, ex!"
+    },
+    "moduleH1Type01_02_p02_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minima optio cumque inventore perferendis similique…"
+    },
+
+    "moduleH1Type01_03_h1_text": {
+        "text": "hero04 · moduleH1Type01"
+    },
+    "moduleH1Type01_03_p01_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsa, ex!"
+    },
+    "moduleH1Type01_03_p02_text": {
+        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Minima optio cumque inventore perferendis similique…"
+    },
+
     "moduleH2Type01_00_h2_text": {
-        "text": "Sectores que transformamos con datos"
+        "text": "sect01 · moduleH2Type01"
     },
     "moduleH2Type01_01_h2_text": {
-        "text": "Soluciones modulares por vertical"
+        "text": "sect02 · moduleH2Type01"
     },
     "moduleH2Type01_02_h2_text": {
-        "text": "Descarga guías y recursos técnicos"
+        "text": "sectTabs01 · moduleH2Type01"
     },
     "moduleH2Type01_03_h2_text": {
-        "text": "Historias reales de eficiencia logística"
+        "text": "moduleH2Type01"
     },
     "moduleH2Type01_04_h2_text": {
-        "text": "Strategic and operational guidance"
+        "text": "art17 · moduleH2Type01"
     },
+
+    "moduleH2Type01_05_h2_text": {
+        "text": "art02little · icon · moduleList01 · moduleH2Type01"
+    },
+
+    "moduleH2Type01_06_h2_text": {
+        "text": "sectionParticles01 · moduleH2Type01"
+    },
+
+    "moduleH2Type01_07_h2_text": {
+        "text": "Soluciones modulares por vertical"
+    },
+
+    "moduleH2Type01_08_h2_text": {
+        "text": "Descarga guías y recursos técnicos"
+    },
+
+    "moduleParrafo01_00_p_text": {
+        "text": "This module injects an independent paragraph into any card."
+    },
+    "moduleParrafo01_01_p_text": {
+        "text": "Modular content keeps the structure flexible, reusable, and easy to scale."
+    },
+
+    "moduleList01_00_a_li_text": {
+        "text": "Independent content for every card."
+    },
+    "moduleList01_00_b_li_text": {
+        "text": "From one to three highlighted items."
+    },
+    "moduleList01_00_c_li_text": {
+        "text": "Adaptable semantic hierarchy."
+    },
+    "moduleList01_00_d_li_text": {
+        "text": "Responsive design at every size."
+    },
+    "moduleList01_00_e_li_text": {
+        "text": "Support for images or icons."
+    },
+    "moduleList01_00_f_li_text": {
+        "text": "Composition with reusable modules."
+    },
+
+    "moduleList01_01_a_li_text": {
+        "text": "Configurable primary heading."
+    },
+    "moduleList01_01_b_li_text": {
+        "text": "Scalable internal headings."
+    },
+    "moduleList01_01_c_li_text": {
+        "text": "Interchangeable content modules."
+    },
+    "moduleList01_01_d_li_text": {
+        "text": "Built-in visual variants."
+    },
+    "moduleList01_01_e_li_text": {
+        "text": "Configurable number of items."
+    },
+    "moduleList01_01_f_li_text": {
+        "text": "Semantic HTML structure."
+    },
+
+    "moduleList01_02_a_li_text": {
+        "text": "Specific content for every item."
+    },
+    "moduleList01_02_b_li_text": {
+        "text": "A maximum of three highlighted cards."
+    },
+    "moduleList01_02_c_li_text": {
+        "text": "Consistent responsive behaviour."
+    },
+    "moduleList01_02_d_li_text": {
+        "text": "Clear separation between structure and content."
+    },
+    "moduleList01_02_e_li_text": {
+        "text": "Easy reuse across different pages."
+    },
+    "moduleList01_02_f_li_text": {
+        "text": "Configuration ready to grow."
+    },
+
     "moduleButtonType01_00_cta": {
         "href": "#",
         "title": "Solicitar diagnóstico logístico"
@@ -442,7 +554,7 @@
         "text": "Ver caso completo"
     },
     "art01_00_headerPrimary": {
-        "text": "Encabezado variable h3 art01"
+        "text": "art01"
     },
     "art01_00_intro_p": {
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Harum culpa sapiente placeat? Voluptatibus optio maiores vel nemo, voluptatem repellat iure?"
@@ -475,7 +587,7 @@
         "title": "Imagen dummy"
     },
     "art02_00_headerPrimary": {
-        "text": "Encabezado variable h3 art02"
+        "text": "art02"
     },
     "art02_00_intro_p": {
         "text": "Lorem ipsum dolor sit."
@@ -508,8 +620,83 @@
     "art02_00_b_p": {
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
     },
+
+    "art02little_00_headerPrimary": {
+        "text": "art02little · image · moduleParrafo01"
+    },
+    "art02little_00_intro_p": {
+        "text": "A flexible resource for one, two, or three highlighted items."
+    },
+    "art02little_00_p1": {
+        "text": "Each card accepts independent content through a reusable module."
+    },
+    "art02little_00_p2": {
+        "text": "The composition adapts automatically to the number of items."
+    },
+    "art02little_00_headerSecondary_a": {
+        "text": "First highlighted item"
+    },
+    "art02little_00_a_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Demonstration image for the first item",
+        "title": "First highlighted item"
+    },
+    "art02little_00_headerSecondary_b": {
+        "text": "Second highlighted item"
+    },
+    "art02little_00_b_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Demonstration image for the second item",
+        "title": "Second highlighted item"
+    },
+    "art02little_00_headerSecondary_c": {
+        "text": "Third highlighted item"
+    },
+    "art02little_00_c_img": {
+        "src": "assets/img/dummy/dummy_2560.avif",
+        "alt": "Demonstration image for the third item",
+        "title": "Third highlighted item"
+    },
+
+    "art02little_01_headerPrimary": {
+        "text": "art02little · icon · moduleList01"
+    },
+    "art02little_01_intro_p": {
+        "text": "Each item can receive an independent content module."
+    },
+    "art02little_01_p1": {
+        "text": "The primary heading can also be supplied by an external component."
+    },
+    "art02little_01_p2": {
+        "text": "The internal heading hierarchy adapts automatically."
+    },
+    "art02little_01_headerSecondary_a": {
+        "text": "Flexible content"
+    },
+    "art02little_01_a_img": {
+        "src": "assets/img/system/compass-outline.svg",
+        "alt": "Compass icon",
+        "title": "Guidance"
+    },
+    "art02little_01_headerSecondary_b": {
+        "text": "Semantic structure"
+    },
+    "art02little_01_b_img": {
+        "src": "assets/img/system/people.svg",
+        "alt": "Team icon",
+        "title": "People"
+    },
+    "art02little_01_headerSecondary_c": {
+        "text": "Scalable items"
+    },
+    "art02little_01_c_img": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "Verified shield icon",
+        "title": "Protection"
+    },
+
     "art03_00_headerPrimary": {
-        "text": "Coberturas industriales premium para proteger activos estratégicos clave"
+        "text": "art03"
     },
     "art03_00_intro_p": {
         "text": "Fortalecemos la resiliencia operativa con pólizas modulares que cubren maquinaria crítica, interrupciones prolongadas y requisitos normativos, asegurando continuidad financiera mientras alineamos la estrategia de riesgos con tus objetivos de crecimiento."
@@ -575,7 +762,7 @@
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
     },
     "art04_00_headerPrimary": {
-        "text": "Galería de proyectos y casos destacados"
+        "text": "art04"
     },
     "art04_00_intro_p": {
         "text": "Seleccionamos intervenciones recientes que ilustran nuestra capacidad para integrar seguridad, eficiencia energética y narrativa visual en entornos industriales con altos requisitos de cumplimiento."
@@ -608,7 +795,7 @@
         "title": "Explorar fachada sostenible"
     },
     "art06_00_headerPrimary": {
-        "text": "Soluciones solares que escalan con tu negocio"
+        "text": "art06"
     },
     "art06_00_headerSecondary_a": {
         "text": "Ingeniería fotovoltaica modular a medida"
@@ -665,7 +852,7 @@
     "art07_00_bgMatrix_tablet": "assets/img/dummy/dummy_1800.avif",
     "art07_00_bgMatrix_desktop": "assets/img/dummy/dummy_2560.avif",
     "art07_00_h3_1": {
-        "text": "Plan integral solar"
+        "text": "art07"
     },
     "art07_00_h3_2": {
         "text": "en barrios industriales"
@@ -680,7 +867,7 @@
         "text": "Nuestros técnicos certifican instalaciones modulares que se adaptan a las dinámicas de producción y aseguran estabilidad energética incluso ante picos de demanda en cadena."
     },
     "art08_00_headerPrimary": {
-        "text": "Estrategias solares para ampliar la competitividad industrial regional en Gipuzkoa"
+        "text": "art08"
     },
     "art08_00_a_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
@@ -705,7 +892,7 @@
         "text": "Gestionamos subvenciones autonómicas, coordinamos créditos verdes y modelizamos escenarios de retorno para que cada inversión fotovoltaica mantenga flujos de caja positivos desde el primer ejercicio fiscal sin comprometer la liquidez operativa."
     },
     "art09_00_headerPrimary": {
-        "text": "Casos de interiorismo con retorno medible en retail"
+        "text": "art09"
     },
     "art09_00_p1": {
         "text": "Analizamos implantaciones híbridas con datos de afluencia, conversiones cruzadas y fidelización para replicar experiencias omnicanal que eleven la permanencia media por visita en cada tienda."
@@ -767,7 +954,7 @@
         "text": "Coordinamos promociones geolocalizadas, inventarios sincronizados y recogidas flexibles que impulsaron un 31 % las órdenes online con entrega en tienda durante el trimestre piloto."
     },
     "art10_00_headerPrimary": {
-        "text": "Servicios modulares para activar equipos comerciales omnicanal ágiles"
+        "text": "art10"
     },
     "art10_00_headerSecondary_a": {
         "text": "Diagnóstico táctico en tienda"
@@ -805,7 +992,7 @@
     "art10_00_top_fill": "#ffffff",
     "art10_00_bottom_fill": "#ffffff",
     "art11_00_headerPrimary": {
-        "text": "Nuestra experiencia en cifras"
+        "text": "art11"
     },
     "art11_00_a_target": {
         "value": "998"
@@ -838,7 +1025,7 @@
         "text": "El 100 % de nuestros alumnos termina aprobando, aunque el número de intentos pueda variar."
     },
     "art12_00_headerPrimary": {
-        "text": "Estrategias modulares que optimizan tu canal digital de ventas"
+        "text": "art12"
     },
     "art12_00_headerSecondary_a": {
         "text": "Onboarding ágil de partners"
@@ -891,7 +1078,7 @@
     "art12_00_top_fill": "#ffffff",
     "art12_00_bottom_fill": "#ffffff",
     "art13_00_headerPrimary": {
-        "text": "Clientes que impulsan nuestra innovación diaria conjunta"
+        "text": "art13"
     },
     "art13_00_a_quote": {
         "text": "Tras migrar con AvT logramos integrar canales físicos y digitales sin fricciones. El equipo nos guio en automatizaciones críticas y definió métricas compartidas que hoy permiten a cada partner acceder a reportes fiables y coordinar lanzamientos conjuntos estratégicos."
@@ -913,7 +1100,7 @@
         "title": "Celebración interna junto a partners"
     },
     "art14_00_headerPrimary": {
-        "text": "Servicios legales ágiles para la industria inteligente vasca"
+        "text": "art14"
     },
     "art14_00_p": {
         "text": "Nuestro equipo combina asesoría jurídica tecnológica con conocimiento industrial para acelerar implantaciones seguras en Bizkaia. Coordinamos evaluaciones regulatorias, contratos de innovación y formación preventiva para que tus lanzamientos conecten con partners locales y cumplan la norma europea sin fricciones operativas. Supervisamos auditorías de datos, licencias y cláusulas de ciberseguridad que blindan el crecimiento sostenible de cada planta."
@@ -924,7 +1111,7 @@
         "title": "Revisión jurídica de innovación industrial estratégica"
     },
     "art15_00_headerPrimary": {
-        "text": "Metodología integral para digitalizar cadenas logísticas complejas de Euskadi"
+        "text": "art15"
     },
     "art15_00_p1": {
         "text": "Analizamos cada nodo de suministro junto a tus responsables de operaciones para detectar cuellos de botella, modelar escenarios con datos reales y priorizar automatizaciones. Integrando plataformas IoT y analítica avanzada reducimos tiempos de respuesta, trazamos incidencias y alineamos KPI críticos con los objetivos comerciales del territorio."
@@ -943,7 +1130,7 @@
         "title": "Coordinación de rutas multimodales con mapas digitales"
     },
     "artForm01_00_headerPrimary": {
-        "text": "Solicita información rápida"
+        "text": "artForm01"
     },
     "artForm01_00_headerSecondary": {
         "text": "Completa el formulario"
@@ -1058,7 +1245,7 @@
         "text": "Enviar otra solicitud"
     },
     "artSlider01_00_headerPrimary": {
-        "text": "Ideas y noticias de logística urbana"
+        "text": "artSlider01"
     },
     "artSlider01_00_viewmore": {
         "text": "Explorar publicaciones",
@@ -1245,7 +1432,7 @@
         "href": "noticias/noticia-10"
     },
     "artSlider02_00_headerPrimary": {
-        "text": "Experiencias formativas con partners industriales"
+        "text": "artSlider02"
     },
     "artSlider02_00_prev": {
         "text": "Anterior"
@@ -1286,7 +1473,7 @@
         "text": "Recorrido práctico por almacén inteligente"
     },
     "artAccordion01_00_headerPrimary": {
-        "text": "Preguntas clave de matriculación"
+        "text": "artAccordion01"
     },
     "artAccordion01_00_itema_title": {
         "text": "¿Qué documentos debo presentar?"
@@ -1307,7 +1494,7 @@
         "text": "Ofrecemos financiación interna sin intereses en tres cuotas mensuales, domiciliación bancaria flexible y acuerdos con entidades colaboradoras para adaptar el desembolso a tu calendario, siempre con asesoría para elegir el plan más conveniente."
     },
     "artZipper_00_h3": {
-        "text": "FAQs sobre logística integral"
+        "text": "artZipper"
     },
     "artZipper_00_a_h4": {
         "text": "¿Cómo optimizamos rutas?"
@@ -1325,13 +1512,13 @@
         "text": "Consejos de mantenimiento diario"
     },
     "moduleTest_00_h2_text": {
-        "text": "Prueba piloto controlada en 30 días"
+        "text": "moduleTest"
     },
     "moduleTest_00_p_text": {
         "text": "Validamos integraciones, definimos indicadores y formamos a tus equipos operativos con soporte continuo durante la prueba para medir reducción de errores, capacidad de reacción y eficiencia en costes antes del despliegue completo en toda la red multialmacén."
     },
     "art05_00_headerPrimary": {
-        "text": "Historias reales de confianza local certificada"
+        "text": "art05"
     },
     "art05_00_intro_p": {
         "text": "Nuestros clientes describen cómo la instalación solar optimiza sus costes energéticos y refuerza su compromiso con la sostenibilidad, destacando la cercanía del equipo técnico y la monitorización continua que ofrecemos en cada proyecto residencial."
@@ -1446,7 +1633,7 @@
     "artSlider02_00_slidea_img_src02": "assets/img/dummy/dummy_1800.avif",
     "artSlider02_00_slidea_img_sizes": "(max-width: 768px) 100vw, 1500px",
     "art16_00_h3_1": {
-        "text": "Servicios logísticos avanzados"
+        "text": "art16"
     },
     "art16_00_h3_2": {
         "text": "para cadenas sostenibles"
@@ -1458,7 +1645,7 @@
     "art16_00_bg_tablet": "assets/img/dummy/dummy_1800.avif",
     "art16_00_bg_desktop": "assets/img/dummy/dummy_2560.avif",
     "art17_00_headerPrimary": {
-        "text": "Why choose us and how we work"
+        "text": "art17"
     },
     "art17_00_headerSecondary_a": {
         "text": "Why us"
@@ -1516,7 +1703,7 @@
         "text": "Ongoing financial training"
     },
     "art18_00_headerPrimary": {
-        "text": "Pricing"
+        "text": "art18"
     },
     "art18_00_headerSecondary_a": {
         "text": "Basic"
@@ -1582,7 +1769,7 @@
         "text": "Matrix"
     },
     "artPricingGlass01_00_headerSecondary_a": {
-        "text": "Free"
+        "text": "artPricingGlass01 · Free"
     },
     "artPricingGlass01_00_a_price": {
         "text": "$0/mo"
@@ -1768,7 +1955,7 @@
         "text": "Strategy"
     },
     "sectionParallax01_00_a_title": {
-        "text": "Shape the signal"
+        "text": "sectionParallax01 · Shape the signal"
     },
     "sectionParallax01_00_a_text": {
         "text": "Align the narrative, define the audience, and set the release cadence."
@@ -1834,13 +2021,31 @@
         "title": "Start the program"
     },
     "moduleH1Type02_00_h1_text": {
-        "text": "Logística inteligente para flotas multiorigen europeas"
+        "text": "moduleH1Type02"
     },
     "moduleH1Type02_00_p01_text": {
         "text": "Conectamos almacenes, última milla y partners europeos mediante integraciones EDI y seguimiento IoT para anticipar incidencias, redistribuir cargas y garantizar entregas just-in-time sin saturar tus recursos internos ni los equipos de atención posventa, manteniendo SLA críticos en campañas estacionales."
     },
     "moduleH1Type02_00_p02_text": {
         "text": "Automatizamos previsiones de demanda, controlamos niveles de stock y activamos transportistas alternativos desde un único panel operativo, apoyándonos en analítica predictiva para reducir devoluciones, emisiones por ruta y tiempos de respuesta ante cualquier incidencia regional."
+    },
+    "sectionDiskSlider01_00_headerPrimary": {
+        "text": "sectionDiskSlider01"
+    },
+    "sectionSkewGallery01_00_headerPrimary": {
+        "text": "sectionSkewGallery01"
+    },
+    "artWorksSkew01_00_headerPrimary": {
+        "text": "artWorksSkew01"
+    },
+    "sectionHScroll01_00_headerPrimary": {
+        "text": "sectionHScroll01"
+    },
+    "artHeroScroll01_00_headerPrimary": {
+        "text": "artHeroScroll01"
+    },
+    "art19_00_headerPrimary": {
+        "text": "art19"
     },
     "moduleImgType01_00_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
@@ -1852,5 +2057,452 @@
     "moduleImgType01_00_img_loading": "lazy",
     "moduleImgType01_00_img_sizes": "",
     "moduleImgType01_00_img_srcset01": "",
-    "moduleImgType01_00_img_srcset02": ""
+    "moduleImgType01_00_img_srcset02": "",
+    "sectionDiskSlider01_00_intro": {
+        "text": "There is a difference between knowing the path and walking the path."
+    },
+    "sectionDiskSlider01_00_hint": {
+        "text": "You are the One."
+    },
+    "sectionDiskSlider01_00_slideb_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "The system is watching.",
+        "title": "Free your mind."
+    },
+    "sectionDiskSlider01_00_slideb_caption": {
+        "text": "Dodge this."
+    },
+    "sectionDiskSlider01_00_slidec_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Reality is a prison.",
+        "title": "Ignorance is bliss."
+    },
+    "sectionDiskSlider01_00_slidec_caption": {
+        "text": "I know kung fu."
+    },
+    "sectionDiskSlider01_00_slided_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Red pill or blue pill.",
+        "title": "Believe."
+    },
+    "sectionDiskSlider01_00_slided_caption": {
+        "text": "The Matrix has you."
+    },
+    "sectionDiskSlider01_00_slideb_kicker": {
+        "text": "Believe."
+    },
+    "sectionDiskSlider01_00_slidec_kicker": {
+        "text": "Dodge this."
+    },
+    "sectionDiskSlider01_00_slided_kicker": {
+        "text": "I know kung fu."
+    },
+    "sectionDiskSlider01_00_slidee_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "The system is watching.",
+        "title": "Reality is a prison."
+    },
+    "sectionDiskSlider01_00_slidee_caption": {
+        "text": "The Matrix has you."
+    },
+    "sectionDiskSlider01_00_slidee_kicker": {
+        "text": "Choice is an illusion."
+    },
+    "sectionDiskSlider01_00_slidea_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Welcome to the real world.",
+        "title": "Reality is a prison."
+    },
+    "sectionDiskSlider01_00_slidea_caption": {
+        "text": "Dodge this."
+    },
+    "sectionDiskSlider01_00_slidea_kicker": {
+        "text": "Red pill or blue pill."
+    },
+    "sectionSkewGallery01_00_intro": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemb_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "sectionSkewGallery01_00_itemb_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemb_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemc_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "sectionSkewGallery01_00_itemc_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemc_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemd_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "sectionSkewGallery01_00_itemd_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemd_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_iteme_img": {
+        "src": "assets/img/dummy/dummy05.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "sectionSkewGallery01_00_iteme_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_iteme_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemf_img": {
+        "src": "assets/img/dummy/dummy06.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "sectionSkewGallery01_00_itemf_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itemf_text": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itema_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "sectionSkewGallery01_00_itema_title": {
+        "text": ""
+    },
+    "sectionSkewGallery01_00_itema_text": {
+        "text": ""
+    },
+    "artWorksSkew01_00_intro": {
+        "text": "Fate, it seems, is not without a sense of irony."
+    },
+    "artWorksSkew01_00_itemb_index": {
+        "text": "02"
+    },
+    "artWorksSkew01_00_itemb_title": {
+        "text": "There is no spoon."
+    },
+    "artWorksSkew01_00_itemb_subtitle": {
+        "text": "Wake up, Neo."
+    },
+    "artWorksSkew01_00_itemb_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "artWorksSkew01_00_itemc_index": {
+        "text": "03"
+    },
+    "artWorksSkew01_00_itemc_title": {
+        "text": "Follow the white rabbit."
+    },
+    "artWorksSkew01_00_itemc_subtitle": {
+        "text": "Free your mind."
+    },
+    "artWorksSkew01_00_itemc_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "artWorksSkew01_00_itemd_index": {
+        "text": "04"
+    },
+    "artWorksSkew01_00_itemd_title": {
+        "text": "The Matrix has you."
+    },
+    "artWorksSkew01_00_itemd_subtitle": {
+        "text": "Ignorance is bliss."
+    },
+    "artWorksSkew01_00_itemd_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "artWorksSkew01_00_iteme_index": {
+        "text": "05"
+    },
+    "artWorksSkew01_00_iteme_title": {
+        "text": ""
+    },
+    "artWorksSkew01_00_iteme_subtitle": {
+        "text": ""
+    },
+    "artWorksSkew01_00_iteme_img": {
+        "src": "assets/img/dummy/dummy05.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "artWorksSkew01_00_itemf_index": {
+        "text": "06"
+    },
+    "artWorksSkew01_00_itemf_title": {
+        "text": ""
+    },
+    "artWorksSkew01_00_itemf_subtitle": {
+        "text": ""
+    },
+    "artWorksSkew01_00_itemf_img": {
+        "src": "assets/img/dummy/dummy06.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "artWorksSkew01_00_itemb_link": {
+        "href": "#",
+        "title": "The system is watching.",
+        "text": ""
+    },
+    "artWorksSkew01_00_itemc_link": {
+        "href": "#",
+        "title": "The system is watching.",
+        "text": ""
+    },
+    "artWorksSkew01_00_itemd_link": {
+        "href": "#",
+        "title": "The system is watching.",
+        "text": ""
+    },
+    "artWorksSkew01_00_itema_index": {
+        "text": "01"
+    },
+    "artWorksSkew01_00_itema_title": {
+        "text": "Choice is an illusion."
+    },
+    "artWorksSkew01_00_itema_subtitle": {
+        "text": "I know kung fu."
+    },
+    "artWorksSkew01_00_itema_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "artWorksSkew01_00_itema_link": {
+        "href": "#",
+        "title": "The system is watching.",
+        "text": ""
+    },
+    "sectionHScroll01_00_intro": {
+        "text": "The Matrix has you."
+    },
+    "sectionHScroll01_00_itemb_index": {
+        "text": "02"
+    },
+    "sectionHScroll01_00_itemb_title": {
+        "text": "Wake up, Neo."
+    },
+    "sectionHScroll01_00_itemb_text": {
+        "text": "Everything that has a beginning has an end."
+    },
+    "sectionHScroll01_00_itemb_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "sectionHScroll01_00_itemc_index": {
+        "text": "03"
+    },
+    "sectionHScroll01_00_itemc_title": {
+        "text": "Reality is a prison."
+    },
+    "sectionHScroll01_00_itemc_text": {
+        "text": "The system is watching."
+    },
+    "sectionHScroll01_00_itemc_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "sectionHScroll01_00_itemd_index": {
+        "text": "04"
+    },
+    "sectionHScroll01_00_itemd_title": {
+        "text": "Dodge this."
+    },
+    "sectionHScroll01_00_itemd_text": {
+        "text": "Wake up, Neo."
+    },
+    "sectionHScroll01_00_itemd_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "sectionHScroll01_00_itema_index": {
+        "text": "01"
+    },
+    "sectionHScroll01_00_itema_title": {
+        "text": "The Matrix has you."
+    },
+    "sectionHScroll01_00_itema_text": {
+        "text": "Everything that has a beginning has an end."
+    },
+    "sectionHScroll01_00_itema_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "artHeroScroll01_00_intro": {
+        "text": "Reality bends when you choose the truth."
+    },
+    "artHeroScroll01_00_itemb_index": {
+        "text": "02"
+    },
+    "artHeroScroll01_00_itemb_word": {
+        "text": "Red Pill"
+    },
+    "artHeroScroll01_00_itemb_title": {
+        "text": "Choice Is An Illusion"
+    },
+    "artHeroScroll01_00_itemb_text": {
+        "text": "Only you can walk through the door."
+    },
+    "artHeroScroll01_00_itemb_suba": {
+        "text": "I know kung fu"
+    },
+    "artHeroScroll01_00_itemb_subb": {
+        "text": "Your mind makes it real"
+    },
+    "artHeroScroll01_00_itemb_subc": {
+        "text": "Welcome to the real world"
+    },
+    "artHeroScroll01_00_itemc_index": {
+        "text": "03"
+    },
+    "artHeroScroll01_00_itemc_word": {
+        "text": "Blue Pill"
+    },
+    "artHeroScroll01_00_itemc_title": {
+        "text": "Ignorance Is Bliss"
+    },
+    "artHeroScroll01_00_itemc_text": {
+        "text": "Comfort is the easiest prison."
+    },
+    "artHeroScroll01_00_itemc_suba": {
+        "text": "You are the One"
+    },
+    "artHeroScroll01_00_itemc_subb": {
+        "text": "Believe"
+    },
+    "artHeroScroll01_00_itemc_subc": {
+        "text": "We are still here"
+    },
+    "artHeroScroll01_00_itemd_index": {
+        "text": "04"
+    },
+    "artHeroScroll01_00_itemd_word": {
+        "text": "Glitch"
+    },
+    "artHeroScroll01_00_itemd_title": {
+        "text": "The System Is Watching"
+    },
+    "artHeroScroll01_00_itemd_text": {
+        "text": "Everything that has a beginning has an end."
+    },
+    "artHeroScroll01_00_itemd_suba": {
+        "text": "Dodge this"
+    },
+    "artHeroScroll01_00_itemd_subb": {
+        "text": "The body cannot live without the mind"
+    },
+    "artHeroScroll01_00_itemd_subc": {
+        "text": "Fate has a sense of irony"
+    },
+    "artHeroScroll01_00_itema_index": {
+        "text": "01"
+    },
+    "artHeroScroll01_00_itema_word": {
+        "text": "Wake Up"
+    },
+    "artHeroScroll01_00_itema_title": {
+        "text": "Follow The White Rabbit"
+    },
+    "artHeroScroll01_00_itema_text": {
+        "text": "The signal is everywhere, if you listen."
+    },
+    "artHeroScroll01_00_itema_suba": {
+        "text": "There is no spoon"
+    },
+    "artHeroScroll01_00_itema_subb": {
+        "text": "Free your mind"
+    },
+    "artHeroScroll01_00_itema_subc": {
+        "text": "The Matrix has you"
+    },
+    "art18_00_d_price": {
+        "text": "You are the One."
+    },
+    "art18_00_d_cta": {
+        "text": "Believe.",
+        "href": "#basic",
+        "title": "There is no spoon."
+    },
+    "art18_00_e_price": {
+        "text": "Wake up, Neo."
+    },
+    "art18_00_e_cta": {
+        "text": "You are the One.",
+        "href": "#basic",
+        "title": "The Matrix has you."
+    },
+    "art18_00_a_list_c": {
+        "text": "There is no spoon."
+    },
+    "art19_00_slidea_img": {
+        "src": "",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "art19_00_slideb_img": {
+        "src": "",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "art19_00_slidec_img": {
+        "src": "",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "art19_00_slided_img": {
+        "src": "",
+        "alt": "z",
+        "title": "The system is watching."
+    },
+    "art19_00_slidea_h3": {
+        "text": ""
+    },
+    "art19_00_slideb_h3": {
+        "text": ""
+    },
+    "art19_00_slidec_h3": {
+        "text": ""
+    },
+    "art19_00_slided_h3": {
+        "text": ""
+    },
+    "art19_00_slidea_p": {
+        "text": ""
+    },
+    "art19_00_slideb_p": {
+        "text": ""
+    },
+    "art19_00_slidec_p": {
+        "text": ""
+    },
+    "art19_00_slided_p": {
+        "text": ""
+    },
+    "art19_00_clickHint": ""
 }
