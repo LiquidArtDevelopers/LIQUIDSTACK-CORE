@@ -24,6 +24,9 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 - `App/tools/build-sitemap.php` ahora crea/actualiza `public/robots.txt` y garantiza que la entrada del sitemap apunte al host de producción definido en las variables de entorno.
 
 ### Corregido
+- Las skills base dejan de depender de guías `AGENTS_*.md` legacy y absorben
+  las reglas comunes de desarrollo y SEO, permitiendo que cada consumidor
+  mantenga su contexto privado en skills locales no gestionadas por CORE.
 - `art02little` expone el número de tarjetas como modificador de clase y usa
   tres columnas en escritorio cuando recibe tres ítems, sin alterar las
   proporciones existentes de las composiciones de uno o dos.

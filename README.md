@@ -28,6 +28,10 @@ Al ejecutar `composer install` o `composer update` en un proyecto que consume es
    - Las skills base se escriben siempre en `.codex/skills`, tambien en proyectos nuevos.
    - Cada carpeta de skill procedente de CORE es gestionada por CORE: sus archivos se actualizan y los archivos retirados de esa misma carpeta se eliminan.
    - Las skills locales hermanas, con nombres distintos a las de CORE, se conservan. Un manifiesto oculto `.liquidstack-core-skills.json` permite retirar unicamente carpetas que CORE gestionaba y que ya no existen en el origen.
+   - Las skills base son autosuficientes y no dependen de guias `AGENTS_*.md`
+     legacy en la raiz. Cada proyecto puede mantener un `AGENTS.md` minimo de
+     compatibilidad y encapsular su contexto privado en skills locales con
+     nombres propios.
    - Si una version previa de la sincronizacion dejo un manifiesto gestionado en `.agents/skills`, CORE retira solo esas copias antiguas y conserva las skills locales de ese directorio.
    - La sincronizacion rechaza destinos redirigidos mediante symlinks o junctions para no escribir ni borrar fuera del arbol real del proyecto.
 

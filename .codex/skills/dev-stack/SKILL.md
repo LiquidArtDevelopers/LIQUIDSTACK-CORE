@@ -7,7 +7,9 @@ description: "Desarrollo y mantenimiento de proyectos LiquidStack PHP/Vite: crea
 
 ## Preparación
 
-1. Leer por completo el `AGENTS.md` aplicable y `AGENTS_DEV.md` si existe.
+1. Respetar las instrucciones aplicables del repositorio y cargar las skills
+   locales complementarias cuando existan; no depender de guías legacy en la
+   raíz del proyecto.
 2. Ejecutar `git status --short` antes de editar y preservar cambios ajenos.
 3. Inspeccionar un recurso de la misma familia antes de crear otro. Mantener sus convenciones de nombres, firma del controlador, placeholders e imports.
 4. Verificar la firma vigente de `controller()` y `resolve_header_levels()` en `src/Core/Support/helpers.php` o en el paquete instalado. Si una guía antigua contradice el helper real, seguir el código vigente y corregir la guía del proyecto.
@@ -16,6 +18,11 @@ description: "Desarrollo y mantenimiento de proyectos LiquidStack PHP/Vite: crea
 ## Modelo del stack
 
 El contenido se resuelve por URL e idioma. La aplicación carga los JSON de la ruta como variables-objeto globales y la vista invoca recursos con `controller()`. Cada controlador carga un template HTML, reemplaza placeholders y devuelve el HTML renderizado.
+
+En desarrollo, Vite puede ejecutar automáticamente la sincronización de
+idiomas al cambiar PHP: añade claves nuevas y retira las que dejan de usarse,
+salvo las protegidas como globales. Esa automatización no registra los `@use`
+SCSS ni sustituye la revisión humana del diff.
 
 Un recurso reutilizable completo suele incluir:
 
@@ -106,6 +113,12 @@ controller('nombre', $index, [
   `php App/tools/update-languages.php templates` o la ruta equivalente: tanto
   `/showroom` como `/templates` usan el slug de contenido `templates`.
 - Para cualquier otra vista, hidratar el slug real configurado en `content`.
+- Al renombrar una clave, trasladar primero su valor; una clave vacía, sin
+  `$pad` o con un prefijo distinto al controlador puede considerarse no usada
+  y ser retirada por el actualizador.
+- El actualizador puede completar propiedades vacías desde los templates
+  cuando encuentra objetos o arrays incompletos; verificar igualmente la forma
+  final de cada objeto.
 - Revisar el diff de los JSON: el script no sustituye la validación humana.
 
 ### SCSS

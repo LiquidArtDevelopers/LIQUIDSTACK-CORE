@@ -7,11 +7,14 @@ description: "Redacción, revisión y planificación de contenido SEO en proyect
 
 ## Fuentes y alcance
 
-1. Leer el `AGENTS.md` aplicable.
-2. Leer por completo `AGENTS_SEO_GENERAL.md` si existe.
-3. Para datos y directrices del cliente, leer `AGENTS_INFO_CUSTOMER.md` y `AGENTS_SEO_CUSTOMER.md` cuando existan y sean pertinentes.
-4. Revisar los controladores del recurso para respetar sus rangos mínimos y máximos.
-5. Aplicar primero las instrucciones más específicas del proyecto o del usuario.
+1. Respetar las instrucciones aplicables y cargar las skills locales
+   complementarias del proyecto.
+2. Leer por completo las referencias locales de cliente, marca y arquitectura
+   SEO que resulten pertinentes.
+3. Revisar los controladores del recurso para respetar sus rangos mínimos y
+   máximos.
+4. Aplicar primero las instrucciones más específicas del proyecto o del
+   usuario.
 
 No convertir datos de otro cliente ni valores dummy de templates en hechos del proyecto actual.
 
@@ -21,6 +24,8 @@ No convertir datos de otro cliente ni valores dummy de templates en hechos del p
 - Buscar la evidencia en instrucciones del cliente, JSON de idiomas, código y documentación vigente.
 - Tratar como no confirmado lo que no aparezca en esas fuentes.
 - Marcar la información esencial ausente y solicitar confirmación; no inventarla.
+- Registrar los datos nuevos validados en la referencia local del proyecto
+  antes de reutilizarlos en otras URLs o idiomas.
 - Mantener separadas la guía SEO común y la información particular del cliente.
 
 ## Arquitectura SEO
@@ -33,36 +38,50 @@ Cuando una URL o idioma no tenga directrices suficientes, definir o proponer pri
 - localidad
 
 Asignar una intención de búsqueda clara y comprobar que no compita con otra URL del mismo idioma.
+Si se crean rutas o cambian sus objetivos, actualizar primero el mapa SEO del
+proyecto y después redactar.
 
 ## Topónimos
 
 - Limitar el vector de localidad a un máximo de tres topónimos por URL e idioma.
-- Usar un topónimo macroterritorial y uno o dos locales cuando sea pertinente.
+- Cuando exista vector geográfico, usar un topónimo macroterritorial y uno o
+  dos locales.
 - No repetir la misma combinación exacta entre URLs.
 - Distinguir el topónimo objetivo de los que solo amplían el alcance.
 
 ## Redacción
 
 - Escribir para resolver la intención de búsqueda de principio a fin.
-- Integrar keywords con naturalidad y añadir variantes semánticas útiles.
-- Evitar densidades artificiales, keyword stuffing y repeticiones mecánicas.
+- Integrar keywords con naturalidad y añadir de tres a seis variantes
+  semánticas o entidades útiles para los vectores no territoriales.
+- No usar porcentajes de densidad. Evitar keyword stuffing, repeticiones
+  mecánicas y repetir una misma palabra más de dos veces seguidas en un
+  párrafo.
 - Mantener un tono cercano, educativo y profesional.
 - Explicar el vocabulario técnico para personas no especializadas.
 - Sustentar afirmaciones verificables cuando proceda.
-- Usar negrita con moderación y nunca como sustituto de una jerarquía clara.
+- Usar negrita con moderación, preferentemente en bloques introductorios, y
+  nunca en títulos ni como sustituto de una jerarquía clara.
 - Adaptar cada idioma; no traducir literalmente si perjudica naturalidad o intención.
 
 ## Elementos on-page
 
 Comprobar:
 
-- `title` único, persuasivo y dentro del límite indicado por el proyecto
+- `title` único, persuasivo y dentro del límite indicado por el proyecto; si
+  no existe uno, usar como referencia un máximo de 60-65 caracteres
 - `meta description` orientada al clic y sin repetición forzada
 - un solo H1, coherente con el title y la propuesta de valor
 - H2/H3 que organicen la respuesta sin saltos semánticos
-- introducción que cubra pronto el concepto y topónimo objetivo cuando aplique
+- introducción que cubra la propuesta de valor y el topónimo principal dentro
+  de las primeras 100 palabras cuando aplique
 - párrafos escaneables, anchors descriptivos y listas/tablas solo cuando ayuden
-- ALT fieles a las imágenes, no usados para acumular keywords
+- uno o dos H2/H3 relevantes cuando ayuden a resolver búsquedas relacionadas,
+  sin forzar encabezados innecesarios
+- comparativas, ventajas/inconvenientes y ejemplos concretos solo cuando
+  aporten comprensión
+- ALT fieles en una o dos imágenes clave cuando proceda, no usados para
+  acumular keywords
 - recursos visuales relevantes y su función dentro del contenido
 
 ## Zonas rojas

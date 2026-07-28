@@ -7,7 +7,9 @@ description: Migración y promoción de recursos entre un proyecto LiquidStack c
 
 ## Preparación
 
-1. Leer el `AGENTS.md` y `AGENTS_DEV.md` aplicables en cada repositorio que vaya a modificarse.
+1. Respetar las instrucciones aplicables y cargar las skills locales
+   complementarias de cada repositorio; no depender de guías legacy en la
+   raíz.
 2. Ejecutar `git status --short` en el proyecto consumidor y en CORE.
 3. No tocar un repositorio con cambios coincidentes sin identificar primero su propietario y alcance.
 4. Tratar `liquidstack/core` como fuente canónica de recursos estables y el proyecto consumidor como laboratorio.
