@@ -41,6 +41,30 @@
         }
     }
 
+    &[data-marker-icon]:not([data-marker-icon="default"]):not([data-marker-icon="none"]) {
+        .moduleList01-marker {
+            border: 0;
+            border-radius: 0;
+            background: var(--moduleList01-marker-color, c.$color02);
+            -webkit-mask: var(--moduleList01-marker-mask) center / contain no-repeat;
+            mask: var(--moduleList01-marker-mask) center / contain no-repeat;
+
+            &::after {
+                content: none;
+            }
+        }
+    }
+
+    &[data-marker-icon="none"] {
+        .moduleList01-item {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .moduleList01-marker {
+            display: none;
+        }
+    }
+
     @media (min-width: c.$tablet) {
         gap: 1.25rem;
     }

@@ -1,0 +1,129 @@
+@use '../config' as c;
+
+.art32{
+    $cardFooterSpace: 3rem;
+
+    width: c.$anchoFull;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    row-gap: 2rem;
+
+    @media (min-width: c.$tablet){
+        width: c.$anchoMedio;
+        padding: c.$padMax 0;
+    }
+
+    .art32-header{
+        width: 100%;
+        padding: 0 c.$padMin;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        row-gap: 1rem;
+
+        @media (min-width: c.$tablet){
+            width: c.$anchoMedio;
+            padding: initial;
+        }
+
+        @media (min-width: c.$desktop){
+            width: c.$anchoCorto;
+            min-width: c.$textMin;
+            max-width: c.$textMax;
+            row-gap: 3rem;
+        }
+
+        >p{
+            color: c.$color01;
+        }
+    }
+
+    >p{
+        padding: 0 c.$padMin;
+
+        @media (min-width: c.$tablet){
+            width: c.$anchoMedio;
+            padding: initial;
+        }
+
+        @media (min-width: c.$desktop){
+            width: c.$anchoCorto;
+            min-width: c.$textMin;
+            max-width: c.$textMax;
+        }
+    }
+
+    .art32-cards{
+        width: 100%;
+        height: calc(100% + $cardFooterSpace);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 2rem;
+
+        @media (min-width: c.$tablet){
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+
+        @media (min-width: c.$desktop){
+            width: 80%;
+            padding-top: 4rem;
+        }
+
+        >.art32-card{
+            width: 100%;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            row-gap: 1.5rem;
+            position: relative;
+            box-shadow: 0 0 20px c.$color01bis5;
+
+            @media (min-width: c.$tablet){
+                width: 46%;
+            }
+
+            @media (min-width: c.$desktop){
+                width: calc((100% - 6rem) / 4);
+                row-gap: 2rem;
+            }
+
+            >:nth-child(1){
+                height: calc(clamp(1.3rem, 3.3vw, 1.3rem) * 3);
+                order: 2;
+                color: c.$color02;
+                font-size: clamp(1rem, 3vw, 1.1rem);
+                font-weight: lighter;
+            }
+
+            >img{
+                width: 25%;
+                height: auto;
+                position: relative;
+                left: 50%;
+                order: 1;
+                object-fit: contain;
+                object-position: center;
+                transform: translateX(-50%);
+                filter: c.$color03SVG;
+            }
+
+            >.art32-cardTitle{
+                text-align: center;
+            }
+
+            >p{
+                order: 3;
+                margin-bottom: $cardFooterSpace;
+            }
+
+            >a{
+                position: absolute;
+                bottom: 2rem;
+                order: 4;
+            }
+        }
+    }
+}

@@ -1,4 +1,5 @@
 {
+
     "example": {
         "alt": "z",
         "title": "link",
@@ -9,15 +10,19 @@
         "href": "",
         "src": ""
     },
+
     "title": {
         "text": "LAD Framework Templates"
     },
+
     "description": {
         "content": ""
     },
+
     "robots": {
         "content": "nofollow, noindex, max-snippet:-1, max-video-preview:-1, max-image-preview:large"
     },
+
     "hero00_bg_mobile": {
         "src": "assets/img/dummy/dummy_900.avif"
     },
@@ -30,6 +35,7 @@
     "hero00_bg_fallback": {
         "src": "assets/img/dummy/dummy_900.avif"
     },
+
     "hero02_video_webm": {
         "src": "assets/video/dummy/dummy.webm"
     },
@@ -42,6 +48,7 @@
     "hero02_video_title": {
         "title": "Vídeo operaciones inteligentes"
     },
+
     "hero03_00_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
         "alt": "Curtain hero image",
@@ -63,6 +70,7 @@
     "hero03_00_front_text": {
         "text": "hero03 · Matrix Has You"
     },
+
     "sect01_00_a_img01": {
         "src": "assets/img/system/bookmark-outline.svg",
         "alt": "Icono seguimiento clientes",
@@ -199,8 +207,6 @@
     },
     "sect02_00_a_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
     "sect02_00_a_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
-
-    
     "sect02_00_b_h3_text": {
         "text": "Producción audiovisual para lanzamientos globales"
     },
@@ -219,7 +225,7 @@
         "text": "(max-width: 899px) 1000px, 1500px"
     },
     "sect02_00_b_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
-    "sect02_00_b_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",    
+    "sect02_00_b_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
     "sect02_00_c_h3_text": {
         "text": "Analítica de visitas y monetización"
     },
@@ -239,8 +245,6 @@
     },
     "sect02_00_c_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
     "sect02_00_c_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
-    
-    
 
     "sectTabs01_00_intro": {
         "text": "Accede a documentación técnica, protocolos de seguridad y plantillas contractuales listos para compartir con proveedores, delegaciones y clientes finales; actualizamos los archivos clave cada trimestre para mantener alineada tu red logística."
@@ -398,6 +402,7 @@
         "text": "Plantilla de rúbrica",
         "href": "example.pdf"
     },
+
     "moduleH1Type01_00_h1_text": {
         "text": "hero01 · moduleH1Type01"
     },
@@ -441,15 +446,19 @@
     "moduleH2Type01_00_h2_text": {
         "text": "sect01 · moduleH2Type01"
     },
+
     "moduleH2Type01_01_h2_text": {
         "text": "sect02 · moduleH2Type01"
     },
+
     "moduleH2Type01_02_h2_text": {
         "text": "sectTabs01 · moduleH2Type01"
     },
+
     "moduleH2Type01_03_h2_text": {
         "text": "moduleH2Type01"
     },
+
     "moduleH2Type01_04_h2_text": {
         "text": "art17 · moduleH2Type01"
     },
@@ -470,9 +479,14 @@
         "text": "Descarga guías y recursos técnicos"
     },
 
+    "moduleH2Type01_09_h2_text": {
+        "text": "moduleButtonType03 · moduleButtonType04"
+    },
+
     "moduleParrafo01_00_p_text": {
         "text": "This module injects an independent paragraph into any card."
     },
+
     "moduleParrafo01_01_p_text": {
         "text": "Modular content keeps the structure flexible, reusable, and easy to scale."
     },
@@ -546,6 +560,7 @@
         "alt": "Flecha avanzar",
         "title": "Flecha avanzar"
     },
+
     "moduleButtonType02_00_cta_link": {
         "href": "#",
         "title": "Explorar caso de éxito"
@@ -553,6 +568,28 @@
     "moduleButtonType02_00_cta_span": {
         "text": "Ver caso completo"
     },
+    "moduleButtonType02_00_cta_img": {
+        "src": "assets/img/system/arrow-forward-outline.svg",
+        "alt": "Forward arrow",
+        "title": "Follow the white rabbit"
+    },
+
+    "moduleButtonType03_00_cta_link": {
+        "href": "#showroom-button-modules",
+        "title": "Take the red pill."
+    },
+    "moduleButtonType03_00_cta_span": {
+        "text": "Wake up, Neo."
+    },
+
+    "moduleButtonType04_00_cta_link": {
+        "href": "#showroom-button-modules",
+        "title": "Free your mind."
+    },
+    "moduleButtonType04_00_cta_span": {
+        "text": "Enter the Matrix."
+    },
+
     "art01_00_headerPrimary": {
         "text": "art01"
     },
@@ -586,39 +623,207 @@
         "alt": "Imagen dummy",
         "title": "Imagen dummy"
     },
+
     "art02_00_headerPrimary": {
-        "text": "art02"
+        "text": "art02 · eight icon cards"
     },
     "art02_00_intro_p": {
-        "text": "Lorem ipsum dolor sit."
+        "text": "Matrix ipsum opens a testing route through code, decisions, and system signals, showing how eight elements can organize substantial information without losing rhythm, readability, or visual consistency."
     },
     "art02_00_p1": {
-        "text": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Cum expedita quam laudantium voluptatem consectetur nobis nemo."
+        "text": "Each block combines a recognizable icon, a concise heading, and enough paragraph copy to check card heights, line wrapping, column balance, and responsive behavior across several viewport widths."
     },
     "art02_00_p2": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Odit recusandae voluptatem tempore, tempora assumenda temporibus quasi at ducimus velit."
+        "text": "The content remains deliberately dummy so density, alignment, and scalability can be assessed before the resource reaches a real project page."
     },
     "art02_00_headerSecondary_a": {
-        "text": "Encabezado variable h4 art02"
+        "text": "Orientation inside the system"
     },
     "art02_00_a_img": {
-        "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Imagen dummy",
-        "title": "Imagen dummy"
+        "src": "assets/img/system/compass-outline.svg",
+        "alt": "Compass icon for art02 orientation",
+        "title": "Orientation inside the system"
     },
     "art02_00_a_p": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+        "text": "Matrix ipsum guides Neo through changing signals, compares possible routes, and retains enough reference points to choose the next movement without losing the system context."
     },
     "art02_00_headerSecondary_b": {
-        "text": "Encabezado variable h4 art02"
+        "text": "Connected code and decisions"
     },
     "art02_00_b_img": {
-        "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Imagen dummy",
-        "title": "Imagen dummy"
+        "src": "assets/img/system/code-slash-outline.svg",
+        "alt": "Code icon for connected decisions",
+        "title": "Connected code and decisions"
     },
     "art02_00_b_p": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+        "text": "Lines of code connect rules, exceptions, and test results to reveal how each card responds when its paragraph occupies several consecutive lines."
+    },
+    "art02_00_headerSecondary_c": {
+        "text": "Protection from the simulation"
+    },
+    "art02_00_c_img": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "Shield icon for system protection",
+        "title": "Protection from the simulation"
+    },
+    "art02_00_c_p": {
+        "text": "The shield represents a control layer that reviews access, checks unexpected signals, and keeps the composition stable while the amount of visible information increases."
+    },
+    "art02_00_headerSecondary_d": {
+        "text": "People interpreting the signals"
+    },
+    "art02_00_d_img": {
+        "src": "assets/img/system/people.svg",
+        "alt": "People icon for interpreting signals",
+        "title": "People interpreting the signals"
+    },
+    "art02_00_d_p": {
+        "text": "The crew shares observations, compares readings, and distributes decisions so every Matrix ipsum step retains a clear explanation within the wider group."
+    },
+    "art02_00_headerSecondary_e": {
+        "text": "Learning before taking action"
+    },
+    "art02_00_e_img": {
+        "src": "assets/img/system/book-outline.svg",
+        "alt": "Book icon for test learning",
+        "title": "Learning before taking action"
+    },
+    "art02_00_e_p": {
+        "text": "The book gathers patterns, hypotheses, and dummy examples that help review the content before turning this visual demonstration into final project information."
+    },
+    "art02_00_headerSecondary_f": {
+        "text": "Configuring rules and limits"
+    },
+    "art02_00_f_img": {
+        "src": "assets/img/system/settings-outline.svg",
+        "alt": "Settings icon for rules and limits",
+        "title": "Configuring rules and limits"
+    },
+    "art02_00_f_p": {
+        "text": "Settings expose spacing, sizing, and resource constraints, keeping eight elements balanced when the viewport, copy length, or active language changes during testing."
+    },
+    "art02_00_headerSecondary_g": {
+        "text": "Sparks revealing hidden patterns"
+    },
+    "art02_00_g_img": {
+        "src": "assets/img/system/sparkles-outline.svg",
+        "alt": "Sparkles icon for hidden patterns",
+        "title": "Sparks revealing hidden patterns"
+    },
+    "art02_00_g_p": {
+        "text": "The sparks highlight relationships between test data and add visual variety for reviewing contrast, alignment, icon scaling, and consistency across every card."
+    },
+    "art02_00_headerSecondary_h": {
+        "text": "Speed when interpreting data"
+    },
+    "art02_00_h_img": {
+        "src": "assets/img/system/speedometer-outline.svg",
+        "alt": "Speedometer icon for interpreting data",
+        "title": "Speed when interpreting data"
+    },
+    "art02_00_h_p": {
+        "text": "The final indicator measures design rhythm and response, completing eight sufficiently detailed examples for validating reading flow, distribution, and responsive behavior on screen."
+    },
+
+    "art32_00_headerPrimary": {
+        "text": "art32 · eight boxed icon cards"
+    },
+    "art32_00_intro_p": {
+        "text": "Matrix ipsum opens a testing route through code, decisions, and system signals, showing how eight elements can organize substantial information without losing rhythm, readability, or visual consistency."
+    },
+    "art32_00_p1": {
+        "text": "Each block combines a recognizable icon, a concise heading, and enough paragraph copy to check card heights, line wrapping, column balance, and responsive behavior across several viewport widths."
+    },
+    "art32_00_p2": {
+        "text": "The content remains deliberately dummy so density, alignment, and scalability can be assessed before the resource reaches a real project page."
+    },
+    "art32_00_headerSecondary_a": {
+        "text": "Orientation inside the system"
+    },
+    "art32_00_a_img": {
+        "src": "assets/img/system/compass-outline.svg",
+        "alt": "Compass icon for art02 orientation",
+        "title": "Orientation inside the system"
+    },
+    "art32_00_a_p": {
+        "text": "Matrix ipsum guides Neo through changing signals, compares possible routes, and retains enough reference points to choose the next movement without losing the system context."
+    },
+    "art32_00_headerSecondary_b": {
+        "text": "Connected code and decisions"
+    },
+    "art32_00_b_img": {
+        "src": "assets/img/system/code-slash-outline.svg",
+        "alt": "Code icon for connected decisions",
+        "title": "Connected code and decisions"
+    },
+    "art32_00_b_p": {
+        "text": "Lines of code connect rules, exceptions, and test results to reveal how each card responds when its paragraph occupies several consecutive lines."
+    },
+    "art32_00_headerSecondary_c": {
+        "text": "Protection from the simulation"
+    },
+    "art32_00_c_img": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "Shield icon for system protection",
+        "title": "Protection from the simulation"
+    },
+    "art32_00_c_p": {
+        "text": "The shield represents a control layer that reviews access, checks unexpected signals, and keeps the composition stable while the amount of visible information increases."
+    },
+    "art32_00_headerSecondary_d": {
+        "text": "People interpreting the signals"
+    },
+    "art32_00_d_img": {
+        "src": "assets/img/system/people.svg",
+        "alt": "People icon for interpreting signals",
+        "title": "People interpreting the signals"
+    },
+    "art32_00_d_p": {
+        "text": "The crew shares observations, compares readings, and distributes decisions so every Matrix ipsum step retains a clear explanation within the wider group."
+    },
+    "art32_00_headerSecondary_e": {
+        "text": "Learning before taking action"
+    },
+    "art32_00_e_img": {
+        "src": "assets/img/system/book-outline.svg",
+        "alt": "Book icon for test learning",
+        "title": "Learning before taking action"
+    },
+    "art32_00_e_p": {
+        "text": "The book gathers patterns, hypotheses, and dummy examples that help review the content before turning this visual demonstration into final project information."
+    },
+    "art32_00_headerSecondary_f": {
+        "text": "Configuring rules and limits"
+    },
+    "art32_00_f_img": {
+        "src": "assets/img/system/settings-outline.svg",
+        "alt": "Settings icon for rules and limits",
+        "title": "Configuring rules and limits"
+    },
+    "art32_00_f_p": {
+        "text": "Settings expose spacing, sizing, and resource constraints, keeping eight elements balanced when the viewport, copy length, or active language changes during testing."
+    },
+    "art32_00_headerSecondary_g": {
+        "text": "Sparks revealing hidden patterns"
+    },
+    "art32_00_g_img": {
+        "src": "assets/img/system/sparkles-outline.svg",
+        "alt": "Sparkles icon for hidden patterns",
+        "title": "Sparks revealing hidden patterns"
+    },
+    "art32_00_g_p": {
+        "text": "The sparks highlight relationships between test data and add visual variety for reviewing contrast, alignment, icon scaling, and consistency across every card."
+    },
+    "art32_00_headerSecondary_h": {
+        "text": "Speed when interpreting data"
+    },
+    "art32_00_h_img": {
+        "src": "assets/img/system/speedometer-outline.svg",
+        "alt": "Speedometer icon for interpreting data",
+        "title": "Speed when interpreting data"
+    },
+    "art32_00_h_p": {
+        "text": "The final indicator measures design rhythm and response, completing eight sufficiently detailed examples for validating reading flow, distribution, and responsive behavior on screen."
     },
 
     "art02little_00_headerPrimary": {
@@ -761,6 +966,7 @@
     "art03_00_d_p": {
         "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
     },
+
     "art04_00_headerPrimary": {
         "text": "art04"
     },
@@ -794,6 +1000,7 @@
         "href": "#",
         "title": "Explorar fachada sostenible"
     },
+
     "art06_00_headerPrimary": {
         "text": "art06"
     },
@@ -845,6 +1052,7 @@
     },
     "art06_00_c_img_src01": "assets/img/dummy/dummy_900.avif 900w",
     "art06_00_c_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+
     "art07_00_bgHero_mobile": "assets/img/dummy/dummy_900.avif",
     "art07_00_bgHero_tablet": "assets/img/dummy/dummy_1800.avif",
     "art07_00_bgHero_desktop": "assets/img/dummy/dummy_2560.avif",
@@ -866,6 +1074,7 @@
     "art07_00_cite": {
         "text": "Nuestros técnicos certifican instalaciones modulares que se adaptan a las dinámicas de producción y aseguran estabilidad energética incluso ante picos de demanda en cadena."
     },
+
     "art08_00_headerPrimary": {
         "text": "art08"
     },
@@ -891,6 +1100,7 @@
     "art08_00_b_p": {
         "text": "Gestionamos subvenciones autonómicas, coordinamos créditos verdes y modelizamos escenarios de retorno para que cada inversión fotovoltaica mantenga flujos de caja positivos desde el primer ejercicio fiscal sin comprometer la liquidez operativa."
     },
+
     "art09_00_headerPrimary": {
         "text": "art09"
     },
@@ -953,6 +1163,7 @@
     "art09_00_c_desc": {
         "text": "Coordinamos promociones geolocalizadas, inventarios sincronizados y recogidas flexibles que impulsaron un 31 % las órdenes online con entrega en tienda durante el trimestre piloto."
     },
+
     "art10_00_headerPrimary": {
         "text": "art10"
     },
@@ -991,6 +1202,7 @@
     },
     "art10_00_top_fill": "#ffffff",
     "art10_00_bottom_fill": "#ffffff",
+
     "art11_00_headerPrimary": {
         "text": "art11"
     },
@@ -1024,6 +1236,7 @@
     "art11_00_span_optional": {
         "text": "El 100 % de nuestros alumnos termina aprobando, aunque el número de intentos pueda variar."
     },
+
     "art12_00_headerPrimary": {
         "text": "art12"
     },
@@ -1077,6 +1290,7 @@
     },
     "art12_00_top_fill": "#ffffff",
     "art12_00_bottom_fill": "#ffffff",
+
     "art13_00_headerPrimary": {
         "text": "art13"
     },
@@ -1099,6 +1313,7 @@
         "alt": "Equipo celebrando lanzamiento colaborativo global",
         "title": "Celebración interna junto a partners"
     },
+
     "art14_00_headerPrimary": {
         "text": "art14"
     },
@@ -1106,10 +1321,11 @@
         "text": "Nuestro equipo combina asesoría jurídica tecnológica con conocimiento industrial para acelerar implantaciones seguras en Bizkaia. Coordinamos evaluaciones regulatorias, contratos de innovación y formación preventiva para que tus lanzamientos conecten con partners locales y cumplan la norma europea sin fricciones operativas. Supervisamos auditorías de datos, licencias y cláusulas de ciberseguridad que blindan el crecimiento sostenible de cada planta."
     },
     "art14_00_img": {
-        "src": "assets/img/logos/logo-business-b.svg",
+        "src": "assets/img/dummy/dummy_2560.avif",
         "alt": "Abogada revisando contrato de innovación industrial estratégica",
         "title": "Revisión jurídica de innovación industrial estratégica"
     },
+
     "art15_00_headerPrimary": {
         "text": "art15"
     },
@@ -1129,6 +1345,7 @@
         "alt": "Equipo coordinando rutas multimodales con mapas digitales",
         "title": "Coordinación de rutas multimodales con mapas digitales"
     },
+
     "artForm01_00_headerPrimary": {
         "text": "artForm01"
     },
@@ -1244,6 +1461,7 @@
     "artForm01_00_new_query": {
         "text": "Enviar otra solicitud"
     },
+
     "artSlider01_00_headerPrimary": {
         "text": "artSlider01"
     },
@@ -1431,6 +1649,7 @@
         "text": "Leer caso",
         "href": "noticias/noticia-10"
     },
+
     "artSlider02_00_headerPrimary": {
         "text": "artSlider02"
     },
@@ -1472,6 +1691,7 @@
     "artSlider02_00_slided_h4": {
         "text": "Recorrido práctico por almacén inteligente"
     },
+
     "artAccordion01_00_headerPrimary": {
         "text": "artAccordion01"
     },
@@ -1493,6 +1713,7 @@
     "artAccordion01_00_itemc_content": {
         "text": "Ofrecemos financiación interna sin intereses en tres cuotas mensuales, domiciliación bancaria flexible y acuerdos con entidades colaboradoras para adaptar el desembolso a tu calendario, siempre con asesoría para elegir el plan más conveniente."
     },
+
     "artZipper_00_h3": {
         "text": "artZipper"
     },
@@ -1511,12 +1732,14 @@
     "artZipper_00_e_h4": {
         "text": "Consejos de mantenimiento diario"
     },
+
     "moduleTest_00_h2_text": {
         "text": "moduleTest"
     },
     "moduleTest_00_p_text": {
         "text": "Validamos integraciones, definimos indicadores y formamos a tus equipos operativos con soporte continuo durante la prueba para medir reducción de errores, capacidad de reacción y eficiencia en costes antes del despliegue completo en toda la red multialmacén."
     },
+
     "art05_00_headerPrimary": {
         "text": "art05"
     },
@@ -1596,6 +1819,7 @@
     "art03_00_a_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art03_00_a_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art03_00_a_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+
     "art04_00_b_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art04_00_b_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art04_00_b_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
@@ -1608,6 +1832,7 @@
     "art04_00_a_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art04_00_a_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art04_00_a_img_src02": "assets/img/dummy/dummy_1800.avif 1800w",
+
     "artSlider02_00_slideb_avif_src01": "assets/img/dummy/dummy_900.avif",
     "artSlider02_00_slideb_avif_src02": "assets/img/dummy/dummy_1800.avif",
     "artSlider02_00_slideb_avif_sizes": "100vw",
@@ -1632,6 +1857,7 @@
     "artSlider02_00_slidea_img_src01": "assets/img/dummy/dummy_900.avif",
     "artSlider02_00_slidea_img_src02": "assets/img/dummy/dummy_1800.avif",
     "artSlider02_00_slidea_img_sizes": "(max-width: 768px) 100vw, 1500px",
+
     "art16_00_h3_1": {
         "text": "art16"
     },
@@ -1644,6 +1870,7 @@
     "art16_00_bg_mobile": "assets/img/dummy/dummy_900.avif",
     "art16_00_bg_tablet": "assets/img/dummy/dummy_1800.avif",
     "art16_00_bg_desktop": "assets/img/dummy/dummy_2560.avif",
+
     "art17_00_headerPrimary": {
         "text": "art17"
     },
@@ -1660,6 +1887,157 @@
     },
     "art17_00_a_list_b": {
         "text": "No proprietary products or kickbacks"
+    },
+    "moduleVideo01_00_settings": {
+        "type": "youtube"
+    },
+    "moduleVideo01_00_youtube": {
+        "src": "https://www.youtube-nocookie.com/embed/vKQi3bBA1y8",
+        "title": "Matrix trailer for moduleVideo01",
+        "playLabel": "Play video"
+    },
+    "moduleVideo01_00_consent": {
+        "text": "Enable social cookies in your preferences to play this YouTube video."
+    },
+    "moduleVideo01_00_video": {
+        "poster": "assets/img/dummy/dummy01.avif",
+        "title": "Local Matrix video for moduleVideo01"
+    },
+    "moduleVideo01_00_webm": {
+        "src": "assets/video/dummy/dummy.webm"
+    },
+    "moduleVideo01_00_mp4": {
+        "src": "assets/video/dummy/dummy.mp4"
+    },
+    "moduleVideo01_00_captions": {
+        "src": "assets/video/dummy/dummy-en.vtt",
+        "kind": "captions",
+        "srclang": "en",
+        "label": "English"
+    },
+
+    "moduleParrafo01_02_p_text": {
+        "text": "Matrix ipsum dolor sit amet. Neo watches the lines of code rearrange while Morpheus explains that every decision changes the simulation and opens a different route towards the truth."
+    },
+
+    "moduleButtonType04_01_cta_link": {
+        "href": "#showroom-profe-resources",
+        "title": "Discover the Matrix video"
+    },
+    "moduleButtonType04_01_cta_span": {
+        "text": "Watch the video"
+    },
+
+    "artVideo01_00_headerPrimary": {
+        "text": "artVideo01 · YouTube video"
+    },
+
+    "moduleVideo01_01_settings": {
+        "type": "local"
+    },
+    "moduleVideo01_01_youtube": {
+        "src": "https://www.youtube-nocookie.com/embed/vKQi3bBA1y8",
+        "title": "Matrix trailer for moduleVideo01",
+        "playLabel": "Play video"
+    },
+    "moduleVideo01_01_consent": {
+        "text": "Enable social cookies in your preferences to play this YouTube video."
+    },
+    "moduleVideo01_01_video": {
+        "poster": "assets/img/dummy/dummy01.avif",
+        "title": "Local Matrix video for moduleVideo01"
+    },
+    "moduleVideo01_01_webm": {
+        "src": "assets/video/dummy/dummy.webm"
+    },
+    "moduleVideo01_01_mp4": {
+        "src": "assets/video/dummy/dummy.mp4"
+    },
+    "moduleVideo01_01_captions": {
+        "src": "assets/video/dummy/dummy-en.vtt",
+        "kind": "captions",
+        "srclang": "en",
+        "label": "English"
+    },
+
+    "moduleList01_03_marker_icon": "check",
+    "moduleList01_03_b_li_text": {
+        "text": "The red pill reveals the structure of the simulation."
+    },
+    "moduleList01_03_c_li_text": {
+        "text": "Trinity keeps the connection to the real world open."
+    },
+    "moduleList01_03_d_li_text": {
+        "text": "Morpheus guides the choice without hiding its consequences."
+    },
+    "moduleList01_03_e_li_text": {
+        "text": "The Oracle leaves a question inside the code."
+    },
+    "moduleList01_03_f_li_text": {
+        "text": "Zion preserves a way out beyond the machines' control."
+    },
+    "moduleList01_03_a_li_text": {
+        "text": "Neo learns to read the signals hidden inside the Matrix."
+    },
+
+    "artVideo01_01_headerPrimary": {
+        "text": "artVideo01 · Local video"
+    },
+
+    "moduleVideo01_02_settings": {
+        "type": "local"
+    },
+    "moduleVideo01_02_youtube": {
+        "src": "https://www.youtube-nocookie.com/embed/vKQi3bBA1y8",
+        "title": "Matrix trailer for moduleVideo01",
+        "playLabel": "Play video"
+    },
+    "moduleVideo01_02_consent": {
+        "text": "Enable social cookies in your preferences to play this YouTube video."
+    },
+    "moduleVideo01_02_video": {
+        "poster": "assets/img/dummy/dummy01.avif",
+        "title": "Local Matrix video for moduleVideo01"
+    },
+    "moduleVideo01_02_webm": {
+        "src": "assets/video/dummy/dummy.webm"
+    },
+    "moduleVideo01_02_mp4": {
+        "src": "assets/video/dummy/dummy.mp4"
+    },
+    "moduleVideo01_02_captions": {
+        "src": "assets/video/dummy/dummy-en.vtt",
+        "kind": "captions",
+        "srclang": "en",
+        "label": "English"
+    },
+
+    "moduleParrafo01_04_p_text": {
+        "text": "Matrix ipsum dolor sit amet. Neo crosses the corridor while Trinity watches every signal in the system and Morpheus recalls that one image can conceal several layers of reality before the code rearranges itself again."
+    },
+
+    "moduleButtonType04_02_cta_link": {
+        "href": "#showroom-profe-resources",
+        "title": "Explore the column video"
+    },
+    "moduleButtonType04_02_cta_span": {
+        "text": "Explore the video"
+    },
+
+    "artVideo02_00_headerPrimary": {
+        "text": "artVideo02 · Column video"
+    },
+
+    "hero02_video_poster": {
+        "src": "assets/img/dummy/dummy_2560.avif"
+    },
+
+    "art03_00_headerSecondary_d": {
+        "text": "Planes de continuidad certificados ISO"
+    },
+
+    "art05_00_headerSecondary_d": {
+        "text": "Industria alimentaria optimiza autoconsumo frío"
     },
     "art17_00_a_list_c": {
         "text": "Tailored strategy for the long term"
@@ -1702,6 +2080,7 @@
     "art17_00_b_list_f": {
         "text": "Ongoing financial training"
     },
+
     "art18_00_headerPrimary": {
         "text": "art18"
     },
@@ -1765,6 +2144,7 @@
         "href": "#ultimate",
         "title": "Go Ultimate"
     },
+
     "artPricingGlass01_00_bg_text": {
         "text": "Matrix"
     },
@@ -1862,69 +2242,70 @@
     "artScatter01_00_text": {
         "text": "Ministry of Public Security Ministry of Foreign Affairs Ministry of Culture Sports and Tourism Vingroup Bim Group Petrolimex Vietinbank Vietcombank Techcombank VPBank MB TPBank SHB HDBank MSB PJICO Viettel VNG VTC FPT Vinaphone Samsung LG Vietnam Airlines Bamboo Airways Sony Oppo Hyundai Sabeco Vinaconex and more..."
     },
+
     "artMarquee01_00_row1_item_text_a": {
         "text": "Creative pulse"
     },
     "artMarquee01_00_row1_item_img_a": {
-        "src": "assets/img/logos/logo-color.svg",
-        "alt": "LAD logo",
-        "title": "LAD logo"
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Check icon",
+        "title": "Check icon"
     },
     "artMarquee01_00_row1_item_text_b": {
         "text": "Bold direction"
     },
     "artMarquee01_00_row1_item_img_b": {
-        "src": "assets/img/logos/logo-color.svg",
-        "alt": "LAD logo",
-        "title": "LAD logo"
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Check icon",
+        "title": "Check icon"
     },
     "artMarquee01_00_row1_item_text_c": {
         "text": "Fresh ideas"
     },
     "artMarquee01_00_row1_item_img_c": {
-        "src": "assets/img/logos/logo-color.svg",
-        "alt": "LAD logo",
-        "title": "LAD logo"
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Check icon",
+        "title": "Check icon"
     },
     "artMarquee01_00_row1_item_text_d": {
         "text": "Focus forward"
     },
     "artMarquee01_00_row1_item_img_d": {
-        "src": "assets/img/logos/logo-color.svg",
-        "alt": "LAD logo",
-        "title": "LAD logo"
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Check icon",
+        "title": "Check icon"
     },
     "artMarquee01_00_row2_item_text_a": {
         "text": "Build momentum"
     },
     "artMarquee01_00_row2_item_img_a": {
-        "src": "assets/img/logos/logo-color.svg",
-        "alt": "LAD logo",
-        "title": "LAD logo"
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Check icon",
+        "title": "Check icon"
     },
     "artMarquee01_00_row2_item_text_b": {
         "text": "Design clarity"
     },
     "artMarquee01_00_row2_item_img_b": {
-        "src": "assets/img/logos/logo-color.svg",
-        "alt": "LAD logo",
-        "title": "LAD logo"
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Check icon",
+        "title": "Check icon"
     },
     "artMarquee01_00_row2_item_text_c": {
         "text": "Move together"
     },
     "artMarquee01_00_row2_item_img_c": {
-        "src": "assets/img/logos/logo-color.svg",
-        "alt": "LAD logo",
-        "title": "LAD logo"
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Check icon",
+        "title": "Check icon"
     },
     "artMarquee01_00_row2_item_text_d": {
         "text": "Lead with craft"
     },
     "artMarquee01_00_row2_item_img_d": {
-        "src": "assets/img/logos/logo-color.svg",
-        "alt": "LAD logo",
-        "title": "LAD logo"
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Check icon",
+        "title": "Check icon"
     },
 
     "artScale01_00_line1a": {
@@ -1951,6 +2332,7 @@
     "artScale01_00_video_title": {
         "title": "Dummy scale reel"
     },
+
     "sectionParallax01_00_a_eyebrow": {
         "text": "Strategy"
     },
@@ -2020,6 +2402,7 @@
         "href": "#",
         "title": "Start the program"
     },
+
     "moduleH1Type02_00_h1_text": {
         "text": "moduleH1Type02"
     },
@@ -2029,24 +2412,31 @@
     "moduleH1Type02_00_p02_text": {
         "text": "Automatizamos previsiones de demanda, controlamos niveles de stock y activamos transportistas alternativos desde un único panel operativo, apoyándonos en analítica predictiva para reducir devoluciones, emisiones por ruta y tiempos de respuesta ante cualquier incidencia regional."
     },
+
     "sectionDiskSlider01_00_headerPrimary": {
         "text": "sectionDiskSlider01"
     },
+
     "sectionSkewGallery01_00_headerPrimary": {
         "text": "sectionSkewGallery01"
     },
+
     "artWorksSkew01_00_headerPrimary": {
         "text": "artWorksSkew01"
     },
+
     "sectionHScroll01_00_headerPrimary": {
         "text": "sectionHScroll01"
     },
+
     "artHeroScroll01_00_headerPrimary": {
         "text": "artHeroScroll01"
     },
+
     "art19_00_headerPrimary": {
         "text": "art19"
     },
+
     "moduleImgType01_00_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
         "alt": "Alt dummy",
@@ -2058,6 +2448,7 @@
     "moduleImgType01_00_img_sizes": "",
     "moduleImgType01_00_img_srcset01": "",
     "moduleImgType01_00_img_srcset02": "",
+
     "sectionDiskSlider01_00_intro": {
         "text": "There is a difference between knowing the path and walking the path."
     },
@@ -2119,6 +2510,7 @@
     "sectionDiskSlider01_00_slidea_kicker": {
         "text": "Red pill or blue pill."
     },
+
     "sectionSkewGallery01_00_intro": {
         "text": ""
     },
@@ -2156,7 +2548,7 @@
         "text": ""
     },
     "sectionSkewGallery01_00_iteme_img": {
-        "src": "assets/img/dummy/dummy05.avif",
+        "src": "assets/img/dummy/dummy01.avif",
         "alt": "z",
         "title": "The system is watching."
     },
@@ -2167,7 +2559,7 @@
         "text": ""
     },
     "sectionSkewGallery01_00_itemf_img": {
-        "src": "assets/img/dummy/dummy06.avif",
+        "src": "assets/img/dummy/dummy02.avif",
         "alt": "z",
         "title": "The system is watching."
     },
@@ -2188,6 +2580,7 @@
     "sectionSkewGallery01_00_itema_text": {
         "text": ""
     },
+
     "artWorksSkew01_00_intro": {
         "text": "Fate, it seems, is not without a sense of irony."
     },
@@ -2243,7 +2636,7 @@
         "text": ""
     },
     "artWorksSkew01_00_iteme_img": {
-        "src": "assets/img/dummy/dummy05.avif",
+        "src": "assets/img/dummy/dummy01.avif",
         "alt": "z",
         "title": "The system is watching."
     },
@@ -2257,7 +2650,7 @@
         "text": ""
     },
     "artWorksSkew01_00_itemf_img": {
-        "src": "assets/img/dummy/dummy06.avif",
+        "src": "assets/img/dummy/dummy02.avif",
         "alt": "z",
         "title": "The system is watching."
     },
@@ -2295,6 +2688,7 @@
         "title": "The system is watching.",
         "text": ""
     },
+
     "sectionHScroll01_00_intro": {
         "text": "The Matrix has you."
     },
@@ -2354,6 +2748,7 @@
         "alt": "z",
         "title": "The system is watching."
     },
+
     "artHeroScroll01_00_intro": {
         "text": "Reality bends when you choose the truth."
     },
@@ -2441,6 +2836,7 @@
     "artHeroScroll01_00_itema_subc": {
         "text": "The Matrix has you"
     },
+
     "art18_00_d_price": {
         "text": "You are the One."
     },
@@ -2460,6 +2856,7 @@
     "art18_00_a_list_c": {
         "text": "There is no spoon."
     },
+
     "art19_00_slidea_img": {
         "src": "",
         "alt": "z",
@@ -2504,5 +2901,631 @@
     "art19_00_slided_p": {
         "text": ""
     },
-    "art19_00_clickHint": ""
+    "art19_00_clickHint": "",
+
+    "moduleList01_00_marker_icon": "default",
+
+    "moduleList01_01_marker_icon": "default",
+
+    "moduleList01_02_marker_icon": "default",
+
+    "moduleH2Type02_00_headerPrimary": {
+        "text": "moduleH2Type02 · Encabezado H2 con gradiente animado"
+    },
+
+    "moduleH1Type03_00_eyebrow_text": {
+        "text": "Matrix ipsum · Header principal"
+    },
+    "moduleH1Type03_00_h1_text": {
+        "text": "hero06 · moduleH1Type03 · Header inmersivo a pantalla completa"
+    },
+    "moduleH1Type03_00_p01_text": {
+        "text": "Matrix ipsum dolor sit amet. Neo eligendi veritatis codicem et simulacrum mientras Morpheus muestra la entrada a una realidad distinta."
+    },
+
+    "hero06_00_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Neo observa el código de Matrix",
+        "title": "Escena de Matrix para hero06"
+    },
+
+    "moduleH1Type04_00_eyebrow_text": {
+        "text": "Matrix ipsum · Header interior"
+    },
+    "moduleH1Type04_00_h1_text": {
+        "text": "hero07 · moduleH1Type04 · Header interior compacto"
+    },
+    "moduleH1Type04_00_p01_text": {
+        "text": "Matrix ipsum dolor sit amet. Trinity recorre el sistema y Agent Smith vigila cada decisión desde las líneas del código."
+    },
+
+    "hero07_00_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Trinity dentro del universo Matrix",
+        "title": "Escena de Matrix para hero07"
+    },
+
+    "art20_00_headerPrimary": {
+        "text": "art20 · Article media split"
+    },
+    "art20_00_intro_p": {
+        "text": "Matrix ipsum dolor sit amet. Neo elige la píldora roja y descubre que el simulacro oculta una realidad construida por las máquinas."
+    },
+    "art20_00_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Escena dividida del universo Matrix",
+        "title": "Matrix ipsum para art20"
+    },
+
+    "art21_00_headerPrimary": {
+        "text": "art21 · Article galería de imágenes"
+    },
+    "art21_00_intro_p": {
+        "text": "Matrix ipsum dolor sit amet. Morpheus abre tres ventanas al código para que Neo observe el sistema desde perspectivas diferentes."
+    },
+    "art21_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Escena a de la galería Matrix",
+        "title": "Matrix ipsum a para art21"
+    },
+    "art21_00_b_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Escena b de la galería Matrix",
+        "title": "Matrix ipsum b para art21"
+    },
+    "art21_00_c_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Escena c de la galería Matrix",
+        "title": "Matrix ipsum c para art21"
+    },
+
+    "art22_00_headerPrimary": {
+        "text": "art22 · Article galería enlazada"
+    },
+    "art22_00_intro_p": {
+        "text": "Matrix ipsum dolor sit amet. Cada acceso conduce a una lectura distinta del simulacro y de las decisiones que mantienen despierto a Neo."
+    },
+    "art22_00_headerSecondary_a": {
+        "text": "Matrix ipsum 01"
+    },
+    "art22_00_a_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 01"
+    },
+    "art22_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Escena 01 de la galería enlazada Matrix",
+        "title": "Matrix ipsum 01 para art22"
+    },
+    "art22_00_headerSecondary_b": {
+        "text": "Matrix ipsum 02"
+    },
+    "art22_00_b_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 02"
+    },
+    "art22_00_b_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Escena 02 de la galería enlazada Matrix",
+        "title": "Matrix ipsum 02 para art22"
+    },
+    "art22_00_headerSecondary_c": {
+        "text": "Matrix ipsum 03"
+    },
+    "art22_00_c_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 03"
+    },
+    "art22_00_c_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Escena 03 de la galería enlazada Matrix",
+        "title": "Matrix ipsum 03 para art22"
+    },
+
+    "art23_00_headerPrimary": {
+        "text": "art23 · Article prosa con imagen"
+    },
+    "art23_00_p1": {
+        "text": "Matrix ipsum dolor sit amet. Neo aprende a leer el código mientras Trinity le muestra que cada regla del sistema puede ser cuestionada."
+    },
+    "art23_00_p2": {
+        "text": "Morpheus conserva la fe, Zion permanece alerta y el Oráculo recuerda que conocer el camino no equivale a recorrerlo."
+    },
+    "art23_00_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Escena panorámica del código Matrix",
+        "title": "Matrix ipsum para art23"
+    },
+
+    "art24_00_headerPrimary": {
+        "text": "art24 · Article grid de fichas"
+    },
+    "art24_00_headerSecondary_a": {
+        "text": "Matrix ipsum 01"
+    },
+    "art24_00_a_p": {
+        "text": "Matrix ipsum dolor sit amet. El código cambia cuando Neo comprende que la elección también transforma el sistema."
+    },
+    "art24_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Retrato Matrix de la ficha 01",
+        "title": "Matrix ipsum 01 para art24"
+    },
+    "art24_00_headerSecondary_b": {
+        "text": "Matrix ipsum 02"
+    },
+    "art24_00_b_p": {
+        "text": "Matrix ipsum dolor sit amet. El código cambia cuando Neo comprende que la elección también transforma el sistema."
+    },
+    "art24_00_b_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Retrato Matrix de la ficha 02",
+        "title": "Matrix ipsum 02 para art24"
+    },
+    "art24_00_headerSecondary_c": {
+        "text": "Matrix ipsum 03"
+    },
+    "art24_00_c_p": {
+        "text": "Matrix ipsum dolor sit amet. El código cambia cuando Neo comprende que la elección también transforma el sistema."
+    },
+    "art24_00_c_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Retrato Matrix de la ficha 03",
+        "title": "Matrix ipsum 03 para art24"
+    },
+    "art24_00_headerSecondary_d": {
+        "text": "Matrix ipsum 04"
+    },
+    "art24_00_d_p": {
+        "text": "Matrix ipsum dolor sit amet. El código cambia cuando Neo comprende que la elección también transforma el sistema."
+    },
+    "art24_00_d_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Retrato Matrix de la ficha 04",
+        "title": "Matrix ipsum 04 para art24"
+    },
+
+    "art25_00_headerPrimary": {
+        "text": "art25 · Article CTA centrado"
+    },
+    "art25_00_p01": {
+        "text": "Matrix ipsum dolor sit amet. Neo debe decidir si continúa dentro del simulacro o acepta mirar más allá de sus límites."
+    },
+    "art25_00_p02": {
+        "text": "Morpheus ofrece una elección clara: permanecer junto a la ilusión conocida o descubrir la verdad que sostiene el sistema."
+    },
+
+    "art26_00_headerPrimary": {
+        "text": "art26 · Article CTA offset"
+    },
+    "art26_00_p": {
+        "text": "Matrix ipsum dolor sit amet. Agent Smith protege las reglas del simulacro mientras Zion reúne la voluntad necesaria para mantener abierta una salida."
+    },
+
+    "art27_00_headerPrimary": {
+        "text": "art27 · Article grid de iconos"
+    },
+    "art27_00_intro_p": {
+        "text": "Matrix ipsum dolor sit amet. Nueve señales ayudan a reconocer el sistema, recorrer sus capas y comprender por qué cada decisión altera el código."
+    },
+    "art27_00_headerSecondary_a": {
+        "text": "Matrix ipsum 01"
+    },
+    "art27_00_a_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_a_img": {
+        "src": "assets/img/system/compass-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_b": {
+        "text": "Matrix ipsum 02"
+    },
+    "art27_00_b_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_b_img": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_c": {
+        "text": "Matrix ipsum 03"
+    },
+    "art27_00_c_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_c_img": {
+        "src": "assets/img/system/people.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_d": {
+        "text": "Matrix ipsum 04"
+    },
+    "art27_00_d_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_d_img": {
+        "src": "assets/img/system/school-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_e": {
+        "text": "Matrix ipsum 05"
+    },
+    "art27_00_e_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_e_img": {
+        "src": "assets/img/system/speedometer-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_f": {
+        "text": "Matrix ipsum 06"
+    },
+    "art27_00_f_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_f_img": {
+        "src": "assets/img/system/settings-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_g": {
+        "text": "Matrix ipsum 07"
+    },
+    "art27_00_g_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_g_img": {
+        "src": "assets/img/system/cube-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_h": {
+        "text": "Matrix ipsum 08"
+    },
+    "art27_00_h_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_h_img": {
+        "src": "assets/img/system/code-slash-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_i": {
+        "text": "Matrix ipsum 09"
+    },
+    "art27_00_i_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_i_img": {
+        "src": "assets/img/system/stats-chart-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+
+    "art28_00_headerPrimary": {
+        "text": "art28 · Article media alterna"
+    },
+    "art28_00_headerSecondary_a": {
+        "text": "Matrix ipsum 01"
+    },
+    "art28_00_a_p01": {
+        "text": "Matrix ipsum dolor sit amet. Neo recorre una nueva capa del simulacro y descubre que las reglas aparentes también pueden doblarse."
+    },
+    "art28_00_a_p02": {
+        "text": "Trinity mantiene abierta la conexión mientras Morpheus guía la elección y Agent Smith intenta cerrar todas las salidas."
+    },
+    "art28_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Escena Matrix de la fila 01",
+        "title": "Matrix ipsum 01 para art28"
+    },
+    "art28_00_a_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art28_00_a_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art28_00_headerSecondary_b": {
+        "text": "Matrix ipsum 02"
+    },
+    "art28_00_b_p01": {
+        "text": "Matrix ipsum dolor sit amet. Neo recorre una nueva capa del simulacro y descubre que las reglas aparentes también pueden doblarse."
+    },
+    "art28_00_b_p02": {
+        "text": "Trinity mantiene abierta la conexión mientras Morpheus guía la elección y Agent Smith intenta cerrar todas las salidas."
+    },
+    "art28_00_b_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Escena Matrix de la fila 02",
+        "title": "Matrix ipsum 02 para art28"
+    },
+    "art28_00_b_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art28_00_b_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art28_00_headerSecondary_c": {
+        "text": "Matrix ipsum 03"
+    },
+    "art28_00_c_p01": {
+        "text": "Matrix ipsum dolor sit amet. Neo recorre una nueva capa del simulacro y descubre que las reglas aparentes también pueden doblarse."
+    },
+    "art28_00_c_p02": {
+        "text": "Trinity mantiene abierta la conexión mientras Morpheus guía la elección y Agent Smith intenta cerrar todas las salidas."
+    },
+    "art28_00_c_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Escena Matrix de la fila 03",
+        "title": "Matrix ipsum 03 para art28"
+    },
+    "art28_00_c_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art28_00_c_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
+
+    "art29_00_headerPrimary": {
+        "text": "art29 · Article editorial centrado"
+    },
+    "art29_00_p_a": {
+        "text": "Matrix ipsum dolor sit amet. Neo observa cómo el código cae sobre la ciudad y comprende que la realidad visible solo es una interfaz."
+    },
+    "art29_00_p_b": {
+        "text": "El Oráculo deja una pregunta abierta, Morpheus conserva la fe y Trinity convierte la duda en el siguiente movimiento."
+    },
+    "art29_00_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Escena editorial del universo Matrix",
+        "title": "Matrix ipsum para art29"
+    },
+    "art29_00_cta": {
+        "text": "",
+        "href": "",
+        "title": "link"
+    },
+
+    "art30_00_headerPrimary": {
+        "text": "art30 · Article galería hover con beneficios"
+    },
+    "art30_00_intro_p_a": {
+        "text": "Matrix ipsum dolor sit amet. Tres accesos presentan distintas formas de recorrer el simulacro y de interpretar las señales escondidas en el código."
+    },
+    "art30_00_intro_p_b": {
+        "text": "Cada elección revela una parte del sistema y añade una ventaja al recorrido de quienes deciden permanecer despiertos."
+    },
+    "art30_00_headerSecondary_a": {
+        "text": "Matrix ipsum 01"
+    },
+    "art30_00_a_p": {
+        "text": "Neo elige una perspectiva distinta y descubre un nuevo patrón dentro de las líneas del sistema."
+    },
+    "art30_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Escena Matrix de la tarjeta 01",
+        "title": "Matrix ipsum 01 para art30"
+    },
+    "art30_00_a_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 01"
+    },
+    "art30_00_headerSecondary_b": {
+        "text": "Matrix ipsum 02"
+    },
+    "art30_00_b_p": {
+        "text": "Neo elige una perspectiva distinta y descubre un nuevo patrón dentro de las líneas del sistema."
+    },
+    "art30_00_b_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Escena Matrix de la tarjeta 02",
+        "title": "Matrix ipsum 02 para art30"
+    },
+    "art30_00_b_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 02"
+    },
+    "art30_00_headerSecondary_c": {
+        "text": "Matrix ipsum 03"
+    },
+    "art30_00_c_p": {
+        "text": "Neo elige una perspectiva distinta y descubre un nuevo patrón dentro de las líneas del sistema."
+    },
+    "art30_00_c_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Escena Matrix de la tarjeta 03",
+        "title": "Matrix ipsum 03 para art30"
+    },
+    "art30_00_c_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 03"
+    },
+    "art30_00_headerSecondary_d": {
+        "text": "Matrix ipsum 04"
+    },
+    "art30_00_d_p": {
+        "text": "Trinity sigue una señal inesperada, conecta los indicios dispersos y descubre otra ruta posible dentro del código de Matrix."
+    },
+    "art30_00_d_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Escena Matrix de la tarjeta 04",
+        "title": "Matrix ipsum 04 para art30"
+    },
+    "art30_00_d_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 04"
+    },
+    "art30_00_benefit_a_headerSecondary": {
+        "text": "Orientación Matrix"
+    },
+    "art30_00_benefit_a_img": {
+        "src": "assets/img/system/compass-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art30_00_benefit_b_headerSecondary": {
+        "text": "Conexión protegida"
+    },
+    "art30_00_benefit_b_img": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art30_00_benefit_c_headerSecondary": {
+        "text": "Tripulación de Zion"
+    },
+    "art30_00_benefit_c_img": {
+        "src": "assets/img/system/people.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art30_00_benefit_d_headerSecondary": {
+        "text": "Respuesta inmediata"
+    },
+    "art30_00_benefit_d_img": {
+        "src": "assets/img/system/time.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art30_00_benefit_e_headerSecondary": {
+        "text": "Código medible"
+    },
+    "art30_00_benefit_e_img": {
+        "src": "assets/img/system/stats-chart-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art30_00_benefit_f_headerSecondary": {
+        "text": "Experiencia Matrix"
+    },
+    "art30_00_benefit_f_img": {
+        "src": "assets/img/system/ribbon-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+
+    "artAccordion02_00_headerPrimary": {
+        "text": "artAccordion02 · Article acordeón con imagen"
+    },
+    "artAccordion02_00_intro_p_a": {
+        "text": "Matrix ipsum dolor sit amet. Estas preguntas reúnen las dudas habituales de quienes acaban de descubrir que el mundo visible es un simulacro."
+    },
+    "artAccordion02_00_intro_p_b": {
+        "text": "Abre cada respuesta para seguir a Morpheus, Trinity y Neo a través de las decisiones que cambian el código."
+    },
+    "artAccordion02_00_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Morpheus responde preguntas sobre Matrix",
+        "title": "Matrix ipsum para artAccordion02"
+    },
+    "artAccordion02_00_headerSecondary_a": {
+        "text": "¿Qué oculta realmente Matrix?"
+    },
+    "artAccordion02_00_a_p": {
+        "text": "Matrix ipsum dolor sit amet. Matrix es una simulación construida para mantener a la humanidad dentro de una realidad controlada por las máquinas."
+    },
+    "artAccordion02_00_headerSecondary_b": {
+        "text": "¿Por qué Neo debe elegir?"
+    },
+    "artAccordion02_00_b_p": {
+        "text": "Morpheus no impone una respuesta. La píldora roja abre la verdad y la azul permite regresar a la seguridad aparente del simulacro."
+    },
+    "artAccordion02_00_headerSecondary_c": {
+        "text": "¿Cómo encuentra Trinity una salida?"
+    },
+    "artAccordion02_00_c_p": {
+        "text": "Trinity lee las señales del código, mantiene la conexión con la nave y localiza el punto exacto antes de que los agentes cierren el acceso."
+    },
+    "artAccordion02_00_headerSecondary_d": {
+        "text": "¿Qué protege Agent Smith?"
+    },
+    "artAccordion02_00_d_p": {
+        "text": "Agent Smith defiende la estabilidad del sistema, elimina anomalías y persigue a cualquiera que cuestione las reglas impuestas por Matrix."
+    },
+    "artAccordion02_00_headerSecondary_e": {
+        "text": "¿Por qué Zion sigue resistiendo?"
+    },
+    "artAccordion02_00_e_p": {
+        "text": "Zion conserva a quienes viven fuera del simulacro y representa la posibilidad de una humanidad capaz de decidir su propio futuro."
+    },
+    "artAccordion02_00_headerSecondary_f": {
+        "text": "¿Puede Neo cambiar las reglas?"
+    },
+    "artAccordion02_00_f_p": {
+        "text": "Cuando Neo comprende la naturaleza del código deja de obedecer sus límites y comienza a transformar las leyes que parecían inamovibles."
+    },
+
+    "art31_00_headerPrimary": {
+        "text": "art31 · Article filas alternas"
+    },
+    "art31_00_headerSecondary_a": {
+        "text": "Leer el primer patrón"
+    },
+    "art31_00_a_p01": {
+        "text": "Neo observa el código y reconoce que cada detalle del simulacro responde a una estructura diseñada por las máquinas."
+    },
+    "art31_00_a_p02": {
+        "text": "Morpheus señala el punto de partida y recuerda que comprender una regla es el primer paso para poder cambiarla."
+    },
+    "art31_00_a_cta": {
+        "text": "Matrix ipsum",
+        "href": "#",
+        "title": "Continuar el recorrido Matrix"
+    },
+    "art31_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Escena Matrix de la fila 01",
+        "title": "Matrix ipsum 01 para art31"
+    },
+    "art31_00_headerSecondary_b": {
+        "text": "Atravesar el simulacro"
+    },
+    "art31_00_b_p01": {
+        "text": "Trinity mantiene abierta la conexión mientras Neo avanza por un entorno que modifica sus límites a cada nueva decisión."
+    },
+    "art31_00_b_p02": {
+        "text": "Agent Smith sigue el rastro, multiplica su presencia y convierte el recorrido en una carrera contra el control del sistema."
+    },
+    "art31_00_b_cta": {
+        "text": "Matrix ipsum",
+        "href": "#",
+        "title": "Continuar el recorrido Matrix"
+    },
+    "art31_00_b_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Escena Matrix de la fila 02",
+        "title": "Matrix ipsum 02 para art31"
+    },
+    "art31_00_headerSecondary_c": {
+        "text": "Elegir una nueva dirección"
+    },
+    "art31_00_c_p01": {
+        "text": "El Oráculo no entrega respuestas cerradas; deja una pregunta que obliga a Neo a reconocer el peso real de su elección."
+    },
+    "art31_00_c_p02": {
+        "text": "Zion observa desde fuera y Morpheus conserva la confianza en que el código puede revelar una salida diferente."
+    },
+    "art31_00_c_cta": {
+        "text": "Matrix ipsum",
+        "href": "#",
+        "title": "Continuar el recorrido Matrix"
+    },
+    "art31_00_c_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Escena Matrix de la fila 03",
+        "title": "Matrix ipsum 03 para art31"
+    },
+    "art31_00_headerSecondary_d": {
+        "text": "Cerrar el ciclo Matrix"
+    },
+    "art31_00_d_p01": {
+        "text": "Neo integra lo aprendido, deja de reaccionar ante las reglas y comienza a decidir cómo debe continuar su recorrido."
+    },
+    "art31_00_d_p02": {
+        "text": "La última fila invierte su composición para hacer visible que cada paso par cambia también la dirección de la historia."
+    },
+    "art31_00_d_cta": {
+        "text": "Matrix ipsum",
+        "href": "#",
+        "title": "Continuar el recorrido Matrix"
+    },
+    "art31_00_d_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Escena Matrix de la fila 04",
+        "title": "Matrix ipsum 04 para art31"
+    }
 }

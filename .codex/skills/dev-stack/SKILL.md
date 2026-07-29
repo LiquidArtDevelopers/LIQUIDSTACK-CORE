@@ -20,9 +20,11 @@ description: "Desarrollo y mantenimiento de proyectos LiquidStack PHP/Vite: crea
 El contenido se resuelve por URL e idioma. La aplicación carga los JSON de la ruta como variables-objeto globales y la vista invoca recursos con `controller()`. Cada controlador carga un template HTML, reemplaza placeholders y devuelve el HTML renderizado.
 
 En desarrollo, Vite puede ejecutar automáticamente la sincronización de
-idiomas al cambiar PHP: añade claves nuevas y retira las que dejan de usarse,
-salvo las protegidas como globales. Esa automatización no registra los `@use`
-SCSS ni sustituye la revisión humana del diff.
+idiomas al cambiar PHP. La hidratación normal es aditiva: añade claves y
+propiedades ausentes, pero no elimina entradas ni sustituye valores existentes,
+incluidos los vacíos intencionales. La poda requiere ejecutar expresamente el
+actualizador con `--prune-unused` y revisar su diff. Esa automatización no
+registra los `@use` SCSS ni sustituye la revisión humana del diff.
 
 Un recurso reutilizable completo suele incluir:
 
@@ -113,13 +115,33 @@ controller('nombre', $index, [
   `php App/tools/update-languages.php templates` o la ruta equivalente: tanto
   `/showroom` como `/templates` usan el slug de contenido `templates`.
 - Para cualquier otra vista, hidratar el slug real configurado en `content`.
-- Al renombrar una clave, trasladar primero su valor; una clave vacía, sin
-  `$pad` o con un prefijo distinto al controlador puede considerarse no usada
-  y ser retirada por el actualizador.
-- El actualizador puede completar propiedades vacías desde los templates
-  cuando encuentra objetos o arrays incompletos; verificar igualmente la forma
-  final de cada objeto.
+- Al renombrar una clave, trasladar primero su valor. La hidratación ordinaria
+  conserva la clave antigua; retirarla manualmente o usar `--prune-unused`
+  únicamente después de verificar que ya no tiene consumidores.
+- El actualizador completa claves y propiedades ausentes desde los templates,
+  pero conserva cualquier clave o propiedad ya declarada, aunque su valor sea
+  `""`, `null` o tenga una forma legacy. Revisar igualmente la forma final de
+  cada objeto.
+- Los recursos con varios ejes variables (`items`, `list_items`, `subitems`,
+  `benefits`, filas, etc.) deben declarar esos contadores de forma estática en
+  el sniper y disponer de una prueba de hidratación que confirme todos los
+  ejes.
 - Revisar el diff de los JSON: el script no sustituye la validación humana.
+
+### Editor inline
+
+- Colocar `data-lang` en el elemento editable o en su unidad interactiva
+  inmediata, y comprobar que overlays o pseudoelementos no bloquean el gesto
+  del editor.
+- En imágenes, conservar la entrada base como objeto con `src`, `alt` y
+  `title`. Si el recurso renderiza `srcset`, nombrar e hidratar sus entradas
+  relacionadas como `<clave-base>_srcset01`, `<clave-base>_srcset02`, etc. en
+  todos los idiomas; no usar sufijos alternativos que el editor no pueda
+  asociar a la imagen.
+- Usar `data-inline-group` solo en `DEV_MODE` y únicamente cuando varios
+  campos de una misma unidad deban editarse juntos.
+- Hacer idempotente cualquier listener del editor que se reinstale mediante
+  HMR, retirando el handler anterior antes de registrar el nuevo.
 
 ### SCSS
 

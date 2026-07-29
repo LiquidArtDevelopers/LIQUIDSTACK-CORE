@@ -1,0 +1,86 @@
+@use '../config' as c;
+
+.art29 {
+    width: 100%;
+    padding: c.$padMax c.$padMin;
+    display: flex;
+    justify-content: center;
+
+    .art29-inner {
+        width: min(100%, c.$textMax);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+        text-align: left;
+    }
+
+    .art29-inner > :is(h1, h2, h3, h4, h5, h6),
+    .art29-copy {
+        width: 100%;
+    }
+
+    .art29-copy {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .art29-media {
+        width: 100%;
+        aspect-ratio: 3 / 2;
+        overflow: hidden;
+        border-radius: 1rem;
+        box-shadow: c.$sombraMin;
+    }
+
+    img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+        transition: transform 450ms ease;
+    }
+
+    .art29-cta {
+        margin-top: .5rem;
+    }
+
+    .art29-cta:focus-visible {
+        outline: 3px solid c.$color03;
+        outline-offset: 4px;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .art29-media:hover img {
+            transform: scale(1.025);
+        }
+    }
+
+    @media only screen and (min-width: c.$tablet) {
+        padding-inline: c.$padMax;
+
+        .art29-inner {
+            gap: 2rem;
+        }
+
+        .art29-inner > :is(h1, h2, h3, h4, h5, h6),
+        .art29-copy {
+            width: 80%;
+        }
+    }
+
+    @media only screen and (min-width: c.$desktop) {
+        .art29-inner > :is(h1, h2, h3, h4, h5, h6),
+        .art29-copy {
+            width: calc(80% * 0.6);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        img,
+        .art29-cta {
+            scroll-behavior: auto;
+            transition: none;
+        }
+    }
+}

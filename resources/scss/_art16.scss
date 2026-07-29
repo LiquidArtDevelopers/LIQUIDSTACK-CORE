@@ -19,7 +19,12 @@
             background-position: center;
             will-change: transform;
         }
-        h3{
+        > h1,
+        > h2,
+        > h3,
+        > h4,
+        > h5,
+        > h6{
             position: absolute;
             inset: 0;
             width: 100%;

@@ -14,6 +14,9 @@ use Symfony\Component\Filesystem\Path;
 class Installer
 {
     private const AGENT_SKILLS_MANIFEST = '.liquidstack-core-skills.json';
+    private const VITE_LANGUAGE_PLUGIN_PATH = 'tools/liquidstack/vite/update-languages-plugin.mjs';
+    private const VITE_LANGUAGE_PLUGIN_IMPORT = 'import { createUpdateLanguagesPlugin } from "./tools/liquidstack/vite/update-languages-plugin.mjs";';
+    private const VITE_LANGUAGE_PLUGIN_CALL = 'createUpdateLanguagesPlugin(env)';
 
     public static function postInstall(Event $event): void
     {
@@ -347,15 +350,30 @@ class Installer
         $imagesSource      = $resourcesDir . '/img';
         $imagesDestination = self::resolveImageResourceTarget($projectRoot);
 
-        if (!is_dir($imagesSource)) {
-            return;
+        if (is_dir($imagesSource)) {
+            try {
+                self::mirrorWithoutDeletion(
+                    $filesystem,
+                    $imagesSource,
+                    $imagesDestination,
+                    ['logos']
+                );
+                $io->write(sprintf('<info>Synced resources to %s</info>', $imagesDestination));
+            } catch (\Throwable $exception) {
+                $io->writeError(sprintf('<error>Failed to sync %s to %s: %s</error>', $imagesSource, $imagesDestination, $exception->getMessage()));
+            }
         }
 
-        try {
-            self::mirrorWithoutDeletion($filesystem, $imagesSource, $imagesDestination);
-            $io->write(sprintf('<info>Synced resources to %s</info>', $imagesDestination));
-        } catch (\Throwable $exception) {
-            $io->writeError(sprintf('<error>Failed to sync %s to %s: %s</error>', $imagesSource, $imagesDestination, $exception->getMessage()));
+        $videosSource      = $resourcesDir . '/video';
+        $videosDestination = self::resolveVideoResourceTarget($projectRoot);
+
+        if (is_dir($videosSource)) {
+            try {
+                self::mirrorWithoutDeletion($filesystem, $videosSource, $videosDestination);
+                $io->write(sprintf('<info>Synced resources to %s</info>', $videosDestination));
+            } catch (\Throwable $exception) {
+                $io->writeError(sprintf('<error>Failed to sync %s to %s: %s</error>', $videosSource, $videosDestination, $exception->getMessage()));
+            }
         }
     }
 
@@ -376,12 +394,21 @@ class Installer
             ['path' => 'App/config/helpers.php', 'type' => 'file'],
             ['path' => 'App/config/languages', 'type' => 'dir'],
             ['path' => 'App/app/url.php', 'type' => 'file'],
+            [
+                'path'           => 'App/app/updateLanguage.php',
+                'type'           => 'file',
+                'warn_on_change' => true,
+            ],
             ['path' => 'App/controllers', 'type' => 'dir'],
             ['path' => 'App/templates', 'type' => 'dir'],
             ['path' => 'App/views', 'type' => 'dir'],
             ['path' => 'App/tools/build-sitemap.php', 'type' => 'file'],
             ['path' => 'App/tools/update-languages.php', 'type' => 'file'],
             ['path' => 'App/tools', 'type' => 'dir'],
+            [
+                'path' => self::VITE_LANGUAGE_PLUGIN_PATH,
+                'type' => 'file',
+            ],
             ['path' => 'src/js/templates.js', 'type' => 'file', 'base' => $packageRoot],
             ['path' => 'src/scss/templates.scss', 'type' => 'file', 'base' => $packageRoot],
         ];
@@ -406,6 +433,18 @@ class Installer
                 continue;
             }
 
+            if (
+                $assetType === 'file'
+                && ($asset['warn_on_change'] ?? false)
+                && is_file($target)
+                && hash_file('sha256', $source) !== hash_file('sha256', $target)
+            ) {
+                $io->writeError(sprintf(
+                    '<warning>CORE actualizará %s. Revisa antes cualquier personalización local de este fichero gestionado.</warning>',
+                    $assetPath
+                ));
+            }
+
             $filesystem->mkdir(dirname($target), 0775);
 
             try {
@@ -422,6 +461,171 @@ class Installer
             } catch (\Throwable $exception) {
                 $io->writeError(sprintf('<error>Failed to copy %s to %s: %s</error>', $source, $target, $exception->getMessage()));
             }
+        }
+
+        self::syncViteLanguagePluginConfig(
+            $filesystem,
+            $projectRoot,
+            $stubsDir . '/' . self::VITE_LANGUAGE_PLUGIN_PATH,
+            $io
+        );
+    }
+
+    private static function syncViteLanguagePluginConfig(
+        Filesystem $filesystem,
+        string $projectRoot,
+        string $pluginSource,
+        IOInterface $io
+    ): void {
+        $pluginTarget = $projectRoot . '/' . self::VITE_LANGUAGE_PLUGIN_PATH;
+        $configPath = $projectRoot . '/vite.config.js';
+
+        $sourceHash = is_file($pluginSource)
+            ? hash_file('sha256', $pluginSource)
+            : false;
+        $targetHash = is_file($pluginTarget)
+            ? hash_file('sha256', $pluginTarget)
+            : false;
+
+        if (
+            !is_string($sourceHash)
+            || !is_string($targetHash)
+            || !hash_equals($sourceHash, $targetHash)
+        ) {
+            $io->writeError(sprintf(
+                '<warning>Skipped Vite config integration because the managed plugin was not synced correctly to %s.</warning>',
+                $pluginTarget
+            ));
+            return;
+        }
+
+        if (!is_file($configPath)) {
+            $io->write(sprintf(
+                '<info>Installed the Vite language plugin; skipped integration because %s is missing</info>',
+                $configPath
+            ));
+            return;
+        }
+
+        if (is_link($configPath)) {
+            $io->writeError(sprintf(
+                '<warning>Preserved linked Vite config %s; integrate the CORE language plugin manually.</warning>',
+                $configPath
+            ));
+            return;
+        }
+
+        $contents = @file_get_contents($configPath);
+        if ($contents === false) {
+            $io->writeError(sprintf(
+                '<warning>Could not read %s; the Vite language plugin was installed but not integrated.</warning>',
+                $configPath
+            ));
+            return;
+        }
+
+        $importCount = substr_count(
+            $contents,
+            self::VITE_LANGUAGE_PLUGIN_IMPORT
+        );
+        $callCount = preg_match_all(
+            '~(?<![A-Za-z0-9_$])createUpdateLanguagesPlugin\s*\(\s*env\s*\)~',
+            $contents
+        );
+        $callCount = is_int($callCount) ? $callCount : 0;
+
+        if ($importCount === 1 && $callCount === 1) {
+            $io->write('<info>Vite language plugin already integrated</info>');
+            return;
+        }
+
+        if (
+            $importCount !== 0
+            || substr_count(
+                $contents,
+                'const createUpdateLanguagesPlugin = (env) => {'
+            ) !== 1
+            || $callCount !== 1
+        ) {
+            $io->writeError(sprintf(
+                '<warning>Preserved custom %s. To enable the CORE language watcher, add `%s` and `%s,` inside `plugins`.</warning>',
+                $configPath,
+                self::VITE_LANGUAGE_PLUGIN_IMPORT,
+                self::VITE_LANGUAGE_PLUGIN_CALL
+            ));
+            return;
+        }
+
+        $pattern = '~^const createUpdateLanguagesPlugin = \(env\) => \{'
+            . '.*?^\};\R+(?=export default defineConfig)~ms';
+        $updated = preg_replace($pattern, '', $contents, 1, $replacements);
+
+        if (!is_string($updated) || $replacements !== 1) {
+            $io->writeError(sprintf(
+                '<warning>Preserved %s because its legacy language plugin could not be migrated safely.</warning>',
+                $configPath
+            ));
+            return;
+        }
+
+        $childProcessImportPattern = '~^import\s+\{\s*'
+            . '(exec(?:File)?Sync)'
+            . '\s*\}\s+from\s+'
+            . '["\'](?:node:)?child_process["\'];[^\r\n]*\R~m';
+        if (
+            preg_match(
+                $childProcessImportPattern,
+                $updated,
+                $childProcessImport
+            ) === 1
+        ) {
+            $withoutChildProcessImport = preg_replace(
+                $childProcessImportPattern,
+                '',
+                $updated,
+                1
+            );
+            $identifier = $childProcessImport[1] ?? '';
+
+            // Retira el import legacy solo cuando el identificador ya no se
+            // usa en ninguna personalización restante del proyecto.
+            if (
+                is_string($withoutChildProcessImport)
+                && $identifier !== ''
+                && preg_match(
+                    '~\b' . preg_quote($identifier, '~') . '\b~',
+                    $withoutChildProcessImport
+                ) !== 1
+            ) {
+                $updated = $withoutChildProcessImport;
+            }
+        }
+
+        $lineEnding = str_contains($contents, "\r\n") ? "\r\n" : "\n";
+        $bom = str_starts_with($updated, "\xEF\xBB\xBF")
+            ? "\xEF\xBB\xBF"
+            : '';
+        if ($bom !== '') {
+            $updated = substr($updated, strlen($bom));
+        }
+
+        $updated = $bom
+            . self::VITE_LANGUAGE_PLUGIN_IMPORT
+            . $lineEnding
+            . $updated;
+
+        try {
+            $filesystem->dumpFile($configPath, $updated);
+            $io->write(sprintf(
+                '<info>Migrated the legacy language watcher in %s to the CORE Vite plugin</info>',
+                $configPath
+            ));
+        } catch (\Throwable $exception) {
+            $io->writeError(sprintf(
+                '<error>Failed to integrate the Vite language plugin in %s: %s</error>',
+                $configPath,
+                $exception->getMessage()
+            ));
         }
     }
 
@@ -498,6 +702,31 @@ class Installer
         }
 
         return $projectRoot . DIRECTORY_SEPARATOR . 'public/assets/img';
+    }
+
+    /**
+     * Obtiene el destino donde se replicaran los videos de recursos.
+     *
+     * Por defecto se copian en `public/assets/video`. Si se define
+     * STACK_CORE_RESOURCES_VIDEO_TARGET, se tomara como ruta base absoluta o
+     * relativa al proyecto. Se mantiene
+     * STACK_LIQUID_CORE_RESOURCES_VIDEO_TARGET como alias heredado.
+     */
+    private static function resolveVideoResourceTarget(string $projectRoot): string
+    {
+        $configured = getenv('STACK_CORE_RESOURCES_VIDEO_TARGET');
+
+        if (!is_string($configured) || $configured === '') {
+            $configured = getenv('STACK_LIQUID_CORE_RESOURCES_VIDEO_TARGET');
+        }
+
+        if (is_string($configured) && $configured !== '') {
+            return self::isAbsolutePath($configured)
+                ? rtrim($configured, DIRECTORY_SEPARATOR)
+                : $projectRoot . DIRECTORY_SEPARATOR . ltrim($configured, DIRECTORY_SEPARATOR);
+        }
+
+        return $projectRoot . DIRECTORY_SEPARATOR . 'public/assets/video';
     }
 
     private static function startsWith(string $haystack, string $needle): bool
@@ -884,7 +1113,8 @@ class Installer
     private static function mirrorWithoutDeletion(
         Filesystem $filesystem,
         string $source,
-        string $destination
+        string $destination,
+        array $preserveExistingPrefixes = []
     ): void {
         $filesystem->mkdir($destination, 0775);
 
@@ -894,7 +1124,8 @@ class Installer
         );
 
         foreach ($iterator as $item) {
-            $targetPath = $destination . DIRECTORY_SEPARATOR . $iterator->getSubPathName();
+            $relativePath = $iterator->getSubPathName();
+            $targetPath   = $destination . DIRECTORY_SEPARATOR . $relativePath;
 
             if ($item->isDir()) {
                 $filesystem->mkdir($targetPath, 0775);
@@ -903,12 +1134,42 @@ class Installer
 
             $filesystem->mkdir(dirname($targetPath), 0775);
 
-            $shouldCopy = !is_file($targetPath)
-                || md5_file($item->getPathname()) !== md5_file($targetPath);
+            $preserveExisting = is_file($targetPath)
+                && self::matchesResourcePrefix($relativePath, $preserveExistingPrefixes);
+
+            $shouldCopy = !$preserveExisting
+                && (
+                    !is_file($targetPath)
+                    || md5_file($item->getPathname()) !== md5_file($targetPath)
+                );
 
             if ($shouldCopy) {
                 $filesystem->copy($item->getPathname(), $targetPath, true);
             }
         }
+    }
+
+    /**
+     * @param list<string> $prefixes
+     */
+    private static function matchesResourcePrefix(string $relativePath, array $prefixes): bool
+    {
+        $normalizedPath = str_replace('\\', '/', ltrim($relativePath, '/\\'));
+
+        foreach ($prefixes as $prefix) {
+            $normalizedPrefix = trim(str_replace('\\', '/', $prefix), '/');
+
+            if (
+                $normalizedPrefix !== ''
+                && (
+                    $normalizedPath === $normalizedPrefix
+                    || self::startsWith($normalizedPath, $normalizedPrefix . '/')
+                )
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -1,0 +1,51 @@
+@use '../config' as c;
+
+.moduleButtonType04 {
+    width: max-content;
+    min-width: 10rem;
+    min-height: 3rem;
+    padding: 0.75rem 1.5rem;
+    border: 2px solid c.$color02;
+    border-radius: 0.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: c.$color02;
+    box-shadow: c.$sombraMin;
+    color: c.$color00;
+    font-family: c.$fuente02;
+    font-weight: 600;
+    text-transform: uppercase;
+    transition:
+        background-color 200ms ease,
+        box-shadow 200ms ease,
+        color 200ms ease,
+        transform 200ms ease;
+
+    > span {
+        color: inherit;
+        line-height: 1.25rem;
+        text-align: center;
+    }
+
+    &:hover,
+    &:focus-visible {
+        background-color: c.$color00;
+        color: c.$color02;
+        transform: translateY(-0.125rem);
+    }
+
+    &:focus-visible {
+        outline: 3px solid c.$color03;
+        outline-offset: 0.3rem;
+    }
+
+    &:active {
+        box-shadow: none;
+        transform: translateY(0) scale(0.97);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+    }
+}

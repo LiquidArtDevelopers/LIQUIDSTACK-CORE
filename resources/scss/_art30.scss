@@ -1,0 +1,252 @@
+@use '../config' as c;
+
+.art30 {
+    width: 100%;
+    padding: c.$padMax c.$padMin;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+
+    .art30-intro {
+        width: 100%;
+        display: grid;
+        gap: 1rem;
+        text-align: left;
+    }
+
+    .art30-introCopy {
+        width: 100%;
+        display: grid;
+        gap: .75rem;
+    }
+
+    .art30-gallery {
+        --art30-gallery-gap: 1rem;
+
+        width: min(100%, 90rem);
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+        gap: var(--art30-gallery-gap);
+    }
+
+    .art30-gallery:empty {
+        display: none;
+    }
+
+    .art30-card {
+        position: relative;
+        isolation: isolate;
+        aspect-ratio: 1;
+        display: block;
+        overflow: hidden;
+        border-radius: .75rem;
+        background-color: c.$color01;
+        box-shadow: c.$sombraMin;
+        color: c.$color00;
+    }
+
+    .art30-cardLink {
+        width: 100%;
+        height: 100%;
+        display: block;
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .art30-card > img,
+    .art30-cardLink > img {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+        transition: filter 450ms ease, transform 650ms ease;
+    }
+
+    .art30-cardOverlay {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        height: 100%;
+        padding: 1.25rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        gap: .75rem;
+        background: linear-gradient(180deg, transparent 24%, c.$color01bis5 100%);
+        pointer-events: none;
+    }
+
+    .art30-card h2,
+    .art30-card h3,
+    .art30-card h4,
+    .art30-card h5,
+    .art30-card h6,
+    .art30-card p {
+        color: c.$color00;
+    }
+
+    .art30-card h2,
+    .art30-card h3,
+    .art30-card h4,
+    .art30-card h5,
+    .art30-card h6 {
+        text-shadow: 0 2px 8px c.$color01;
+        transition: transform 350ms ease;
+    }
+
+    .art30-card p {
+        opacity: 1;
+        transform: none;
+        transition: opacity 350ms ease, transform 350ms ease;
+    }
+
+    .art30-card h2,
+    .art30-card h3,
+    .art30-card h4,
+    .art30-card h5,
+    .art30-card h6,
+    .art30-card p {
+        pointer-events: auto;
+    }
+
+    .art30-cardLink:focus-visible {
+        outline: 3px solid c.$color03;
+        outline-offset: -3px;
+    }
+
+    .art30-benefits {
+        width: min(100%, 90rem);
+        padding: 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: center;
+        gap: .75rem;
+        border-radius: .75rem;
+        background-color: c.$color03bis;
+    }
+
+    .art30-benefits:empty {
+        display: none;
+    }
+
+    .art30-benefit {
+        flex: 1 1 10rem;
+        max-width: 18rem;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: .75rem;
+        text-align: center;
+    }
+
+    .art30-benefit img {
+        width: 2.5rem;
+        height: 2.5rem;
+        display: block;
+        object-fit: contain;
+        filter: c.$filterColor02;
+    }
+
+    .art30-benefit h2,
+    .art30-benefit h3,
+    .art30-benefit h4,
+    .art30-benefit h5,
+    .art30-benefit h6 {
+        font-size: clamp(1rem, 2vw, 1.25rem);
+        color: c.$color02;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .art30-card--interactive p {
+            opacity: 0;
+            transform: translateY(.75rem);
+        }
+
+        .art30-card--interactive:hover img,
+        .art30-cardLink:focus-visible > img {
+            filter: grayscale(1) brightness(.72);
+            transform: scale(1.08);
+        }
+
+        .art30-card--interactive:hover p,
+        .art30-cardLink:focus-visible p {
+            opacity: 1;
+            transform: none;
+        }
+
+        .art30-card--interactive:hover h2,
+        .art30-card--interactive:hover h3,
+        .art30-card--interactive:hover h4,
+        .art30-card--interactive:hover h5,
+        .art30-card--interactive:hover h6,
+        .art30-cardLink:focus-visible h2,
+        .art30-cardLink:focus-visible h3,
+        .art30-cardLink:focus-visible h4,
+        .art30-cardLink:focus-visible h5,
+        .art30-cardLink:focus-visible h6 {
+            transform: translateY(-.25rem);
+        }
+    }
+
+    @media (hover: none) {
+        .art30-cardOverlay {
+            background: linear-gradient(180deg, transparent 12%, c.$color01bis5 100%);
+        }
+
+        .art30-card p {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    @media only screen and (min-width: c.$tablet) {
+        padding-inline: c.$padMax;
+        gap: 3rem;
+
+        .art30-gallery {
+            --art30-gallery-gap: 1.5rem;
+        }
+
+        .art30-intro {
+            width: 80%;
+        }
+
+        .art30-benefits {
+            padding: 1.5rem;
+        }
+    }
+
+    @media only screen and (min-width: c.$desktop) {
+        .art30-intro {
+            width: calc(80% * 0.6);
+        }
+    }
+
+    @media only screen and (min-width: 38rem) and (max-width: calc(62rem - 1px)) {
+        .art30-gallery > :last-child:nth-child(odd) {
+            width: calc((100% - var(--art30-gallery-gap)) / 2);
+            grid-column: 1 / -1;
+            justify-self: center;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .art30-card > img,
+        .art30-cardLink > img,
+        .art30-card h2,
+        .art30-card h3,
+        .art30-card h4,
+        .art30-card h5,
+        .art30-card h6,
+        .art30-card p {
+            transition: none;
+        }
+    }
+}

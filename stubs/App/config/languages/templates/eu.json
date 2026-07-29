@@ -476,9 +476,14 @@
         "text": "Descarga guías y recursos técnicos"
     },
 
+    "moduleH2Type01_09_h2_text": {
+        "text": "moduleButtonType03 · moduleButtonType04"
+    },
+
     "moduleParrafo01_00_p_text": {
         "text": "Modulu honek paragrafo independente bat edozein txarteletan txertatzeko aukera ematen du."
     },
+
     "moduleParrafo01_01_p_text": {
         "text": "Eduki modularrak egitura malgua, berrerabilgarria eta erraz eskalatzeko modukoa mantentzen du."
     },
@@ -560,6 +565,27 @@
     "moduleButtonType02_00_cta_span": {
         "text": "Ver caso completo"
     },
+    "moduleButtonType02_00_cta_img": {
+        "src": "assets/img/system/arrow-forward-outline.svg",
+        "alt": "Aurrera gezia",
+        "title": "Jarraitu untxi zuriari"
+    },
+
+    "moduleButtonType03_00_cta_link": {
+        "href": "#showroom-button-modules",
+        "title": "Take the red pill."
+    },
+    "moduleButtonType03_00_cta_span": {
+        "text": "Wake up, Neo."
+    },
+
+    "moduleButtonType04_00_cta_link": {
+        "href": "#showroom-button-modules",
+        "title": "Free your mind."
+    },
+    "moduleButtonType04_00_cta_span": {
+        "text": "Enter the Matrix."
+    },
 
     "art01_00_headerPrimary": {
         "text": "art01"
@@ -596,38 +622,205 @@
     },
 
     "art02_00_headerPrimary": {
-        "text": "art02"
+        "text": "art02 · zortzi txartel ikonodun"
     },
     "art02_00_intro_p": {
-        "text": "Lorem ipsum dolor sit."
+        "text": "Matrix ipsum probak kodea, erabakiak eta sistemaren seinaleak lotzen ditu; zortzi elementuek informazio zabala antolatzen dute erritmoa, irakurgarritasuna eta ikusizko koherentzia galdu gabe, proba tekniko bakoitzean."
     },
     "art02_00_p1": {
-        "text": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Cum expedita quam laudantium voluptatem consectetur nobis nemo."
+        "text": "Bloke bakoitzak ikono ezagungarri bat, goiburu labur bat eta txartelen altuera, lerro-jauziak, zutabeen oreka eta pantaila-zabalera desberdinetako responsive portaera egiaztatzeko adinako paragrafoa uztartzen ditu proba bakoitzean."
     },
     "art02_00_p2": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Odit recusandae voluptatem tempore, tempora assumenda temporibus quasi at ducimus velit."
+        "text": "Edukia nahita dummy da, dentsitatea, lerrokatzea eta eskalagarritasuna baliabidea benetako orri batera eraman aurretik ebaluatu ahal izateko modu fidagarrian."
     },
     "art02_00_headerSecondary_a": {
-        "text": "Encabezado variable h4 art02"
+        "text": "Sistemaren barruko orientazioa"
     },
     "art02_00_a_img": {
-        "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Imagen dummy",
-        "title": "Imagen dummy"
+        "src": "assets/img/system/compass-outline.svg",
+        "alt": "art02 orientatzeko iparrorratz ikonoa",
+        "title": "Sistemaren barruko orientazioa"
     },
     "art02_00_a_p": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+        "text": "Matrix ipsum probak Neo seinale aldakorren artean gidatzen du, ibilbide posibleak alderatzen ditu eta hurrengo mugimendua testuingurua galdu gabe aukeratzeko erreferentziak gordetzen ditu."
     },
     "art02_00_headerSecondary_b": {
-        "text": "Encabezado variable h4 art02"
+        "text": "Kodea eta erabaki lotuak"
     },
     "art02_00_b_img": {
-        "src": "assets/img/dummy/dummy_2560.avif",
-        "alt": "Imagen dummy",
-        "title": "Imagen dummy"
+        "src": "assets/img/system/code-slash-outline.svg",
+        "alt": "Erabaki lotuetarako kode ikonoa",
+        "title": "Kodea eta erabaki lotuak"
     },
     "art02_00_b_p": {
-        "text": "Lorem ipsum dolor sit amet consectetur adipisicing elit. Ex obcaecati omnis qui consectetur odit doloribus."
+        "text": "Kode-lerroek arauak, salbuespenak eta proba-emaitzak lotzen dituzte, paragrafoak hainbat lerro jarraian hartzen dituenean txartel bakoitzak nola erantzuten duen erakusteko, konposizio osoaren erritmoa hobeto neurtzeko."
+    },
+    "art02_00_headerSecondary_c": {
+        "text": "Simulazioaren aurkako babesa"
+    },
+    "art02_00_c_img": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "Sistema babesteko ezkutu ikonoa",
+        "title": "Simulazioaren aurkako babesa"
+    },
+    "art02_00_c_p": {
+        "text": "Ezkutuak sarbideak berrikusten, ustekabeko seinaleak egiaztatzen eta ikusgai dagoen informazioa handitu arren konposizioa egonkor mantentzen duen kontrol-geruza adierazten du, pantaila-zabalera desberdin guztietan."
+    },
+    "art02_00_headerSecondary_d": {
+        "text": "Seinaleak interpretatzen dituzten pertsonak"
+    },
+    "art02_00_d_img": {
+        "src": "assets/img/system/people.svg",
+        "alt": "Seinaleak interpretatzeko pertsonen ikonoa",
+        "title": "Seinaleak interpretatzen dituzten pertsonak"
+    },
+    "art02_00_d_p": {
+        "text": "Taldeak behaketak partekatzen, irakurketak alderatzen eta erabakiak banatzen ditu, Matrix ipsum urrats bakoitzak multzoaren barruan azalpen ulergarria izan dezan, erabaki bakoitza argi utzita."
+    },
+    "art02_00_headerSecondary_e": {
+        "text": "Ekin aurreko ikaskuntza"
+    },
+    "art02_00_e_img": {
+        "src": "assets/img/system/book-outline.svg",
+        "alt": "Probako ikaskuntzarako liburu ikonoa",
+        "title": "Ekin aurreko ikaskuntza"
+    },
+    "art02_00_e_p": {
+        "text": "Liburuak ereduak, hipotesiak eta dummy adibideak biltzen ditu, ikusizko proba hau proiektuaren behin betiko informazio bihurtu aurretik edukia berrikusteko, akats bisualak garaiz aurkitzeko."
+    },
+    "art02_00_headerSecondary_f": {
+        "text": "Arau eta mugen konfigurazioa"
+    },
+    "art02_00_f_img": {
+        "src": "assets/img/system/settings-outline.svg",
+        "alt": "Arau eta mugetarako ezarpen ikonoa",
+        "title": "Arau eta mugen konfigurazioa"
+    },
+    "art02_00_f_p": {
+        "text": "Ezarpenek tarteak, tamainak eta baliabidearen mugak egiaztatzen laguntzen dute, viewporta, copyaren luzera edo hizkuntza aldatu arren zortzi elementuak orekatuta mantenduz, proba guztietan."
+    },
+    "art02_00_headerSecondary_g": {
+        "text": "Ezkutuko ereduak erakusten dituzten distirak"
+    },
+    "art02_00_g_img": {
+        "src": "assets/img/system/sparkles-outline.svg",
+        "alt": "Ezkutuko ereduetarako distira ikonoa",
+        "title": "Ezkutuko ereduak erakusten dituzten distirak"
+    },
+    "art02_00_g_p": {
+        "text": "Distirek proba-datuen arteko harremanak nabarmentzen dituzte eta ikusizko aniztasuna gehitzen dute kontrastea, lerrokatzea, ikonoaren eskala eta txartelen koherentzia berrikusteko, ikuspegi desberdin guztietan."
+    },
+    "art02_00_headerSecondary_h": {
+        "text": "Datuak interpretatzeko abiadura"
+    },
+    "art02_00_h_img": {
+        "src": "assets/img/system/speedometer-outline.svg",
+        "alt": "Datuak interpretatzeko abiadura-neurgailu ikonoa",
+        "title": "Datuak interpretatzeko abiadura"
+    },
+    "art02_00_h_p": {
+        "text": "Azken adierazleak diseinuaren erritmoa eta erantzuna neurtzen ditu, irakurketa, banaketa eta responsive portaera balioztatzeko zortzi adibide luzez osatutako matrizea itxiz, pantaila-tamaina guztietan."
+    },
+
+    "art32_00_headerPrimary": {
+        "text": "art32 · kutxako zortzi txartel ikonodun"
+    },
+    "art32_00_intro_p": {
+        "text": "Matrix ipsum probak kodea, erabakiak eta sistemaren seinaleak lotzen ditu; zortzi elementuek informazio zabala antolatzen dute erritmoa, irakurgarritasuna eta ikusizko koherentzia galdu gabe, proba tekniko bakoitzean."
+    },
+    "art32_00_p1": {
+        "text": "Bloke bakoitzak ikono ezagungarri bat, goiburu labur bat eta txartelen altuera, lerro-jauziak, zutabeen oreka eta pantaila-zabalera desberdinetako responsive portaera egiaztatzeko adinako paragrafoa uztartzen ditu proba bakoitzean."
+    },
+    "art32_00_p2": {
+        "text": "Edukia nahita dummy da, dentsitatea, lerrokatzea eta eskalagarritasuna baliabidea benetako orri batera eraman aurretik ebaluatu ahal izateko modu fidagarrian."
+    },
+    "art32_00_headerSecondary_a": {
+        "text": "Sistemaren barruko orientazioa"
+    },
+    "art32_00_a_img": {
+        "src": "assets/img/system/compass-outline.svg",
+        "alt": "art02 orientatzeko iparrorratz ikonoa",
+        "title": "Sistemaren barruko orientazioa"
+    },
+    "art32_00_a_p": {
+        "text": "Matrix ipsum probak Neo seinale aldakorren artean gidatzen du, ibilbide posibleak alderatzen ditu eta hurrengo mugimendua testuingurua galdu gabe aukeratzeko erreferentziak gordetzen ditu."
+    },
+    "art32_00_headerSecondary_b": {
+        "text": "Kodea eta erabaki lotuak"
+    },
+    "art32_00_b_img": {
+        "src": "assets/img/system/code-slash-outline.svg",
+        "alt": "Erabaki lotuetarako kode ikonoa",
+        "title": "Kodea eta erabaki lotuak"
+    },
+    "art32_00_b_p": {
+        "text": "Kode-lerroek arauak, salbuespenak eta proba-emaitzak lotzen dituzte, paragrafoak hainbat lerro jarraian hartzen dituenean txartel bakoitzak nola erantzuten duen erakusteko, konposizio osoaren erritmoa hobeto neurtzeko."
+    },
+    "art32_00_headerSecondary_c": {
+        "text": "Simulazioaren aurkako babesa"
+    },
+    "art32_00_c_img": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "Sistema babesteko ezkutu ikonoa",
+        "title": "Simulazioaren aurkako babesa"
+    },
+    "art32_00_c_p": {
+        "text": "Ezkutuak sarbideak berrikusten, ustekabeko seinaleak egiaztatzen eta ikusgai dagoen informazioa handitu arren konposizioa egonkor mantentzen duen kontrol-geruza adierazten du, pantaila-zabalera desberdin guztietan."
+    },
+    "art32_00_headerSecondary_d": {
+        "text": "Seinaleak interpretatzen dituzten pertsonak"
+    },
+    "art32_00_d_img": {
+        "src": "assets/img/system/people.svg",
+        "alt": "Seinaleak interpretatzeko pertsonen ikonoa",
+        "title": "Seinaleak interpretatzen dituzten pertsonak"
+    },
+    "art32_00_d_p": {
+        "text": "Taldeak behaketak partekatzen, irakurketak alderatzen eta erabakiak banatzen ditu, Matrix ipsum urrats bakoitzak multzoaren barruan azalpen ulergarria izan dezan, erabaki bakoitza argi utzita."
+    },
+    "art32_00_headerSecondary_e": {
+        "text": "Ekin aurreko ikaskuntza"
+    },
+    "art32_00_e_img": {
+        "src": "assets/img/system/book-outline.svg",
+        "alt": "Probako ikaskuntzarako liburu ikonoa",
+        "title": "Ekin aurreko ikaskuntza"
+    },
+    "art32_00_e_p": {
+        "text": "Liburuak ereduak, hipotesiak eta dummy adibideak biltzen ditu, ikusizko proba hau proiektuaren behin betiko informazio bihurtu aurretik edukia berrikusteko, akats bisualak garaiz aurkitzeko."
+    },
+    "art32_00_headerSecondary_f": {
+        "text": "Arau eta mugen konfigurazioa"
+    },
+    "art32_00_f_img": {
+        "src": "assets/img/system/settings-outline.svg",
+        "alt": "Arau eta mugetarako ezarpen ikonoa",
+        "title": "Arau eta mugen konfigurazioa"
+    },
+    "art32_00_f_p": {
+        "text": "Ezarpenek tarteak, tamainak eta baliabidearen mugak egiaztatzen laguntzen dute, viewporta, copyaren luzera edo hizkuntza aldatu arren zortzi elementuak orekatuta mantenduz, proba guztietan."
+    },
+    "art32_00_headerSecondary_g": {
+        "text": "Ezkutuko ereduak erakusten dituzten distirak"
+    },
+    "art32_00_g_img": {
+        "src": "assets/img/system/sparkles-outline.svg",
+        "alt": "Ezkutuko ereduetarako distira ikonoa",
+        "title": "Ezkutuko ereduak erakusten dituzten distirak"
+    },
+    "art32_00_g_p": {
+        "text": "Distirek proba-datuen arteko harremanak nabarmentzen dituzte eta ikusizko aniztasuna gehitzen dute kontrastea, lerrokatzea, ikonoaren eskala eta txartelen koherentzia berrikusteko, ikuspegi desberdin guztietan."
+    },
+    "art32_00_headerSecondary_h": {
+        "text": "Datuak interpretatzeko abiadura"
+    },
+    "art32_00_h_img": {
+        "src": "assets/img/system/speedometer-outline.svg",
+        "alt": "Datuak interpretatzeko abiadura-neurgailu ikonoa",
+        "title": "Datuak interpretatzeko abiadura"
+    },
+    "art32_00_h_p": {
+        "text": "Azken adierazleak diseinuaren erritmoa eta erantzuna neurtzen ditu, irakurketa, banaketa eta responsive portaera balioztatzeko zortzi adibide luzez osatutako matrizea itxiz, pantaila-tamaina guztietan."
     },
 
     "art02little_00_headerPrimary": {
@@ -1122,7 +1315,7 @@
         "text": "Nuestro equipo combina asesoría jurídica tecnológica con conocimiento industrial para acelerar implantaciones seguras en Bizkaia. Coordinamos evaluaciones regulatorias, contratos de innovación y formación preventiva para que tus lanzamientos conecten con partners locales y cumplan la norma europea sin fricciones operativas. Supervisamos auditorías de datos, licencias y cláusulas de ciberseguridad que blindan el crecimiento sostenible de cada planta."
     },
     "art14_00_img": {
-        "src": "assets/img/logos/logo-business-b.svg",
+        "src": "assets/img/dummy/dummy_2560.avif",
         "alt": "Abogada revisando contrato de innovación industrial estratégica",
         "title": "Revisión jurídica de innovación industrial estratégica"
     },
@@ -2014,7 +2207,7 @@
         "text": "Egin scroll biratzeko"
     },
     "sectionDiskSlider01_00_slidea_img": {
-        "src": "assets/img/dummy/jornadas-hettich-2560.avif",
+        "src": "assets/img/dummy/dummy01.avif",
         "alt": "Gainazal likidoak irudi teknologikoa deformatzen du",
         "title": "Disko likidoa irudia deformatzen"
     },
@@ -2058,7 +2251,7 @@
         "text": "Arkitektura"
     },
     "sectionDiskSlider01_00_slidee_img": {
-        "src": "assets/img/dummy/jornadas-hettich-2560.avif",
+        "src": "assets/img/dummy/dummy01.avif",
         "alt": "Gainazal likidoak irudi teknologikoa deformatzen du",
         "title": "Disko likidoa irudia deformatzen"
     },
@@ -2120,7 +2313,7 @@
         "text": ""
     },
     "sectionSkewGallery01_00_iteme_img": {
-        "src": "assets/img/dummy/dummy05.avif",
+        "src": "assets/img/dummy/dummy01.avif",
         "alt": "",
         "title": "link"
     },
@@ -2131,7 +2324,7 @@
         "text": ""
     },
     "sectionSkewGallery01_00_itemf_img": {
-        "src": "assets/img/dummy/dummy06.avif",
+        "src": "assets/img/dummy/dummy02.avif",
         "alt": "",
         "title": "link"
     },
@@ -2214,7 +2407,7 @@
         "text": ""
     },
     "artWorksSkew01_00_iteme_img": {
-        "src": "assets/img/dummy/dummy05.avif",
+        "src": "assets/img/dummy/dummy01.avif",
         "alt": "",
         "title": "link"
     },
@@ -2228,7 +2421,7 @@
         "text": ""
     },
     "artWorksSkew01_00_itemf_img": {
-        "src": "assets/img/dummy/dummy06.avif",
+        "src": "assets/img/dummy/dummy02.avif",
         "alt": "",
         "title": "link"
     },
@@ -2454,5 +2647,858 @@
     },
     "art19_00_slided_p": {
         "text": ""
+    },
+
+    "moduleList01_00_marker_icon": "default",
+
+    "moduleList01_01_marker_icon": "default",
+
+    "moduleList01_02_marker_icon": "default",
+
+    "moduleH2Type02_00_headerPrimary": {
+        "text": "moduleH2Type02 · Encabezado H2 con gradiente animado"
+    },
+
+    "moduleH1Type03_00_eyebrow_text": {
+        "text": "Matrix ipsum · Header principal"
+    },
+    "moduleH1Type03_00_h1_text": {
+        "text": "hero06 · moduleH1Type03 · Header inmersivo a pantalla completa"
+    },
+    "moduleH1Type03_00_p01_text": {
+        "text": "Matrix ipsum dolor sit amet. Neo eligendi veritatis codicem et simulacrum mientras Morpheus muestra la entrada a una realidad distinta."
+    },
+
+    "hero06_00_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Neo observa el código de Matrix",
+        "title": "Escena de Matrix para hero06"
+    },
+
+    "moduleH1Type04_00_eyebrow_text": {
+        "text": "Matrix ipsum · Header interior"
+    },
+    "moduleH1Type04_00_h1_text": {
+        "text": "hero07 · moduleH1Type04 · Header interior compacto"
+    },
+    "moduleH1Type04_00_p01_text": {
+        "text": "Matrix ipsum dolor sit amet. Trinity recorre el sistema y Agent Smith vigila cada decisión desde las líneas del código."
+    },
+
+    "hero07_00_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Trinity dentro del universo Matrix",
+        "title": "Escena de Matrix para hero07"
+    },
+
+    "art20_00_headerPrimary": {
+        "text": "art20 · Article media split"
+    },
+    "art20_00_intro_p": {
+        "text": "Matrix ipsum dolor sit amet. Neo elige la píldora roja y descubre que el simulacro oculta una realidad construida por las máquinas."
+    },
+    "art20_00_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Escena dividida del universo Matrix",
+        "title": "Matrix ipsum para art20"
+    },
+
+    "art21_00_headerPrimary": {
+        "text": "art21 · Article galería de imágenes"
+    },
+    "art21_00_intro_p": {
+        "text": "Matrix ipsum dolor sit amet. Morpheus abre tres ventanas al código para que Neo observe el sistema desde perspectivas diferentes."
+    },
+    "art21_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Escena a de la galería Matrix",
+        "title": "Matrix ipsum a para art21"
+    },
+    "art21_00_b_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Escena b de la galería Matrix",
+        "title": "Matrix ipsum b para art21"
+    },
+    "art21_00_c_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Escena c de la galería Matrix",
+        "title": "Matrix ipsum c para art21"
+    },
+
+    "art22_00_headerPrimary": {
+        "text": "art22 · Article galería enlazada"
+    },
+    "art22_00_intro_p": {
+        "text": "Matrix ipsum dolor sit amet. Cada acceso conduce a una lectura distinta del simulacro y de las decisiones que mantienen despierto a Neo."
+    },
+    "art22_00_headerSecondary_a": {
+        "text": "Matrix ipsum 01"
+    },
+    "art22_00_a_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 01"
+    },
+    "art22_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Escena 01 de la galería enlazada Matrix",
+        "title": "Matrix ipsum 01 para art22"
+    },
+    "art22_00_headerSecondary_b": {
+        "text": "Matrix ipsum 02"
+    },
+    "art22_00_b_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 02"
+    },
+    "art22_00_b_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Escena 02 de la galería enlazada Matrix",
+        "title": "Matrix ipsum 02 para art22"
+    },
+    "art22_00_headerSecondary_c": {
+        "text": "Matrix ipsum 03"
+    },
+    "art22_00_c_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 03"
+    },
+    "art22_00_c_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Escena 03 de la galería enlazada Matrix",
+        "title": "Matrix ipsum 03 para art22"
+    },
+
+    "art23_00_headerPrimary": {
+        "text": "art23 · Article prosa con imagen"
+    },
+    "art23_00_p1": {
+        "text": "Matrix ipsum dolor sit amet. Neo aprende a leer el código mientras Trinity le muestra que cada regla del sistema puede ser cuestionada."
+    },
+    "art23_00_p2": {
+        "text": "Morpheus conserva la fe, Zion permanece alerta y el Oráculo recuerda que conocer el camino no equivale a recorrerlo."
+    },
+    "art23_00_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Escena panorámica del código Matrix",
+        "title": "Matrix ipsum para art23"
+    },
+
+    "art24_00_headerPrimary": {
+        "text": "art24 · Article grid de fichas"
+    },
+    "art24_00_headerSecondary_a": {
+        "text": "Matrix ipsum 01"
+    },
+    "art24_00_a_p": {
+        "text": "Matrix ipsum dolor sit amet. El código cambia cuando Neo comprende que la elección también transforma el sistema."
+    },
+    "art24_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Retrato Matrix de la ficha 01",
+        "title": "Matrix ipsum 01 para art24"
+    },
+    "art24_00_headerSecondary_b": {
+        "text": "Matrix ipsum 02"
+    },
+    "art24_00_b_p": {
+        "text": "Matrix ipsum dolor sit amet. El código cambia cuando Neo comprende que la elección también transforma el sistema."
+    },
+    "art24_00_b_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Retrato Matrix de la ficha 02",
+        "title": "Matrix ipsum 02 para art24"
+    },
+    "art24_00_headerSecondary_c": {
+        "text": "Matrix ipsum 03"
+    },
+    "art24_00_c_p": {
+        "text": "Matrix ipsum dolor sit amet. El código cambia cuando Neo comprende que la elección también transforma el sistema."
+    },
+    "art24_00_c_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Retrato Matrix de la ficha 03",
+        "title": "Matrix ipsum 03 para art24"
+    },
+    "art24_00_headerSecondary_d": {
+        "text": "Matrix ipsum 04"
+    },
+    "art24_00_d_p": {
+        "text": "Matrix ipsum dolor sit amet. El código cambia cuando Neo comprende que la elección también transforma el sistema."
+    },
+    "art24_00_d_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Retrato Matrix de la ficha 04",
+        "title": "Matrix ipsum 04 para art24"
+    },
+
+    "art25_00_headerPrimary": {
+        "text": "art25 · Article CTA centrado"
+    },
+    "art25_00_p01": {
+        "text": "Matrix ipsum dolor sit amet. Neo debe decidir si continúa dentro del simulacro o acepta mirar más allá de sus límites."
+    },
+    "art25_00_p02": {
+        "text": "Morpheus ofrece una elección clara: permanecer junto a la ilusión conocida o descubrir la verdad que sostiene el sistema."
+    },
+
+    "art26_00_headerPrimary": {
+        "text": "art26 · Article CTA offset"
+    },
+    "art26_00_p": {
+        "text": "Matrix ipsum dolor sit amet. Agent Smith protege las reglas del simulacro mientras Zion reúne la voluntad necesaria para mantener abierta una salida."
+    },
+
+    "art27_00_headerPrimary": {
+        "text": "art27 · Article grid de iconos"
+    },
+    "art27_00_intro_p": {
+        "text": "Matrix ipsum dolor sit amet. Nueve señales ayudan a reconocer el sistema, recorrer sus capas y comprender por qué cada decisión altera el código."
+    },
+    "art27_00_headerSecondary_a": {
+        "text": "Matrix ipsum 01"
+    },
+    "art27_00_a_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_a_img": {
+        "src": "assets/img/system/compass-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_b": {
+        "text": "Matrix ipsum 02"
+    },
+    "art27_00_b_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_b_img": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_c": {
+        "text": "Matrix ipsum 03"
+    },
+    "art27_00_c_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_c_img": {
+        "src": "assets/img/system/people.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_d": {
+        "text": "Matrix ipsum 04"
+    },
+    "art27_00_d_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_d_img": {
+        "src": "assets/img/system/school-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_e": {
+        "text": "Matrix ipsum 05"
+    },
+    "art27_00_e_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_e_img": {
+        "src": "assets/img/system/speedometer-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_f": {
+        "text": "Matrix ipsum 06"
+    },
+    "art27_00_f_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_f_img": {
+        "src": "assets/img/system/settings-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_g": {
+        "text": "Matrix ipsum 07"
+    },
+    "art27_00_g_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_g_img": {
+        "src": "assets/img/system/cube-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_h": {
+        "text": "Matrix ipsum 08"
+    },
+    "art27_00_h_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_h_img": {
+        "src": "assets/img/system/code-slash-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art27_00_headerSecondary_i": {
+        "text": "Matrix ipsum 09"
+    },
+    "art27_00_i_p": {
+        "text": "Matrix ipsum dolor sit amet. Una señal del sistema revela el siguiente movimiento dentro del código."
+    },
+    "art27_00_i_img": {
+        "src": "assets/img/system/stats-chart-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+
+    "art28_00_headerPrimary": {
+        "text": "art28 · Article media alterna"
+    },
+    "art28_00_headerSecondary_a": {
+        "text": "Matrix ipsum 01"
+    },
+    "art28_00_a_p01": {
+        "text": "Matrix ipsum dolor sit amet. Neo recorre una nueva capa del simulacro y descubre que las reglas aparentes también pueden doblarse."
+    },
+    "art28_00_a_p02": {
+        "text": "Trinity mantiene abierta la conexión mientras Morpheus guía la elección y Agent Smith intenta cerrar todas las salidas."
+    },
+    "art28_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Escena Matrix de la fila 01",
+        "title": "Matrix ipsum 01 para art28"
+    },
+    "art28_00_a_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art28_00_a_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art28_00_headerSecondary_b": {
+        "text": "Matrix ipsum 02"
+    },
+    "art28_00_b_p01": {
+        "text": "Matrix ipsum dolor sit amet. Neo recorre una nueva capa del simulacro y descubre que las reglas aparentes también pueden doblarse."
+    },
+    "art28_00_b_p02": {
+        "text": "Trinity mantiene abierta la conexión mientras Morpheus guía la elección y Agent Smith intenta cerrar todas las salidas."
+    },
+    "art28_00_b_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Escena Matrix de la fila 02",
+        "title": "Matrix ipsum 02 para art28"
+    },
+    "art28_00_b_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art28_00_b_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
+    "art28_00_headerSecondary_c": {
+        "text": "Matrix ipsum 03"
+    },
+    "art28_00_c_p01": {
+        "text": "Matrix ipsum dolor sit amet. Neo recorre una nueva capa del simulacro y descubre que las reglas aparentes también pueden doblarse."
+    },
+    "art28_00_c_p02": {
+        "text": "Trinity mantiene abierta la conexión mientras Morpheus guía la elección y Agent Smith intenta cerrar todas las salidas."
+    },
+    "art28_00_c_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Escena Matrix de la fila 03",
+        "title": "Matrix ipsum 03 para art28"
+    },
+    "art28_00_c_img_srcset01": "assets/img/dummy/dummy_1200.avif 1200w",
+    "art28_00_c_img_srcset02": "assets/img/dummy/dummy_1800.avif 1800w",
+
+    "art29_00_headerPrimary": {
+        "text": "art29 · Article editorial centrado"
+    },
+    "art29_00_p_a": {
+        "text": "Matrix ipsum dolor sit amet. Neo observa cómo el código cae sobre la ciudad y comprende que la realidad visible solo es una interfaz."
+    },
+    "art29_00_p_b": {
+        "text": "El Oráculo deja una pregunta abierta, Morpheus conserva la fe y Trinity convierte la duda en el siguiente movimiento."
+    },
+    "art29_00_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Escena editorial del universo Matrix",
+        "title": "Matrix ipsum para art29"
+    },
+    "art29_00_cta": {
+        "text": "",
+        "href": "",
+        "title": ""
+    },
+
+    "art30_00_headerPrimary": {
+        "text": "art30 · Article galería hover con beneficios"
+    },
+    "art30_00_intro_p_a": {
+        "text": "Matrix ipsum dolor sit amet. Tres accesos presentan distintas formas de recorrer el simulacro y de interpretar las señales escondidas en el código."
+    },
+    "art30_00_intro_p_b": {
+        "text": "Cada elección revela una parte del sistema y añade una ventaja al recorrido de quienes deciden permanecer despiertos."
+    },
+    "art30_00_headerSecondary_a": {
+        "text": "Matrix ipsum 01"
+    },
+    "art30_00_a_p": {
+        "text": "Neo elige una perspectiva distinta y descubre un nuevo patrón dentro de las líneas del sistema."
+    },
+    "art30_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Escena Matrix de la tarjeta 01",
+        "title": "Matrix ipsum 01 para art30"
+    },
+    "art30_00_a_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 01"
+    },
+    "art30_00_headerSecondary_b": {
+        "text": "Matrix ipsum 02"
+    },
+    "art30_00_b_p": {
+        "text": "Neo elige una perspectiva distinta y descubre un nuevo patrón dentro de las líneas del sistema."
+    },
+    "art30_00_b_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Escena Matrix de la tarjeta 02",
+        "title": "Matrix ipsum 02 para art30"
+    },
+    "art30_00_b_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 02"
+    },
+    "art30_00_headerSecondary_c": {
+        "text": "Matrix ipsum 03"
+    },
+    "art30_00_c_p": {
+        "text": "Neo elige una perspectiva distinta y descubre un nuevo patrón dentro de las líneas del sistema."
+    },
+    "art30_00_c_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Escena Matrix de la tarjeta 03",
+        "title": "Matrix ipsum 03 para art30"
+    },
+    "art30_00_c_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 03"
+    },
+    "art30_00_headerSecondary_d": {
+        "text": "Matrix ipsum 04"
+    },
+    "art30_00_d_p": {
+        "text": "Trinity sigue una señal inesperada, conecta los indicios dispersos y descubre otra ruta posible dentro del código de Matrix."
+    },
+    "art30_00_d_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Escena Matrix de la tarjeta 04",
+        "title": "Matrix ipsum 04 para art30"
+    },
+    "art30_00_d_link": {
+        "href": "#",
+        "title": "Abrir Matrix ipsum 04"
+    },
+    "art30_00_benefit_a_headerSecondary": {
+        "text": "Orientación Matrix"
+    },
+    "art30_00_benefit_a_img": {
+        "src": "assets/img/system/compass-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art30_00_benefit_b_headerSecondary": {
+        "text": "Conexión protegida"
+    },
+    "art30_00_benefit_b_img": {
+        "src": "assets/img/system/shield-checkmark-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art30_00_benefit_c_headerSecondary": {
+        "text": "Tripulación de Zion"
+    },
+    "art30_00_benefit_c_img": {
+        "src": "assets/img/system/people.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art30_00_benefit_d_headerSecondary": {
+        "text": "Respuesta inmediata"
+    },
+    "art30_00_benefit_d_img": {
+        "src": "assets/img/system/time.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art30_00_benefit_e_headerSecondary": {
+        "text": "Código medible"
+    },
+    "art30_00_benefit_e_img": {
+        "src": "assets/img/system/stats-chart-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+    "art30_00_benefit_f_headerSecondary": {
+        "text": "Experiencia Matrix"
+    },
+    "art30_00_benefit_f_img": {
+        "src": "assets/img/system/ribbon-outline.svg",
+        "alt": "",
+        "title": ""
+    },
+
+    "artAccordion02_00_headerPrimary": {
+        "text": "artAccordion02 · Article acordeón con imagen"
+    },
+    "artAccordion02_00_intro_p_a": {
+        "text": "Matrix ipsum dolor sit amet. Estas preguntas reúnen las dudas habituales de quienes acaban de descubrir que el mundo visible es un simulacro."
+    },
+    "artAccordion02_00_intro_p_b": {
+        "text": "Abre cada respuesta para seguir a Morpheus, Trinity y Neo a través de las decisiones que cambian el código."
+    },
+    "artAccordion02_00_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Morpheus responde preguntas sobre Matrix",
+        "title": "Matrix ipsum para artAccordion02"
+    },
+    "artAccordion02_00_headerSecondary_a": {
+        "text": "¿Qué oculta realmente Matrix?"
+    },
+    "artAccordion02_00_a_p": {
+        "text": "Matrix ipsum dolor sit amet. Matrix es una simulación construida para mantener a la humanidad dentro de una realidad controlada por las máquinas."
+    },
+    "artAccordion02_00_headerSecondary_b": {
+        "text": "¿Por qué Neo debe elegir?"
+    },
+    "artAccordion02_00_b_p": {
+        "text": "Morpheus no impone una respuesta. La píldora roja abre la verdad y la azul permite regresar a la seguridad aparente del simulacro."
+    },
+    "artAccordion02_00_headerSecondary_c": {
+        "text": "¿Cómo encuentra Trinity una salida?"
+    },
+    "artAccordion02_00_c_p": {
+        "text": "Trinity lee las señales del código, mantiene la conexión con la nave y localiza el punto exacto antes de que los agentes cierren el acceso."
+    },
+    "artAccordion02_00_headerSecondary_d": {
+        "text": "¿Qué protege Agent Smith?"
+    },
+    "artAccordion02_00_d_p": {
+        "text": "Agent Smith defiende la estabilidad del sistema, elimina anomalías y persigue a cualquiera que cuestione las reglas impuestas por Matrix."
+    },
+    "artAccordion02_00_headerSecondary_e": {
+        "text": "¿Por qué Zion sigue resistiendo?"
+    },
+    "artAccordion02_00_e_p": {
+        "text": "Zion conserva a quienes viven fuera del simulacro y representa la posibilidad de una humanidad capaz de decidir su propio futuro."
+    },
+    "artAccordion02_00_headerSecondary_f": {
+        "text": "¿Puede Neo cambiar las reglas?"
+    },
+    "artAccordion02_00_f_p": {
+        "text": "Cuando Neo comprende la naturaleza del código deja de obedecer sus límites y comienza a transformar las leyes que parecían inamovibles."
+    },
+
+    "art31_00_headerPrimary": {
+        "text": "art31 · Article filas alternas"
+    },
+    "art31_00_headerSecondary_a": {
+        "text": "Leer el primer patrón"
+    },
+    "art31_00_a_p01": {
+        "text": "Neo observa el código y reconoce que cada detalle del simulacro responde a una estructura diseñada por las máquinas."
+    },
+    "art31_00_a_p02": {
+        "text": "Morpheus señala el punto de partida y recuerda que comprender una regla es el primer paso para poder cambiarla."
+    },
+    "art31_00_a_cta": {
+        "text": "Matrix ipsum",
+        "href": "#",
+        "title": "Continuar el recorrido Matrix"
+    },
+    "art31_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Escena Matrix de la fila 01",
+        "title": "Matrix ipsum 01 para art31"
+    },
+    "art31_00_headerSecondary_b": {
+        "text": "Atravesar el simulacro"
+    },
+    "art31_00_b_p01": {
+        "text": "Trinity mantiene abierta la conexión mientras Neo avanza por un entorno que modifica sus límites a cada nueva decisión."
+    },
+    "art31_00_b_p02": {
+        "text": "Agent Smith sigue el rastro, multiplica su presencia y convierte el recorrido en una carrera contra el control del sistema."
+    },
+    "art31_00_b_cta": {
+        "text": "Matrix ipsum",
+        "href": "#",
+        "title": "Continuar el recorrido Matrix"
+    },
+    "art31_00_b_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Escena Matrix de la fila 02",
+        "title": "Matrix ipsum 02 para art31"
+    },
+    "art31_00_headerSecondary_c": {
+        "text": "Elegir una nueva dirección"
+    },
+    "art31_00_c_p01": {
+        "text": "El Oráculo no entrega respuestas cerradas; deja una pregunta que obliga a Neo a reconocer el peso real de su elección."
+    },
+    "art31_00_c_p02": {
+        "text": "Zion observa desde fuera y Morpheus conserva la confianza en que el código puede revelar una salida diferente."
+    },
+    "art31_00_c_cta": {
+        "text": "Matrix ipsum",
+        "href": "#",
+        "title": "Continuar el recorrido Matrix"
+    },
+    "art31_00_c_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Escena Matrix de la fila 03",
+        "title": "Matrix ipsum 03 para art31"
+    },
+    "art31_00_headerSecondary_d": {
+        "text": "Cerrar el ciclo Matrix"
+    },
+    "art31_00_d_p01": {
+        "text": "Neo integra lo aprendido, deja de reaccionar ante las reglas y comienza a decidir cómo debe continuar su recorrido."
+    },
+    "art31_00_d_p02": {
+        "text": "La última fila invierte su composición para hacer visible que cada paso par cambia también la dirección de la historia."
+    },
+    "art31_00_d_cta": {
+        "text": "Matrix ipsum",
+        "href": "#",
+        "title": "Continuar el recorrido Matrix"
+    },
+    "art31_00_d_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Escena Matrix de la fila 04",
+        "title": "Matrix ipsum 04 para art31"
+    },
+    "moduleVideo01_00_settings": {
+        "type": "youtube"
+    },
+    "moduleVideo01_00_youtube": {
+        "src": "https://www.youtube-nocookie.com/embed/vKQi3bBA1y8",
+        "title": "Matrix trailerra moduleVideo01 baliabiderako",
+        "playLabel": "Bideoa erreproduzitu"
+    },
+    "moduleVideo01_00_consent": {
+        "text": "Gaitu cookie sozialak zure hobespenetan YouTubeko bideo hau erreproduzitzeko."
+    },
+    "moduleVideo01_00_video": {
+        "poster": "assets/img/dummy/dummy01.avif",
+        "title": "Tokiko Matrix bideoa moduleVideo01 baliabiderako"
+    },
+    "moduleVideo01_00_webm": {
+        "src": "assets/video/dummy/dummy.webm"
+    },
+    "moduleVideo01_00_mp4": {
+        "src": "assets/video/dummy/dummy.mp4"
+    },
+    "moduleVideo01_00_captions": {
+        "src": "assets/video/dummy/dummy-eu.vtt",
+        "kind": "captions",
+        "srclang": "eu",
+        "label": "Euskara"
+    },
+
+    "moduleParrafo01_02_p_text": {
+        "text": "Matrix ipsum dolor sit amet. Neok kodearen lerroak berrantolatzen ikusten ditu, eta Morpheusek azaltzen dio erabaki bakoitzak simulazioa aldatzen duela eta egiaranzko beste bide bat irekitzen duela."
+    },
+
+    "moduleButtonType04_01_cta_link": {
+        "href": "#showroom-profe-resources",
+        "title": "Ezagutu Matrix bideoa"
+    },
+    "moduleButtonType04_01_cta_span": {
+        "text": "Ikusi bideoa"
+    },
+
+    "artVideo01_00_headerPrimary": {
+        "text": "artVideo01 · YouTubeko bideoa"
+    },
+
+    "moduleVideo01_01_settings": {
+        "type": "local"
+    },
+    "moduleVideo01_01_youtube": {
+        "src": "https://www.youtube-nocookie.com/embed/vKQi3bBA1y8",
+        "title": "Matrix trailerra moduleVideo01 baliabiderako",
+        "playLabel": "Bideoa erreproduzitu"
+    },
+    "moduleVideo01_01_consent": {
+        "text": "Gaitu cookie sozialak zure hobespenetan YouTubeko bideo hau erreproduzitzeko."
+    },
+    "moduleVideo01_01_video": {
+        "poster": "assets/img/dummy/dummy01.avif",
+        "title": "Tokiko Matrix bideoa moduleVideo01 baliabiderako"
+    },
+    "moduleVideo01_01_webm": {
+        "src": "assets/video/dummy/dummy.webm"
+    },
+    "moduleVideo01_01_mp4": {
+        "src": "assets/video/dummy/dummy.mp4"
+    },
+    "moduleVideo01_01_captions": {
+        "src": "assets/video/dummy/dummy-eu.vtt",
+        "kind": "captions",
+        "srclang": "eu",
+        "label": "Euskara"
+    },
+
+    "moduleList01_03_marker_icon": "check",
+    "moduleList01_03_a_li_text": {
+        "text": "Neok Matrixen ezkutatutako seinaleak irakurtzen ikasten du."
+    },
+    "moduleList01_03_b_li_text": {
+        "text": "Pilula gorriak simulazioaren egitura erakusten du."
+    },
+    "moduleList01_03_c_li_text": {
+        "text": "Trinityk mundu errealarekiko konexioa irekita mantentzen du."
+    },
+    "moduleList01_03_d_li_text": {
+        "text": "Morpheusek aukera gidatzen du ondorioak ezkutatu gabe."
+    },
+    "moduleList01_03_e_li_text": {
+        "text": "Orakuluak galdera bat uzten du kodearen barruan."
+    },
+    "moduleList01_03_f_li_text": {
+        "text": "Zionek makinen kontroletik kanpoko irteera bat gordetzen du."
+    },
+
+    "artVideo01_01_headerPrimary": {
+        "text": "artVideo01 · Tokiko bideoa"
+    },
+
+    "moduleVideo01_02_settings": {
+        "type": "local"
+    },
+    "moduleVideo01_02_youtube": {
+        "src": "https://www.youtube-nocookie.com/embed/vKQi3bBA1y8",
+        "title": "Matrix trailerra moduleVideo01 baliabiderako",
+        "playLabel": "Bideoa erreproduzitu"
+    },
+    "moduleVideo01_02_consent": {
+        "text": "Gaitu cookie sozialak zure hobespenetan YouTubeko bideo hau erreproduzitzeko."
+    },
+    "moduleVideo01_02_video": {
+        "poster": "assets/img/dummy/dummy01.avif",
+        "title": "Tokiko Matrix bideoa moduleVideo01 baliabiderako"
+    },
+    "moduleVideo01_02_webm": {
+        "src": "assets/video/dummy/dummy.webm"
+    },
+    "moduleVideo01_02_mp4": {
+        "src": "assets/video/dummy/dummy.mp4"
+    },
+    "moduleVideo01_02_captions": {
+        "src": "assets/video/dummy/dummy-eu.vtt",
+        "kind": "captions",
+        "srclang": "eu",
+        "label": "Euskara"
+    },
+
+    "moduleParrafo01_04_p_text": {
+        "text": "Matrix ipsum dolor sit amet. Neo korridorea zeharkatzen ari da, Trinityk sistemaren seinale bakoitza zaintzen duen bitartean, eta Morpheusek gogorarazten du irudi batek errealitatearen hainbat geruza ezkuta ditzakeela kodea berriro antolatu aurretik."
+    },
+
+    "moduleButtonType04_02_cta_link": {
+        "href": "#showroom-profe-resources",
+        "title": "Aztertu zutabeko bideoa"
+    },
+    "moduleButtonType04_02_cta_span": {
+        "text": "Aztertu bideoa"
+    },
+
+    "artVideo02_00_headerPrimary": {
+        "text": "artVideo02 · Zutabeko bideoa"
+    },
+    "art17_00_a_list_c": {
+        "text": "Tailored strategy for the long term"
+    },
+    "art17_00_a_list_d": {
+        "text": "Advanced use of AI"
+    },
+    "art17_00_a_list_e": {
+        "text": "Deep macroeconomic analysis"
+    },
+    "art17_00_a_list_f": {
+        "text": "Full transparency on fees and process"
+    },
+    "art17_00_a_list_g": {
+        "text": "Luxury and sustainable focus (SRI3 index)"
+    },
+    "art17_00_b_list_c": {
+        "text": "Close monitoring through KPIs"
+    },
+    "art17_00_b_list_d": {
+        "text": "Intuitive, easy-to-use technology"
+    },
+    "art17_00_b_list_e": {
+        "text": "Smooth, noise-free communication"
+    },
+    "art17_00_b_list_f": {
+        "text": "Ongoing financial training"
+    },
+    "art18_00_c_list_d": {
+        "text": "Exclusive content and early access to new features"
+    },
+    "artPricingGlass01_00_a_list_d": {
+        "text": "Up to 3 projects"
+    },
+    "artPricingGlass01_00_a_list_e": {
+        "text": "Shared templates library"
+    },
+    "artPricingGlass01_00_b_list_d": {
+        "text": "Unlimited projects forever"
+    },
+    "artPricingGlass01_00_b_list_e": {
+        "text": "Team collaboration tools"
+    },
+    "artPricingGlass01_00_c_list_d": {
+        "text": "Security and compliance reports"
+    },
+    "artPricingGlass01_00_c_list_e": {
+        "text": "Early access to new features"
+    },
+    "artMarquee01_00_row1_item_img_a": {
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Egiaztapen-ikonoa",
+        "title": "Egiaztapen-ikonoa"
+    },
+    "artMarquee01_00_row1_item_img_b": {
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Egiaztapen-ikonoa",
+        "title": "Egiaztapen-ikonoa"
+    },
+    "artMarquee01_00_row1_item_img_c": {
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Egiaztapen-ikonoa",
+        "title": "Egiaztapen-ikonoa"
+    },
+    "artMarquee01_00_row1_item_img_d": {
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Egiaztapen-ikonoa",
+        "title": "Egiaztapen-ikonoa"
+    },
+    "artMarquee01_00_row2_item_img_a": {
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Egiaztapen-ikonoa",
+        "title": "Egiaztapen-ikonoa"
+    },
+    "artMarquee01_00_row2_item_img_b": {
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Egiaztapen-ikonoa",
+        "title": "Egiaztapen-ikonoa"
+    },
+    "artMarquee01_00_row2_item_img_c": {
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Egiaztapen-ikonoa",
+        "title": "Egiaztapen-ikonoa"
+    },
+    "artMarquee01_00_row2_item_img_d": {
+        "src": "assets/img/system/check-OK.svg",
+        "alt": "Egiaztapen-ikonoa",
+        "title": "Egiaztapen-ikonoa"
     }
 }

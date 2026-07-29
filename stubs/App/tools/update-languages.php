@@ -17,11 +17,16 @@ $langs = require $appPath . '/config/langs.php';
 $routes = require $appPath . '/config/routes/get.php';
 
 if ($argc < 2) {
-    fwrite(STDERR, "Usage: php tools/update-languages.php <slug>\n");
+    fwrite(STDERR, "Usage: php tools/update-languages.php <slug> [--prune-unused]\n");
     exit(1);
 }
 
 $slug = $argv[1];
+$pruneUnused = in_array('--prune-unused', array_slice($argv, 2), true);
+
+// Validate the complete catalog set before the first possible write. This
+// prevents a later malformed language from leaving earlier files half-updated.
+validate_language_catalogs($appPath . '/config/languages');
 
 function collect_views(array $routes): array {
     global $publicPath, $appPath;
@@ -69,6 +74,41 @@ function collect_views(array $routes): array {
     return $out;
 }
 
+function view_aliases(string $view): array {
+    $normalized = str_replace('\\', '/', $view);
+    $basename = basename($normalized);
+    $filename = pathinfo($basename, PATHINFO_FILENAME);
+    $bare = ltrim($filename, '_');
+
+    return array_values(array_unique(array_filter(
+        [$basename, $filename, $bare],
+        static fn(string $alias): bool => $alias !== ''
+    )));
+}
+
+function collect_route_view_aliases(array $routes): array {
+    $aliases = [];
+    foreach ($routes as $langRoutes) {
+        foreach ($langRoutes as $info) {
+            if (!isset($info['content'], $info['view'])) {
+                continue;
+            }
+
+            $content = (string) $info['content'];
+            $view = (string) $info['view'];
+            if ($content === '' || $view === '') {
+                continue;
+            }
+
+            foreach (view_aliases($view) as $alias) {
+                $aliases[$alias][$content] = true;
+            }
+        }
+    }
+
+    return $aliases;
+}
+
 $routeContents = [];
 foreach ($routes as $langRoutes) {
     foreach ($langRoutes as $info) {
@@ -80,10 +120,27 @@ foreach ($routes as $langRoutes) {
 }
 
 $views = collect_views($routes);
+$routeViewAliases = collect_route_view_aliases($routes);
 $templateMap = load_template_map($appPath . '/config/languages/templates/es.json');
 
-function match_slugs_by_view(string $slug, array $views): array {
-    $normalized = basename($slug);
+function match_slugs_by_view(
+    string $slug,
+    array $views,
+    array $routeViewAliases
+): array {
+    $routeMatches = [];
+    foreach (view_aliases($slug) as $alias) {
+        foreach (array_keys($routeViewAliases[$alias] ?? []) as $content) {
+            if (isset($views[$content])) {
+                $routeMatches[$content] = true;
+            }
+        }
+    }
+    if ($routeMatches !== []) {
+        return array_keys($routeMatches);
+    }
+
+    $normalized = basename(str_replace('\\', '/', $slug));
     $filename = pathinfo($normalized, PATHINFO_FILENAME);
 
     $matches = [];
@@ -374,6 +431,227 @@ function extract_inline_lang_keys(string $content): array {
     return $keys;
 }
 
+function find_controller_call_end(string $content, int $openOffset): ?int {
+    $length = strlen($content);
+    $depth = 0;
+    $quote = null;
+    $escaped = false;
+    $lineComment = false;
+    $blockComment = false;
+
+    for ($i = $openOffset; $i < $length; $i++) {
+        $char = $content[$i];
+        $next = $i + 1 < $length ? $content[$i + 1] : '';
+
+        if ($lineComment) {
+            if ($char === "\n" || $char === "\r") {
+                $lineComment = false;
+            }
+            continue;
+        }
+
+        if ($blockComment) {
+            if ($char === '*' && $next === '/') {
+                $blockComment = false;
+                $i++;
+            }
+            continue;
+        }
+
+        if ($quote !== null) {
+            if ($escaped) {
+                $escaped = false;
+                continue;
+            }
+            if ($char === '\\') {
+                $escaped = true;
+                continue;
+            }
+            if ($char === $quote) {
+                $quote = null;
+            }
+            continue;
+        }
+
+        if ($char === '/' && $next === '/') {
+            $lineComment = true;
+            $i++;
+            continue;
+        }
+        if ($char === '#') {
+            $lineComment = true;
+            continue;
+        }
+        if ($char === '/' && $next === '*') {
+            $blockComment = true;
+            $i++;
+            continue;
+        }
+        if ($char === "'" || $char === '"') {
+            $quote = $char;
+            continue;
+        }
+        if ($char === '(') {
+            $depth++;
+            continue;
+        }
+        if ($char === ')') {
+            $depth--;
+            if ($depth === 0) {
+                return $i;
+            }
+        }
+    }
+
+    return null;
+}
+
+function extract_include_paths(string $content): array {
+    $paths = [];
+    $patterns = [
+        "/(?:include|require)(?:_once)?\s*(?:\(|\s)\s*['\"]([^'\"]+)['\"]\s*\)?/",
+        "/(?:include|require)(?:_once)?\s*(?:\(|\s)\s*__DIR__\s*\.\s*['\"]([^'\"]+)['\"]\s*\)?/",
+    ];
+
+    foreach ($patterns as $pattern) {
+        if (!preg_match_all($pattern, $content, $matches)) {
+            continue;
+        }
+        foreach ($matches[1] as $path) {
+            $paths[$path] = true;
+        }
+    }
+
+    return array_keys($paths);
+}
+
+function mask_nested_controller_calls(string $call): string {
+    if (!preg_match_all(
+        '/\bcontroller\s*\(/',
+        $call,
+        $matches,
+        PREG_OFFSET_CAPTURE
+    )) {
+        return $call;
+    }
+
+    $ranges = [];
+    foreach ($matches[0] as $match) {
+        $start = $match[1];
+        if ($start === 0) {
+            continue;
+        }
+        $openOffset = strpos($call, '(', $start);
+        if ($openOffset === false) {
+            continue;
+        }
+        $endOffset = find_controller_call_end($call, $openOffset);
+        if ($endOffset !== null) {
+            $ranges[] = [$start, $endOffset];
+        }
+    }
+
+    foreach (array_reverse($ranges) as [$start, $end]) {
+        $call = substr_replace(
+            $call,
+            str_repeat(' ', $end - $start + 1),
+            $start,
+            $end - $start + 1
+        );
+    }
+
+    return $call;
+}
+
+function parse_static_controller_params(string $call): array {
+    $call = mask_nested_controller_calls($call);
+    $params = [];
+
+    if (preg_match_all(
+        '/[\'"]([A-Za-z_][A-Za-z0-9_]*)[\'"]\s*=>\s*(-?\d+)/',
+        $call,
+        $matches,
+        PREG_SET_ORDER
+    )) {
+        foreach ($matches as $match) {
+            $params[$match[1]] = (int) $match[2];
+        }
+    }
+
+    if (preg_match_all(
+        '/[\'"]([A-Za-z_][A-Za-z0-9_]*)[\'"]\s*=>\s*(?:\[([^\[\]]*)\]|array\s*\(([^()]*)\))/s',
+        $call,
+        $matches,
+        PREG_SET_ORDER
+    )) {
+        foreach ($matches as $match) {
+            $body = $match[2] !== '' ? $match[2] : ($match[3] ?? '');
+            $values = [];
+            if (preg_match_all(
+                '/(?:[\'"]([A-Za-z0-9_-]+)[\'"]|(\d+))\s*=>\s*(-?\d+)/',
+                $body,
+                $entries,
+                PREG_SET_ORDER
+            )) {
+                foreach ($entries as $entry) {
+                    $key = $entry[1] !== '' ? $entry[1] : (int) $entry[2];
+                    $values[$key] = (int) $entry[3];
+                }
+            }
+            if ($values !== []) {
+                $params[$match[1]] = $values;
+            }
+        }
+    }
+
+    return $params;
+}
+
+function extract_controller_calls(string $content): array {
+    $calls = [];
+    if (!preg_match_all(
+        '/\bcontroller\s*\(\s*([\'"])([A-Za-z0-9_-]+)\1/',
+        $content,
+        $matches,
+        PREG_SET_ORDER | PREG_OFFSET_CAPTURE
+    )) {
+        return $calls;
+    }
+
+    foreach ($matches as $match) {
+        $start = $match[0][1];
+        $openOffset = strpos($content, '(', $start);
+        if ($openOffset === false) {
+            continue;
+        }
+
+        $endOffset = find_controller_call_end($content, $openOffset);
+        if ($endOffset === null) {
+            continue;
+        }
+
+        $call = substr($content, $start, $endOffset - $start + 1);
+        $matchedPrefix = $match[0][0];
+        $tail = substr($call, strlen($matchedPrefix));
+        $index = 0;
+
+        if (preg_match('/^\s*,\s*(\d+)\b/', $tail, $indexMatch)) {
+            $index = (int) $indexMatch[1];
+        } elseif (preg_match('/^\s*,/', $tail)) {
+            // A dynamic index cannot be mapped safely to a concrete language prefix.
+            continue;
+        }
+
+        $calls[] = [
+            'name' => $match[2][0],
+            'index' => $index,
+            'params' => parse_static_controller_params($call),
+        ];
+    }
+
+    return $calls;
+}
+
 function parse_file(string $file, string $target, array &$map, array &$visited, string $owner, array &$usage, array &$inlineMap, array &$inlineUsage): void {
     if (isset($visited[$file]) || !file_exists($file)) {
         return;
@@ -395,9 +673,10 @@ function parse_file(string $file, string $target, array &$map, array &$visited, 
     }
 
     // Find include/require statements
-    if (preg_match_all("/(?:include|require)(?:_once)?\s*(?:\(|\s)\s*['\"]([^'\"]+)['\"]\s*\)?/", $contents, $inc)) {
+    $includePaths = extract_include_paths($contents);
+    if ($includePaths !== []) {
         $needle = DIRECTORY_SEPARATOR . 'App' . DIRECTORY_SEPARATOR . 'includes' . DIRECTORY_SEPARATOR;
-        foreach ($inc[1] as $incPath) {
+        foreach ($includePaths as $incPath) {
             $resolved = resolve_include_path($incPath, $file);
             if (!$resolved) {
                 continue;
@@ -408,21 +687,12 @@ function parse_file(string $file, string $target, array &$map, array &$visited, 
         }
     }
 
-    // Find controller calls with optional params
-    if (preg_match_all("/controller\(\s*['\"]([^'\"]+)['\"]\s*,\s*(\d+)\s*(?:,\s*([^)]*))?\)/", $contents, $m, PREG_SET_ORDER)) {
-        foreach ($m as $match) {
-            $params = [];
-            if (!empty($match[3])) {
-                if (preg_match("/['\"]items['\"]\s*=>\s*(\d+)/", $match[3], $pm)) {
-                    $params['items'] = (int)$pm[1];
-                }
-            }
-            $ctrl = ['name' => $match[1], 'index' => (int)$match[2], 'params' => $params];
+    // Find controller calls and their statically declared numeric parameters.
+    foreach (extract_controller_calls($contents) as $ctrl) {
             $map[$target][] = $ctrl;
             if ($target === 'global') {
-                $usage[$match[1] . '#' . (int)$match[2]][$owner] = true;
+                $usage[$ctrl['name'] . '#' . $ctrl['index']][$owner] = true;
             }
-        }
     }
 }
 
@@ -438,7 +708,11 @@ if ($slug === 'global') {
     if (isset($views[$slug]) && isset($routeContents[$slug])) {
         $requestedSlugs = [$slug];
     } else {
-        $requestedSlugs = match_slugs_by_view($slug, $views);
+        $requestedSlugs = match_slugs_by_view(
+            $slug,
+            $views,
+            $routeViewAliases
+        );
         if ($requestedSlugs === []) {
             fwrite(STDERR, "View for slug '$slug' not found\n");
             exit(1);
@@ -488,8 +762,65 @@ function template_key(string $key): string {
     return $key;
 }
 
+/**
+ * @return array<string, mixed>
+ */
+function decode_json_catalog(string $file): array {
+    $contents = file_get_contents($file);
+    if ($contents === false) {
+        throw new RuntimeException("No se pudo leer el JSON de idiomas: $file");
+    }
+
+    try {
+        $decoded = json_decode(
+            $contents,
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+    } catch (JsonException $exception) {
+        throw new RuntimeException(
+            "JSON de idiomas no válido en $file: " . $exception->getMessage(),
+            0,
+            $exception
+        );
+    }
+
+    if (!is_array($decoded)) {
+        throw new RuntimeException(
+            "El catálogo de idiomas debe ser un objeto JSON: $file"
+        );
+    }
+
+    return $decoded;
+}
+
+function validate_language_catalogs(string $languageRoot): void {
+    if (!is_dir($languageRoot)) {
+        return;
+    }
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator(
+            $languageRoot,
+            FilesystemIterator::SKIP_DOTS
+        )
+    );
+
+    foreach ($iterator as $fileInfo) {
+        if (
+            !$fileInfo->isFile()
+            || strtolower($fileInfo->getExtension()) !== 'json'
+        ) {
+            continue;
+        }
+
+        decode_json_catalog($fileInfo->getPathname());
+    }
+}
+
 function load_template_map(string $file): array {
-    $data = json_decode(file_get_contents($file), true) ?: [];
+    $data = decode_json_catalog($file);
     $map = [];
     foreach ($data as $k => $v) {
         if (is_non_translatable_key($k)) {
@@ -523,14 +854,8 @@ function merge_template_arrays(array $primary, array $fallback): array {
             continue;
         }
 
-        $current = $result[$key];
-        if (is_array($current) && is_array($value)) {
-            $result[$key] = merge_template_arrays($current, $value);
-            continue;
-        }
-
-        if (!template_value_has_content($current) && template_value_has_content($value)) {
-            $result[$key] = $value;
+        if (is_array($result[$key]) && is_array($value)) {
+            $result[$key] = merge_template_arrays($result[$key], $value);
         }
     }
 
@@ -547,8 +872,7 @@ function load_language_templates(array $langs): array {
             continue;
         }
 
-        $decoded = json_decode(file_get_contents($path), true);
-        $templates[$lang] = is_array($decoded) ? $decoded : [];
+        $templates[$lang] = decode_json_catalog($path);
     }
 
     return $templates;
@@ -567,11 +891,6 @@ function build_template_fallback(array $templates, array $langs): array {
             $current = $fallback[$key];
             if (is_array($current) && is_array($value)) {
                 $fallback[$key] = merge_template_arrays($current, $value);
-                continue;
-            }
-
-            if (!template_value_has_content($current) && template_value_has_content($value)) {
-                $fallback[$key] = $value;
             }
         }
     }
@@ -581,26 +900,24 @@ function build_template_fallback(array $templates, array $langs): array {
 
 function resolve_template_value(array $template, array $fallbackMap, string $key)
 {
-    $value = $template[$key] ?? null;
-    $fallback = $fallbackMap[$key] ?? null;
+    $hasValue = array_key_exists($key, $template);
+    $hasFallback = array_key_exists($key, $fallbackMap);
+    $value = $hasValue ? $template[$key] : null;
+    $fallback = $hasFallback ? $fallbackMap[$key] : null;
 
     if (is_array($value) && is_array($fallback)) {
         $value = merge_template_arrays($value, $fallback);
     }
 
-    if (template_value_has_content($value)) {
+    if ($hasValue) {
         return $value;
     }
 
-    if (is_array($fallback)) {
+    if ($hasFallback) {
         return $fallback;
     }
 
-    if (template_value_has_content($fallback)) {
-        return $fallback;
-    }
-
-    return $value;
+    return null;
 }
 
 function reuse_existing(array $ordered, string $key) {
@@ -632,7 +949,25 @@ function reuse_existing(array $ordered, string $key) {
     return null;
 }
 
-function update_lang_file(string $dir, string $lang, array $keyMap, array $template, bool $removeMissing, array $fallback): void {
+function key_matches_active_prefix(string $key, array $activePrefixes): bool {
+    foreach ($activePrefixes as $prefix) {
+        if (str_starts_with($key, $prefix)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function update_lang_file(
+    string $dir,
+    string $lang,
+    array $keyMap,
+    array $template,
+    bool $removeMissing,
+    array $fallback,
+    array $activePrefixes
+): void {
     if (!is_dir($dir)) {
         mkdir($dir, 0777, true);
     }
@@ -640,10 +975,10 @@ function update_lang_file(string $dir, string $lang, array $keyMap, array $templ
     $data = [];
     $isNew = !file_exists($file);
     if (!$isNew) {
-        $data = json_decode(file_get_contents($file), true) ?: [];
+        $data = decode_json_catalog($file);
     }
 
-    $existing = $data;
+    $originalData = $data;
     if ($removeMissing) {
         $ordered = [];
         $baseKeep = [
@@ -654,7 +989,7 @@ function update_lang_file(string $dir, string $lang, array $keyMap, array $templ
         ];
         // Preserve only keys present in the new map or explicitly whitelisted base entries.
         foreach ($data as $k => $v) {
-            if (isset($keyMap[$k])) {
+            if (array_key_exists($k, $keyMap) || key_matches_active_prefix($k, $activePrefixes)) {
                 $ordered[$k] = $v;
                 continue;
             }
@@ -663,13 +998,15 @@ function update_lang_file(string $dir, string $lang, array $keyMap, array $templ
             }
         }
     } else {
-        // Keep the entire existing map when missing entries should be preserved (global files).
+        // Keep the entire existing map during normal additive hydration.
         $ordered = $data;
     }
 
-    foreach (array_keys($ordered) as $existingKey) {
-        if (is_non_translatable_key($existingKey)) {
-            unset($ordered[$existingKey]);
+    if ($removeMissing) {
+        foreach (array_keys($ordered) as $existingKey) {
+            if (is_non_translatable_key($existingKey)) {
+                unset($ordered[$existingKey]);
+            }
         }
     }
 
@@ -691,35 +1028,38 @@ function update_lang_file(string $dir, string $lang, array $keyMap, array $templ
         }
         $tmplKey = template_key($k);
         $baseVal = resolve_template_value($template, $fallback, $tmplKey);
-        $existing = $ordered[$k] ?? null;
+        $existingValue = $ordered[$k] ?? null;
 
         if ($props === [] || $props === null) {
-            $newVal = $existing;
-            $shouldPopulate = !array_key_exists($k, $ordered) || is_array($existing) || $existing === "";
-            if ($shouldPopulate) {
-                if (!is_array($baseVal)) {
-                    if ($baseVal === null) {
-                        $copy = reuse_existing($ordered, $k);
-                        if (!is_array($copy) && $copy !== null) {
-                            $newVal = $copy;
-                        } else {
-                            $newVal = "";
-                        }
-                    } else {
-                        $newVal = $baseVal;
-                    }
-                } else {
-                    $newVal = "";
-                }
+            if (array_key_exists($k, $ordered)) {
+                continue;
             }
 
-            if (!array_key_exists($k, $ordered) || $ordered[$k] !== $newVal) {
-                $ordered[$k] = $newVal;
+            $newVal = $existingValue;
+            if (!is_array($baseVal)) {
+                if ($baseVal === null) {
+                    $copy = reuse_existing($ordered, $k);
+                    if (!is_array($copy) && $copy !== null) {
+                        $newVal = $copy;
+                    } else {
+                        $newVal = "";
+                    }
+                } else {
+                    $newVal = $baseVal;
+                }
+            } else {
+                $newVal = "";
             }
+
+            $ordered[$k] = $newVal;
             continue;
         }
 
-        $existingArr = is_array($existing) ? $existing : [];
+        if (array_key_exists($k, $ordered) && !is_array($existingValue)) {
+            continue;
+        }
+
+        $existingArr = is_array($existingValue) ? $existingValue : [];
         $base = is_array($baseVal) ? $baseVal : [];
         if ($base === []) {
             $reuse = reuse_existing($ordered, $k);
@@ -733,7 +1073,7 @@ function update_lang_file(string $dir, string $lang, array $keyMap, array $templ
 
         $obj = $existingArr;
         foreach ($props as $p) {
-            if (array_key_exists($p, $existingArr) && $existingArr[$p] !== "") {
+            if (array_key_exists($p, $existingArr)) {
                 $obj[$p] = $existingArr[$p];
                 continue;
             }
@@ -756,10 +1096,20 @@ function update_lang_file(string $dir, string $lang, array $keyMap, array $templ
         }
     }
 
-    if ($ordered !== $existing) {
-        file_put_contents($file, encode_json_blocks($ordered));
-        echo "Updated $file\n";
+    $status = 'Sin cambios';
+    if ($ordered !== $originalData) {
+        $encoded = encode_json_blocks($ordered);
+        if (file_put_contents($file, $encoded) === false) {
+            throw new RuntimeException(
+                "No se pudo escribir el JSON de idiomas: $file"
+            );
+        }
+        $status = $isNew ? 'Creado' : 'Actualizado';
     }
+
+    echo "[update-languages] $status: $file ("
+        . count($ordered)
+        . " claves)\n";
 }
 
 // --- Extract language keys from controllers ---
@@ -905,6 +1255,171 @@ function merge_key_props(array &$target, string $key, $props): void {
     $target[$key] = array_values(array_unique(array_merge($current, $props)));
 }
 
+function merge_controller_params(array $current, array $incoming): array {
+    foreach ($incoming as $name => $value) {
+        if (!array_key_exists($name, $current)) {
+            $current[$name] = $value;
+            continue;
+        }
+
+        if (is_array($current[$name]) && is_array($value)) {
+            foreach ($value as $key => $count) {
+                $existing = $current[$name][$key] ?? 0;
+                $current[$name][$key] = max((int) $existing, (int) $count);
+            }
+            continue;
+        }
+
+        if (is_int($current[$name]) && is_int($value)) {
+            $current[$name] = max($current[$name], $value);
+        }
+    }
+
+    return $current;
+}
+
+function collect_active_key_prefixes(array $controllers): array {
+    $prefixes = [];
+    foreach ($controllers as $controller) {
+        $name = $controller['name'] ?? '';
+        $index = $controller['index'] ?? null;
+        if (!is_string($name) || !preg_match('/^[A-Za-z0-9_-]+$/', $name) || !is_int($index)) {
+            continue;
+        }
+        $prefixes[$name . '_' . sprintf('%02d', $index) . '_'] = true;
+    }
+
+    return array_keys($prefixes);
+}
+
+function nested_item_count($value, string $letter, int $index): int {
+    if (!is_array($value)) {
+        return max(0, (int) $value);
+    }
+    if (array_key_exists($letter, $value)) {
+        return max(0, (int) $value[$letter]);
+    }
+    if (array_key_exists($index, $value)) {
+        return max(0, (int) $value[$index]);
+    }
+
+    return 0;
+}
+
+function expand_nested_template_keys(
+    array &$target,
+    array $templateKeys,
+    string $pad,
+    array $params,
+    array &$handled
+): void {
+    $nestedCount = $params['list_items'] ?? ($params['subitems'] ?? null);
+    if ($nestedCount === null) {
+        return;
+    }
+
+    $outerCount = isset($params['items'])
+        ? max(0, min(26, (int) $params['items']))
+        : (is_array($nestedCount) ? min(26, count($nestedCount)) : 0);
+    if ($outerCount === 0) {
+        return;
+    }
+
+    $patterns = [];
+    foreach ($templateKeys as $templateKey => $props) {
+        $match = null;
+        if (preg_match('/^(.*?_00_)([a-z])(_list_)([a-z])(.*)$/', $templateKey, $listMatch)) {
+            $match = $listMatch;
+        } elseif (preg_match('/^(.*?_00_item)([a-z])(_sub)([a-z])(.*)$/', $templateKey, $subMatch)) {
+            $match = $subMatch;
+        }
+        if ($match === null) {
+            continue;
+        }
+
+        $handled[$templateKey] = true;
+        $signature = $match[1] . '{outer}' . $match[3] . '{inner}' . $match[5];
+        if (!isset($patterns[$signature])) {
+            $patterns[$signature] = [
+                'prefix' => $match[1],
+                'middle' => $match[3],
+                'suffix' => $match[5],
+                'props' => $props,
+            ];
+        } else {
+            $merged = [];
+            merge_key_props($merged, 'props', $patterns[$signature]['props']);
+            merge_key_props($merged, 'props', $props);
+            $patterns[$signature]['props'] = $merged['props'];
+        }
+    }
+
+    $letters = range('a', 'z');
+    foreach ($patterns as $pattern) {
+        for ($outerIndex = 0; $outerIndex < $outerCount; $outerIndex++) {
+            $outerLetter = $letters[$outerIndex];
+            $innerCount = min(
+                26,
+                nested_item_count($nestedCount, $outerLetter, $outerIndex)
+            );
+            for ($innerIndex = 0; $innerIndex < $innerCount; $innerIndex++) {
+                $key = $pattern['prefix']
+                    . $outerLetter
+                    . $pattern['middle']
+                    . $letters[$innerIndex]
+                    . $pattern['suffix'];
+                $key = str_replace('_00_', '_' . $pad . '_', $key);
+                merge_key_props($target, $key, $pattern['props']);
+            }
+        }
+    }
+}
+
+function expand_named_template_keys(
+    array &$target,
+    array $templateKeys,
+    string $pad,
+    array $params,
+    array &$handled
+): void {
+    $collections = [
+        'benefits' => '/^(.*?_00_benefit_)([a-z])(.*)$/',
+        'items_row1' => '/^(.*?_00_row1_item_(?:text|img)_)([a-z])(.*)$/',
+        'items_row2' => '/^(.*?_00_row2_item_(?:text|img)_)([a-z])(.*)$/',
+    ];
+    $letters = range('a', 'z');
+
+    foreach ($collections as $param => $regex) {
+        if (!isset($params[$param]) || is_array($params[$param])) {
+            continue;
+        }
+        $count = max(0, min(26, (int) $params[$param]));
+        $patterns = [];
+        foreach ($templateKeys as $templateKey => $props) {
+            if (!preg_match($regex, $templateKey, $match)) {
+                continue;
+            }
+            $handled[$templateKey] = true;
+            $signature = $match[1] . '{item}' . $match[3];
+            if (!isset($patterns[$signature])) {
+                $patterns[$signature] = [
+                    'prefix' => $match[1],
+                    'suffix' => $match[3],
+                    'props' => $props,
+                ];
+            }
+        }
+
+        foreach ($patterns as $pattern) {
+            for ($index = 0; $index < $count; $index++) {
+                $key = $pattern['prefix'] . $letters[$index] . $pattern['suffix'];
+                $key = str_replace('_00_', '_' . $pad . '_', $key);
+                merge_key_props($target, $key, $pattern['props']);
+            }
+        }
+    }
+}
+
 function collect_key_map(array $controllers, array $templateMap): array {
     $uniq = [];
     foreach ($controllers as $c) {
@@ -912,12 +1427,10 @@ function collect_key_map(array $controllers, array $templateMap): array {
         if (!isset($uniq[$key])) {
             $uniq[$key] = $c;
         } else {
-            // Keep max items when same controller/index appears multiple times
-            $existing = $uniq[$key]['params']['items'] ?? 0;
-            $newVal   = $c['params']['items'] ?? 0;
-            if ($newVal > $existing) {
-                $uniq[$key]['params']['items'] = $newVal;
-            }
+            $uniq[$key]['params'] = merge_controller_params(
+                $uniq[$key]['params'] ?? [],
+                $c['params'] ?? []
+            );
         }
     }
     $langKeys = [];
@@ -927,23 +1440,63 @@ function collect_key_map(array $controllers, array $templateMap): array {
         $tmplGroup = $c['name'] . '_00';
         if (isset($templateMap[$tmplGroup])) {
             $tmplKeys = $templateMap[$tmplGroup];
+            $params = $c['params'] ?? [];
+            $handledTemplateKeys = [];
+            expand_nested_template_keys($extracted, $tmplKeys, $pad, $params, $handledTemplateKeys);
+            expand_named_template_keys($extracted, $tmplKeys, $pad, $params, $handledTemplateKeys);
             $items = $c['params']['items'] ?? null;
             if ($items !== null) {
                 $letters = range('a','z');
                 $itemPatterns = [];
+                $registerItemPattern = static function (
+                    array &$patterns,
+                    string $prefix,
+                    string $suffix,
+                    $props
+                ): void {
+                    $signature = $prefix . "\0" . $suffix;
+                    if (!isset($patterns[$signature])) {
+                        $patterns[$signature] = [
+                            'prefix' => $prefix,
+                            'suffix' => $suffix,
+                            'props' => $props ?? [],
+                        ];
+                        return;
+                    }
+
+                    $current = $patterns[$signature]['props'];
+                    if (is_array($current) && is_array($props)) {
+                        $patterns[$signature]['props'] = array_values(
+                            array_unique(array_merge($current, $props))
+                        );
+                    }
+                };
                 foreach ($tmplKeys as $tKey => $props) {
+                    if (isset($handledTemplateKeys[$tKey])) {
+                        continue;
+                    }
+                    if (preg_match('/_intro_p_[a-z]$/', $tKey)) {
+                        $k = str_replace('_00_', '_' . $pad . '_', $tKey);
+                        merge_key_props($extracted, $k, $props);
+                        continue;
+                    }
                     $parts = explode('_', $tKey);
                     $last  = end($parts);
                     if (strlen($last) === 1 && ctype_lower($last) && $last !== 'p') {
                         $pref = substr($tKey, 0, -2) . '_';
-                        $itemPatterns[] = [$pref, '', $props];
-                    } elseif (preg_match('/^(.*?_00_[^_]*?)([a-z])(_.*)$/', $tKey, $m)) {
-                        if ($m[2] === 'a') {
-                            $itemPatterns[] = [$m[1], $m[3], $props];
-                        } else {
-                            $k = str_replace('_00_', '_' . $pad . '_', $tKey);
-                            merge_key_props($extracted, $k, $props);
-                        }
+                        $registerItemPattern(
+                            $itemPatterns,
+                            $pref,
+                            '',
+                            $props
+                        );
+                    } elseif (preg_match('/^(.*?_00_(?:[^_]+_)*)([a-z])(_.*)$/', $tKey, $m)) {
+                        $registerItemPattern(
+                            $itemPatterns,
+                            $m[1],
+                            $m[3],
+                            $props
+                        );
                     } else {
                         $k = str_replace('_00_', '_' . $pad . '_', $tKey);
                         merge_key_props($extracted, $k, $props);
@@ -952,7 +1505,10 @@ function collect_key_map(array $controllers, array $templateMap): array {
                 $limit = min($items, count($letters));
                 for ($j = 0; $j < $limit; $j++) {
                     $letter = $letters[$j];
-                    foreach ($itemPatterns as [$pref, $suf, $props]) {
+                    foreach ($itemPatterns as $pattern) {
+                        $pref = $pattern['prefix'];
+                        $suf = $pattern['suffix'];
+                        $props = $pattern['props'];
                         $k = str_replace('_00_', '_' . $pad . '_', $pref) . $letter . $suf;
                         merge_key_props($extracted, $k, $props);
                     }
@@ -1019,6 +1575,7 @@ foreach ($slugsToProcess as $targetSlug) {
     }
 
     $langKeys = collect_key_map($list, $templateMap);
+    $activePrefixes = collect_active_key_prefixes($list);
 
     $inlineKeys = $inlineKeysBySlug[$targetSlug] ?? [];
     if ($targetSlug === 'global' && $primarySlugs !== []) {
@@ -1039,11 +1596,22 @@ foreach ($slugsToProcess as $targetSlug) {
     foreach ($langs as $lang) {
         $dir = $appPath . '/config/languages/' . $targetSlug;
         $template = $langTemplates[$lang] ?? [];
-        $removeMissing = ($targetSlug !== 'global');
+        // Hydration is non-destructive by default. Removing unused entries is
+        // an explicit maintenance operation because static discovery cannot
+        // prove that a key is not consumed by dynamic or backend code.
+        $removeMissing = $pruneUnused && $targetSlug !== 'global';
         $file = "$dir/$lang.json";
         if (!$langKeys && !file_exists($file)) {
             continue;
         }
-        update_lang_file($dir, $lang, $langKeys, $template, $removeMissing, $templateFallback);
+        update_lang_file(
+            $dir,
+            $lang,
+            $langKeys,
+            $template,
+            $removeMissing,
+            $templateFallback,
+            $activePrefixes
+        );
     }
 }

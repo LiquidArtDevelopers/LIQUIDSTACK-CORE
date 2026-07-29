@@ -60,10 +60,12 @@ Copiar o adaptar:
 | `src/scss/resources/_<recurso>.scss` | `resources/scss/_<recurso>.scss` |
 | `src/js/resources/_<recurso>.js` | `resources/js/_<recurso>.js` |
 | `public/assets/img/...` | `resources/img/...` |
+| `public/assets/video/...` | `resources/video/...` |
 | `App/templates/_<recurso>.html` | `stubs/App/templates/_<recurso>.html` |
 | `App/controllers/<recurso>.php` | `stubs/App/controllers/<recurso>.php` |
 | `App/config/languages/templates/*.json` | `stubs/App/config/languages/templates/*.json` |
 | ejemplo de `App/views/_showroom.php` | `stubs/App/views/_showroom.php` |
+| `App/app/updateLanguage.php` cuando cambia el editor | `stubs/App/app/updateLanguage.php` |
 
 Actualizar además:
 
@@ -71,6 +73,8 @@ Actualizar además:
 - `src/js/templates.js` si hay comportamiento
 - `package.core.json` si se añade una dependencia frontend
 - `resources/img` con dummies reutilizables, no imágenes privadas de cliente
+- `resources/video` con medios y pistas dummy estrictamente necesarios, nunca
+  vídeos privados del cliente
 - README/CHANGELOG de CORE cuando cambie el contrato público o la actualización requiera pasos
 
 No es necesario inventariar individualmente cada recurso en el Installer
@@ -79,11 +83,31 @@ registrar el showroom canónico, mantener `_templates.php` como acceso
 compatible, registrar el controlador y comprobar la hidratación. Ambas rutas
 usan normalmente el bundle y los idiomas `templates`.
 
+Si el recurso amplía infraestructura compartida —por ejemplo fondos
+responsive, colecciones o selectores de icono del editor inline— promover en
+el mismo lote el runtime común, el endpoint correspondiente y sus pruebas. Un
+fichero nuevo situado fuera de los directorios ya espejados debe registrarse
+explícitamente en `Installer::syncProjectAssets()` y comprobarse en un fixture
+de Composer; copiar únicamente el recurso visual deja la funcionalidad
+incompleta.
+
+Los directorios de medios no se consideran distribuidos solo por existir en
+`resources`: verificar que `Installer::syncResources()` los copie al destino
+público correspondiente y que preserve archivos locales no gestionados.
+En particular, `resources/img/logos` puede aportar logos genéricos a un stack
+nuevo, pero Composer debe conservar cualquier fichero homónimo ya existente en
+`public/assets/img/logos`; el branding del consumidor nunca se sobrescribe
+desde CORE.
+
 CORE no debe copiar ni sobrescribir `App/config/routes/get.php` o
 `App/config/rutas.js` completos: contienen rutas propias de cada consumidor.
 Si se incorpora `/showroom`, registrar o documentar en cada proyecto una ruta
 con `resources => templates`, `content => templates` y la vista
 `_showroom.php`; mapear igualmente esa URL a `templates` en `rutas.js`.
+Por el mismo motivo, al promover el editor de idiomas se sincroniza
+`App/app/updateLanguage.php`, pero se conserva la ruta POST local del
+consumidor. Verificar que `/languages/update` siga apuntando a
+`updateLanguage.php` sin sustituir el fichero de rutas completo.
 
 ### Idiomas
 

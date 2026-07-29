@@ -1,0 +1,98 @@
+@use '../config' as c;
+
+.art28 {
+    width: 100%;
+    max-width: c.$textMax;
+    padding: 0 c.$padMin;
+    display: flex;
+    flex-direction: column;
+    row-gap: 2rem;
+
+    @media only screen and (min-width: c.$desktop) {
+        padding-right: 0;
+        padding-left: 0;
+    }
+
+    .art28-title,
+    .art28-rows {
+        width: 100%;
+    }
+
+    .art28-rows {
+        display: flex;
+        flex-direction: column;
+        row-gap: 3rem;
+
+        @media only screen and (min-width: c.$tablet) {
+            row-gap: 4rem;
+        }
+
+        .art28-row {
+            width: 100%;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+
+            @media only screen and (min-width: c.$tablet) {
+                flex-direction: row;
+                gap: 2rem;
+
+                &:nth-child(even) {
+                    flex-direction: row-reverse;
+                }
+            }
+
+            > img {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 16 / 9;
+                border-radius: 10px;
+                object-fit: cover;
+                object-position: center;
+
+                @media only screen and (min-width: c.$tablet) {
+                    width: 0;
+                    min-width: 0;
+                    flex: 3 1 0;
+                    aspect-ratio: 4 / 3;
+                    max-height: 60dvh;
+                }
+            }
+
+            .art28-content {
+                width: 100%;
+                min-width: 0;
+                padding: c.$padMin;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: center;
+                row-gap: 2rem;
+
+                @media only screen and (min-width: c.$tablet) {
+                    width: 0;
+                    flex: 2 1 0;
+                    padding: c.$padMin 0;
+                }
+
+                .art28-row-title {
+                    color: c.$color02;
+                    font-size: clamp(1.4rem, 2.5vw, 2.2rem);
+                    letter-spacing: 2px;
+                }
+
+                > p {
+                    width: 100%;
+                }
+
+                .art28-cta {
+                    width: 100%;
+                    display: flex;
+                    justify-content: flex-start;
+                }
+            }
+        }
+    }
+}

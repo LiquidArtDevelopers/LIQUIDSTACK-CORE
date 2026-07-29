@@ -36,6 +36,7 @@
             }
         }
         .art15-destacado{
+            line-height: clamp(1.3rem, 2.1vw, 3.1rem);
             font-size: clamp(1.2rem, 2vw, 3rem);
             font-weight: 400;
         }

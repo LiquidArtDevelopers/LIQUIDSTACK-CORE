@@ -1,0 +1,118 @@
+@use '../config' as c;
+
+.art31 {
+    width: 100%;
+    padding: c.$padMax c.$padMin;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+
+    > h1,
+    > h2,
+    > h3,
+    > h4,
+    > h5,
+    > h6 {
+        width: min(100%, c.$textMax);
+        text-align: center;
+    }
+
+    .art31-rows {
+        width: min(100%, 90rem);
+        display: grid;
+        gap: 2rem;
+    }
+
+    .art31-row {
+        display: grid;
+        overflow: hidden;
+        border-radius: 1rem;
+        background-color: c.$color03bis;
+        box-shadow: c.$sombraMin;
+    }
+
+    .art31-rowCopy {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .art31-rowMedia {
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        overflow: hidden;
+        background-color: c.$color02bis2;
+    }
+
+    .art31-rowMedia:empty {
+        display: none;
+    }
+
+    .art31-rowMedia img {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+        transition: transform 500ms ease;
+    }
+
+    .art31-cta {
+        margin-top: .5rem;
+    }
+
+    .art31-cta a:focus-visible,
+    .art31-cta button:focus-visible {
+        outline: 3px solid c.$color03;
+        outline-offset: 4px;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .art31-row:hover .art31-rowMedia img {
+            transform: scale(1.035);
+        }
+    }
+
+    @media only screen and (min-width: c.$tablet) {
+        padding-inline: c.$padMax;
+        gap: 3rem;
+
+        .art31-rows {
+            gap: 3rem;
+        }
+
+        .art31-row {
+            grid-template-columns: repeat(
+                auto-fit,
+                minmax(min(100%, 20rem), 1fr)
+            );
+        }
+
+        .art31-rowCopy {
+            padding: clamp(2rem, 4vw, 4rem);
+        }
+
+        .art31-rowMedia {
+            height: 100%;
+            aspect-ratio: auto;
+        }
+
+        .art31-row:nth-child(even) .art31-rowCopy {
+            order: 2;
+        }
+
+        .art31-row:nth-child(even) .art31-rowMedia {
+            order: 1;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .art31-rowMedia img,
+        .art31-cta {
+            transition: none;
+        }
+    }
+}

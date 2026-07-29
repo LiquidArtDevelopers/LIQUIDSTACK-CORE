@@ -1,0 +1,117 @@
+@use '../config' as c;
+
+.art22 {
+    width: c.$anchoFull;
+    max-width: c.$textMax;
+    margin-inline: auto;
+    padding-inline: c.$padMin;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+
+    &-content {
+        width: min(100%, 65ch);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+        text-align: center;
+    }
+
+    &-title,
+    &-intro {
+        margin: 0;
+    }
+
+    &-title {
+        overflow-wrap: anywhere;
+    }
+
+    &-gallery {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+        gap: clamp(1rem, 2vw, 1.5rem);
+    }
+
+    &-item {
+        width: 100%;
+
+        a {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 5 / 4;
+            overflow: hidden;
+            display: grid;
+            border-radius: 10px;
+
+            &::after {
+                content: '';
+                grid-area: 1 / 1;
+                z-index: 1;
+                background: linear-gradient(
+                    180deg,
+                    transparent 15%,
+                    rgba(c.$color01, 0.72) 100%
+                );
+            }
+
+            &:hover img {
+                transform: scale(1.04);
+            }
+
+            &:focus-visible {
+                outline: 3px solid c.$color03;
+                outline-offset: 3px;
+            }
+        }
+
+        img {
+            grid-area: 1 / 1;
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            transition: transform 250ms ease;
+        }
+    }
+
+    &-itemTitle {
+        grid-area: 1 / 1;
+        z-index: 2;
+        align-self: center;
+        justify-self: center;
+        max-width: 80%;
+        margin: 0;
+        color: c.$color00;
+        font-size: clamp(1rem, 2vw, 2rem);
+        text-align: center;
+        text-shadow: 0 0 10px c.$color01;
+        overflow-wrap: anywhere;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .art22-item img {
+            transition: none;
+        }
+
+        .art22-item a:hover img {
+            transform: none;
+        }
+    }
+
+    @media only screen and (min-width: 34rem) and (max-width: calc(c.$tablet - 1px)) {
+        &-gallery > :last-child:nth-child(odd) {
+            width: calc(50% - .5rem);
+            grid-column: 1 / -1;
+            justify-self: center;
+        }
+    }
+
+    @media only screen and (min-width: c.$desktop) {
+        width: c.$anchoMedio;
+        gap: 4rem;
+    }
+}

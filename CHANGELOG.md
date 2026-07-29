@@ -4,6 +4,38 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Añadido
+- Dieciocho recursos reutilizables promovidos desde el laboratorio: los
+  escenarios `hero06` y `hero07`, los módulos `moduleH1Type03`,
+  `moduleH1Type04` y `moduleH2Type02`, los artículos `art20` a `art31` y
+  `artAccordion02`, con semántica, encabezados relativos, ítems escalables y
+  variantes alternas.
+- `art32`, variante autónoma de `art02` con cards en caja, iconos filtrados,
+  CTA opcional, encabezados relativos y cantidad variable de ítems. El
+  showroom incluye ocho cards dummy para comprobar su distribución.
+- Familia de CTA ampliada con `moduleButtonType03`, inspirado en una transición
+  expansiva, y `moduleButtonType04`, con estados hover, focus y active
+  convencionales. `moduleButtonType02` incorpora ahora una imagen de icono
+  editable con fallback de sistema.
+- Acordeón accesible `artAccordion02` animado con GSAP, compatible con
+  movimiento reducido y protegido frente a interacciones rápidas.
+- Recursos `artVideo01` y `artVideo02`, compuestos con `moduleVideo01` para
+  alternar YouTube ligero o vídeo local. Incluyen encabezados relativos,
+  contenido y CTA inyectables, composición horizontal o vertical, edición
+  inline de proveedor, fuentes, poster y pistas VTT, y bloqueo de cualquier
+  petición social hasta recibir `cookie_social=true`.
+- Edición inline de colecciones para `moduleList01`, selector de marcador,
+  edición de fondos responsive o de imagen única y guardado por lotes mediante
+  el nuevo stub gestionado `App/app/updateLanguage.php`. El endpoint bloquea
+  conjuntamente lectura y escritura y rechaza catálogos JSON corruptos sin
+  sobrescribirlos; el instalador avisa antes de sustituir una copia local
+  distinta. Los recursos compuestos pueden agrupar campos hermanos mediante
+  `data-inline-group`, y la inicialización sustituye el listener anterior
+  durante HMR para evitar modales duplicados.
+- Once iconos SVG de sistema requeridos por los nuevos recursos, sincronizados
+  a `public/assets/img/system` en los stacks consumidores.
+- Distribución de vídeo local reutilizable desde `resources/video` hacia
+  `public/assets/video`, con dummies MP4/WebM, pistas VTT ES/EN/EU, destino
+  configurable y conservación de vídeos propios del proyecto consumidor.
 - Recursos `art02little`, `moduleParrafo01` y `moduleList01`, con composición
   variable de uno a tres ítems, variantes de imagen o icono, contenido
   inyectable y jerarquía de encabezados relativa.
@@ -17,13 +49,53 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 - Assets SVG usados por las variantes del nuevo recurso en
   `resources/img/system`, sincronizados a los proyectos consumidores.
 - `src/Core/Composer/Installer.php` sincroniza la guía base para agentes desde `.codex` durante `composer install`/`composer update`: conserva cualquier `.codex/config.toml` local, actualiza las skills base en `.codex/skills`, mantiene intactas las skills locales no gestionadas por CORE y rechaza destinos redirigidos mediante symlinks o junctions.
+- Watcher Vite compartido para hidratar idiomas al editar vistas e includes,
+  distribuido a `tools/liquidstack/vite`. El instalador migra de forma
+  idempotente el bloque legacy conocido y conserva intacta cualquier
+  configuración Vite personalizada.
 - Suite reproducible con `composer test` para validar la sincronización, los eventos del plugin, la convivencia con skills locales, la retirada de copias gestionadas antiguas y la protección frente a junctions.
 - Comando interactivo `composer release` para sugerir la siguiente versión SemVer estable, ejecutar las validaciones y publicar `main` junto con un tag anotado mediante un push atómico. El webhook existente de Packagist recibe la nueva etiqueta sin almacenar tokens adicionales.
 - `src/Core/Composer/Installer.php` sincroniza tambien `resources/img` hacia `public/assets/img` durante `composer install`/`composer update`; puedes sobrescribir el destino con `STACK_CORE_RESOURCES_IMG_TARGET` (alias legado: `STACK_LIQUID_CORE_RESOURCES_IMG_TARGET`).
 - `src/Core/Composer/Installer.php` ahora fusiona dependencias frontend desde `package.core.json` al `package.json` del proyecto consumidor durante `composer install`/`composer update`, añadiendo solo paquetes faltantes sin sobrescribir versiones existentes.
 - `App/tools/build-sitemap.php` ahora crea/actualiza `public/robots.txt` y garantiza que la entrada del sitemap apunte al host de producción definido en las variables de entorno.
 
+- La demostración de `art02` en el showroom usa ocho cards con iconos de
+  sistema y copy Matrix suficientemente extenso en ES, EN y EU para comprobar
+  alturas, saltos de línea y distribución responsive.
+
 ### Corregido
+- La sincronización de imágenes instala los logos genéricos que falten, pero
+  conserva los logos homónimos existentes en cada consumidor para no sustituir
+  su branding durante `composer install` o `composer update`.
+- La hidratación de idiomas es ahora aditiva por defecto, conserva claves,
+  tipos y propiedades existentes —también las vacías— y reserva la poda para
+  `--prune-unused`. El detector reconoce llamadas anidadas y los ejes
+  `list_items`, `subitems`, `benefits`, `items_row1` e `items_row2`, evitando
+  pérdidas de copy en recursos con listas o colecciones variables. Además,
+  valida los JSON antes de escribir, muestra `Creado`, `Actualizado` o
+  `Sin cambios` por catálogo y resuelve el destino desde la vista y las rutas
+  reales del consumidor.
+- `art15` mejora la legibilidad responsive del texto destacado mediante un
+  interlineado fluido.
+- `art16`, `hero00`, `hero06` y `hero07` exponen correctamente sus imágenes al
+  editor inline sin alterar su estructura semántica ni su composición;
+  `art16` y `hero00` preservan URLs absolutas y escapan sus atributos y estilos.
+  El encabezado de `art16` admite además `header_level` y conserva sus estilos
+  entre H1 y H6.
+- `art30` conserva `div` como raíz de cada card, sitúa el enlace dentro y
+  mantiene accesible el texto de las cards no interactivas; también desaparecen
+  correctamente sus beneficios vacíos y el medio vacío de `artAccordion02`.
+  Su galería queda acotada a cuatro fichas y su banner a seis beneficios
+  hidratados; fotos, fichas, iconos y el banner completo son editables inline.
+  Los beneficios se alinean por su borde superior aunque su copy tenga alturas
+  diferentes.
+- `art28` hidrata sus variantes responsive con las claves relacionadas
+  `_img_srcset01` y `_img_srcset02`, de modo que el editor inline pueda
+  modificar la imagen y su `srcset` sin mantener un dummy distinto en pantalla.
+- El entrypoint del showroom importa GSAP antes de usar `delayedCall`, evitando
+  un error al redimensionar y manteniendo la actualización de fondos responsive.
+- `art26` ya no reserva una celda de grid para una CTA ausente y `art31`
+  aplica su layout de encabezado también cuando se escala a H1.
 - Las skills base dejan de depender de guías `AGENTS_*.md` legacy y absorben
   las reglas comunes de desarrollo y SEO, permitiendo que cada consumidor
   mantenga su contexto privado en skills locales no gestionadas por CORE.
@@ -36,6 +108,11 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 - `art02` usa `gap` en ambos ejes y reduce de cuatro a tres líneas la
   altura reservada para sus encabezados de tarjeta, corrigiendo la falta de
   separación vertical y el exceso de espacio.
+- `art32` calcula sus cuatro columnas descontando los gaps y evita el desborde
+  horizontal que producía el `min-width` heredado de `art02` en portátiles.
+- El editor inline retira durante HMR los listeners anteriores de doble clic,
+  `Ctrl` + clic sobre enlaces y cambio de idioma, evitando manejadores
+  duplicados.
 - El idioma EN recupera todas las claves de referencia de los recursos
   interactivos registrados en el showroom, sin eliminar las entradas
   adicionales propias de CORE.
@@ -47,12 +124,22 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 - `src/Core/Support/Paths.php` permite sobreescribir la ruta pública mediante variables de entorno y amplía las heurísticas para localizar automáticamente docroots habituales (`public_html`, `www`, `web`, `htdocs`, `httpdocs`) cuando el proyecto no usa la carpeta `public`, además de detectar el `DOCUMENT_ROOT` proporcionado por el servidor como origen principal de los assets.
 
 ### Instrucciones de actualización
+- Detén temporalmente el watcher de Vite antes de actualizar para evitar que
+  regenere idiomas mientras Composer sincroniza el showroom y sus catálogos.
 - Ejecuta `composer update liquidstack/core` para recibir los nuevos recursos,
   el showroom, la configuración y las skills base. Las skills locales deben
   usar nombres de carpeta distintos a los gestionados por CORE.
+- Si el proyecto usa el `vite.config.js` legacy estándar, Composer activará el
+  watcher compartido automáticamente. En configuraciones Vite personalizadas,
+  añade el import indicado por el instalador y
+  `createUpdateLanguagesPlugin(env)` dentro de `plugins`.
 - Si el proyecto expone `/showroom`, configura esa ruta con
   `resources => templates` y `content => templates`; CORE no sobrescribe los
   ficheros de rutas propios de cada consumidor.
+- Revisa antes de actualizar cualquier personalización local de
+  `App/app/updateLanguage.php`: desde esta versión es un stub gestionado por
+  CORE. Conserva además la ruta POST `/languages/update` y la inicialización de
+  `_inlineEditor.js` en el `_global.js` local.
 - Vuelve a ejecutar `php App/tools/build-sitemap.php` tras definir la variable de entorno `RAIZ` (o su alias de host de producción) para regenerar el sitemap y sincronizar el `robots.txt` del proyecto.
 
 ## [1.0.0] - 2024-04-07

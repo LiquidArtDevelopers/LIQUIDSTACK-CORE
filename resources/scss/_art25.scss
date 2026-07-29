@@ -1,0 +1,22 @@
+@use '../config' as c;
+
+.art25 {
+    width: 100%;
+    max-width: c.$textMin;
+    padding: 0 c.$padMin;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    row-gap: 3rem;
+
+    @media only screen and (min-width: c.$tablet) {
+        padding: 0;
+        row-gap: 4rem;
+    }
+
+    .art25-title,
+    > p {
+        width: 100%;
+    }
+}

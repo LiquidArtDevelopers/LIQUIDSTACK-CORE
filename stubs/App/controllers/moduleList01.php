@@ -36,6 +36,126 @@ function controller_moduleList01(int $i = 0, array $params = []): string
             ?? ($templateKey !== null ? ($templateLang->{$templateKey} ?? null) : null);
     };
 
+    $markerIcons = [
+        'default' => [
+            'label' => 'Predeterminado del recurso',
+            'src'   => '',
+        ],
+        'check' => [
+            'label' => 'Check',
+            'src'   => 'assets/img/system/check-OK.svg',
+        ],
+        'shield' => [
+            'label' => 'Escudo',
+            'src'   => 'assets/img/system/shield-checkmark-outline.svg',
+        ],
+        'compass' => [
+            'label' => 'Brújula',
+            'src'   => 'assets/img/system/compass-outline.svg',
+        ],
+        'people' => [
+            'label' => 'Personas',
+            'src'   => 'assets/img/system/people.svg',
+        ],
+        'star' => [
+            'label' => 'Estrella',
+            'src'   => 'assets/img/system/star-outline.svg',
+        ],
+        'ribbon' => [
+            'label' => 'Distintivo',
+            'src'   => 'assets/img/system/ribbon-outline.svg',
+        ],
+        'book' => [
+            'label' => 'Libro',
+            'src'   => 'assets/img/system/book-outline.svg',
+        ],
+        'school' => [
+            'label' => 'Formación',
+            'src'   => 'assets/img/system/school-outline.svg',
+        ],
+        'chart' => [
+            'label' => 'Gráfico',
+            'src'   => 'assets/img/system/stats-chart-outline.svg',
+        ],
+        'speedometer' => [
+            'label' => 'Indicador',
+            'src'   => 'assets/img/system/speedometer-outline.svg',
+        ],
+        'sparkles' => [
+            'label' => 'Destacado',
+            'src'   => 'assets/img/system/sparkles-outline.svg',
+        ],
+        'time' => [
+            'label' => 'Tiempo',
+            'src'   => 'assets/img/system/time.svg',
+        ],
+        'none' => [
+            'label' => 'Sin icono',
+            'src'   => '',
+        ],
+    ];
+
+    $markerKey   = "moduleList01_{$pad}_marker_icon";
+    $markerValue = $GLOBALS[$markerKey] ?? $getTemplateLang($markerKey) ?? 'default';
+    if (is_object($markerValue)) {
+        $markerValue = $markerValue->value ?? $markerValue->text ?? 'default';
+    }
+
+    $markerToken = strtolower(trim((string) $markerValue));
+    if (!array_key_exists($markerToken, $markerIcons)) {
+        $markerToken = 'default';
+    }
+
+    $escapeAttr = static fn (string $value): string => htmlspecialchars(
+        $value,
+        ENT_QUOTES | ENT_SUBSTITUTE,
+        'UTF-8'
+    );
+
+    $rootUrl   = rtrim((string) ($_ENV['RAIZ'] ?? ''), '/');
+    $devMode   = filter_var(
+        $_ENV['DEV_MODE'] ?? getenv('DEV_MODE') ?? false,
+        FILTER_VALIDATE_BOOLEAN
+    );
+    $markerSrc = (string) ($markerIcons[$markerToken]['src'] ?? '');
+    $markerUrl = $markerSrc === ''
+        ? ''
+        : ($rootUrl !== '' ? $rootUrl . '/' : '/') . ltrim($markerSrc, '/');
+
+    $markerStyle = $markerUrl === ''
+        ? ''
+        : ' style="--moduleList01-marker-mask: url(\''
+            . $escapeAttr($markerUrl) . '\')"';
+
+    $editorAttributes = 'data-marker-icon="' . $escapeAttr($markerToken) . '"'
+        . $markerStyle;
+
+    if ($devMode) {
+        $iconOptions = [];
+        foreach ($markerIcons as $token => $icon) {
+            $src = (string) ($icon['src'] ?? '');
+            $iconOptions[] = [
+                'value'   => $token,
+                'label'   => (string) ($icon['label'] ?? $token),
+                'preview' => $src === ''
+                    ? ''
+                    : ($rootUrl !== '' ? $rootUrl . '/' : '/') . ltrim($src, '/'),
+            ];
+        }
+
+        $optionsJson = json_encode(
+            $iconOptions,
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+        ) ?: '[]';
+
+        $editorAttributes .= ' data-inline-collection="lines"'
+            . ' data-inline-collection-key="moduleList01_' . $pad . '"'
+            . ' data-inline-icon-key="' . $escapeAttr($markerKey) . '"'
+            . ' data-inline-icon-options="' . $escapeAttr($optionsJson) . '"';
+    }
+
+    $itemEditorAttribute = $devMode ? ' data-inline-collection-item' : '';
+
     $itemsHtml = '';
 
     for ($j = 0; $j < $itemsCount; $j++) {
@@ -46,13 +166,14 @@ function controller_moduleList01(int $i = 0, array $params = []): string
 
         $itemsHtml .= '<li class="moduleList01-item">'
             . '<span class="moduleList01-marker" aria-hidden="true"></span>'
-            . '<span data-lang="' . $key . '">' . $text . '</span>'
+            . '<span' . $itemEditorAttribute . ' data-lang="' . $key . '">' . $text . '</span>'
             . '</li>';
     }
 
     $vars = [
-        '{classVar}' => "moduleList01_{$pad}_classVar",
-        '{items}'    => $itemsHtml,
+        '{classVar}'          => "moduleList01_{$pad}_classVar",
+        '{editor-attributes}' => $editorAttributes,
+        '{items}'            => $itemsHtml,
     ];
 
     return render(

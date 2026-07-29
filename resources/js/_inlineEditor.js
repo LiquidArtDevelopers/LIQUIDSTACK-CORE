@@ -311,7 +311,8 @@ const ensureStyles = () => {
       color: #1f2937;
     }
     .dev-inline-editor-field textarea,
-    .dev-inline-editor-field input {
+    .dev-inline-editor-field input,
+    .dev-inline-editor-field > select {
       border: 1px solid rgba(148, 163, 184, 0.6);
       border-radius: 0.5rem;
       padding: 0.6rem 0.75rem;
@@ -322,11 +323,39 @@ const ensureStyles = () => {
       background: rgba(248, 250, 252, 0.9);
     }
     .dev-inline-editor-field textarea:focus,
-    .dev-inline-editor-field input:focus {
+    .dev-inline-editor-field input:focus,
+    .dev-inline-editor-field > select:focus {
       outline: none;
       border-color: #2563eb;
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
       background: #fff;
+    }
+    .dev-inline-editor-field-help {
+      margin: -0.05rem 0 0;
+      color: #64748b;
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+    .dev-inline-editor-icon-preview {
+      min-height: 3.5rem;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 0.5rem;
+      padding: 0.65rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: rgba(248, 250, 252, 0.72);
+      color: #475569;
+      font-size: 0.8rem;
+    }
+    .dev-inline-editor-icon-preview img {
+      width: 2.25rem;
+      height: 2.25rem;
+      flex: 0 0 auto;
+      object-fit: contain;
+    }
+    .dev-inline-editor-icon-preview img[hidden] {
+      display: none;
     }
     .dev-inline-editor-footer {
       padding: 0.85rem 1.5rem 1.25rem;
@@ -423,6 +452,328 @@ const buildHomeUrl = (origin, config) => {
 
 const isExternalHref = (value = "") => /^(https?:)?\/\//i.test(value) || /^(mailto:|tel:)/i.test(value);
 
+const pendingVideoReloads = new WeakSet();
+
+const scheduleVideoReload = (element) => {
+  if (!(element instanceof Element)) {
+    return;
+  }
+
+  const video = element.tagName === "VIDEO"
+    ? element
+    : element.closest("video");
+
+  if (!(video instanceof HTMLVideoElement) || pendingVideoReloads.has(video)) {
+    return;
+  }
+
+  pendingVideoReloads.add(video);
+  queueMicrotask(() => {
+    pendingVideoReloads.delete(video);
+    if (video.isConnected && !video.hidden) {
+      video.load();
+    }
+  });
+};
+
+const decodeLocalMediaPath = (input) => {
+  let decoded = valueToString(input).trim();
+
+  for (let pass = 0; pass < 5; pass += 1) {
+    let nextDecoded;
+    try {
+      nextDecoded = decodeURIComponent(decoded);
+    } catch {
+      return null;
+    }
+
+    if (nextDecoded === decoded) {
+      break;
+    }
+
+    decoded = nextDecoded;
+  }
+
+  return decoded;
+};
+
+const isValidLocalMediaPath = (input, extensionsCsv) => {
+  const value = valueToString(input).trim();
+  if (!value) {
+    return true;
+  }
+
+  const decoded = decodeLocalMediaPath(value);
+  if (
+    decoded === null
+    || /[\u0000-\u001F\u007F\\]/.test(decoded)
+    || /%(?:00|2e|2f|5c)/i.test(decoded)
+    || decoded.includes("..")
+    || decoded.startsWith("//")
+    || /^[a-z][a-z0-9+.-]*:/i.test(decoded)
+  ) {
+    return false;
+  }
+
+  const allowedExtensions = extensionsCsv
+    .split(",")
+    .map((extension) => extension.trim().toLowerCase())
+    .filter(Boolean);
+  const path = decoded.replace(/^\/+/, "");
+  const filename = path.split("/").pop() || "";
+  const extension = filename.includes(".")
+    ? filename.split(".").pop().toLowerCase()
+    : "";
+
+  return allowedExtensions.includes(extension);
+};
+
+const parseInlineJsonObject = (element, attribute) => {
+  if (!(element instanceof Element)) {
+    return {};
+  }
+
+  const rawValue = element.getAttribute(attribute);
+  if (!rawValue) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    return {};
+  }
+};
+
+const getInlineFieldMeta = (element) =>
+  parseInlineJsonObject(element, "data-inline-field-meta");
+
+const getInlineAttributeTargets = (element) =>
+  parseInlineJsonObject(element, "data-inline-attribute-targets");
+
+const normalizeInlineYoutubeUrl = (input) => {
+  const value = valueToString(input).trim();
+  if (!value) {
+    return "";
+  }
+
+  let videoId = /^[A-Za-z0-9_-]{11}$/.test(value) ? value : "";
+
+  if (!videoId) {
+    let candidate = value;
+    if (candidate.startsWith("//")) {
+      candidate = `https:${candidate}`;
+    } else if (!/^https?:\/\//i.test(candidate)) {
+      candidate = `https://${candidate.replace(/^\/+/, "")}`;
+    }
+
+    let url;
+    try {
+      url = new URL(candidate);
+    } catch {
+      return "";
+    }
+
+    if (
+      url.protocol !== "https:"
+      || url.username
+      || url.password
+      || url.port
+    ) {
+      return "";
+    }
+
+    let host = url.hostname.toLowerCase().replace(/\.$/, "");
+    host = host.replace(/^(www|m)\./, "");
+    const segments = url.pathname.split("/").filter(Boolean);
+
+    if (host === "youtu.be") {
+      [videoId = ""] = segments;
+    } else if (["youtube.com", "youtube-nocookie.com"].includes(host)) {
+      if (segments[0] === "watch") {
+        videoId = url.searchParams.get("v") || "";
+      } else if (["embed", "shorts", "live"].includes(segments[0])) {
+        videoId = segments[1] || "";
+      }
+    }
+  }
+
+  return /^[A-Za-z0-9_-]{11}$/.test(videoId)
+    ? `https://www.youtube-nocookie.com/embed/${videoId}`
+    : "";
+};
+
+const validateSelectEntries = (entries) => {
+  entries.forEach((entry) => {
+    const fieldMeta = entry.fieldMeta && typeof entry.fieldMeta === "object"
+      ? entry.fieldMeta
+      : {};
+
+    Object.entries(fieldMeta).forEach(([field, meta]) => {
+      if (
+        !meta
+        || meta.controlType !== "select"
+        || !Array.isArray(meta.options)
+        || !Object.prototype.hasOwnProperty.call(entry.values, field)
+      ) {
+        return;
+      }
+
+      const allowedValues = new Set(
+        meta.options.map((option) => String(option?.value ?? "")),
+      );
+      const value = String(entry.values[field] ?? "");
+      if (!allowedValues.has(value)) {
+        throw new Error(`El valor de ${field} no pertenece a las opciones permitidas.`);
+      }
+    });
+  });
+};
+
+const validateVideoResourceEntries = (entries) => {
+  const groups = new Map();
+
+  entries.forEach((entry) => {
+    const root = entry.element instanceof Element
+      ? entry.element.closest("[data-inline-video]")
+      : null;
+
+    if (!root) {
+      return;
+    }
+
+    if (!groups.has(root)) {
+      groups.set(root, []);
+    }
+    groups.get(root).push(entry);
+  });
+
+  groups.forEach((videoEntries, root) => {
+    const configEntry = videoEntries.find((entry) => entry.element === root);
+    const type = String(
+      configEntry?.values?.type ?? root.dataset.videoType ?? "",
+    ).toLowerCase();
+
+    if (!["youtube", "local"].includes(type)) {
+      throw new Error("El tipo de vídeo debe ser youtube o local.");
+    }
+
+    const findBySuffix = (suffix) =>
+      videoEntries.find((entry) => String(entry.key || "").endsWith(suffix));
+
+    if (type === "youtube") {
+      const youtubeEntry = findBySuffix("_youtube");
+      const consentEntry = findBySuffix("_consent");
+      const youtubeInput = valueToString(youtubeEntry?.values?.src).trim();
+      const normalizedYoutubeUrl = normalizeInlineYoutubeUrl(youtubeInput);
+
+      if (!youtubeEntry || !normalizedYoutubeUrl) {
+        throw new Error("Indica un ID o una URL HTTPS válida de YouTube.");
+      }
+      if (!valueToString(youtubeEntry.values.title).trim()) {
+        throw new Error("El vídeo de YouTube necesita un title descriptivo.");
+      }
+      if (!valueToString(youtubeEntry.values.playLabel).trim()) {
+        throw new Error(
+          "El vídeo de YouTube necesita un texto accesible para reproducirlo.",
+        );
+      }
+      if (!valueToString(consentEntry?.values?.text).trim()) {
+        throw new Error("El vídeo de YouTube necesita un mensaje de consentimiento.");
+      }
+
+      youtubeEntry.values.src = normalizedYoutubeUrl;
+      return;
+    }
+
+    const videoEntry = findBySuffix("_video");
+    const webmEntry = findBySuffix("_webm");
+    const mp4Entry = findBySuffix("_mp4");
+    const captionsEntry = findBySuffix("_captions");
+    const webmSrc = valueToString(webmEntry?.values?.src).trim();
+    const mp4Src = valueToString(mp4Entry?.values?.src).trim();
+
+    if (!valueToString(videoEntry?.values?.title).trim()) {
+      throw new Error("El vídeo local necesita un title descriptivo.");
+    }
+    if (!webmSrc && !mp4Src) {
+      throw new Error("El vídeo local necesita al menos una fuente WebM o MP4.");
+    }
+
+    const captionsSrc = valueToString(captionsEntry?.values?.src).trim();
+    if (captionsSrc) {
+      const trackKind = valueToString(captionsEntry?.values?.kind).trim();
+      const trackLang = valueToString(captionsEntry?.values?.srclang).trim();
+      const trackLabel = valueToString(captionsEntry?.values?.label).trim();
+
+      if (
+        !["captions", "subtitles", "descriptions", "chapters", "metadata"]
+          .includes(trackKind)
+      ) {
+        throw new Error("El tipo de pista del vídeo local no es válido.");
+      }
+      if (!/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(trackLang)) {
+        throw new Error("El idioma de la pista debe usar un código válido.");
+      }
+      if (!trackLabel) {
+        throw new Error("La pista del vídeo local necesita una etiqueta.");
+      }
+    }
+  });
+};
+
+const validateLocalMediaEntries = (entries) => {
+  const activeVideoTypes = new Map();
+
+  entries.forEach((entry) => {
+    const root = entry.element instanceof Element
+      ? entry.element.closest("[data-inline-video]")
+      : null;
+
+    if (!root || activeVideoTypes.has(root)) {
+      return;
+    }
+
+    const configEntry = entries.find((candidate) => candidate.element === root);
+    activeVideoTypes.set(
+      root,
+      String(configEntry?.values?.type ?? root.dataset.videoType ?? "").toLowerCase(),
+    );
+  });
+
+  entries.forEach((entry) => {
+    const videoRoot = entry.element instanceof Element
+      ? entry.element.closest("[data-inline-video]")
+      : null;
+
+    if (videoRoot && activeVideoTypes.get(videoRoot) !== "local") {
+      return;
+    }
+
+    const extensions = entry.element instanceof Element
+      ? entry.element.getAttribute("data-inline-local-extensions")
+      : "";
+
+    if (!extensions) {
+      return;
+    }
+
+    ["src", "poster"].forEach((field) => {
+      if (
+        Object.prototype.hasOwnProperty.call(entry.values, field)
+        && !isValidLocalMediaPath(entry.values[field], extensions)
+      ) {
+        throw new Error(
+          `El campo ${field} debe usar una ruta local con extensión permitida: ${extensions}.`,
+        );
+      }
+    });
+  });
+};
+
 const applyValuesToElement = (element, rawValues, config) => {
   if (!element) {
     return;
@@ -430,9 +781,20 @@ const applyValuesToElement = (element, rawValues, config) => {
 
   const values = normalizeForDom(rawValues);
   const origin = window.location.origin;
+  const attributeTargets = getInlineAttributeTargets(element);
 
   Object.entries(values).forEach(([attribute, rawValue]) => {
     const value = typeof rawValue === "string" ? rawValue : "";
+    const mappedTarget = String(attributeTargets[attribute] ?? "");
+
+    if (/^data-[a-z0-9-]+$/i.test(mappedTarget)) {
+      if (value) {
+        element.setAttribute(mappedTarget, value);
+      } else {
+        element.removeAttribute(mappedTarget);
+      }
+      return;
+    }
 
     switch (attribute) {
       case "text":
@@ -467,17 +829,29 @@ const applyValuesToElement = (element, rawValues, config) => {
         element.setAttribute("href", url);
         break;
       }
-      case "src": {
+      case "src":
+      case "poster": {
+        const mappedAttribute = attribute === "src"
+          ? element.getAttribute("data-inline-src-target")
+          : "";
+        const targetAttribute = mappedAttribute
+          && /^data-[a-z0-9-]+$/i.test(mappedAttribute)
+          ? mappedAttribute
+          : attribute;
+
         if (!value) {
-          element.removeAttribute("src");
+          element.removeAttribute(targetAttribute);
           break;
         }
         if (isExternalHref(value)) {
-          element.setAttribute("src", value);
+          element.setAttribute(targetAttribute, value);
           break;
         }
         const normalized = value.replace(/^\//, "");
-        element.setAttribute("src", `${origin.replace(/\/$/, "")}/${normalized}`);
+        element.setAttribute(
+          targetAttribute,
+          `${origin.replace(/\/$/, "")}/${normalized}`,
+        );
         break;
       }
       default: {
@@ -493,6 +867,17 @@ const applyValuesToElement = (element, rawValues, config) => {
       }
     }
   });
+
+  if (
+    element.tagName === "SOURCE"
+    || element.tagName === "TRACK"
+    || (
+      element.tagName === "VIDEO"
+      && Object.prototype.hasOwnProperty.call(values, "poster")
+    )
+  ) {
+    scheduleVideoReload(element);
+  }
 };
 
 const createField = ({
@@ -504,6 +889,10 @@ const createField = ({
   groupIndex = 0,
   dataset = {},
   enableRichText = false,
+  controlType = "",
+  options = [],
+  helpText = "",
+  rows = null,
 }) => {
   const fieldWrapper = document.createElement("div");
   fieldWrapper.className = "dev-inline-editor-field";
@@ -514,9 +903,26 @@ const createField = ({
 
   const isLong = typeof value === "string" && value.length > 80;
   const hasBreaks = typeof value === "string" && /[\n\r]/.test(value);
-  const control = (isLong || hasBreaks || name === "text" || name === "content")
-    ? document.createElement("textarea")
-    : document.createElement("input");
+  let control;
+  if (controlType === "select") {
+    control = document.createElement("select");
+    options.forEach((option) => {
+      const optionElement = document.createElement("option");
+      optionElement.value = String(option?.value ?? "");
+      optionElement.textContent = String(option?.label ?? option?.value ?? "");
+      control.appendChild(optionElement);
+    });
+  } else if (
+    controlType === "textarea"
+    || isLong
+    || hasBreaks
+    || name === "text"
+    || name === "content"
+  ) {
+    control = document.createElement("textarea");
+  } else {
+    control = document.createElement("input");
+  }
 
   const controlNameParts = [
     `entry-${entryId}`,
@@ -540,10 +946,18 @@ const createField = ({
   });
   control.value = value ?? "";
   if (control instanceof HTMLTextAreaElement) {
-    control.rows = Math.min(8, Math.max(3, Math.ceil((value?.length || 0) / 60)));
+    control.rows = Number.isInteger(rows)
+      ? Math.min(16, Math.max(3, rows))
+      : Math.min(8, Math.max(3, Math.ceil((value?.length || 0) / 60)));
   }
 
   fieldWrapper.appendChild(labelEl);
+  if (helpText) {
+    const help = document.createElement("span");
+    help.className = "dev-inline-editor-field-help";
+    help.textContent = helpText;
+    fieldWrapper.appendChild(help);
+  }
   if (enableRichText && (control instanceof HTMLTextAreaElement || control instanceof HTMLInputElement)) {
     const toolbar = document.createElement("div");
     toolbar.className = "dev-inline-editor-toolbar";
@@ -626,6 +1040,40 @@ const createField = ({
     fieldWrapper.appendChild(toolbar);
   }
   fieldWrapper.appendChild(control);
+
+  if (control instanceof HTMLSelectElement && options.length) {
+    const preview = document.createElement("div");
+    preview.className = "dev-inline-editor-icon-preview";
+
+    const previewImage = document.createElement("img");
+    previewImage.alt = "";
+    previewImage.setAttribute("aria-hidden", "true");
+
+    const previewText = document.createElement("span");
+    preview.appendChild(previewImage);
+    preview.appendChild(previewText);
+
+    const updatePreview = () => {
+      const selected = options.find((option) => String(option?.value ?? "") === control.value);
+      const previewSrc = String(selected?.preview ?? "");
+      previewImage.hidden = previewSrc === "";
+      if (previewSrc === "") {
+        previewImage.removeAttribute("src");
+      } else {
+        previewImage.src = previewSrc;
+      }
+      previewText.textContent = String(
+        selected?.description
+        ?? selected?.label
+        ?? selected?.value
+        ?? "",
+      );
+    };
+
+    control.addEventListener("change", updatePreview);
+    updatePreview();
+    fieldWrapper.appendChild(preview);
+  }
 
   return fieldWrapper;
 };
@@ -728,6 +1176,7 @@ const elementSupportsText = (element) => {
 const cloneFields = (fields = {}) => Object.fromEntries(Object.entries(fields));
 
 const COMPOUND_WITH_DESCENDANTS = new Set(["A", "VIDEO"]);
+const INLINE_EDITOR_HANDLER_KEY = "__liquidStackInlineEditorDblClickHandler";
 
 const showModal = ({
   entries,
@@ -800,14 +1249,20 @@ const showModal = ({
       if (!supportsText && name === "text") {
         return;
       }
+      const fieldMeta = entry.fieldMeta?.[name] || {};
       section.appendChild(
         createField({
           entryId: entryIndex,
           name,
           value,
           group: "main",
-          label: name,
+          label: fieldMeta.label ?? name,
           enableRichText: supportsText && name === "text",
+          controlType: fieldMeta.controlType ?? "",
+          options: fieldMeta.options ?? [],
+          helpText: fieldMeta.helpText ?? "",
+          rows: fieldMeta.rows ?? null,
+          dataset: fieldMeta.dataset ?? {},
         }),
       );
     });
@@ -918,6 +1373,19 @@ const showModal = ({
     }
 
     const target = event.target;
+    if (
+      target instanceof HTMLTextAreaElement
+      && target.dataset.multiline === "true"
+    ) {
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault();
+        if (!submitBtn.disabled) {
+          submitBtn.click();
+        }
+      }
+      return;
+    }
+
     if (event.shiftKey && target instanceof HTMLTextAreaElement) {
       return;
     }
@@ -985,6 +1453,7 @@ const showModal = ({
       scope: entry.scope,
       element: entry.element,
       valueType: entry.valueType,
+      fieldMeta: entry.fieldMeta || {},
       values: valuesByEntry[index].main,
       related: Array.isArray(entry.related)
         ? entry.related.map((relatedEntry, relatedIndex) => ({
@@ -997,6 +1466,9 @@ const showModal = ({
     }));
 
     try {
+      validateSelectEntries(payload);
+      validateVideoResourceEntries(payload);
+      validateLocalMediaEntries(payload);
       submitBtn.disabled = true;
       await onSubmit(payload);
       close();
@@ -1237,41 +1709,37 @@ export default function initInlineEditor() {
     }
   };
 
-  window.addEventListener("app:languagechange", (event) => {
+  const handleInlineEditorLanguageChange = (event) => {
     rehydrateConfig(event?.detail || {});
-  });
+  };
   let isOpen = false;
 
-  document.addEventListener(
-    "click",
-    (event) => {
-      if (!event.ctrlKey) {
-        return;
-      }
-      if (!(event.target instanceof Element)) {
-        return;
-      }
+  const handleInlineEditorAnchorClick = (event) => {
+    if (!event.ctrlKey) {
+      return;
+    }
+    if (!(event.target instanceof Element)) {
+      return;
+    }
 
-      const langElement = event.target.closest("[data-lang]");
-      if (!langElement) {
-        return;
-      }
+    const langElement = event.target.closest("[data-lang]");
+    if (!langElement) {
+      return;
+    }
 
-      const anchor = event.target.closest("a");
-      if (!anchor) {
-        return;
-      }
+    const anchor = event.target.closest("a");
+    if (!anchor) {
+      return;
+    }
 
-      const related = anchor.contains(langElement) || langElement.contains(anchor);
-      if (!related) {
-        return;
-      }
+    const related = anchor.contains(langElement) || langElement.contains(anchor);
+    if (!related) {
+      return;
+    }
 
-      event.preventDefault();
-      event.stopPropagation();
-    },
-    true,
-  );
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   const loadScope = async (scope) => {
     if (!scope) {
@@ -1299,6 +1767,7 @@ export default function initInlineEditor() {
         scope: "global",
         fields: prepared.fields,
         type: prepared.type,
+        fieldMeta: getInlineFieldMeta(element),
         related: buildRelatedEntries(key, globalData, element),
       };
     }
@@ -1311,6 +1780,7 @@ export default function initInlineEditor() {
           scope: config.route,
           fields: prepared.fields,
           type: prepared.type,
+          fieldMeta: getInlineFieldMeta(element),
           related: buildRelatedEntries(key, routeData, element),
         };
       }
@@ -1362,6 +1832,522 @@ export default function initInlineEditor() {
     }
   };
 
+  const saveBatchValues = async ({ scope, updates, lang = config.lang }) => {
+    const response = await fetch("/languages/update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        scope,
+        lang,
+        route: config.route,
+        updates,
+      }),
+    });
+
+    if (!response.ok) {
+      const message = await response.text();
+      throw new Error(message || "No se pudieron guardar los cambios");
+    }
+
+    const result = await response.json();
+    const savedUpdates = Array.isArray(result.updates) ? result.updates : [];
+
+    if (lang === config.lang) {
+      savedUpdates.forEach((entry) => {
+        if (!entry?.key) {
+          return;
+        }
+        setCacheValue(result.scope || scope, entry.key, entry.data);
+      });
+    }
+
+    return {
+      scope: result.scope || scope,
+      updates: savedUpdates,
+    };
+  };
+
+  const parseCollectionIconOptions = (collection) => {
+    const rawOptions = collection.dataset.inlineIconOptions || "[]";
+
+    try {
+      const parsed = JSON.parse(rawOptions);
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+
+      return parsed
+        .filter((option) => option && typeof option === "object")
+        .map((option) => {
+          const value = String(option.value ?? "");
+          const label = String(option.label ?? value);
+          let description = label;
+
+          if (value === "default") {
+            description = "Usa el marcador predeterminado del recurso o de su contexto.";
+          } else if (value === "none") {
+            description = "Oculta el marcador decorativo de todos los elementos.";
+          }
+
+          return {
+            value,
+            label,
+            preview: String(option.preview ?? ""),
+            description,
+          };
+        });
+    } catch (error) {
+      console.warn("Inline editor: no se pudo leer el catálogo de iconos.", error);
+      return [];
+    }
+  };
+
+  const applyCollectionIcon = (collection, token, options) => {
+    const selected = options.find((option) => option.value === token);
+    const preview = String(selected?.preview ?? "");
+
+    collection.dataset.markerIcon = token;
+    if (preview && token !== "default" && token !== "none") {
+      const safePreview = preview.replace(/["\\\n\r]/g, "");
+      collection.style.setProperty(
+        "--moduleList01-marker-mask",
+        `url("${safePreview}")`,
+      );
+    } else {
+      collection.style.removeProperty("--moduleList01-marker-mask");
+    }
+  };
+
+  const normalizeBackgroundUrl = (value) => {
+    const rawValue = valueToString(value).trim();
+    if (!rawValue) {
+      return "";
+    }
+    if (
+      isExternalHref(rawValue)
+      || rawValue.startsWith("data:")
+      || rawValue.startsWith("blob:")
+    ) {
+      return rawValue;
+    }
+    return `${window.location.origin.replace(/\/$/, "")}/${rawValue.replace(/^\/+/, "")}`;
+  };
+
+  const applyResponsiveBackground = (target) => {
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const responsiveUrl = window.innerWidth < 800
+      ? target.dataset.bgMobile
+      : (window.innerWidth < 1400
+        ? target.dataset.bgTablet
+        : target.dataset.bgDesktop);
+    const activeUrl = responsiveUrl || target.dataset.bgFallback || "";
+
+    if (!activeUrl) {
+      target.style.removeProperty("background-image");
+      return;
+    }
+
+    const safeUrl = activeUrl.replace(/["\\\n\r]/g, "");
+    target.style.setProperty(
+      "background-image",
+      `url("${safeUrl}")`,
+      "important",
+    );
+  };
+
+  const getBackgroundDefinitions = (container) => {
+    const definitions = [
+      {
+        datasetKey: "inlineBackgroundMobileKey",
+        variant: "mobile",
+        targetDataset: "bgMobile",
+        label: "Imagen móvil",
+      },
+      {
+        datasetKey: "inlineBackgroundTabletKey",
+        variant: "tablet",
+        targetDataset: "bgTablet",
+        label: "Imagen tablet",
+      },
+      {
+        datasetKey: "inlineBackgroundDesktopKey",
+        variant: "desktop",
+        targetDataset: "bgDesktop",
+        label: "Imagen escritorio",
+      },
+      {
+        datasetKey: "inlineBackgroundFallbackKey",
+        variant: "fallback",
+        targetDataset: "bgFallback",
+        label: "Imagen de respaldo",
+      },
+      {
+        datasetKey: "inlineBackgroundImageKey",
+        variant: "image",
+        targetDataset: "",
+        label: "Imagen de fondo",
+      },
+    ];
+
+    return definitions
+      .map((definition) => ({
+        ...definition,
+        key: String(container.dataset[definition.datasetKey] || "").trim(),
+      }))
+      .filter((definition) => definition.key !== "");
+  };
+
+  const openBackgroundEditor = async (container) => {
+    const targetSelector = String(container.dataset.inlineBackgroundTarget || "").trim();
+    let target = container;
+
+    if (targetSelector) {
+      try {
+        target = container.querySelector(targetSelector);
+      } catch (error) {
+        throw new Error("El selector del fondo editable no es válido.");
+      }
+    }
+
+    if (!(target instanceof Element)) {
+      throw new Error("No se encontró el elemento visual del fondo.");
+    }
+
+    const definitions = getBackgroundDefinitions(container);
+    if (!definitions.length) {
+      throw new Error("El fondo no tiene claves de idioma configuradas.");
+    }
+
+    const entries = [];
+    const missingKeys = [];
+
+    for (const definition of definitions) {
+      const resolved = await resolveValues(definition.key, target);
+      if (!resolved) {
+        missingKeys.push(definition.key);
+        continue;
+      }
+
+      const fields = resolved.type === "object"
+        ? cloneFields(resolved.fields)
+        : { src: String(resolved.fields.text ?? "") };
+
+      entries.push({
+        key: definition.key,
+        scope: resolved.scope,
+        fields,
+        valueType: resolved.type,
+        element: target,
+        related: [],
+        backgroundDefinition: definition,
+        fieldMeta: {
+          src: {
+            label: definition.label,
+            helpText: "Ruta relativa dentro de assets o URL absoluta.",
+          },
+          alt: {
+            label: "Texto alternativo",
+          },
+          title: {
+            label: "Título de la imagen",
+          },
+        },
+      });
+    }
+
+    if (missingKeys.length || entries.length !== definitions.length) {
+      const suffix = missingKeys.length ? `: ${missingKeys.join(", ")}` : "";
+      throw new Error(`Faltan claves de idioma para este fondo${suffix}.`);
+    }
+
+    showModal({
+      entries,
+      onSubmit: async (payloadEntries) => {
+        const updatesByScope = new Map();
+        const nextValues = new Map();
+
+        payloadEntries.forEach((payloadEntry, index) => {
+          const entry = entries[index];
+          const values = payloadEntry.values || {};
+          const nextValue = entry.valueType === "object"
+            ? values
+            : String(values.src ?? "");
+          const scope = entry.scope || config.route;
+
+          if (!scope) {
+            throw new Error("No se pudo resolver el archivo de idioma del fondo.");
+          }
+          if (!updatesByScope.has(scope)) {
+            updatesByScope.set(scope, []);
+          }
+          updatesByScope.get(scope).push({
+            key: entry.key,
+            values: nextValue,
+          });
+          nextValues.set(entry.key, nextValue);
+        });
+
+        const savedByKey = new Map();
+        for (const [scope, updates] of updatesByScope.entries()) {
+          const result = await saveBatchValues({ scope, updates });
+          result.updates.forEach((saved) => {
+            savedByKey.set(saved.key, saved.data);
+          });
+        }
+
+        entries.forEach((entry) => {
+          const savedValue = savedByKey.has(entry.key)
+            ? savedByKey.get(entry.key)
+            : nextValues.get(entry.key);
+          const definition = entry.backgroundDefinition;
+
+          if (definition.variant === "image") {
+            const imageValue = entry.valueType === "object"
+              ? savedValue
+              : { src: savedValue };
+            applyValuesToElement(target, imageValue, config);
+            return;
+          }
+
+          const sourceValue = savedValue
+            && typeof savedValue === "object"
+            && !Array.isArray(savedValue)
+            ? savedValue.src
+            : savedValue;
+          const normalizedUrl = normalizeBackgroundUrl(sourceValue);
+
+          if (definition.targetDataset) {
+            target.dataset[definition.targetDataset] = normalizedUrl;
+          }
+        });
+
+        if (definitions.some((definition) => definition.variant !== "image")) {
+          applyResponsiveBackground(target);
+        }
+      },
+      onClose: () => {
+        isOpen = false;
+      },
+    });
+  };
+
+  const openLineCollectionEditor = async (collection) => {
+    const itemElements = Array.from(
+      collection.querySelectorAll("[data-inline-collection-item][data-lang]"),
+    );
+
+    if (!itemElements.length) {
+      throw new Error("La lista no contiene elementos editables.");
+    }
+
+    const itemEntries = [];
+    const missingKeys = [];
+
+    for (const element of itemElements) {
+      const key = element.getAttribute("data-lang");
+      if (!key) {
+        continue;
+      }
+
+      const resolved = await resolveValues(key, element);
+      if (!resolved) {
+        missingKeys.push(key);
+        continue;
+      }
+
+      itemEntries.push({
+        key,
+        scope: resolved.scope,
+        fields: cloneFields(resolved.fields),
+        valueType: resolved.type,
+        element,
+      });
+    }
+
+    if (missingKeys.length || itemEntries.length !== itemElements.length) {
+      const suffix = missingKeys.length ? `: ${missingKeys.join(", ")}` : "";
+      throw new Error(`Faltan claves de idioma para esta lista${suffix}.`);
+    }
+
+    const iconKey = collection.dataset.inlineIconKey || "";
+    const iconResolved = iconKey
+      ? await resolveValues(iconKey, collection)
+      : null;
+    const iconOptions = parseCollectionIconOptions(collection);
+    const allowedIcons = new Set(iconOptions.map((option) => option.value));
+
+    let iconToken = collection.dataset.markerIcon || "default";
+    if (iconResolved) {
+      if (iconResolved.type === "object") {
+        iconToken = String(
+          iconResolved.fields.value
+          ?? iconResolved.fields.text
+          ?? iconToken,
+        );
+      } else {
+        iconToken = String(iconResolved.fields.text ?? iconToken);
+      }
+    }
+    if (!allowedIcons.has(iconToken)) {
+      iconToken = allowedIcons.has("default")
+        ? "default"
+        : (iconOptions[0]?.value ?? "");
+    }
+
+    const collectionKey = collection.dataset.inlineCollectionKey
+      || iconKey.replace(/_marker_icon$/, "")
+      || itemEntries[0].key;
+    const itemCount = itemEntries.length;
+    const itemTexts = itemEntries.map((entry) => String(entry.fields.text ?? ""));
+    const primaryScope = itemEntries[0].scope || config.route;
+    const iconScope = primaryScope;
+
+    const entry = {
+      key: collectionKey,
+      scope: primaryScope,
+      fields: {
+        items: itemTexts.join("\n"),
+        icon: iconToken,
+      },
+      fieldMeta: {
+        items: {
+          label: `Elementos de la lista (${itemCount})`,
+          controlType: "textarea",
+          rows: Math.max(4, itemCount),
+          helpText: `Una línea corresponde a un <li>. Mantén exactamente ${itemCount} líneas.`,
+          dataset: {
+            multiline: "true",
+          },
+        },
+        icon: {
+          label: "Icono de la lista",
+          controlType: "select",
+          options: iconOptions,
+          helpText: "Se aplica a todos los elementos y se mantiene igual en todos los idiomas.",
+        },
+      },
+      element: collection,
+      related: [],
+    };
+
+    showModal({
+      entries: [entry],
+      onSubmit: async (payloadEntries) => {
+        const values = payloadEntries[0]?.values || {};
+        const normalizedText = String(values.items ?? "").replace(/\r\n?/g, "\n");
+        const lines = normalizedText.split("\n");
+
+        if (lines.length !== itemCount) {
+          throw new Error(
+            `La lista necesita exactamente ${itemCount} líneas; has introducido ${lines.length}.`,
+          );
+        }
+
+        const normalizedLines = lines.map((line) => line.trim());
+        if (normalizedLines.some((line) => line === "")) {
+          throw new Error("Cada línea debe contener el texto de un elemento.");
+        }
+
+        const nextIcon = String(values.icon ?? iconToken);
+        if (!allowedIcons.has(nextIcon)) {
+          throw new Error("El icono seleccionado no pertenece al catálogo permitido.");
+        }
+
+        const updatesByScope = new Map();
+        const registerUpdate = (scope, update) => {
+          const resolvedScope = scope || config.route;
+          if (!resolvedScope) {
+            throw new Error("No se pudo resolver el archivo de idioma de la lista.");
+          }
+          if (!updatesByScope.has(resolvedScope)) {
+            updatesByScope.set(resolvedScope, []);
+          }
+          updatesByScope.get(resolvedScope).push(update);
+        };
+
+        itemEntries.forEach((itemEntry, index) => {
+          const nextValue = itemEntry.valueType === "object"
+            ? { ...itemEntry.fields, text: normalizedLines[index] }
+            : normalizedLines[index];
+
+          registerUpdate(itemEntry.scope, {
+            key: itemEntry.key,
+            values: nextValue,
+          });
+        });
+
+        let iconUpdate = null;
+        if (iconKey) {
+          let nextIconValue = nextIcon;
+          if (iconResolved?.type === "object") {
+            nextIconValue = { ...iconResolved.fields };
+            if (Object.prototype.hasOwnProperty.call(nextIconValue, "value")) {
+              nextIconValue.value = nextIcon;
+            } else if (Object.prototype.hasOwnProperty.call(nextIconValue, "text")) {
+              nextIconValue.text = nextIcon;
+            } else {
+              nextIconValue.value = nextIcon;
+            }
+          }
+
+          iconUpdate = {
+            key: iconKey,
+            values: nextIconValue,
+          };
+          registerUpdate(iconScope, iconUpdate);
+        }
+
+        const savedByKey = new Map();
+        for (const [scope, updates] of updatesByScope.entries()) {
+          const result = await saveBatchValues({ scope, updates });
+          result.updates.forEach((saved) => {
+            savedByKey.set(saved.key, saved.data);
+          });
+        }
+
+        if (iconUpdate) {
+          const alternateLanguages = Array.from(
+            document.querySelectorAll(".btn_idioma[id]"),
+          )
+            .map((button) => String(button.id || "").trim())
+            .filter((lang, index, languages) => (
+              lang !== ""
+              && lang !== config.lang
+              && languages.indexOf(lang) === index
+            ));
+
+          for (const lang of alternateLanguages) {
+            await saveBatchValues({
+              scope: iconScope,
+              updates: [iconUpdate],
+              lang,
+            });
+          }
+        }
+
+        itemEntries.forEach((itemEntry, index) => {
+          const fallbackValue = itemEntry.valueType === "object"
+            ? { ...itemEntry.fields, text: normalizedLines[index] }
+            : normalizedLines[index];
+          const savedValue = savedByKey.has(itemEntry.key)
+            ? savedByKey.get(itemEntry.key)
+            : fallbackValue;
+          applyValuesToElement(itemEntry.element, savedValue, config);
+        });
+
+        applyCollectionIcon(collection, nextIcon, iconOptions);
+      },
+      onClose: () => {
+        isOpen = false;
+      },
+    });
+  };
+
   const collectLanguageElements = (event) => {
     const elements = [];
     const seen = new Set();
@@ -1399,6 +2385,17 @@ export default function initInlineEditor() {
       }
     }
 
+    if (event.target instanceof Element) {
+      // Opt-in group for composite resources whose editable fields are siblings.
+      const group = event.target.closest("[data-inline-group]");
+      if (group) {
+        register(group);
+        group.querySelectorAll("[data-lang]").forEach((descendant) => {
+          register(descendant);
+        });
+      }
+    }
+
     for (let index = 0; index < elements.length; index += 1) {
       const element = elements[index];
       if (!COMPOUND_WITH_DESCENDANTS.has(element.tagName)) {
@@ -1414,12 +2411,50 @@ export default function initInlineEditor() {
     return elements;
   };
 
-  document.addEventListener("dblclick", async (event) => {
+  const handleInlineEditorDoubleClick = async (event) => {
     if (!event.ctrlKey || isOpen) {
       return;
     }
 
+    const collection = event.target instanceof Element
+      ? event.target.closest('[data-inline-collection="lines"]')
+      : null;
+
+    if (collection) {
+      event.preventDefault();
+      event.stopPropagation();
+      isOpen = true;
+
+      try {
+        await openLineCollectionEditor(collection);
+      } catch (error) {
+        console.error(error);
+        alert(error instanceof Error ? error.message : String(error));
+        isOpen = false;
+      }
+      return;
+    }
+
     const targets = collectLanguageElements(event);
+    const background = !targets.length && event.target instanceof Element
+      ? event.target.closest("[data-inline-background]")
+      : null;
+
+    if (background) {
+      event.preventDefault();
+      event.stopPropagation();
+      isOpen = true;
+
+      try {
+        await openBackgroundEditor(background);
+      } catch (error) {
+        console.error(error);
+        alert(error instanceof Error ? error.message : String(error));
+        isOpen = false;
+      }
+      return;
+    }
+
     if (!targets.length) {
       return;
     }
@@ -1449,6 +2484,7 @@ export default function initInlineEditor() {
           scope: resolved.scope,
           fields: resolved.fields,
           valueType: resolved.type,
+          fieldMeta: resolved.fieldMeta || {},
           element,
           related: resolved.related || [],
         });
@@ -1506,5 +2542,36 @@ export default function initInlineEditor() {
       isOpen = false;
       return;
     }
-  });
+  };
+
+  const previousHandlers = window[INLINE_EDITOR_HANDLER_KEY];
+  if (typeof previousHandlers === "function") {
+    // Compatibilidad con inicializaciones anteriores durante HMR.
+    document.removeEventListener("dblclick", previousHandlers);
+  } else if (previousHandlers && typeof previousHandlers === "object") {
+    if (typeof previousHandlers.doubleClick === "function") {
+      document.removeEventListener("dblclick", previousHandlers.doubleClick);
+    }
+    if (typeof previousHandlers.anchorClick === "function") {
+      document.removeEventListener("click", previousHandlers.anchorClick, true);
+    }
+    if (typeof previousHandlers.languageChange === "function") {
+      window.removeEventListener(
+        "app:languagechange",
+        previousHandlers.languageChange,
+      );
+    }
+  }
+
+  window[INLINE_EDITOR_HANDLER_KEY] = {
+    doubleClick: handleInlineEditorDoubleClick,
+    anchorClick: handleInlineEditorAnchorClick,
+    languageChange: handleInlineEditorLanguageChange,
+  };
+  document.addEventListener("dblclick", handleInlineEditorDoubleClick);
+  document.addEventListener("click", handleInlineEditorAnchorClick, true);
+  window.addEventListener(
+    "app:languagechange",
+    handleInlineEditorLanguageChange,
+  );
 }

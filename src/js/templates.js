@@ -17,11 +17,13 @@ import initSectionSkewGallery01 from './resources/_sectionSkewGallery01.js'
 import initSectionHScroll01 from './resources/_sectionHScroll01.js'
 import initArtWorksSkew01 from './resources/_artWorksSkew01.js'
 import initArtHeroScroll01 from './resources/_artHeroScroll01.js'
+import initModuleVideo01 from './resources/_moduleVideo01.js'
 import initHero03 from './resources/_hero03.js'
 import initHero04 from './resources/_hero04.js'
 import initHero05 from './resources/_hero05.js'
 
 // parallax
+import gsap from 'gsap';
 import ScrollTrigger from 'gsap/ScrollTrigger';
 import gsapParallax from "./resources/_gsapParallaxScroll.js";
 
@@ -30,15 +32,20 @@ import initStatsCounter from './resources/_art11.js';
 
 import initGlobalForm from './resources/_globalForm.js';
 import initArtAccordion01 from "./resources/_artAccordion01.js";
+import initArtAccordion02 from "./resources/_artAccordion02.js";
 
 const doc = document
 
 doc.addEventListener('DOMContentLoaded',()=>{
 
+    // Recurso independiente y seguro: debe inicializarse aunque otro bloque
+    // experimental del showroom falle durante su montaje.
+    initModuleVideo01()
     initStatsCounter()
     initSectTabs01()
     initGlobalForm()
     initArtAccordion01()
+    initArtAccordion02()
     initArtSlider01()
     initArtSlider02()
     initArtZipper()

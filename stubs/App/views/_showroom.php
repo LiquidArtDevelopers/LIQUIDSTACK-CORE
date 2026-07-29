@@ -74,9 +74,150 @@
                 '{hero05-force}' => '1.2',
                 '{hero05-sim}' => '512',
             ]);
+
+            // hero06/07 controlan el escenario y la imagen editable.
+            // moduleH1Type03/04 controlan el contenido y pueden intercambiarse.
+            $hero06Content = controller('moduleH1Type03', 0, [
+                '{a-button-primary}' => $boton,
+            ]);
+            $hero07Content = controller('moduleH1Type04', 0, [
+                '{a-button-primary}' => $boton,
+            ]);
+            echo controller('hero06', 0, [
+                '{hero06-content}' => $hero06Content,
+            ]);
+            echo controller('hero07', 0, [
+                '{hero07-content}' => $hero07Content,
+            ]);
             ?>
 
             <main>
+
+                <section id="showroom-button-modules">
+                    <?php
+                    // Catálogo localizable por el nombre exacto de cada recurso.
+                    echo controller('moduleH2Type01', 9);
+                    ?>
+
+                    <div class="showroom-buttonModules">
+                        <?php
+                        echo controller('moduleButtonType03', 0);
+                        echo controller('moduleButtonType04', 0);
+                        ?>
+                    </div>
+                </section>
+
+                <section id="showroom-profe-resources">
+                    <?php
+                    // Recursos revisados del laboratorio docente.
+                    // El encabezado principal identifica el recurso exacto.
+                    echo controller('moduleH2Type02', 0);
+
+                    $profeButtonPrimary   = controller('moduleButtonType01', 0);
+                    $profeButtonSecondary = controller('moduleButtonType02', 0);
+
+                    echo controller('art20', 0, [
+                        '{button-primary}' => $profeButtonSecondary,
+                    ]);
+
+                    echo controller('art21', 0, [
+                        'items'            => 3,
+                        '{button-primary}' => $profeButtonSecondary,
+                    ]);
+
+                    echo controller('art22', 0, [
+                        'items'            => 3,
+                        '{button-primary}' => $profeButtonSecondary,
+                    ]);
+
+                    echo controller('art23', 0);
+                    echo controller('art24', 0, ['items' => 4]);
+
+                    echo controller('art25', 0, [
+                        '{button-primary}' => $profeButtonPrimary,
+                    ]);
+
+                    echo controller('art26', 0, [
+                        '{button-primary}' => $profeButtonPrimary,
+                    ]);
+
+                    echo controller('art27', 0, ['items' => 9]);
+
+                    echo controller('art28', 0, [
+                        'items'              => 3,
+                        '{a-button-primary}' => $profeButtonSecondary,
+                        '{b-button-primary}' => $profeButtonSecondary,
+                        '{c-button-primary}' => $profeButtonSecondary,
+                    ]);
+
+                    echo controller('art29', 0);
+
+                    // art30: items controla las fichas (0-4) y benefits los iconos
+                    // del banner (0-6). Con benefits => 0, el banner se oculta.
+                    echo controller('art30', 0, [
+                        'items'    => 4,
+                        'benefits' => 6,
+                    ]);
+
+                    echo controller('artAccordion02', 0, ['items' => 6]);
+
+                    echo controller('art31', 0, [
+                        'items'              => 4,
+                        '{a-button-primary}' => $profeButtonSecondary,
+                        '{b-button-primary}' => $profeButtonSecondary,
+                        '{c-button-primary}' => $profeButtonSecondary,
+                        '{d-button-primary}' => $profeButtonSecondary,
+                    ]);
+
+                    // artVideo01 + moduleVideo01:
+                    // - El tipo youtube | local y todos sus campos se editan
+                    //   con Ctrl + doble clic sobre moduleVideo01.
+                    // - YouTube usa fachada ligera: el iframe solo se monta
+                    //   con consentimiento y después de pulsar reproducir.
+                    // - type fija el proveedor desde PHP; se omite cuando el
+                    //   selector del editor debe controlar la instancia.
+                    // - media_position: start | end.
+                    // - {content}: acepta cualquier módulo de contenido.
+                    // - {button-primary}: CTA opcional; no deja wrapper vacío.
+                    // - Encabezado natural h3, escalable mediante header_level
+                    //   o un {header-primary} externo.
+                    $artVideoYoutube   = controller('moduleVideo01', 0);
+                    $artVideoParagraph = controller('moduleParrafo01', 2);
+                    $artVideoCta       = controller('moduleButtonType04', 1);
+
+                    echo controller('artVideo01', 0, [
+                        'media_position'   => 'end',
+                        '{content}'        => $artVideoParagraph,
+                        '{video}'          => $artVideoYoutube,
+                        '{button-primary}' => $artVideoCta,
+                    ]);
+
+                    $artVideoLocal = controller('moduleVideo01', 1);
+                    $artVideoList = controller('moduleList01', 3, [
+                        'items' => 4,
+                    ]);
+
+                    echo controller('artVideo01', 1, [
+                        'media_position' => 'start',
+                        '{content}'      => $artVideoList,
+                        '{video}'        => $artVideoLocal,
+                    ]);
+
+                    // artVideo02 mantiene una composición vertical fija:
+                    // - article: 100% móvil, 90% tablet y 80% desktop.
+                    // - vídeo: 100% del interior móvil y 60% desde tablet.
+                    // - Reutiliza moduleVideo01 y su editor YouTube/local.
+                    $artVideoColumn = controller('moduleVideo01', 2);
+                    $artVideoColumnParagraph = controller('moduleParrafo01', 4);
+                    $artVideoColumnCta = controller('moduleButtonType04', 2);
+
+                    echo controller('artVideo02', 0, [
+                        '{content}'        => $artVideoColumnParagraph,
+                        '{video}'          => $artVideoColumn,
+                        '{button-primary}' => $artVideoColumnCta,
+                    ]);
+                    ?>
+                </section>
 
                 <?php
                 // aniBackground01 (clase utilitaria):
@@ -482,11 +623,14 @@
                     ?>
 
                     <?php
-                    $moduleButton02b = controller('moduleButtonType02', 0);
                     echo controller('art02', 0, [
-                        '{a-button-primary}' => $moduleButton02b,
-                        '{b-button-primary}' => $moduleButton02b,
-                        'items'              => 2,
+                        'items' => 8,
+                    ]);
+                    ?>
+
+                    <?php
+                    echo controller('art32', 0, [
+                        'items' => 8,
                     ]);
                     ?>
 

@@ -1,0 +1,43 @@
+@use '../config' as c;
+
+.moduleH2Type02 {
+    color: c.$color02;
+
+    @supports ((background-clip: text) or (-webkit-background-clip: text)) {
+        background: linear-gradient(
+            -90deg,
+            c.$color01,
+            c.$color02,
+            c.$color03,
+            c.$color01
+        );
+        background-size: 300% 100%;
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        animation: moduleH2Type02-gradient 30s ease-in-out infinite;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+        background-position: 50% 50%;
+    }
+
+    @media (forced-colors: active) {
+        background: none;
+        color: CanvasText;
+        -webkit-text-fill-color: currentColor;
+    }
+}
+
+@keyframes moduleH2Type02-gradient {
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}

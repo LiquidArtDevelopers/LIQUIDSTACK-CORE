@@ -1,0 +1,72 @@
+@use '../config' as c;
+
+.art26 {
+    width: 100%;
+    padding: 3rem c.$padMin;
+    background-color: c.$color01;
+    display: flex;
+    justify-content: center;
+
+    @media only screen and (min-width: c.$tablet) {
+        padding: 5rem c.$padMin;
+    }
+
+    @media only screen and (min-width: c.$desktop) {
+        padding: 8rem c.$padMin;
+    }
+
+    .art26-content {
+        width: 100%;
+        max-width: c.$textMax;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 2rem;
+
+        @media only screen and (min-width: c.$tablet) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: clamp(3rem, 8vw, 10rem);
+            align-items: start;
+        }
+
+        .art26-title,
+        > p {
+            width: 100%;
+            color: c.$color00;
+        }
+
+        .art26-title {
+            @media only screen and (min-width: c.$tablet) {
+                grid-column: 1;
+                grid-row: 1;
+                font-size: clamp(1.5rem, 3.2vw, 3rem);
+                line-height: 1.15;
+            }
+        }
+
+        &--has-cta .art26-title {
+            @media only screen and (min-width: c.$tablet) {
+                grid-row: 1 / span 2;
+            }
+        }
+
+        > p {
+            line-height: 2;
+
+            @media only screen and (min-width: c.$tablet) {
+                grid-column: 2;
+                grid-row: 1;
+            }
+        }
+
+        .art26-cta {
+            min-width: 0;
+            display: flex;
+            justify-content: flex-start;
+
+            @media only screen and (min-width: c.$tablet) {
+                grid-column: 2;
+                grid-row: 2;
+            }
+        }
+    }
+}

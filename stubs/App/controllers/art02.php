@@ -1,10 +1,12 @@
 <?php
 /**
  * Directrices de copy para art02:
- * - Encabezado principal: 50‑70 caracteres alineado con consultas SEO.
- * - Intro: 18‑30 palabras describiendo propuesta y zonas.
- * - Bloques p1/p2: 35‑60 palabras cada uno con procesos y métricas.
- * - Cards: 25‑40 palabras; permite <b> y <br> para enfatizar acciones.
+ * - Encabezado principal: 50‑70 caracteres en páginas finales; en showroom
+ *   debe identificar art02 de forma localizable.
+ * - Intro: 25‑35 palabras; objetivo recomendado, unas 30.
+ * - Párrafo p1: 25‑35 palabras; objetivo recomendado, unas 30.
+ * - Párrafo p2: 18‑25 palabras; objetivo recomendado, unas 20.
+ * - Cards: 22‑32 palabras; permite <b> y <br> para enfatizar acciones.
  */
 function controller_art02(int $i = 0, array $params = []): string
 {

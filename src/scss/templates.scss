@@ -27,6 +27,21 @@
 @use './resources/art17';
 @use './resources/art18';
 @use './resources/art19';
+@use './resources/art20';
+@use './resources/art21';
+@use './resources/art22';
+@use './resources/art23';
+@use './resources/art24';
+@use './resources/art25';
+@use './resources/art26';
+@use './resources/art27';
+@use './resources/art28';
+@use './resources/art29';
+@use './resources/art30';
+@use './resources/art31';
+@use './resources/art32';
+@use './resources/artVideo01';
+@use './resources/artVideo02';
 @use './resources/artPricingGlass01';
 @use './resources/artScatter01';
 @use './resources/artMarquee01';
@@ -43,15 +58,22 @@
 @use './resources/artSlider01';
 @use './resources/artSlider02';
 @use './resources/artAccordion01';
+@use './resources/artAccordion02';
 
 @use './resources/moduleH1Type01';
 @use './resources/moduleH1Type02';
+@use './resources/moduleH1Type03';
+@use './resources/moduleH1Type04';
 @use './resources/moduleH2Type01';
+@use './resources/moduleH2Type02';
 @use './resources/moduleList01';
 @use './resources/moduleParrafo01';
+@use './resources/moduleVideo01';
 
 @use './resources/moduleButtonType01';
 @use './resources/moduleButtonType02';
+@use './resources/moduleButtonType03';
+@use './resources/moduleButtonType04';
 
 @use './resources/moduleLoader01';
 
@@ -63,6 +85,17 @@
 @use './resources/hero03';
 @use './resources/hero04';
 @use './resources/hero05';
+@use './resources/hero06';
+@use './resources/hero07';
 @use './resources/moduleTest';
 @use './resources/footerInfo01';
 @use './resources/sectionDiskSlider01';
+
+.showroom-buttonModules {
+    width: min(100% - 3rem, 60rem);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+}

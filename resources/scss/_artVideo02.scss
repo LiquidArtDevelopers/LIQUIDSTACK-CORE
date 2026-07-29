@@ -1,0 +1,67 @@
+@use '../config' as c;
+
+.artVideo02 {
+    width: 100%;
+    max-width: c.$anchoMax;
+    margin-inline: auto;
+    padding: 3rem c.$padMin;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    background-color: c.$color00;
+
+    .artVideo02-content {
+        width: 100%;
+        max-width: c.$textMax;
+        min-width: 0;
+        margin-inline: auto;
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .artVideo02-title {
+        width: 100%;
+        margin: 0;
+        color: c.$color02;
+    }
+
+    .artVideo02-copy {
+        width: 100%;
+        display: grid;
+        gap: 1.25rem;
+        color: c.$color01;
+
+        > * {
+            margin-block: 0;
+        }
+    }
+
+    .artVideo02-cta {
+        min-width: 0;
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .artVideo02-media {
+        width: 100%;
+        min-width: 0;
+        margin-inline: auto;
+    }
+
+    @media (min-width: c.$tablet) {
+        width: 90%;
+        padding: 5rem 0;
+        gap: 2.5rem;
+
+        .artVideo02-media {
+            width: c.$anchoCorto;
+        }
+    }
+
+    @media (min-width: c.$desktop) {
+        width: c.$anchoMedio;
+        padding-block: 7rem;
+        gap: 3rem;
+    }
+}

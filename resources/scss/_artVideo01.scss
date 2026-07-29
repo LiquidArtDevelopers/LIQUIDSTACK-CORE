@@ -1,0 +1,69 @@
+@use '../config' as c;
+
+.artVideo01 {
+    width: 100%;
+    max-width: c.$anchoMax;
+    margin-inline: auto;
+    padding: 3rem c.$padMin;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    gap: 2rem;
+    background-color: c.$color00;
+
+    .artVideo01-content {
+        min-width: 0;
+        display: grid;
+        gap: 1.5rem;
+    }
+
+    .artVideo01-title {
+        width: 100%;
+        max-width: c.$textMax;
+        margin: 0;
+        color: c.$color02;
+    }
+
+    .artVideo01-copy {
+        width: 100%;
+        max-width: c.$textMax;
+        display: grid;
+        gap: 1.25rem;
+        color: c.$color01;
+
+        > * {
+            margin-block: 0;
+        }
+    }
+
+    .artVideo01-cta {
+        min-width: 0;
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .artVideo01-media {
+        min-width: 0;
+    }
+
+    @media (min-width: c.$tablet) {
+        padding-block: 5rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: clamp(2.5rem, 6vw, 7rem);
+
+        &--media-start {
+            .artVideo01-content {
+                grid-column: 2;
+            }
+
+            .artVideo01-media {
+                grid-column: 1;
+                grid-row: 1;
+            }
+        }
+    }
+
+    @media (min-width: c.$desktop) {
+        padding: 7rem c.$padMax;
+    }
+}

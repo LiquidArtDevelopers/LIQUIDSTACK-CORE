@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Capa_2" data-name="Capa 2" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 39.649 39.649">
+  <defs>
+    <clipPath id="clippath">
+      <rect x="6.491" y="9.348" width="26.667" height="20.952" fill="none" stroke-width="0"/>
+    </clipPath>
+    <clipPath id="clippath-1">
+      <rect x="6.491" y="9.348" width="26.667" height="20.952" fill="none" stroke-width="0"/>
+    </clipPath>
+  </defs>
+  <g id="Ilustración_37" data-name="Ilustración 37">
+    <g clip-path="url(#clippath)">
+      <g clip-path="url(#clippath-1)">
+        <path d="M29.824,9.348H9.824c-1.84.002-3.331,1.493-3.333,3.333v14.286c.002,1.84,1.493,3.331,3.333,3.333h20c1.84-.002,3.331-1.493,3.333-3.333v-14.286c-.002-1.84-1.493-3.331-3.333-3.333M29.116,14.73c-.04.048-.085.092-.135.132l-8.571,6.667c-.344.267-.825.267-1.169,0l-8.571-6.667c-.011-.008-.021-.018-.031-.026-.216-.178-.335-.432-.346-.693-.009-.213.053-.431.191-.615.317-.42.914-.503,1.334-.186.007.005.014.011.021.016l7.987,6.212,7.987-6.212c.036-.027.073-.05.111-.071.409-.228.933-.127,1.223.257.272.36.25.852-.029,1.185" fill="#000" stroke-width="0"/>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,88 @@
+@use '../config' as c;
+
+.art27 {
+    width: 100%;
+    max-width: c.$textMax;
+    padding: c.$padMin;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    row-gap: 2rem;
+
+    @media only screen and (min-width: c.$tablet) {
+        row-gap: 3rem;
+    }
+
+    @media only screen and (min-width: c.$desktop) {
+        padding-right: 0;
+        padding-left: 0;
+        row-gap: 4rem;
+    }
+
+    .art27-title,
+    .art27-intro,
+    .art27-items {
+        width: 100%;
+    }
+
+    .art27-intro {
+        max-width: c.$textMax;
+    }
+
+    .art27-items {
+        --art27-grid-gap: 1rem;
+
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+        gap: var(--art27-grid-gap);
+
+        @media only screen and (min-width: c.$tablet) {
+            --art27-grid-gap: 2rem;
+        }
+
+        .art27-card {
+            min-width: 0;
+            display: grid;
+            grid-template-rows: auto auto 1fr auto;
+            align-content: start;
+            gap: 1rem;
+
+            > img {
+                width: 2rem;
+                height: 2rem;
+                aspect-ratio: 1;
+                object-fit: contain;
+                justify-self: center;
+
+                @media only screen and (min-width: c.$tablet) {
+                    width: 3rem;
+                    height: 3rem;
+                    justify-self: start;
+                }
+            }
+
+            .art27-card-title {
+                color: c.$color03;
+                text-align: center;
+
+                @media only screen and (min-width: c.$tablet) {
+                    text-align: left;
+                }
+            }
+
+            > p {
+                color: c.$color01;
+                font-size: clamp(0.85rem, 2vw, 1rem);
+            }
+        }
+    }
+
+    @media only screen and (min-width: 40rem) and (max-width: calc(61rem - 1px)) {
+        .art27-items > :last-child:nth-child(odd) {
+            width: calc((100% - var(--art27-grid-gap)) / 2);
+            grid-column: 1 / -1;
+            justify-self: center;
+        }
+    }
+}
