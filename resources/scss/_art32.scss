@@ -3,7 +3,7 @@
 .art32{
     $cardFooterSpace: 3rem;
 
-    --art32-icon-filter: #{c.$filterColor02};
+    --art32-icon-filter: #{c.$color02SVG};
 
     width: c.$anchoFull;
     display: flex;

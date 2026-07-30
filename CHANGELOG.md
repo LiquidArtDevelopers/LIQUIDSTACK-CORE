@@ -14,10 +14,16 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   La inserción conserva el formato y los finales de línea del catálogo. Las
   semillas de backend, email, runtime legal, footer y logos se instalan
   únicamente cuando faltan.
-- Manifiesto del contrato SCSS v1 con las 40 variables admitidas por los
-  recursos estándar. Los valores específicos de cada recurso se exponen
-  mediante custom properties CSS con fallback al contrato, sin modificar el
-  `_config.scss` de los consumidores.
+- Contrato SCSS v2 con la estructura común de blancos (`color00`), negros y
+  grises (`color01`), colores corporativos (`color02`, `color03` y el
+  terciario opcional `color04`), sus variantes y filtros `colorNNSVG`.
+  Composer añade solo las declaraciones que falten, con `!default` y dentro
+  de un bloque acotado, sin reemplazar valores ni variables extra del
+  consumidor. Los recursos estándar quedan limitados a `color00..color03`.
+  Si el contrato no puede garantizarse, la sincronización gestionada se omite
+  antes de modificar recursos. Los antiguos acentos `color04` conservan un
+  fallback visible a `color02`; el config v2 los activa como `color03`
+  mediante custom properties sobrescribibles.
 - Historial de huellas gestionadas y comando
   `php tools/build-managed-file-history.php` para regenerarlo antes de
   publicar una versión. La huella canónica de texto tolera LF/CRLF y
@@ -47,6 +53,9 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   expansiva, y `moduleButtonType04`, con estados hover, focus y active
   convencionales. `moduleButtonType02` incorpora ahora una imagen de icono
   editable con fallback de sistema.
+- Módulo `moduleTable01`, con `caption`, encabezados y celdas editables,
+  semántica tabular accesible, entre 1 y 26 filas, entre 1 y 8 columnas y
+  desplazamiento horizontal responsive.
 - Acordeón accesible `artAccordion02` animado con GSAP, compatible con
   movimiento reducido y protegido frente a interacciones rápidas.
 - Recursos `artVideo01` y `artVideo02`, compuestos con `moduleVideo01` para
@@ -95,9 +104,17 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   alturas, saltos de línea y distribución responsive.
 
 ### Corregido
-- Las rutas, el fichero Vite completo, `_config.scss`, `_global.scss`, los SCSS
-  de página y las configuraciones locales quedan fuera de la sincronización
-  gestionada por ser propiedad de cada proyecto.
+- El selector cromático del editor inline ya no interpreta las variables
+  `colorNNSVG` como colores CSS editables y elimina el sufijo Sass `!default`
+  de las variables añadidas por Composer antes de mostrarlas.
+- La traducción de atributos `href` conserva rutas de raíz, anclas, query
+  strings, URLs relativas al protocolo y esquemas externos; los enlaces
+  relativos ordinarios mantienen su prefijo de idioma. `moduleButtonType04`
+  aplica el mismo criterio a sus rutas de raíz.
+- Las rutas, el fichero Vite completo, `_global.scss`, los SCSS de página y
+  las configuraciones locales quedan fuera de la sincronización gestionada
+  por ser propiedad de cada proyecto. `_config.scss` tampoco se sustituye:
+  solo recibe las variables ausentes del contrato cromático.
 - El instalador conserva el runtime legal y `footerInfo01` cuando un proyecto
   los ha personalizado, evitando que una actualización de CORE sustituya copy
   regulatorio o branding del consumidor.
@@ -156,7 +173,7 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   separación vertical y el exceso de espacio.
 - `art32` calcula sus cuatro columnas descontando los gaps y evita el desborde
   horizontal que producía el `min-width` heredado de `art02` en portátiles. Su
-  filtro de icono usa una custom property con fallback del contrato SCSS v1.
+  filtro de icono usa una custom property con fallback del contrato SCSS v2.
 - `art10` resuelve siempre su clase, `art05` normaliza las rutas de imagen y
   `hero02` ya no deja un placeholder de edición sin resolver. `hero04` genera
   su textura de dithering en memoria y deja de solicitar el asset inexistente

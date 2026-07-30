@@ -259,8 +259,8 @@ nav.is-scrolled{
                     -o-transition: 0.1s;
                     -moz-transition: 0.1s;
                     &:hover{
-                        filter: c.$filterColor02;
-                        -webkit-filter: c.$filterColor02;
+                        filter: c.$color02SVG;
+                        -webkit-filter: c.$color02SVG;
                     }
                     
                 }
@@ -370,8 +370,8 @@ nav.is-scrolled{
                 filter: invert(1);
                 -webkit-filter: invert(1);
                 &:hover{
-                    filter: c.$filterColor02;
-                    -webkit-filter: c.$filterColor02;
+                    filter: c.$color02SVG;
+                    -webkit-filter: c.$color02SVG;
                 }                    
             }
         }

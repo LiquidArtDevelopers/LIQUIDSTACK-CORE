@@ -2,9 +2,9 @@
 
 .art11{
     padding: c.$padMax;
-    background-color: c.$color04;
-    background: c.$color04;
-    background: linear-gradient(0deg,c.$color02 0%, c.$color04 100%);
+    background-color: c.$color02;
+    background: c.$color02;
+    background: linear-gradient(0deg,c.$color02 0%, c.$color00 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -44,7 +44,7 @@
     }
     h3{
         text-align: center;
-        color: c.$color00;
+        color: c.$color03;
         letter-spacing: 2px;
     }
     >span{

@@ -113,6 +113,11 @@
                     // El encabezado principal identifica el recurso exacto.
                     echo controller('moduleH2Type02', 0);
 
+                    echo controller('moduleTable01', 0, [
+                        'items' => 3,
+                        'list_items' => 3,
+                    ]);
+
                     $profeButtonPrimary   = controller('moduleButtonType01', 0);
                     $profeButtonSecondary = controller('moduleButtonType02', 0);
 

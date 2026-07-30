@@ -35,7 +35,7 @@
             display: flex;
             flex-direction: column;
             gap: 1.75rem;
-            background: c.$color03bis;
+            background: c.$color00bis;
             padding: c.$padMin;
             border-radius: 1.5rem;
 
@@ -44,7 +44,7 @@
             }
 
             .art13-quote {
-                font-family: c.$fuente01, serif;
+                font-family: c.$fuente02, serif;
                 font-style: italic;
                 font-size: clamp(2em, 5vw, 4em);
                 color: c.$color01;
@@ -102,6 +102,5 @@
     }
 
 }
-
 
 

@@ -13,7 +13,7 @@
   background: c.$color00;
   color: c.$color01;
   overflow: hidden;
-  --glass-title-font: #{c.$fuente01};
+  --glass-title-font: #{c.$fuente02};
   --glass-title-color: #{c.$color01};
 
   .artPricingGlass01-bg {
@@ -238,7 +238,7 @@
     justify-content: center;
     padding: 0.65rem 1.1rem;
     border-radius: 999px;
-    background: c.$color03bis;
+    background: c.$color00bis;
     color: c.$color01;
     text-transform: uppercase;
     letter-spacing: 0.08em;

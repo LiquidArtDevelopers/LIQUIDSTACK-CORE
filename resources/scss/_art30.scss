@@ -127,7 +127,7 @@
         justify-content: center;
         gap: .75rem;
         border-radius: .75rem;
-        background-color: c.$color03bis;
+        background-color: c.$color00bis;
     }
 
     .art30-benefits:empty {
@@ -151,7 +151,7 @@
         height: 2.5rem;
         display: block;
         object-fit: contain;
-        filter: c.$filterColor02;
+        filter: c.$color02SVG;
     }
 
     .art30-benefit h2,

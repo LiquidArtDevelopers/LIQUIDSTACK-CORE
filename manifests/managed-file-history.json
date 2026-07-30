@@ -366,6 +366,7 @@
             "sha256:787a74f2bf7cf5ccae7d137aa5b391f5571175377868d5c13d49afd169b51798"
         ],
         "resources/js/_inlineEditor.js": [
+            "sha256:6146336267239f730a9648837b0edf84444f15db017730ab514f7131e46b12a0",
             "sha256:7d8b4cb590f17dcd6bd7bc6ad5b126bd379d1e0c1d818c8a9e2ab42682da3747",
             "sha256:a9193adcac304dbf5f51e31d5ab64465ed8bb2d6fbb53ac2b0a102976afe366d",
             "sha256:dcf41437a0db4dc5daefc4c974172911e3863c9890f59bdc6041c9939b77ff29",
@@ -417,10 +418,12 @@
         "resources/js/_traducciones.js": [
             "sha256:01fbf248ac98bc5a3848b08f635fda17b7bdcc8af315934f1d0ece775bab1acf",
             "sha256:5cb5c24386f32332d91f2a42be2fdaf77cc2679f4563186d09b24293dc2f2f92",
+            "sha256:79ee0fae086863e9f082e1767c967837189f137edc45bbce3921f2155e0d1d7f",
             "sha256:94aa4bc196fff4ec4b5a5c977727b62e47f84c21b68ad4487f5c9a048853786a",
             "sha256:9b7c2f6cccc1c98b7fbb76aa67dc51d79391a8604ba93a05e7a04c4fa498c97d"
         ],
         "resources/scss/_aniBackground01.scss": [
+            "sha256:362ab650aff30c3ad32a80bf7bac0127b84ee6237445c22f0f3c94683dd8a2de",
             "sha256:77d113916a91124a51e89f97fcb1a3b7589649fbeb249ccf7be6ef694ac37052"
         ],
         "resources/scss/_art01.scss": [
@@ -433,6 +436,7 @@
         ],
         "resources/scss/_art02.scss": [
             "sha256:056a57669f7afa7339926c295afbd182024dfb73be62bdfaa14f4ce19597199f",
+            "sha256:1e3992e11abd23120d75e9d85baf6eb4e4690607221dd47697cba953f7896868",
             "sha256:7976764228bcf31d429c7cb52822ce13dd057941d1367a9b121e4063155fcaed",
             "sha256:88e4ffe15d9b1f77fb0206b6f8be23d3bcba4deaca25f66f0570adf9eecb8d89",
             "sha256:8a08004218bc66d45f2943ee4f2cb5f819399c4231363a7cf3053a41aad90008",
@@ -457,6 +461,8 @@
         "resources/scss/_art05.scss": [
             "sha256:035c8810d8ea200553eecf32146e020c08f233c430c7549d37e999a2cad78603",
             "sha256:2a23c5ada3c2f792a4107c72309446709c848f7c0f66e427a8d261c56b0d9ebd",
+            "sha256:4f319496432f9877021d34e4ddb857c4651ba00e994de4fa0cd071561eaff7dc",
+            "sha256:ab8a6df2967e1e196e373287c1b04a91eb0c8c7e208721411a872f1a64d6ad8d",
             "sha256:c67139c00e67e4444bfc053895bd5242fca91eb2657b590766abadf242229591",
             "sha256:dd172d63e1854416f8d070b2673032fb1bc49661d0ee132fc463aaaffc87612b"
         ],
@@ -474,34 +480,41 @@
         ],
         "resources/scss/_art08.scss": [
             "sha256:202474b8f4c1c080f8d5ef586b6a60d87249e9fe0fc046c4c4cbe4c6240ce8bb",
+            "sha256:a75eb56a8d9157f5cff12c7e1860d301af3916715da9fdcac6ea53ecef5ab35c",
             "sha256:abb6adf058ebd39d44ef50b089eace60586d9039fce437c1662d6f9a72c228c6",
             "sha256:c9948f9845929b2b10f508b13db7a7c5a6363a1440c20b606cc688739f4ba8c4",
             "sha256:efb87b5f90c38e7018190a534af9bb704b7350565305b3fe4c9c554a36683a52"
         ],
         "resources/scss/_art09.scss": [
             "sha256:4cb567dae2ffb7f05f358503dea3dfe3d43b0060665989f6537bbf60b5dbc292",
-            "sha256:c70ad4a92fa156a8497fe4e5b1efeebbdff0dd66ac19b479d15713459e8789e8"
+            "sha256:c70ad4a92fa156a8497fe4e5b1efeebbdff0dd66ac19b479d15713459e8789e8",
+            "sha256:cef74f5a2a33ab2e7bdd219c084c57c1d65176ff587e8a90639afb4a3b270b2e"
         ],
         "resources/scss/_art10.scss": [
             "sha256:b3773a3d766343554ea973feaa9efc61c5e076893792dcc5e3f22e9ef169fa51",
+            "sha256:bb0b73daab7818da3fa60973bfb4f4a937129cf5d2ce495ff02d626d48f231d0",
             "sha256:f5548c15148eb76fc1578a393f729d2ca43b8b1f6f5917fbd917a19bfad52bfc",
             "sha256:fc6a0d00faea7b83a501fcb2bb19fdfd8440d6b1b1322f534d50a3fb001b0061"
         ],
         "resources/scss/_art11.scss": [
             "sha256:7242ff51ad0d07223b1268bbb876f4d381754c20d10cfa771df242965cc76476",
             "sha256:a22b7703a3f8526270c6a9c3f9220e373ad0b960dff5ee2399295248b022b1d6",
+            "sha256:e3f89a4df91b9aef1c3bedc30fd2c4f4a0c071023b1ce774b40e39d9f893ca92",
             "sha256:eaf30de873ed71dd42530cc9ed84cb6d2c0083702d3277f79039a651d9c1483d",
             "sha256:f22494cf3689ddc4dc1a8a41d49ea72ba6236a29396290c145357322dce400d2"
         ],
         "resources/scss/_art12.scss": [
             "sha256:00b55f1af5822f899431d01f3a2033f00cdcee83670baac0cd63a7e278fd7251",
             "sha256:85a6a3aa7946662a94aa9ccdca715f23b0b6ccd267d5a9023c55a7a22dd4b125",
+            "sha256:8e1e53cd8c2d7afc417cf71506f338e14827c678add5f6ead3d40b1b78ef61a3",
             "sha256:9be075342f581dc4a8dc824c4713b44e56480e190871f3b27a9c6c0d734c4156"
         ],
         "resources/scss/_art13.scss": [
+            "sha256:2af329ce6969baf0d71e09a91f008eef5332144162ca699d5bb0a02258742ad7",
             "sha256:34501439afcd8bb51c8b103f0142834bd46cf36ce2ffd5921cfe3206971395a5",
             "sha256:6fb846aa919be112db2cfcf404c9201dcc9218bc78563c6bbf5a332b1edd0fe5",
             "sha256:de864a2fffcc54f1154ffaf86767ed40a375b21c8ccb7e50e14c841b8f04fdb1",
+            "sha256:e5aa89c939c70a64a30326d8ab0b38b480cda4e3f887594900e7b80984a778ba",
             "sha256:f79556e54fa1e63463fc1fd625af1b36e3b18b13f953dd015a58c80bd8d48526"
         ],
         "resources/scss/_art14.scss": [
@@ -530,12 +543,15 @@
             "sha256:e1fa66abafe90e765aae9824cbb9c76252f7ecd44994bd6fc93bc1fd485e8b52"
         ],
         "resources/scss/_art17.scss": [
-            "sha256:13f60a2c52ee1b2827e14eae1ad0260c99c9082a3818b1eb89ef87e7e1db4811"
+            "sha256:13f60a2c52ee1b2827e14eae1ad0260c99c9082a3818b1eb89ef87e7e1db4811",
+            "sha256:74ed77842d8aa87ea46227889d1bb05a3ccbb33f2ca8d42a19c619e2b80c32d5"
         ],
         "resources/scss/_art18.scss": [
-            "sha256:cf667e8865c7f84af82e42ce0ac5da65de079278ee029f380aca7ad4bbda221e"
+            "sha256:cf667e8865c7f84af82e42ce0ac5da65de079278ee029f380aca7ad4bbda221e",
+            "sha256:ebf80119e23278f8660662df544a66d7265248034548eeaca14b7ad4817eddb8"
         ],
         "resources/scss/_art19.scss": [
+            "sha256:7726708f887a9a83f56cfa5f5e50ad3593eda8d38a048ac1886acc2b8b05af40",
             "sha256:c22567e07e3debd4ad21c911a1b83d5ac601ee999e7b6b2336f7201e6b4bf047"
         ],
         "resources/scss/_art20.scss": [
@@ -560,6 +576,7 @@
             "sha256:4ff52c2671f326e822473deb82cbef62f32aefe188f3412c1543fab57fb5a465"
         ],
         "resources/scss/_art27.scss": [
+            "sha256:55f7a9514457fc3c20d2de52c12cbef27f0e000004c560ef1ad978389b11f752",
             "sha256:65d4b3fb3f8fdddb854a2860c5ab91e87796074568a8076d34bdb7028b8f15ee"
         ],
         "resources/scss/_art28.scss": [
@@ -569,20 +586,25 @@
             "sha256:226ca748b6b98e0db6257a19a18eece559eee297fbf753344672f36e51b2cb35"
         ],
         "resources/scss/_art30.scss": [
-            "sha256:016ee1b06f234f7d772716662115a5b4fd8cfc10aad0e819f6e6dc26928697cd"
+            "sha256:016ee1b06f234f7d772716662115a5b4fd8cfc10aad0e819f6e6dc26928697cd",
+            "sha256:392629c39181ee6deab7fb5e90d1cead8fe8db5fb12b7eda3f50241adf8aaf84"
         ],
         "resources/scss/_art31.scss": [
+            "sha256:2fa8882a729d1611e4949f5744283e3a4b5c8590a7c7dad8284ac4e67218537f",
             "sha256:b2c2fe23db5ca86f5c3f89d987fe6234faead8eea2c66090e0d9b5545f30b660"
         ],
         "resources/scss/_art32.scss": [
             "sha256:4a66cf164f88209a21110bae82a91ae4f75de3b9db155ed72b55efc32aa0aab3",
-            "sha256:6624608326a1960263bcf4ddd82725154a94140a37624ff5bc58fbf96a77ac0d"
+            "sha256:6624608326a1960263bcf4ddd82725154a94140a37624ff5bc58fbf96a77ac0d",
+            "sha256:fc68a5dc64526e038d5b820ac2403a969bbc36b7089139a6caf58606579fefc6"
         ],
         "resources/scss/_art33.scss": [
             "sha256:4b662b56bd1488d3ecc342cf5e774436c14961bc1ef04072bfc016cad2b33470",
+            "sha256:ce3729f1147cb90ea5c69807dd2b9c151f55c911439cb9a17306bb419ae3da78",
             "sha256:e06d474f42cad44d5c2e1660e389e4a8d635c053576279e2a11615b6ac5f6519"
         ],
         "resources/scss/_art34.scss": [
+            "sha256:32e5e11ed0e8d134092df05557dd490bdfcb8c32f4eaf9a89372e1dd0e6d41a1",
             "sha256:ab1384882a9e0cf33778844e166c9f3fd4d76915c45ae5ca9a512d5245173418",
             "sha256:b8378a27544047798661f9704f857e72f8c2e0fa5955819b3be792a516b09490"
         ],
@@ -593,29 +615,36 @@
             "sha256:8b51d4460d6935358d1e343b9d7e722b2828f054f08b2db42956860670cd4dc3"
         ],
         "resources/scss/_artAccordion02.scss": [
+            "sha256:65e5b362c54002d4e576176f03870c5d31011d734920a7fec8125e9b15a4d244",
             "sha256:b186c17c3d105cebac732c4f64e535030df02ae73ac97006dd69358c700e09dc"
         ],
         "resources/scss/_artForm01.scss": [
             "sha256:37bf4ce73ef5873c346f2e6fb24242758d787c526692549155180ce95f6edd68",
+            "sha256:40c409c5dd3b3a3c16a3ad05fc8faf91a86aacee67b63c9266b1fd985d098067",
             "sha256:b2fb66f5d1b5927a8627c6bcfbed7b643f45de686f0ea0ffafe03437ee5f903d"
         ],
         "resources/scss/_artHeroScroll01.scss": [
-            "sha256:40e95e48f466a82a0d46ffdbb58ce1ca0d93699206ad43ea9b1b97d2fbe5a982"
+            "sha256:40e95e48f466a82a0d46ffdbb58ce1ca0d93699206ad43ea9b1b97d2fbe5a982",
+            "sha256:f835e7eda36e92a2516ab63e5487239152094ab10ddb9873cca7c811ee376f2d"
         ],
         "resources/scss/_artMarquee01.scss": [
+            "sha256:bbac2ed9f37e754524f02eb975a23fda489fd9813c0c1b1c1001922a428afa31",
             "sha256:c48606be4e9ff1e3f2530abb7437e5316e7c40c47767193af48cb3f8c1128400"
         ],
         "resources/scss/_artPricingGlass01.scss": [
-            "sha256:a92ce209c82072b8e709087b43cf89c956260d39b63b47e991a2e02db67dbfa8",
+            "sha256:6dde9657fd3f9b63a63d35803eade377e570ce0871536e0c576076bb5136b535",
+            "sha256:9f7e9575e0d1770e667fbd5c0ded3043d9df1b00069d45cecbd7a000daff9b42",
             "sha256:b6c2acfab9196ca03484c9b56cb72d09f3b517f0c255319abfc45195cd7ce003"
         ],
         "resources/scss/_artScale01.scss": [
+            "sha256:4391f66a1c8a02e03c8856f7ce51da62d06877ed6ee9e4a2cf0f3b4bd71ef3dd",
             "sha256:d596f494aec4334bfa42a53e253c22d62f53bb585155c9bbdc1359bd1f9fc624"
         ],
         "resources/scss/_artScatter01.scss": [
             "sha256:8b667a66f87ee380af34fd119557307f0ec0e53cebcf3bd36611252b01853b4e"
         ],
         "resources/scss/_artSlider01.scss": [
+            "sha256:230a6e94d4268490143d033246fbed2a7fbb4be8a2bdd92d167fad25ad95059f",
             "sha256:299e34a250c1a21e8174467ad43e8e6351d8d3222c91aae9330e23433c1c6d99",
             "sha256:43ac1ca3af4c6d65c0406ad009f4f53fe387fa812296d02b5665fabe52d49792",
             "sha256:8e44796c853c54ba9777b11dfd6fa8ad8360a610394bbe261272a1a502e1b5d6"
@@ -634,9 +663,11 @@
             "sha256:e92d90dd39b1b946346236f3c090c7d82ba967e972e52b496398f5c719e24ef5"
         ],
         "resources/scss/_artWorksSkew01.scss": [
-            "sha256:22594e1d846dc930e6196078d250296fd46dd407c2bb1841aa537fa0041ab5e2"
+            "sha256:22594e1d846dc930e6196078d250296fd46dd407c2bb1841aa537fa0041ab5e2",
+            "sha256:30911923ce3db240b20b2d97fbfbc381e86633c48855490ba634eaadc07a1063"
         ],
         "resources/scss/_artZipper.scss": [
+            "sha256:0d1ae36440b28ac0696ec734fa4caa3df143f1d4ac9dd7704c1710fc11b76cbc",
             "sha256:223094876aeb9aa275fc2a14c5009e9c1501bee0d69ac9c67973178e0774c6f0",
             "sha256:4ca299677b6f41effa4573d0b089aebed44917df2b04321082b93c6149fa35cc",
             "sha256:5d7d79742e7db78b3770ddb01c3fefb0af7e9a85516800eaf41c1feed5b795e7",
@@ -653,6 +684,7 @@
             "sha256:077addf639d612a0eb0611e4098ccc877efcfd9be6f88af8479ef50d52efd449",
             "sha256:1a2805d5b7ad728675db5fc52bbb742f3d666693ed8f9e45f811358f68940b7c",
             "sha256:3ef5cd11ee718792f963acdc0a343a7eee35e959ffdcd2e3d2d4e4dead0221dd",
+            "sha256:5bdea969c0f7e8daa3bcb7cbe4645fbcd2b9c6b6d49caf75fd723372b2675d13",
             "sha256:d497760efe432dbfbf3210c0b7501f4a50680e9acae7fd03ae1c290afc9da28b"
         ],
         "resources/scss/_hero00.scss": [
@@ -672,13 +704,16 @@
             "sha256:acf89ee0e49e22eb9d237b6216a1782fa31d022098f29c902a55124e1f72a9e8"
         ],
         "resources/scss/_hero03.scss": [
+            "sha256:0db41ec58ba9ad6d7ef0db96432de250e1421bca912b3d18c7852e40a5942aad",
             "sha256:c631761add9b040057c3ebd068f86cee964762e93e41a3d2789bad1948a97d28"
         ],
         "resources/scss/_hero04.scss": [
+            "sha256:014fea7e93d7f1e09f95f12e8542881af447e5d1b5a4128ad2af218662159620",
             "sha256:a4de3a886a92b89d32e95ecc848049b02227bc3e387b8b58a3ded456dde03fd7"
         ],
         "resources/scss/_hero05.scss": [
-            "sha256:8172b1f9217995334a1e3d7ec0dc1542f8d913520e2fe321bed3a0ec3e250da9"
+            "sha256:8172b1f9217995334a1e3d7ec0dc1542f8d913520e2fe321bed3a0ec3e250da9",
+            "sha256:9aad582bf46156af4c331231bf59a118c070f1babcaaa617dcf2cebfbe7bb5b7"
         ],
         "resources/scss/_hero06.scss": [
             "sha256:e4b57a0dad6f50c73a1281566b958c8485d8010327521c9e47ef4aedf417bc65"
@@ -694,6 +729,7 @@
         ],
         "resources/scss/_moduleButtonType02.scss": [
             "sha256:4a2398424c9e661d68f89c13ba9c2a506023b99b5b386175b0d10598edde1336",
+            "sha256:69e47beda6819faa0239c7c8e6640e163ec427a550d7cd2a89866e0d203ff0ba",
             "sha256:9d7619e151666a996ae55e4a026b8848eb678212b1bc4aa4a5c495f347c546df",
             "sha256:a9a32868c6cf3fb782f3ca1c8fd371e38e4a13980685410cd5d2e6200d6af077",
             "sha256:cabd599fd099427a466b1c3533ec364c8a2ba995d94cdcd04f060802371a068c",
@@ -707,23 +743,28 @@
         ],
         "resources/scss/_moduleFormContact.scss": [
             "sha256:57128090c922c024d4542382e664ca0c669d82558af3c43c8b4cf40f8961fd8f",
+            "sha256:9acb975f4de25356139b1a49c769da19e9b8e023d1097876f80b67b1c3894450",
             "sha256:e43ef3dcab0f6824ec6b6444e7cece23d7f0a99d183c83485c3d1763f25ebb74"
         ],
         "resources/scss/_moduleFormContact01.scss": [
             "sha256:4ff9a054e672ef4ce3b200e9652e8977ad5f45c9c417c00e1b5d397c61a0737b",
+            "sha256:5860fcfe5fdc46e6d70e120d1b38e2feb00b301fabdf5bf900decd3cb0f93036",
             "sha256:728f328503d4a61cf065e899a77bb257d60781d07a06e8090020628b29839865"
         ],
         "resources/scss/_moduleFormContact02.scss": [
             "sha256:664924a9961c4df136d50ac403fe7a852a18dd651ff59179df569135487a6ec4",
+            "sha256:6884a462c6e93920753fe72e54867cde42de255937b9051027aa839f3152556a",
             "sha256:e980cc02daf364a3e051bbd3d3d8e70ec90ebdb5089ce4b46725309f75fd53db"
         ],
         "resources/scss/_moduleFormContact03.scss": [
+            "sha256:8bb617e68dbd62e78419c23b99404ed6a86f9410cde3b0a0d7fdb2647cd5337c",
             "sha256:9809faff06db4194351f92e94601abd8d696feea2a74ff9a86939f6198332401",
             "sha256:cfa9195842601456530fec604c87cbc4519107d1ffbc11a69121e0e00bde702b"
         ],
         "resources/scss/_moduleH1Type01.scss": [
             "sha256:5151ec23f7b312a3e979b5e9cae7b30cdbf4042dc662100a6c35516eeb498d4e",
             "sha256:6bc1cbf7367596893b326f00e3eab28df852e66855e179efb2a6757db4095163",
+            "sha256:752f8b732b908ac9ec80b996c7209e001c9e70817b9ddf109009178406181de1",
             "sha256:b719cb74b0a9ca7f60f5b849f03e4707f101ebf3ea1c443130d2f23c84e7010a",
             "sha256:f3ef66a6783f1a58f5cb71a786f0482396877b134560ed4f0a23ef205a77fd35"
         ],
@@ -740,6 +781,7 @@
         "resources/scss/_moduleH2Type01.scss": [
             "sha256:04f7c5ae3fa1195b72f9bbe5483b01d021b90aafdb2fe4469568824f6ccfa334",
             "sha256:207269c6ad8062670252d90e52794c7610826180aaaa9e2127d9211f5020ed67",
+            "sha256:6e5ee5760c7e2582d7af699a04a487d9fc0e6b219dac061ce4c39c3f259c248e",
             "sha256:73d67c541c3d1ec2a0431030e106bfc56e93f0e642bdbc8cca7fe232ab10b3a3",
             "sha256:cb10febc2cfd5839adaf2e8b9faea4b5da970d627d8c1c58f49356e744ec34cc"
         ],
@@ -758,11 +800,13 @@
         ],
         "resources/scss/_moduleList01.scss": [
             "sha256:883136d7450040baec201503cea275f995ac9acd8c5e76855f3d0857dea1d9c8",
-            "sha256:8f26cbfc75af42ffe376a2a66281de54a95d3cf1debcf6fc34f5754082ae250a"
+            "sha256:8f26cbfc75af42ffe376a2a66281de54a95d3cf1debcf6fc34f5754082ae250a",
+            "sha256:aa8de9c862091811e8740e88afdbecdecb8f7d3b0b9ef2651e9739481dc03c8a"
         ],
         "resources/scss/_moduleLoader01.scss": [
             "sha256:1a11600a70ed9519e1d342878bb87da5c8d4a3f2e64c802939a6a1591acab878",
-            "sha256:699a50e8b8139d7229cdd8b90654f820e2e26c2c57a04acda215ebaff814176d"
+            "sha256:699a50e8b8139d7229cdd8b90654f820e2e26c2c57a04acda215ebaff814176d",
+            "sha256:f3c48e8ad955bc303483e0be684d4e1c09351415998501891337150289f90683"
         ],
         "resources/scss/_moduleParrafo01.scss": [
             "sha256:a71721ff4e91e097b6d31f25e3a840640f75e3826888bbee77ede94463342a90"
@@ -772,6 +816,9 @@
             "sha256:5f700e65ac925debc3bae489c21bddb23f86c3f84bce9f25a50f5d10cff955b5",
             "sha256:8a063488c0c22ea7e76c48892918f36f2dd23947a15a45a1e3118cdc82d94ac1",
             "sha256:bb39d4db3330d381e9810bb4dba60646f770bfaf7820354b9d3eeccd3f52c194"
+        ],
+        "resources/scss/_moduleTable01.scss": [
+            "sha256:9c8b926d9f36ecfa138215bfc51bbe105c8dba7c016a074209a6f60ee577919b"
         ],
         "resources/scss/_moduleTest.scss": [
             "sha256:4b1f6750eafa965fb010334823723069f27842d60b732224f11f091c9da55266",
@@ -783,6 +830,7 @@
             "sha256:69463581844489a390fb4f4eb2e54841b0475c1927e99423d15360bc505e5efc"
         ],
         "resources/scss/_navMegamenu01.scss": [
+            "sha256:e0cca77fca28bb5039005b5835c29460721e5a37b4082287779ddd10306059f4",
             "sha256:e10840489866908cacb4f59db838d8d73fe3c7f6366fb8d8a47d223354809e50",
             "sha256:ea40d346381fc74f8ae2d8283fd9e219921e223a02919207c0cd0c638b36076c"
         ],
@@ -799,6 +847,7 @@
             "sha256:be7d7833135b44828b57f1113ae4a601c9c48d683c76aaf860207b447c137daf"
         ],
         "resources/scss/_sect02.scss": [
+            "sha256:103fa9f74cbee623762fcd9f25c8e789996de99dacefe5cd18823d50bb6a1f3d",
             "sha256:11077117fe046e24ca63e4e00fd8d2ce5176801fee8f9d082cf8a3f405390bb1",
             "sha256:240a3c91891442d473d83ed66709ccd4c8821df1d77fc3a5696de1e0364970dc",
             "sha256:402c6b39d0db7c03dad244069131d62b7076f6ca5ba5e5bd78d54c04df938cec",
@@ -817,17 +866,21 @@
             "sha256:d01faf08ffaba6a5d4a447391b78765d64194c1f10b1720bf73e541c90763547"
         ],
         "resources/scss/_sectionHScroll01.scss": [
+            "sha256:5e36ecd53a673148fb6fed6b41afeb808b2d68d3d3d70c08f7f8f7d78101061d",
             "sha256:66e752206b13767b4903fcfda9ef7050924f804ccd08b1666185b234795c52ce"
         ],
         "resources/scss/_sectionParallax01.scss": [
+            "sha256:6805a12902569743c343998aa65731d10222d523a0f79d6671d5a62ff61efdbf",
             "sha256:c2fff7828dc94820006ed59f29640382ee6b19fce82597e93373c8f99d05796f"
         ],
         "resources/scss/_sectionParticles01.scss": [
-            "sha256:6f9c35e87a2d6f2fbcc274f5c425508d611a61798a706c80169961bcf519f2d4"
+            "sha256:6f9c35e87a2d6f2fbcc274f5c425508d611a61798a706c80169961bcf519f2d4",
+            "sha256:7a3ef61a1f08097f345efdba872d8981208c6f971d03bf3cd3f52dc5822a174b"
         ],
         "resources/scss/_sectionSkewGallery01.scss": [
-            "sha256:54d248fac996dcbe0f183abdd1ddf264d9f652260cd4e0d0312175b7ac508d80",
-            "sha256:85bf2ec07eb6442b70220b1d834512099461cbd1338970b76182d69ab0274420"
+            "sha256:831870c6d79e4a960b677c1383785623481b70922cb9ca9c044ff9893de146b6",
+            "sha256:85bf2ec07eb6442b70220b1d834512099461cbd1338970b76182d69ab0274420",
+            "sha256:e33d0e252c2abdf330698ff879a1f9ca86fb20992f4c93a3d1268cc80f8d7909"
         ],
         "resources/scss/_toast.scss": [
             "sha256:17a55a7e0bc0eb43a91759e958f36bd3951fdcb83a597f5bbe01dbd99f8e3cf7",
@@ -860,6 +913,7 @@
             "sha256:fd0e80c29580d621f304ad095c2b381161bacbd3a7fce90a1656c687f7956722"
         ],
         "src/scss/templates.scss": [
+            "sha256:7760ac0356fcd5f2fd9341bd3f3fca0bfe39b69c38331e4d669cbaf75c602cfd",
             "sha256:8562e7e02266f49412b608e6f8d8a2000b63f0d3e729419e658b06d9902105a6",
             "sha256:89e2e8a56292967c45cbcc97fca595799d634e9d30706fc4848952b23b32e2db",
             "sha256:902ec197c0ba731a51e7523bc4613fed51265a583766be1e95a2318560005353",
@@ -1110,7 +1164,8 @@
             "sha256:c3e8a8f5b047f64c1040b8c0de92550efb5daa58d10fe574b17ec7125c74a4e1"
         ],
         "stubs/App/controllers/moduleButtonType04.php": [
-            "sha256:d5c5c7c3f4b64976b70beee136fe2a61e53f57de41e960c798fb4d5adb6d4b29"
+            "sha256:d5c5c7c3f4b64976b70beee136fe2a61e53f57de41e960c798fb4d5adb6d4b29",
+            "sha256:dc19f5fd04cde773d3add55f2012960641915d3c34884da1bfcd7c452594c156"
         ],
         "stubs/App/controllers/moduleFormContact01.php": [
             "sha256:257a61a1d3bc7bbf8e691b2ce2f150c60e7861f0ce43e22dc76bce10f2b09334"
@@ -1157,6 +1212,9 @@
         ],
         "stubs/App/controllers/moduleParrafo01.php": [
             "sha256:cca81b76378135e56f69a8d8814601b7ca137af3163b44b89443a2f40947dfbd"
+        ],
+        "stubs/App/controllers/moduleTable01.php": [
+            "sha256:8731591f8a7f60767a400102bf9e637dddd8730a24dd7ca9a63c9ffd2f748e0d"
         ],
         "stubs/App/controllers/moduleTest.php": [
             "sha256:44b1a2316c1ac995b3df5342c61d9683d1ef26d9277c7af4886662c94ed95ff3",
@@ -1403,6 +1461,7 @@
             "sha256:2c2c85d1dc62ab3e14696541cb7bc627a018cfd3bcb6596081d47fbd3e2fa6b5"
         ],
         "stubs/App/templates/_moduleButtonType04.html": [
+            "sha256:46dd09238a4f317c8324bd4db8c6f2da07f1a943a6c7dcb6cd304015b12717db",
             "sha256:bf701c295937cf9a1e011ca015777be7b701eb2d4b53e3d5cfc8364e063a2591"
         ],
         "stubs/App/templates/_moduleFormContact.html": [
@@ -1455,6 +1514,9 @@
         ],
         "stubs/App/templates/_moduleParrafo01.html": [
             "sha256:491a34c5bbc0df6c9aef50e3d4bba7b60019b554d716ef02513fe5b976b29619"
+        ],
+        "stubs/App/templates/_moduleTable01.html": [
+            "sha256:a9dbb41b68b1dc7c79762680ea31f9caa42eaa814d713eb9fb8c32b34421fabe"
         ],
         "stubs/App/templates/_moduleTest.html": [
             "sha256:d10f130781af5f1493553734a6b4a0180dbc9642d8688e1b34e127fd2fb57a5c",
@@ -1514,6 +1576,7 @@
             "sha256:836870942c4f19c6d8139c2b6c0cf11d0610e7a6356d75da6c042dfeb002eef0"
         ],
         "stubs/App/views/_showroom.php": [
+            "sha256:345baed1132dc4e979126465eb13872415e441002948ad897989d74397f91f8f",
             "sha256:48422e64c39ff094875e86fbbe473dd44deddf7c36baa5741c853b5de41e39e1",
             "sha256:c08275f5de2a37fb5668c2d1458bf17cd723282bd08fcc98c533db2e766d9cc3",
             "sha256:cddce0b517497066e6f5c21bf4e29133773aa2fb1aba32450db44db6f5711a9d"

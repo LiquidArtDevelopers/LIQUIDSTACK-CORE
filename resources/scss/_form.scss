@@ -209,8 +209,8 @@
             }
             img{
                 width: 2rem;
-                filter: c.$filterColor02;
-                -webkit-filter: c.$filterColor02;
+                filter: c.$color02SVG;
+                -webkit-filter: c.$color02SVG;
                 user-select: none;
                 -webkit-user-select: none;
                 -moz-user-select: none;
@@ -277,4 +277,4 @@
         position: relative; 
 
     }                           
-} 
+}

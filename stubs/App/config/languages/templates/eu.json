@@ -3757,5 +3757,59 @@
     },
     "moduleFormContact03_00_server_error": {
         "text": "Erregistroa ez dago erabilgarri aldi baterako."
+    },
+    "moduleTable01_00_header_01": {
+        "text": "Lehen zutabea"
+    },
+    "moduleTable01_00_header_02": {
+        "text": "Bigarren zutabea"
+    },
+    "moduleTable01_00_header_03": {
+        "text": "Hirugarren zutabea"
+    },
+    "moduleTable01_00_header_04": {
+        "text": "Laugarren zutabea"
+    },
+    "moduleTable01_00_header_05": {
+        "text": "Bosgarren zutabea"
+    },
+    "moduleTable01_00_header_06": {
+        "text": "Seigarren zutabea"
+    },
+    "moduleTable01_00_header_07": {
+        "text": "Zazpigarren zutabea"
+    },
+    "moduleTable01_00_header_08": {
+        "text": "Zortzigarren zutabea"
+    },
+    "moduleTable01_00_caption": {
+        "text": "moduleTable01 · Datu-matrizea"
+    },
+    "moduleTable01_00_a_list_a": {
+        "text": "Matrix ipsum A1"
+    },
+    "moduleTable01_00_a_list_b": {
+        "text": "Matrix ipsum A2"
+    },
+    "moduleTable01_00_a_list_c": {
+        "text": "Matrix ipsum A3"
+    },
+    "moduleTable01_00_b_list_a": {
+        "text": "Matrix ipsum B1"
+    },
+    "moduleTable01_00_b_list_b": {
+        "text": "Matrix ipsum B2"
+    },
+    "moduleTable01_00_b_list_c": {
+        "text": "Matrix ipsum B3"
+    },
+    "moduleTable01_00_c_list_a": {
+        "text": "Matrix ipsum C1"
+    },
+    "moduleTable01_00_c_list_b": {
+        "text": "Matrix ipsum C2"
+    },
+    "moduleTable01_00_c_list_c": {
+        "text": "Matrix ipsum C3"
     }
 }

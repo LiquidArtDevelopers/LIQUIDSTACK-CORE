@@ -16,7 +16,7 @@
         }
 
         .moduleButtonType02-icon > img {
-            filter: c.$filterColor02;
+            filter: c.$color02SVG;
             transform: translateX(0.2rem);
         }
     }
@@ -32,7 +32,10 @@
 
     > .moduleButtonType02-text {
         min-width: 0;
-        color: c.$color04;
+        color: var(
+            --moduleButtonType02-text-color,
+            #{c.$color02}
+        );
         font-weight: 400;
         line-height: 1.4;
         overflow-wrap: anywhere;
@@ -52,7 +55,7 @@
             height: 100%;
             display: block;
             object-fit: contain;
-            filter: c.$filterColorSepia;
+            filter: c.$color01SVG;
             transition:
                 filter 0.3s ease,
                 transform 0.3s ease;

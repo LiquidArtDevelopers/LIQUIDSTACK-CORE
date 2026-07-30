@@ -131,6 +131,90 @@ final class ManagedFileSynchronizerTest extends TestCase
         );
     }
 
+    public function testPromotedConsumerScssIsAdoptedWithoutBlockingItsGroup(): void
+    {
+        $scssSource = $this->packageRoot
+            . '/resources/scss/_sample.scss';
+        $scssTarget = $this->projectRoot
+            . '/src/scss/resources/_sample.scss';
+        $templateSource = $this->packageRoot
+            . '/stubs/App/templates/_sample.html';
+        $templateTarget = $this->projectRoot
+            . '/App/templates/_sample.html';
+        $scssSourceId = 'resources/scss/_sample.scss';
+        $scssTargetId = 'src/scss/resources/_sample.scss';
+        $templateSourceId = 'stubs/App/templates/_sample.html';
+        $templateTargetId = 'App/templates/_sample.html';
+
+        $this->writeFile($scssSource, ".sample {\n  color: red;\n}\n");
+        $this->writeFile($templateSource, '<article>sample</article>');
+
+        $initial = $this->synchronizer();
+        $initial->queueFile(
+            $scssSource,
+            $scssTarget,
+            $scssSourceId,
+            $scssTargetId
+        );
+        $initial->queueFile(
+            $templateSource,
+            $templateTarget,
+            $templateSourceId,
+            $templateTargetId
+        );
+        $initial->apply();
+
+        $promoted = ".sample {\n  color: blue;\n}\n";
+        $this->writeFile($scssSource, $promoted);
+        $this->writeFile(
+            $scssTarget,
+            str_replace("\n", "\r\n", $promoted)
+        );
+
+        $adoption = $this->synchronizer();
+        $adoption->queueFile(
+            $scssSource,
+            $scssTarget,
+            $scssSourceId,
+            $scssTargetId
+        );
+        $adoption->queueFile(
+            $templateSource,
+            $templateTarget,
+            $templateSourceId,
+            $templateTargetId
+        );
+        $adoption->apply();
+
+        self::assertSame(0, $adoption->stats()['preserved']);
+        self::assertSame(2, $adoption->stats()['unchanged']);
+
+        $nextCore = ".sample {\n  color: green;\n}\n";
+        $this->writeFile($scssSource, $nextCore);
+
+        $update = $this->synchronizer();
+        $update->queueFile(
+            $scssSource,
+            $scssTarget,
+            $scssSourceId,
+            $scssTargetId
+        );
+        $update->queueFile(
+            $templateSource,
+            $templateTarget,
+            $templateSourceId,
+            $templateTargetId
+        );
+        $update->apply();
+
+        self::assertSame(1, $update->stats()['updated']);
+        self::assertSame($nextCore, file_get_contents($scssTarget));
+        self::assertSame(
+            '<article>sample</article>',
+            file_get_contents($templateTarget)
+        );
+    }
+
     public function testHistoricalFingerprintRecognizesWindowsLineEndings(): void
     {
         $sourceId = 'resources/scss/_legacy.scss';

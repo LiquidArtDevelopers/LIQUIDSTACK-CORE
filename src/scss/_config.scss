@@ -35,37 +35,44 @@ html{
 $fuente01: 'antton';
 $fuente02: 'poppins';
 
-$color00: rgb(255, 255, 255);
-$color00bis: #ffffffdb;
+$color00: rgb(255, 255, 255); // blanco puro
+$color00bis: #f6f6f6; // blanco roto
+$color00bis1: #ffffffdb; // transparencias de blanco progresivas
 $color00bis2: #ffffff56;
 $color00bis3: #ffffff13;
+$color00SVG: brightness(0) saturate(100%) invert(100%);
 
 
-$color01: #272727;
-$color01bis: #5b5b5b;
-$color01bis2:#7f7f7f;
-$color01bis3:#27272745;
-$color01bis4:#272727bf;
-$color01bis5:#000000bf;
+$color01: #272727; // negro roto
+$color01bis: #5b5b5b; // gris
+$color01bis2: #7f7f7f; // gris claro
+$color01bis3: #272727bf; // transparencias de negro progresivas
+$color01bis4: #27272745;
+$color01bis5: #0000001d;
+$color01SVG: brightness(0) saturate(100%) invert(13%) sepia(0%) saturate(0%) hue-rotate(170deg) brightness(97%) contrast(88%);
 
-$color02: #24658e;
-$color02bis: #1c466f;
-$color02bis2: rgba(33,33,33,0.2);
-$color02bis3:#20335e;
+$color02: #24658e; // color principal corporativo
+$color02bis: #24658e99;
+$color02bis2: #24658e61;
+$color02bis3: #24658e28;
+$color02SVG: invert(56%) sepia(19%) saturate(5000%) hue-rotate(183deg) brightness(102%) contrast(101%);
 
-$color03: #E9F5FF;
-$color03bis: #f6f6f6;
+$color03: #092F64; // color secundario corporativo
+$color03bis: #092f6445;
+$color03SVG: invert(17%) sepia(33%) saturate(2852%) hue-rotate(180deg) brightness(91%) contrast(103%);
 
-$color04: #092F64;
-$color05: #ac2e29;
-$color06: #000000;
-$color06bis: #0d0d0d;
+$color04: #E9F5FF; // color terciario corporativo opcional
+$color04bis: #e9f5ff45;
+$color04SVG: invert(96%) sepia(11%) saturate(453%) hue-rotate(174deg) brightness(100%) contrast(104%);
 
 $colorERROR: #DD7676;
 $colorOK: #6DE063;
 
-$filterColorSepia: invert(43%) sepia(84%) saturate(0%) hue-rotate(319deg) brightness(93%) contrast(92%);
-$filterColor02: invert(56%) sepia(19%) saturate(5000%) hue-rotate(183deg) brightness(102%) contrast(101%);
+:root {
+    --moduleButtonType02-text-color: #{$color03};
+    --moduleH2Type01-accent-color: #{$color03};
+    --moduleList01-marker-color: #{$color03};
+}
 
 $tablet: 800px;
 $desktop: 1400px;
@@ -192,7 +199,7 @@ h1{
 }
 h2{
     font-size: clamp(1.3rem, 2vw, 2.7rem); 
-    color: $color04; 
+    color: $color03;
 }
 h3{
     font-size: clamp(1.2rem, 2vw, 3rem);

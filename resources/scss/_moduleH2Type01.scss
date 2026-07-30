@@ -17,7 +17,10 @@
     >span{
         width: 50px;
         height: 2px;
-        background-color: c.$color04;
+        background-color: var(
+            --moduleH2Type01-accent-color,
+            #{c.$color02}
+        );
         @media only screen and (min-width:c.$desktop) {
                 &{
                     width: 100px;
@@ -26,7 +29,11 @@
     }
     h2{
         font-size: clamp(1.2rem, 3vw, 2rem);
-        font-weight: 300;        
+        font-weight: 300;
+        color: var(
+            --moduleH2Type01-accent-color,
+            #{c.$color02}
+        );
     }
     
 }

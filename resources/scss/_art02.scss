@@ -102,8 +102,9 @@
                 object-fit: contain;
                 object-position: center;
                 order: 1; //Ponemos encabezado al final
+                filter: c.$color03SVG;
                 @media only screen and (min-width:c.$tablet){
-                    width: 50%;
+                    width: 25%;
                 }
             }
             >h4{

@@ -29,7 +29,7 @@
         min-width: 0;
         padding: clamp(c.$padMin, 4vw, c.$padMax);
         border-radius: 1rem;
-        background-color: c.$color03bis;
+        background-color: c.$color00bis;
         box-shadow: c.$sombraMin;
         display: flex;
         flex-direction: column;
@@ -40,7 +40,7 @@
     .art33-itemTitle {
         width: 100%;
         margin: 0;
-        color: c.$color02bis3;
+        color: c.$color02;
     }
 
     .art33-itemContent {
@@ -83,4 +83,3 @@
         }
     }
 }
-

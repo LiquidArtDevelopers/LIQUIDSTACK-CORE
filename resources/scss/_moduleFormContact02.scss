@@ -3,7 +3,7 @@
 .moduleFormContact.moduleFormContact02 {
     --module-form-background: #{c.$color02};
     --module-form-surface: #{c.$color00};
-    --module-form-control: #{c.$color03bis};
+    --module-form-control: #{c.$color00bis};
     --module-form-text: #{c.$color01};
     --module-form-muted: #{c.$color01bis};
     --module-form-accent: #{c.$color02};
@@ -11,12 +11,12 @@
     --module-form-focus: #{c.$color03};
 
     overflow: hidden;
-    background: linear-gradient(145deg, c.$color02, c.$color06);
+    background: linear-gradient(145deg, c.$color02, c.$color01);
 
     .moduleFormContact-shell {
         overflow: hidden;
         padding: 0.5rem;
-        border: 1px solid c.$color00bis;
+        border: 1px solid c.$color00bis1;
         border-radius: 1.5rem;
         background: c.$color00bis2;
 
@@ -57,7 +57,7 @@
 
     .moduleFormContact-control {
         border-color: transparent;
-        background: c.$color03bis;
+        background: c.$color00bis;
 
         &:focus-visible {
             border-color: c.$color03;
@@ -67,7 +67,7 @@
 
     .moduleFormContact-captcha {
         border-color: c.$color02bis2;
-        background: c.$color03bis;
+        background: c.$color00bis;
     }
 
     .moduleFormContact-terms {
@@ -83,7 +83,7 @@
         border-radius: 2rem;
         background: c.$color03;
         color: c.$color01;
-        box-shadow: c.$sombraMin;
+        // box-shadow: c.$sombraMin;
 
         &:hover {
             background: c.$color02;
@@ -124,4 +124,3 @@
         }
     }
 }
-

@@ -1,0 +1,162 @@
+{
+    "schema": 2,
+    "name": "liquidstack-resource-config-v2",
+    "resource_color_families": [
+        "color00",
+        "color01",
+        "color02",
+        "color03"
+    ],
+    "variables": [
+        "anchoCorto",
+        "anchoFull",
+        "anchoMax",
+        "anchoMedio",
+        "anchoMini",
+        "color00",
+        "color00bis",
+        "color00bis1",
+        "color00bis2",
+        "color00bis3",
+        "color00SVG",
+        "color01",
+        "color01bis",
+        "color01bis2",
+        "color01bis3",
+        "color01bis4",
+        "color01bis5",
+        "color01SVG",
+        "color02",
+        "color02bis",
+        "color02bis2",
+        "color02bis3",
+        "color02SVG",
+        "color03",
+        "color03bis",
+        "color03SVG",
+        "color04",
+        "color04bis",
+        "color04SVG",
+        "colorERROR",
+        "colorOK",
+        "desktop",
+        "desktop2k",
+        "fuente01",
+        "fuente02",
+        "padMax",
+        "padMin",
+        "sombraMax",
+        "sombraMin",
+        "tablet",
+        "textMax",
+        "textMin"
+    ],
+    "additive_variables": [
+        {
+            "name": "color00",
+            "value": "rgb(255, 255, 255)"
+        },
+        {
+            "name": "color00bis",
+            "value": "#f6f6f6"
+        },
+        {
+            "name": "color00bis1",
+            "value": "#ffffffdb"
+        },
+        {
+            "name": "color00bis2",
+            "value": "#ffffff56"
+        },
+        {
+            "name": "color00bis3",
+            "value": "#ffffff13"
+        },
+        {
+            "name": "color00SVG",
+            "value": "brightness(0) saturate(100%) invert(100%)"
+        },
+        {
+            "name": "color01",
+            "value": "#272727"
+        },
+        {
+            "name": "color01bis",
+            "value": "#5b5b5b"
+        },
+        {
+            "name": "color01bis2",
+            "value": "#7f7f7f"
+        },
+        {
+            "name": "color01bis3",
+            "value": "#272727bf"
+        },
+        {
+            "name": "color01bis4",
+            "value": "#27272745"
+        },
+        {
+            "name": "color01bis5",
+            "value": "#0000001d"
+        },
+        {
+            "name": "color01SVG",
+            "value": "brightness(0) saturate(100%) invert(13%) sepia(0%) saturate(0%) hue-rotate(170deg) brightness(97%) contrast(88%)",
+            "legacy_alias": "filterColorSepia"
+        },
+        {
+            "name": "color02",
+            "value": "#24658e"
+        },
+        {
+            "name": "color02bis",
+            "value": "#24658e99"
+        },
+        {
+            "name": "color02bis2",
+            "value": "#24658e61"
+        },
+        {
+            "name": "color02bis3",
+            "value": "#24658e28"
+        },
+        {
+            "name": "color02SVG",
+            "value": "invert(56%) sepia(19%) saturate(5000%) hue-rotate(183deg) brightness(102%) contrast(101%)",
+            "legacy_alias": "filterColor02"
+        },
+        {
+            "name": "color03",
+            "value": "#092F64"
+        },
+        {
+            "name": "color03bis",
+            "value": "#092f6445"
+        },
+        {
+            "name": "color03SVG",
+            "value": "invert(17%) sepia(33%) saturate(2852%) hue-rotate(180deg) brightness(91%) contrast(103%)"
+        },
+        {
+            "name": "color04",
+            "value": "#E9F5FF"
+        },
+        {
+            "name": "color04bis",
+            "value": "#e9f5ff45"
+        },
+        {
+            "name": "color04SVG",
+            "value": "invert(96%) sepia(11%) saturate(453%) hue-rotate(174deg) brightness(100%) contrast(104%)"
+        },
+        {
+            "name": "colorERROR",
+            "value": "#DD7676"
+        },
+        {
+            "name": "colorOK",
+            "value": "#6DE063"
+        }
+    ]
+}

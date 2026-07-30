@@ -151,7 +151,7 @@ final class Art32ContractTest extends TestCase
             'box-shadow: 0 0 20px c.$color01bis5;',
             'width: calc((100% - 6rem) / 4);',
             'width: 25%;',
-            '--art32-icon-filter: #{c.$filterColor02};',
+            '--art32-icon-filter: #{c.$color02SVG};',
             'filter: var(--art32-icon-filter);',
             'bottom: 2rem;',
             '>.art32-cardTitle',

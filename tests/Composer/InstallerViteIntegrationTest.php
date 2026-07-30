@@ -47,6 +47,13 @@ final class InstallerViteIntegrationTest extends TestCase
         $this->filesystem->mkdir(
             $this->projectRoot . DIRECTORY_SEPARATOR . 'vendor'
         );
+        $this->filesystem->mkdir(
+            $this->projectRoot . DIRECTORY_SEPARATOR . 'src/scss'
+        );
+        $this->filesystem->copy(
+            dirname(__DIR__, 2) . '/src/scss/_config.scss',
+            $this->projectRoot . '/src/scss/_config.scss'
+        );
 
         foreach (self::RESOURCE_TARGET_ENV as $environmentName) {
             $this->previousEnvironment[$environmentName] = getenv($environmentName);

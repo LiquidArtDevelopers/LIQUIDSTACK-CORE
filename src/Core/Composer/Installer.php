@@ -12,6 +12,8 @@ use Symfony\Component\Filesystem\Path;
 class Installer
 {
     private const AGENT_SKILLS_MANIFEST = '.liquidstack-core-skills.json';
+    private const SCSS_CONFIG_CONTRACT_PATH = 'manifests/scss-config-contract-v2.json';
+    private const SCSS_CONFIG_TARGET_PATH = 'src/scss/_config.scss';
     private const VITE_LANGUAGE_PLUGIN_PATH = 'tools/liquidstack/vite/update-languages-plugin.mjs';
     private const VITE_LANGUAGE_PLUGIN_IMPORT = 'import { createUpdateLanguagesPlugin } from "./tools/liquidstack/vite/update-languages-plugin.mjs";';
     private const VITE_LANGUAGE_PLUGIN_CALL = 'createUpdateLanguagesPlugin(env)';
@@ -32,6 +34,13 @@ class Installer
 
     private static function syncManagedProjectFiles(Event $event): void
     {
+        if (!self::syncScssConfigContract($event)) {
+            $event->getIO()->writeError(
+                '<warning>Se omite la sincronización gestionada para no instalar recursos cuyo contrato SCSS no está garantizado.</warning>'
+            );
+            return;
+        }
+
         $synchronizer = self::createManagedFileSynchronizer($event);
 
         self::syncProjectAssets($event, $synchronizer);
@@ -325,9 +334,47 @@ class Installer
 
     public static function syncResources(Event $event): void
     {
+        if (!self::syncScssConfigContract($event)) {
+            $event->getIO()->writeError(
+                '<warning>Se omite la sincronización de recursos para no instalar SCSS cuyo contrato no está garantizado.</warning>'
+            );
+            return;
+        }
+
         $synchronizer = self::createManagedFileSynchronizer($event);
         self::queueResources($event, $synchronizer);
         $synchronizer->apply();
+    }
+
+    private static function syncScssConfigContract(Event $event): bool
+    {
+        $io = $event->getIO();
+
+        try {
+            $projectRoot = self::resolveProjectRoot($event);
+            $packageRoot = dirname(__DIR__, 3);
+            $synchronizer = new ScssConfigContractSynchronizer($io);
+            $added = $synchronizer->sync(
+                $projectRoot . '/' . self::SCSS_CONFIG_TARGET_PATH,
+                $packageRoot . '/' . self::SCSS_CONFIG_CONTRACT_PATH
+            );
+
+            if ($added > 0) {
+                $io->write(sprintf(
+                    '<info>Contrato SCSS de CORE: %d variable(s) de color añadida(s) sin reemplazar valores del proyecto.</info>',
+                    $added
+                ));
+            }
+
+            return $synchronizer->wasSuccessful();
+        } catch (\Throwable $exception) {
+            $io->writeError(sprintf(
+                '<warning>No se pudo ampliar el contrato SCSS; el config del proyecto se preservó: %s</warning>',
+                $exception->getMessage()
+            ));
+
+            return false;
+        }
     }
 
     private static function queueResources(

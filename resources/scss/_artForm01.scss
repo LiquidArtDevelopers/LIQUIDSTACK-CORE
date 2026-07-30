@@ -103,12 +103,12 @@
             .campo:-webkit-autofill,
             .campo:-webkit-autofill:hover, 
             .campo:-webkit-autofill:focus {
-                box-shadow: 0 0 0px 1000px c.$color03 inset;
-                -webkit-box-shadow: 0 0 0px 1000px c.$color03 inset;
-                -webkit-text-fill-color:c.$color01;
-                -moz-box-shadow: 0 0 0px 1000px c.$color03 inset;
-                -moz-text-fill-color:c.$color01;
-                -o-box-shadow: 0 0 0px 1000px c.$color03 inset;
+                box-shadow: 0 0 0px 1000px c.$color01bis5 inset;
+                -webkit-box-shadow: 0 0 0px 1000px c.$color01bis5 inset;
+                -webkit-text-fill-color:c.$color02;
+                -moz-box-shadow: 0 0 0px 1000px c.$color01bis5 inset;
+                -moz-text-fill-color:c.$color02;
+                -o-box-shadow: 0 0 0px 1000px c.$color01bis5 inset;
                 -o-text-fill-color:c.$color01;
             }                 
             .campo{
@@ -117,10 +117,10 @@
                 box-sizing: border-box;
                 font-family: c.$fuente02;
                 font-size: clamp(0.9rem, 5vw, 1.1rem);
-                color: c.$color01;
+                color: c.$color02;
                 border: none;
                 border-radius: 4px;
-                background-color: c.$color03;
+                background-color: c.$color01bis5;
                 caret-color: c.$color01;
                 @media only screen and (min-width: c.$tablet){
                     padding: 8px;
@@ -145,7 +145,7 @@
                 justify-content: flex-start;
                 align-items: center;
                 gap: 20px;
-                color: c.$color01;
+                color: c.$color02;
                 font-family: c.$fuente02;
                 font-size: 1rem;
                 text-underline-offset: 3px;                    
@@ -160,7 +160,7 @@
                     }
                 }
                 span, a{
-                    color: c.$color01;
+                    color: c.$color02;
                     text-decoration:underline;
                     cursor: crosshair;
                     font-size: 0.7rem;
@@ -177,7 +177,7 @@
             }
             input, textarea{
                 &:focus-visible{
-                    outline: 2px solid c.$color01;
+                    outline: 2px solid c.$color02;
                 }
             }
         }
@@ -205,8 +205,8 @@
                 -moz-transform: inherit;
                 -o-transform: inherit;
                 position: relative;
-                filter: c.$filterColor02;
-                -webkit-filter: c.$filterColor02;
+                filter: c.$color02SVG;
+                -webkit-filter: c.$color02SVG;
 
             }                           
         }
@@ -237,8 +237,8 @@
                     a{
                         img{
                             width: 2rem;
-                            filter: c.$filterColor02;
-                            -webkit-filter: c.$filterColor02;
+                            filter: c.$color02SVG;
+                            -webkit-filter: c.$color02SVG;
                             user-select: none;
                             -webkit-user-select: none;
                             -moz-user-select: none;

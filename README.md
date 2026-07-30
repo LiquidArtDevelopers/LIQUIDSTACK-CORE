@@ -154,23 +154,44 @@ Esa estructura se conserva en destino. Ejemplo:
 
 ## Importante sobre `src/scss/_config.scss`, `src/scss/_global.scss` y `src/js/_global.js`
 
-Esos archivos **no** se sincronizan automaticamente a proyectos cliente.
-Solo se sincronizan de `src/`:
+Esos archivos **no** se sustituyen por las copias de CORE en los proyectos
+cliente. Solo se sincronizan de `src/`:
 
 - `src/js/templates.js`
 - `src/scss/templates.scss`
 
 Por tanto:
 
-- Los archivos `_config.scss` y `_global.scss` del proyecto cliente no se pisan.
-- En este core se mantienen como referencia/base para desarrollo, pero no como override forzado en clientes.
-- Los recursos estándar de CORE deben limitar sus referencias `c.$...` al
-  contrato SCSS v1 de 40 variables documentado en
-  `manifests/scss-config-contract-v1.json`.
+- Los archivos `_config.scss` y `_global.scss` del proyecto cliente no se
+  pisan.
+- CORE comprueba de forma quirúrgica el contrato de colores de
+  `_config.scss`: añade únicamente declaraciones ausentes, con `!default`,
+  dentro del bloque delimitado
+  `liquidstack-core:scss-color-contract`. Nunca reemplaza valores existentes,
+  elimina variables extra ni reescribe el resto del fichero.
+- Si el config no es un fichero regular, no se puede leer o escribir, o su
+  bloque delimitado está dañado, CORE omite la sincronización gestionada de
+  ese ciclo antes de tocar los recursos; así no instala SCSS que todavía no
+  pueda compilar en el consumidor.
+- Los filtros SVG nuevos reutilizan los aliases legacy del proyecto
+  (`filterColor02` y `filterColorSepia`) cuando existen, para conservar su
+  identidad cromática.
+- En este core `_config.scss` se mantiene como referencia para proyectos
+  nuevos. Su contrato SCSS v2 contiene 42 variables y está documentado en
+  `manifests/scss-config-contract-v2.json`.
+- Las familias estándar son `color00` (blancos), `color01` (negros y grises),
+  `color02` (corporativo principal), `color03` (corporativo secundario) y
+  `color04` (terciario opcional), con variantes y filtros `colorNNSVG`.
+- Un recurso distribuido por CORE solo puede consumir las familias
+  `color00` a `color03`. `color04` y cualquier variable posterior quedan
+  reservadas para temas y modificadores del proyecto.
+- Los acentos que antes dependían de `color04` usan una custom property con
+  fallback a `color02` para mantener contraste en configs legacy. El config
+  v2 activa `color03` para esos acentos; cualquier proyecto puede
+  sobrescribirlos sin ampliar su contrato Sass.
 - Un valor de tema específico de un recurso debe exponerse como una custom
   property CSS con fallback a una variable del contrato. El consumidor puede
-  modificarla desde el contexto que hidrata la vista sin ampliar ni reescribir
-  su `_config.scss`.
+  modificarla desde el contexto que hidrata la vista.
 - Los SCSS de páginas son siempre locales y no forman parte de la
   sincronización gestionada.
 
@@ -222,6 +243,14 @@ La familia de CTA incluye `moduleButtonType02`, con icono de imagen editable y
 fallback `arrow-forward-outline.svg`; `moduleButtonType03`, con transición
 expansiva e icono decorativo CSS; y `moduleButtonType04`, con interacción
 convencional. Los tres conservan el enlace y el copy como objetos `data-lang`.
+`moduleButtonType04` preserva enlaces de raíz y admite atributos de enlace
+opcionales desde el controlador, por ejemplo `target` y `rel`.
+
+`moduleTable01` es un módulo atómico con tabla semántica, `caption`,
+encabezados de columna y primera celda de fila con su `scope` correspondiente.
+Admite entre 1 y 26 filas mediante `items` y entre 1 y 8 columnas mediante
+`list_items`; cada celda es editable y la envolvente ofrece desplazamiento
+horizontal accesible cuando la tabla no cabe en móvil.
 
 `art30` admite `items` entre 0 y 4 y `benefits` entre 0 y 6. Con
 `benefits => 0` oculta el banner. En desarrollo, cada ficha y beneficio forma

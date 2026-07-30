@@ -36,6 +36,12 @@ final class InstallerVideoResourceSyncTest extends TestCase
             . bin2hex(random_bytes(8));
 
         $this->filesystem->mkdir($this->projectRoot . DIRECTORY_SEPARATOR . 'vendor');
+        $this->writeFile(
+            $this->projectRoot . '/src/scss/_config.scss',
+            (string) file_get_contents(
+                dirname(__DIR__, 2) . '/src/scss/_config.scss'
+            )
+        );
 
         foreach (self::RESOURCE_TARGET_ENV as $environmentName) {
             $this->previousEnvironment[$environmentName] = getenv($environmentName);

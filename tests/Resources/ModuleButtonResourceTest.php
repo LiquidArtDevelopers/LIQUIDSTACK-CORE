@@ -188,6 +188,35 @@ final class ModuleButtonResourceTest extends TestCase
         self::assertStringContainsString('title=""', $withFallback);
     }
 
+    public function testType04PreservesRootLinksAndAcceptsTrustedAttributes(): void
+    {
+        $this->setGlobal('moduleButtonType04_04_cta_link', [
+            'href' => '/aviso-legal',
+            'title' => 'Aviso legal',
+        ]);
+        $this->setGlobal('moduleButtonType04_04_cta_span', [
+            'text' => 'Consultar',
+        ]);
+
+        $button = controller_moduleButtonType04(4, [
+            '{cta-link-attributes}' => ' target="_blank" rel="noopener"',
+        ]);
+
+        self::assertStringContainsString(
+            'href="/aviso-legal"',
+            $button
+        );
+        self::assertStringContainsString(
+            'target="_blank" rel="noopener"',
+            $button
+        );
+        self::assertStringNotContainsString(
+            'https://www.example.test/es/aviso-legal',
+            $button
+        );
+        self::assertDoesNotMatchRegularExpression('/\{[^}]+\}/', $button);
+    }
+
     public function testCatalogsProvideCompleteEditableButtonEntries(): void
     {
         foreach (['es', 'en', 'eu'] as $language) {

@@ -19,7 +19,7 @@
         row-gap: 5rem;
     }
     >:nth-child(1){
-        color: c.$color02;
+        color: c.$color03;
     }
     .art12-fichas{
         width: 100%;
@@ -34,7 +34,7 @@
         }
         .art12-ficha{
             position: relative;
-            background-color: c.$color00bis2;
+            background-color: c.$color00bis3;
             width: 100%;
             border-radius: 1.5rem;
             padding: c.$padMin;
@@ -104,7 +104,7 @@
             }
             >:nth-child(1){
                 order: 2;
-                color: c.$color02;
+                color: c.$color03;
                 @media only screen and (min-width:c.$tablet){
                     font-size: clamp(1rem, 2vw, 2rem);
                     min-height: calc(clamp(1.2rem, 2.5vw, 2.5rem) * 4);

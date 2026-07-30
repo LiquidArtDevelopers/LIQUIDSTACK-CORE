@@ -4,7 +4,7 @@
     width: 100%;
     padding: 3rem;
     background-color: c.$color01;
-    $bullet-fill: str-slice("#{c.$color03bis}", 2);
+    $bullet-fill: str-slice("#{c.$color00bis}", 2);
     display: flex;
     // flex-wrap: wrap;
     flex-direction: column;
@@ -31,7 +31,7 @@
     font-size: 2.25em;
     margin-bottom: 0.75em;
     text-align: center;
-    color: c.$color00;
+    color: c.$color03;
     font-family: c.$fuente02;
   }
 
@@ -60,7 +60,7 @@
       grid-template-rows: auto auto auto 1fr;
       align-items: start;
       gap: 1.25em;
-      color: c.$color03bis;
+      color: c.$color00bis;
       background-color: c.$color01bis;
       border: 1px solid c.$color00bis2;
       border-radius: 15px;
@@ -140,12 +140,12 @@
       opacity: var(--opacity, 0);
       -webkit-mask: radial-gradient(
         25rem 25rem at var(--x) var(--y),
-        c.$color06 1%,
+        c.$color01 1%,
         transparent 50%
       );
       mask: radial-gradient(
         25rem 25rem at var(--x) var(--y),
-        c.$color06 1%,
+        c.$color01 1%,
         transparent 50%
       );
       transition: 400ms mask ease;

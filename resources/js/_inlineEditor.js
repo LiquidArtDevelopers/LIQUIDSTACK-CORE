@@ -4,10 +4,9 @@ const STYLE_ID = "dev-inline-editor-style";
 const DEFAULT_COLOR_OPTIONS = [
   { label: "$color00 · Blanco", value: "rgb(255, 255, 255)" },
   { label: "$color01 · Gris oscuro", value: "#272727" },
-  { label: "$color02 · Azul", value: "#5285c5" },
-  { label: "$color03 · Azul claro", value: "#E9F5FF" },
-  { label: "$color04 · Azul marino", value: "#092F64" },
-  { label: "$color05 · Malva", value: "#b7b8ec" },
+  { label: "$color02 · Azul", value: "#24658e" },
+  { label: "$color03 · Azul marino", value: "#092F64" },
+  { label: "$color04 · Azul claro", value: "#E9F5FF" },
   { label: "$colorERROR · Rojo", value: "#DD7676" },
   { label: "$colorOK · Verde", value: "#6DE063" },
 ];
@@ -35,10 +34,18 @@ const parseScssColors = (scssContent) => {
   let match = regex.exec(scssContent);
 
   while (match) {
-    results.push({
-      label: `$color${match[1]}`,
-      value: match[2].trim(),
-    });
+    const variableName = match[1];
+    const variableValue = match[2]
+      .replace(/\s*!default\s*$/i, "")
+      .trim();
+
+    if (!variableName.toUpperCase().endsWith("SVG")) {
+      results.push({
+        label: `$color${variableName}`,
+        value: variableValue,
+      });
+    }
+
     match = regex.exec(scssContent);
   }
 

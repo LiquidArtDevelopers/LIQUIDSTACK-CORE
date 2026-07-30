@@ -3,7 +3,7 @@
 .artHeroScroll01 {
   position: relative;
   width: 100%;
-  background: c.$color06;
+  background: c.$color01;
   color: c.$color00;
   padding: clamp(4rem, 8vw, 7rem) 0;
   min-height: 100vh;
@@ -70,7 +70,7 @@
     position: relative;
     padding: clamp(2rem, 4vw, 3rem);
     border-radius: 1.2rem;
-    background: rgba(c.$color06, 0.7);
+    background: rgba(c.$color01, 0.7);
     border: 1px solid rgba(c.$color00, 0.08);
     min-height: clamp(16rem, 28vw, 22rem);
     box-shadow: 0 1.2rem 2.4rem rgba(0, 0, 0, 0.35);

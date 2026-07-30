@@ -4,7 +4,7 @@
   --section-parallax01-bg-x: 0px;
   --section-parallax01-bg-y: 0px;
   --section-parallax01-bg-image: url("/assets/img/dummy/dummy03.avif");
-  background-color: c.$color06;
+  background-color: c.$color01;
   color: c.$color00;
   padding: 6rem 0;
   overflow: hidden;
@@ -60,7 +60,7 @@
 
   .sectionParallax01-card {
     width: min(80vw, 1200px);
-    background-color: c.$color06bis;
+    background-color: c.$color01bis4;
     border-radius: 1.5rem;
     border: 1px solid c.$color00bis2;
     padding: 2.5rem;

@@ -2,7 +2,7 @@
 
 .moduleFormContact {
     --module-form-background: #{c.$color00};
-    --module-form-surface: #{c.$color03bis};
+    --module-form-surface: #{c.$color00bis};
     --module-form-control: #{c.$color00};
     --module-form-text: #{c.$color01};
     --module-form-muted: #{c.$color01bis};
@@ -298,7 +298,7 @@
     .moduleFormContact-terms a {
         &:focus-visible {
             outline: 3px solid var(--module-form-focus);
-            outline-offset: 0.2rem;
+            outline-offset: 0.4rem;
         }
     }
 
@@ -380,4 +380,3 @@
         transform: rotate(1turn);
     }
 }
-

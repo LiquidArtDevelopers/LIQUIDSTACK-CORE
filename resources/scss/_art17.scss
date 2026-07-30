@@ -3,7 +3,7 @@
 .art17 {
     width: c.$anchoFull;
     padding: c.$padMax c.$padMin;
-    background-color: c.$color03;
+    background-color: c.$color00bis;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -12,7 +12,7 @@
     >:nth-child(1) {
         width: 100%;
         max-width: c.$textMax;
-        color: c.$color00;
+        color: c.$color02;
         text-align: center;
     }
 
@@ -34,7 +34,7 @@
 
     .art17-card {
         width: 100%;
-        background-color: c.$color03bis;
+        background-color: c.$color00bis;
         color: c.$color01;
         border-radius: 1rem;
         padding: c.$padMin;
@@ -56,7 +56,7 @@
         h5,
         h6 {
             margin: 0;
-            color: c.$color02bis3;
+            color: c.$color02;
         }
 
         .art17-list {
@@ -89,7 +89,7 @@
             height: 1.5rem;
             display: inline-block;
             // background: url('/assets/img/system/shield-checkmark-outline.svg') center/contain no-repeat;
-            filter: c.$filterColor02;
+            filter: c.$color02SVG;
         }
 
         a,

@@ -24,7 +24,10 @@
         width: 1.25rem;
         height: 1.25rem;
         margin-top: .1rem;
-        border: 2px solid c.$color04;
+        border: 2px solid var(
+            --moduleList01-marker-color,
+            #{c.$color02}
+        );
         border-radius: 50%;
         position: relative;
 
@@ -45,7 +48,10 @@
         .moduleList01-marker {
             border: 0;
             border-radius: 0;
-            background: var(--moduleList01-marker-color, c.$color02);
+            background: var(
+                --moduleList01-marker-color,
+                #{c.$color02}
+            );
             -webkit-mask: var(--moduleList01-marker-mask) center / contain no-repeat;
             mask: var(--moduleList01-marker-mask) center / contain no-repeat;
 

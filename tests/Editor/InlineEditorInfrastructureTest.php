@@ -234,6 +234,38 @@ final class InlineEditorInfrastructureTest extends TestCase
         );
     }
 
+    public function testInlineEditorDoesNotOfferSvgFiltersAsCssColors(): void
+    {
+        $source = (string) file_get_contents(
+            dirname(__DIR__, 2) . '/resources/js/_inlineEditor.js'
+        );
+
+        self::assertStringContainsString(
+            'if (!variableName.toUpperCase().endsWith("SVG"))',
+            $source
+        );
+        self::assertStringContainsString(
+            '.replace(/\s*!default\s*$/i, "")',
+            $source
+        );
+        self::assertStringContainsString(
+            'value: variableValue,',
+            $source
+        );
+        self::assertStringContainsString(
+            '{ label: "$color03 · Azul marino", value: "#092F64" }',
+            $source
+        );
+        self::assertStringContainsString(
+            '{ label: "$color04 · Azul claro", value: "#E9F5FF" }',
+            $source
+        );
+        self::assertStringNotContainsString(
+            '$color05 · Malva',
+            $source
+        );
+    }
+
     public function testExistingResourcesExposeTheirEditorContracts(): void
     {
         $coreRoot = dirname(__DIR__, 2);

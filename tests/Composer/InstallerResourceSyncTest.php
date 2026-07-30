@@ -28,6 +28,12 @@ final class InstallerResourceSyncTest extends TestCase
 
         $this->filesystem->mkdir($this->projectRoot . DIRECTORY_SEPARATOR . 'vendor');
         $this->writeFile(
+            $this->projectRoot . '/src/scss/_config.scss',
+            (string) file_get_contents(
+                dirname(__DIR__, 2) . '/src/scss/_config.scss'
+            )
+        );
+        $this->writeFile(
             $this->projectRoot . '/App/views/project-only.php',
             '<?php echo "local";'
         );
@@ -80,6 +86,7 @@ final class InstallerResourceSyncTest extends TestCase
             'moduleButtonType02',
             'moduleButtonType03',
             'moduleButtonType04',
+            'moduleTable01',
             'art20',
             'art21',
             'art22',
@@ -313,6 +320,7 @@ final class InstallerResourceSyncTest extends TestCase
         self::assertStringContainsString("@use './resources/art02little';", $entrypoint);
         self::assertStringContainsString("@use './resources/moduleList01';", $entrypoint);
         self::assertStringContainsString("@use './resources/moduleParrafo01';", $entrypoint);
+        self::assertStringContainsString("@use './resources/moduleTable01';", $entrypoint);
         self::assertStringContainsString("@use './resources/art33';", $entrypoint);
         self::assertStringContainsString("@use './resources/art34';", $entrypoint);
         self::assertStringContainsString(
@@ -342,6 +350,7 @@ final class InstallerResourceSyncTest extends TestCase
             'moduleButtonType02',
             'moduleButtonType03',
             'moduleButtonType04',
+            'moduleTable01',
             'art20',
             'art21',
             'art22',
@@ -439,6 +448,14 @@ final class InstallerResourceSyncTest extends TestCase
                 'moduleButtonType04_00_cta_link',
                 $language
             );
+            self::assertArrayHasKey(
+                'moduleTable01_00_caption',
+                $language
+            );
+            self::assertArrayHasKey(
+                'moduleTable01_00_c_list_c',
+                $language
+            );
             self::assertArrayHasKey('art30_00_d_img', $language);
             self::assertArrayHasKey('art32_00_h_img', $language);
             self::assertArrayHasKey('art33_00_headerPrimary', $language);
@@ -471,6 +488,65 @@ final class InstallerResourceSyncTest extends TestCase
             '<svg data-project-logo="true"></svg>',
             file_get_contents($logoPath)
         );
+    }
+
+    public function testResourceSyncStopsSafelyWhenScssConfigIsMissing(): void
+    {
+        $this->filesystem->remove(
+            $this->projectRoot . '/src/scss/_config.scss'
+        );
+
+        Installer::syncResources($this->createEvent());
+
+        self::assertFileDoesNotExist(
+            $this->projectRoot . '/src/scss/resources/_art02.scss'
+        );
+        self::assertStringContainsString(
+            'Se omite la sincronización de recursos',
+            $this->io->getOutput()
+        );
+    }
+
+    public function testResourceSyncAddsOnlyMissingScssColorVariables(): void
+    {
+        $configPath = $this->projectRoot . '/src/scss/_config.scss';
+        $original = "\$color00: #project-white;\r\n"
+            . "\$color02: #project-primary;\r\n"
+            . "\$filterColorSepia: project-dark-filter;\r\n"
+            . "\$filterColor02: project-primary-filter;\r\n";
+        $this->writeFile($configPath, $original);
+
+        Installer::syncResources($this->createEvent());
+
+        $updated = (string) file_get_contents($configPath);
+
+        self::assertStringStartsWith($original . "\r\n", $updated);
+        self::assertSame(1, substr_count($updated, '$color00:'));
+        self::assertSame(1, substr_count($updated, '$color02:'));
+        self::assertStringContainsString(
+            '$color01SVG: $filterColorSepia !default;',
+            $updated
+        );
+        self::assertStringContainsString(
+            '$color02SVG: $filterColor02 !default;',
+            $updated
+        );
+        self::assertStringContainsString(
+            '$color03SVG: invert(17%)',
+            $updated
+        );
+        self::assertStringContainsString(
+            '$color04bis: #e9f5ff45 !default;',
+            $updated
+        );
+        self::assertStringContainsString(
+            'Contrato SCSS de CORE:',
+            $this->io->getOutput()
+        );
+
+        Installer::syncResources($this->createEvent());
+
+        self::assertSame($updated, file_get_contents($configPath));
     }
 
     public function testComposerUpdatePreservesProjectFormAndLegalOverrides(): void

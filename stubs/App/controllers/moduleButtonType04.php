@@ -29,13 +29,24 @@ function controller_moduleButtonType04(int $i = 0, array $params = []): string
         'UTF-8'
     );
 
+    $resolveHref = static function (string $href): string {
+        $value = trim($href);
+
+        if (str_starts_with($value, '/')) {
+            return $value;
+        }
+
+        return resolve_localized_href($value);
+    };
+
     $vars = [
         '{classVar}'           => "moduleButtonType04_{$pad}_classVar",
         '{cta-link-dl}'        => "moduleButtonType04_{$pad}_cta_link",
-        '{cta-link-href}'      => $escapeAttribute(resolve_localized_href($readField($ctaLinkObj, 'href'))),
+        '{cta-link-href}'      => $escapeAttribute($resolveHref($readField($ctaLinkObj, 'href'))),
         '{cta-link-title}'     => $escapeAttribute($readField($ctaLinkObj, 'title')),
         '{cta-link-span-dl}'   => "moduleButtonType04_{$pad}_cta_span",
         '{cta-link-span-text}' => $readField($ctaSpanObj, 'text'),
+        '{cta-link-attributes}' => '',
     ];
 
     $vars = array_replace($vars, $params);

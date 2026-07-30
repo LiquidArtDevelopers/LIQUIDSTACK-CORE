@@ -170,6 +170,16 @@ controller('nombre', $index, [
 - Usar nesting dentro del selector del recurso, incluidos los `@media`.
 - Usar `@media (min-width: c.$tablet)` y `@media (min-width: c.$desktop)`; evitar `max-width` salvo motivo concreto.
 - Usar variables de configuración para colores, tipografías, medidas y breakpoints siempre que existan.
+- Limitar los recursos estándar a las familias cromáticas `color00`,
+  `color01`, `color02` y `color03`, incluidos sus `bis` y filtros
+  `colorNNSVG`. `color04` es un terciario opcional del tema y no debe ser una
+  dependencia de un recurso distribuido; tampoco usar `color05+` ni los
+  aliases legacy `filterColor*`.
+- Mantener en cada stack el contrato cromático v2: blancos en `color00`,
+  negros y grises en `color01`, corporativo principal en `color02`,
+  secundario en `color03` y terciario opcional en `color04`. Cada familia
+  dispone de variantes y filtro SVG. Las variables adicionales pertenecen al
+  proyecto.
 - Si una rejilla depende de `items`, no fijar una cantidad de columnas que
   contradiga al controlador. Preferir `auto-fit` cuando conserve el diseño o
   emitir un modificador saneado `recurso--items-N` y cubrir en SCSS los rangos
@@ -215,6 +225,7 @@ Antes de entregar:
 5. Verificar imports/inits de la vista y del showroom.
 6. Compilar o ejecutar las pruebas frontend pertinentes.
 7. Inspeccionar el recurso en navegador en mobile, tablet y desktop cuando esté disponible.
-8. Comparar `git status --short` y confirmar que no se tocó copy o trabajo ajeno.
+8. Auditar que ningún SCSS de recurso use `color04+` ni `filterColor*`.
+9. Comparar `git status --short` y confirmar que no se tocó copy o trabajo ajeno.
 
 Cuando el recurso quede estable y reutilizable, usar la skill `liquidstack-resource-migration` para promoverlo a CORE.

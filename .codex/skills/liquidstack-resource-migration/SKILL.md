@@ -77,6 +77,14 @@ Actualizar además:
   vídeos privados del cliente
 - README/CHANGELOG de CORE cuando cambie el contrato público o la actualización requiera pasos
 
+Antes de promover SCSS, comprobar el contrato cromático: un recurso estándar
+solo puede depender de `color00..color03` y de sus variantes `bis` o
+`colorNNSVG`. `color04` queda disponible para temas locales, y `color05+` o
+`filterColor*` no deben viajar en recursos canónicos. Si se amplía el contrato,
+actualizar conjuntamente el config de referencia, el manifiesto v2, la
+migración aditiva y sus pruebas; nunca copiar `_config.scss` completo sobre un
+consumidor.
+
 No es necesario inventariar individualmente cada recurso en el Installer
 mientras esté dentro de estos directorios ya sincronizados; sí es obligatorio
 registrar el showroom canónico, mantener `_templates.php` como acceso
@@ -138,6 +146,9 @@ consumidor. Verificar que `/languages/update` siga apuntando a
 6. Verificar limpieza de JS, accesibilidad y jerarquía de encabezados.
 7. Comparar consumidor y CORE para confirmar que no falta ningún fichero.
 8. Ejecutar una sincronización Composer en un fixture o consumidor limpio.
+9. Confirmar que el config del fixture conserva sus valores y recibe solo las
+   variables cromáticas ausentes, y que una segunda sincronización es
+   idempotente.
 
 No probar un `composer update` destructivo sobre BASE si tiene cambios locales que colisionan.
 

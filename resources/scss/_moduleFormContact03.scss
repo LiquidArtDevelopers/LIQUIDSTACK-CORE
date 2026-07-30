@@ -28,7 +28,7 @@
         position: relative;
         padding: 1.25rem;
         border: 1px solid c.$color02;
-        background: c.$color02bis2;
+        background: c.$color00bis;
         counter-increment: module-form-step;
 
         & + .moduleFormContact-fieldset {
@@ -187,4 +187,3 @@
         }
     }
 }
-

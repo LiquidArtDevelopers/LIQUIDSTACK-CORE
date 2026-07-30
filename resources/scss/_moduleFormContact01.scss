@@ -1,7 +1,7 @@
 @use '../config' as c;
 
 .moduleFormContact.moduleFormContact01 {
-    --module-form-background: #{c.$color03bis};
+    --module-form-background: #{c.$color00bis};
     --module-form-surface: #{c.$color00};
     --module-form-control: transparent;
     --module-form-text: #{c.$color01};
@@ -42,7 +42,7 @@
 
     .moduleFormContact-legend {
         color: c.$color02;
-        font-family: c.$fuente01;
+        font-family: c.$fuente02;
         font-size: clamp(1.5rem, 4vw, 2.2rem);
         font-weight: 400;
     }
@@ -68,7 +68,7 @@
 
         &:focus-visible {
             border-bottom-color: c.$color03;
-            box-shadow: 0 0.2rem 0 0 c.$color03;
+            box-shadow: 0 0 0 0 c.$color03;
         }
 
         &[aria-invalid='true'] {
@@ -133,4 +133,3 @@
         }
     }
 }
-

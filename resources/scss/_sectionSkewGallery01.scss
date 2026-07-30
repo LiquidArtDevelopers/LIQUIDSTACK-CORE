@@ -4,7 +4,7 @@
   position: relative;
   width: 100%;
   padding: clamp(4rem, 8vw, 7rem) clamp(1.4rem, 6vw, 6rem);
-  background: c.$color06;
+  background: c.$color01;
   color: c.$color00;
   overflow: hidden;
 
@@ -47,7 +47,7 @@
     border-radius: 0;
     overflow: hidden;
     border: 1px solid c.$color00bis2;
-    background: rgba(c.$color06, 0.8);
+    background: rgba(c.$color01, 0.8);
     cursor: pointer;
     padding: 0;
     appearance: none;
@@ -86,7 +86,7 @@
   &-lightbox {
     position: fixed;
     inset: 0;
-    background: rgba(c.$color06, 0.9);
+    background: rgba(c.$color01, 0.9);
     opacity: 0;
     pointer-events: none;
     z-index: 120;
@@ -101,7 +101,7 @@
   &-lightboxBackdrop {
     position: absolute;
     inset: 0;
-    background: rgba(c.$color06, 0.75);
+    background: rgba(c.$color01, 0.75);
   }
 
   &-lightboxMedia {

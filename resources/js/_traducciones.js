@@ -67,6 +67,27 @@ export default class traduccionClass {
     return lang === DEFAULT_LANG ? pathOrigin : `${pathOrigin}/${lang}`;
   }
 
+  resolveLocalizedHref(pathOrigin, idioma, rawHref) {
+    const href = typeof rawHref === "string" ? rawHref.trim() : "";
+
+    if (href === "") {
+      return this.getHomeUrl(pathOrigin, idioma);
+    }
+
+    if (
+      href.startsWith("/") ||
+      href.startsWith("#") ||
+      href.startsWith("?") ||
+      href.startsWith("//") ||
+      /^[a-z][a-z\d+.-]*:/i.test(href)
+    ) {
+      return href;
+    }
+
+    const lang = idioma || DEFAULT_LANG;
+    return `${pathOrigin}/${lang}/${href}`;
+  }
+
   //Función para quitar los estilos al selector de idiomas
   resetearIdioma() {
     this.listadoIdiomas = document.getElementsByClassName("btn_idioma");
@@ -174,11 +195,11 @@ export default class traduccionClass {
             datalang.innerHTML = objGroupJson[dataLangValue]["text"];
           }
           if (Object.keys(objGroupJson[dataLangValue]).includes("href")) {
-            if (objGroupJson[dataLangValue]["href"]) {
-              datalang.href = `${pathOrigin}/${langForHref}/${objGroupJson[dataLangValue]["href"]}`;
-            } else {
-              datalang.href = this.getHomeUrl(pathOrigin, langForHref);
-            }
+            datalang.href = this.resolveLocalizedHref(
+              pathOrigin,
+              langForHref,
+              objGroupJson[dataLangValue]["href"]
+            );
           }
           if (objGroupJson[dataLangValue]["placeholder"]) {
             datalang.placeholder = objGroupJson[dataLangValue]["placeholder"];
@@ -234,11 +255,11 @@ export default class traduccionClass {
             datalang.innerHTML = objGroupJson[dataLangValue]["text"];
           }
           if (Object.keys(objGroupJson[dataLangValue]).includes("href")) {
-            if (objGroupJson[dataLangValue]["href"]) {
-              datalang.href = `${pathOrigin}/${langForHref}/${objGroupJson[dataLangValue]["href"]}`;
-            } else {
-              datalang.href = this.getHomeUrl(pathOrigin, langForHref);
-            }
+            datalang.href = this.resolveLocalizedHref(
+              pathOrigin,
+              langForHref,
+              objGroupJson[dataLangValue]["href"]
+            );
           }
           if (objGroupJson[dataLangValue]["placeholder"]) {
             datalang.placeholder = objGroupJson[dataLangValue]["placeholder"];
@@ -383,11 +404,11 @@ export default class traduccionClass {
               datalang.innerHTML = objGroupJson[dataLangValue]["text"];
             }
             if (Object.keys(objGroupJson[dataLangValue]).includes("href")) {
-              if (objGroupJson[dataLangValue]["href"]) {
-                datalang.href = `${pathOrigin}/${targetLang}/${objGroupJson[dataLangValue]["href"]}`;
-              } else {
-                datalang.href = this.getHomeUrl(pathOrigin, targetLang);
-              }
+              datalang.href = this.resolveLocalizedHref(
+                pathOrigin,
+                targetLang,
+                objGroupJson[dataLangValue]["href"]
+              );
             }
             if (objGroupJson[dataLangValue]["placeholder"]) {
               datalang.placeholder = objGroupJson[dataLangValue]["placeholder"];
@@ -447,11 +468,11 @@ export default class traduccionClass {
               datalang.innerHTML = objGroupJson[dataLangValue]["text"];
             }
             if (Object.keys(objGroupJson[dataLangValue]).includes("href")) {
-              if (objGroupJson[dataLangValue]["href"]) {
-                datalang.href = `${pathOrigin}/${targetLang}/${objGroupJson[dataLangValue]["href"]}`;
-              } else {
-                datalang.href = this.getHomeUrl(pathOrigin, targetLang);
-              }
+              datalang.href = this.resolveLocalizedHref(
+                pathOrigin,
+                targetLang,
+                objGroupJson[dataLangValue]["href"]
+              );
             }
             if (objGroupJson[dataLangValue]["placeholder"]) {
               datalang.placeholder = objGroupJson[dataLangValue]["placeholder"];
@@ -481,4 +502,3 @@ export default class traduccionClass {
       });
   }
 }
-
