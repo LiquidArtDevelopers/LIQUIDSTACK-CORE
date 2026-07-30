@@ -86,8 +86,14 @@ function controller_sectionParallax01(int $i = 0, array $params = []): string
     $defaultList    = is_numeric($listItemsParam) ? (int) $listItemsParam : 0;
     unset($params['items'], $params['list_items']);
 
+    $devMode = filter_var(
+        $_ENV['DEV_MODE'] ?? getenv('DEV_MODE') ?? false,
+        FILTER_VALIDATE_BOOLEAN
+    );
+    $itemEditorAttribute = $devMode ? ' data-inline-collection-item' : '';
+
     $listTpl = <<<'HTML'
-        <li data-lang="{X-li-dl}">{X-li-text}</li>
+        <li{X-item-editor-attribute} data-lang="{X-li-dl}">{X-li-text}</li>
     HTML;
 
     $itemTpl = <<<'HTML'
@@ -97,7 +103,7 @@ function controller_sectionParallax01(int $i = 0, array $params = []): string
                 <h3 class="sectionParallax01-card-title" data-lang="{X-title-dl}">{X-title-text}</h3>
             </div>
             <p class="sectionParallax01-card-text" data-lang="{X-text-dl}">{X-text-text}</p>
-            <ul class="sectionParallax01-card-list" role="list">
+            <ul class="sectionParallax01-card-list" role="list"{X-list-editor-attributes}>
                 {X-list-items}
             </ul>
             <a class="sectionParallax01-card-cta" data-lang="{X-cta-dl}" href="{X-cta-href}" title="{X-cta-title}">{X-cta-text}</a>
@@ -151,7 +157,8 @@ function controller_sectionParallax01(int $i = 0, array $params = []): string
         $ctaText      = (is_object($ctaObj) && isset($ctaObj->text)) ? $ctaObj->text : '';
 
         $listOverride = '{' . $letter . '-list-items}';
-        if (isset($params[$listOverride])) {
+        $usesGeneratedList = !isset($params[$listOverride]);
+        if (!$usesGeneratedList) {
             $listItemsHtml = (string) $params[$listOverride];
             unset($params[$listOverride]);
         } else {
@@ -191,12 +198,20 @@ function controller_sectionParallax01(int $i = 0, array $params = []): string
                 }
 
                 $listItemsHtml .= str_replace(
-                    ['{X-li-dl}', '{X-li-text}'],
-                    [$listKey, $listObj->text ?? ''],
+                    ['{X-item-editor-attribute}', '{X-li-dl}', '{X-li-text}'],
+                    [$itemEditorAttribute, $listKey, $listObj->text ?? ''],
                     $listTpl
                 );
             }
         }
+
+        $listEditorAttributes = $devMode
+            && $usesGeneratedList
+            && $listItemsHtml !== ''
+                ? ' data-inline-collection="lines"'
+                    . ' data-inline-collection-key="sectionParallax01_'
+                    . $pad . '_' . $letter . '_list"'
+                : '';
 
         $itemHtml = str_replace('{X', '{' . $letter, $itemTpl);
         $search   = [
@@ -206,6 +221,7 @@ function controller_sectionParallax01(int $i = 0, array $params = []): string
             '{' . $letter . '-title-text}',
             '{' . $letter . '-text-dl}',
             '{' . $letter . '-text-text}',
+            '{' . $letter . '-list-editor-attributes}',
             '{' . $letter . '-list-items}',
             '{' . $letter . '-cta-dl}',
             '{' . $letter . '-cta-href}',
@@ -219,6 +235,7 @@ function controller_sectionParallax01(int $i = 0, array $params = []): string
             $titleObj->text ?? '',
             $textKey,
             $textObj->text ?? '',
+            $listEditorAttributes,
             $listItemsHtml,
             $ctaKey,
             $ctaHref,

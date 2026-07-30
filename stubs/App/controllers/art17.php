@@ -68,6 +68,12 @@ function controller_art17(int $i = 0, array $params = []): string
     $defaultList    = is_numeric($listItemsParam) ? (int) $listItemsParam : 0;
     unset($params['items'], $params['list_items']);
 
+    $devMode = filter_var(
+        $_ENV['DEV_MODE'] ?? getenv('DEV_MODE') ?? false,
+        FILTER_VALIDATE_BOOLEAN
+    );
+    $itemEditorAttribute = $devMode ? ' data-inline-collection-item' : '';
+
     $headerLevels = resolve_header_levels($params, '{header-primary}', 3);
     $baseLevel    = $headerLevels['base'];
     $itemLevel    = $headerLevels['child'];
@@ -75,14 +81,14 @@ function controller_art17(int $i = 0, array $params = []): string
     $listTpl = <<<'HTML'
         <li class="art17-list-item">
             {X-list-icon}
-            <span data-lang="{X-li-dl}">{X-li-text}</span>
+            <span{X-item-editor-attribute} data-lang="{X-li-dl}">{X-li-text}</span>
         </li>
     HTML;
 
     $itemTpl = <<<'HTML'
         <div class="art17-card">
             {X-header-secondary}
-            <ul class="art17-list">
+            <ul class="art17-list"{X-list-editor-attributes}>
                 {X-list-items}
             </ul>
             {X-button-primary}
@@ -127,7 +133,8 @@ function controller_art17(int $i = 0, array $params = []): string
         $listIcon = $params[$listIconKey] ?? ($params['list_icon'] ?? $listIcon);
         unset($params[$listIconKey]);
 
-        if (isset($params[$listOverride])) {
+        $usesGeneratedList = !isset($params[$listOverride]);
+        if (!$usesGeneratedList) {
             $listItemsHtml = (string) $params[$listOverride];
             unset($params[$listOverride]);
         } else {
@@ -168,9 +175,15 @@ function controller_art17(int $i = 0, array $params = []): string
                 }
 
                 $listItemsHtml .= str_replace(
-                    ['{X-list-icon}', '{X-li-dl}', '{X-li-text}'],
+                    [
+                        '{X-list-icon}',
+                        '{X-item-editor-attribute}',
+                        '{X-li-dl}',
+                        '{X-li-text}',
+                    ],
                     [
                         $listIcon,
+                        $itemEditorAttribute,
                         $listKey,
                         $listObj->text ?? '',
                     ],
@@ -179,10 +192,24 @@ function controller_art17(int $i = 0, array $params = []): string
             }
         }
 
+        $listEditorAttributes = $devMode
+            && $usesGeneratedList
+            && $listItemsHtml !== ''
+                ? ' data-inline-collection="lines"'
+                    . ' data-inline-collection-key="art17_'
+                    . $pad . '_' . $letter . '_list"'
+                : '';
+
         $itemsHtml .= str_replace(
-            ['{X-header-secondary}', '{X-list-items}', '{X-button-primary}'],
+            [
+                '{X-header-secondary}',
+                '{X-list-editor-attributes}',
+                '{X-list-items}',
+                '{X-button-primary}',
+            ],
             [
                 '<h' . $itemLevel . ' data-lang="' . $headerVar . '">' . ($headerObj->text ?? '') . '</h' . $itemLevel . '>',
+                $listEditorAttributes,
                 $listItemsHtml,
                 $buttonVal,
             ],

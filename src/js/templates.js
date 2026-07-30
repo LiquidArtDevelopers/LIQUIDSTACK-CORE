@@ -18,6 +18,7 @@ import initSectionHScroll01 from './resources/_sectionHScroll01.js'
 import initArtWorksSkew01 from './resources/_artWorksSkew01.js'
 import initArtHeroScroll01 from './resources/_artHeroScroll01.js'
 import initModuleVideo01 from './resources/_moduleVideo01.js'
+import initModuleFormContact from './resources/_moduleFormContact.js'
 import initHero03 from './resources/_hero03.js'
 import initHero04 from './resources/_hero04.js'
 import initHero05 from './resources/_hero05.js'
@@ -41,6 +42,7 @@ doc.addEventListener('DOMContentLoaded',()=>{
     // Recurso independiente y seguro: debe inicializarse aunque otro bloque
     // experimental del showroom falle durante su montaje.
     initModuleVideo01()
+    initModuleFormContact()
     initStatsCounter()
     initSectTabs01()
     initGlobalForm()

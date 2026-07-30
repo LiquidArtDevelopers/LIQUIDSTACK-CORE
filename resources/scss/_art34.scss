@@ -1,0 +1,104 @@
+@use '../config' as c;
+
+.art34 {
+    width: c.$anchoFull;
+    padding: clamp(c.$padMax, 10vw, 15rem) c.$padMin;
+    background-color: c.$color01;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(2rem, 5vw, c.$padMax);
+
+    .art34-title {
+        width: 100%;
+        max-width: c.$textMax;
+        margin: 0;
+        color: c.$color03;
+        text-align: center;
+    }
+
+    .art34-items {
+        width: 100%;
+        max-width: c.$textMax;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: c.$padMin;
+    }
+
+    .art34-item {
+        min-width: 0;
+        padding: clamp(c.$padMin, 4vw, c.$padMax);
+        border: 1px solid c.$color00bis;
+        border-radius: 1rem;
+        background-color: c.$color00bis2;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+        transition:
+            border-color 220ms ease,
+            transform 220ms ease,
+            background-color 220ms ease;
+
+        &:hover,
+        &:focus-within {
+            border-color: c.$color03;
+            background-color: c.$color00bis;
+            transform: translateY(-.2rem);
+        }
+    }
+
+    .art34-itemTitle {
+        width: 100%;
+        margin: 0;
+        color: c.$color00;
+    }
+
+    .art34-itemContent {
+        width: 100%;
+        min-width: 0;
+
+        .moduleList01 {
+            --moduleList01-marker-color: #{c.$color03};
+        }
+
+        .moduleList01-item > span:last-child,
+        .moduleParrafo01 {
+            color: c.$color00;
+        }
+    }
+
+    .art34-itemCta,
+    .art34-ctaSlot {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    .art34-itemCta {
+        margin-top: auto;
+        justify-content: flex-start;
+    }
+
+    @media (min-width: c.$tablet) {
+        .art34-items {
+            grid-template-columns: repeat(
+                auto-fit,
+                minmax(min(100%, 20rem), 1fr)
+            );
+            gap: clamp(c.$padMin, 4vw, c.$padMax);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .art34-item {
+            transition: none;
+
+            &:hover,
+            &:focus-within {
+                transform: none;
+            }
+        }
+    }
+}
+

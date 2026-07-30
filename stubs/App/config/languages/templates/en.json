@@ -3527,5 +3527,262 @@
         "src": "assets/img/dummy/dummy04.avif",
         "alt": "Escena Matrix de la fila 04",
         "title": "Matrix ipsum 04 para art31"
+    },
+    "art33_00_headerPrimary": {
+        "text": "art33 · modular content article"
+    },
+    "art33_00_headerSecondary_a": {
+        "text": "Follow the white rabbit."
+    },
+    "art33_00_headerSecondary_b": {
+        "text": "There is no spoon."
+    },
+    "art34_00_headerPrimary": {
+        "text": "art34 · modular article with a main CTA"
+    },
+    "art34_00_headerSecondary_a": {
+        "text": "Welcome to the real world."
+    },
+    "art34_00_headerSecondary_b": {
+        "text": "Free your mind."
+    },
+    "moduleParrafo01_05_p_text": {
+        "text": "The Matrix builds an apparent reality while the white rabbit points towards another path. This test paragraph checks how independent modular content behaves inside a flexible card."
+    },
+    "moduleParrafo01_06_p_text": {
+        "text": "Neo watches the code, questions its limits, and discovers that choice is also part of the system. This copy tests vertical rhythm and responsive card composition."
+    },
+    "moduleList01_04_marker_icon": "shield",
+    "moduleList01_04_a_li_text": {
+        "text": "Follow the white rabbit."
+    },
+    "moduleList01_04_b_li_text": {
+        "text": "There is no spoon."
+    },
+    "moduleList01_04_c_li_text": {
+        "text": "Free your mind."
+    },
+    "moduleList01_04_d_li_text": {
+        "text": "Welcome to the real world."
+    },
+    "moduleList01_05_marker_icon": "shield",
+    "moduleList01_05_a_li_text": {
+        "text": "Wake up, Neo."
+    },
+    "moduleList01_05_b_li_text": {
+        "text": "The Matrix has you."
+    },
+    "moduleList01_05_c_li_text": {
+        "text": "Choice is an illusion."
+    },
+    "moduleList01_05_d_li_text": {
+        "text": "Dodge this."
+    },
+    "moduleList01_05_e_li_text": {
+        "text": "Believe."
+    },
+    "moduleFormContact01_00_legend": {
+        "text": "moduleFormContact01 · Editorial form"
+    },
+    "moduleFormContact01_00_intro": {
+        "text": "Neo opens a secure channel while Trinity sorts the signals inside the Matrix. Complete the details and the system will move your enquiry to the next stage."
+    },
+    "moduleFormContact01_00_label_name": {
+        "text": "Name"
+    },
+    "moduleFormContact01_00_ph_name": {
+        "placeholder": "Enter your name"
+    },
+    "moduleFormContact01_00_label_phone": {
+        "text": "Phone"
+    },
+    "moduleFormContact01_00_ph_phone": {
+        "placeholder": "Enter your phone"
+    },
+    "moduleFormContact01_00_label_mail": {
+        "text": "Email address"
+    },
+    "moduleFormContact01_00_ph_mail": {
+        "placeholder": "name@matrix.test"
+    },
+    "moduleFormContact01_00_label_message": {
+        "text": "Enquiry"
+    },
+    "moduleFormContact01_00_ph_message": {
+        "placeholder": "Tell us which signal you need to decode"
+    },
+    "moduleFormContact01_00_terms": {
+        "text": "I accept the processing of my data under the"
+    },
+    "moduleFormContact01_00_privacy": {
+        "text": "privacy policy",
+        "href": "#privacy",
+        "title": "Read the privacy policy"
+    },
+    "moduleFormContact01_00_terms_error": {
+        "text": "You must accept the privacy policy to continue."
+    },
+    "moduleFormContact01_00_label_captcha": {
+        "text": "Solve the verification"
+    },
+    "moduleFormContact01_00_ph_captcha": {
+        "placeholder": "Result"
+    },
+    "moduleFormContact01_00_submit": {
+        "text": "Send enquiry"
+    },
+    "moduleFormContact01_00_sending": {
+        "text": "Sending the signal..."
+    },
+    "moduleFormContact01_00_success_title": {
+        "text": "The signal arrived"
+    },
+    "moduleFormContact01_00_success_text": {
+        "text": "The operator has received your message and will reply when the next Matrix node becomes available."
+    },
+    "moduleFormContact01_00_new_query": {
+        "text": "New enquiry"
+    },
+    "moduleFormContact01_00_network_error": {
+        "text": "The system is offline. Please try again."
+    },
+    "moduleFormContact01_00_server_error": {
+        "text": "The system could not process the enquiry."
+    },
+    "moduleFormContact02_00_legend": {
+        "text": "moduleFormContact02 · Night form"
+    },
+    "moduleFormContact02_00_intro": {
+        "text": "Morpheus keeps a night line open beyond the system noise. Leave your enquiry and the team will follow its trace when the Matrix reveals the code again."
+    },
+    "moduleFormContact02_00_label_name": {
+        "text": "Identity"
+    },
+    "moduleFormContact02_00_ph_name": {
+        "placeholder": "How should we address you"
+    },
+    "moduleFormContact02_00_label_phone": {
+        "text": "Phone channel"
+    },
+    "moduleFormContact02_00_ph_phone": {
+        "placeholder": "Your contact number"
+    },
+    "moduleFormContact02_00_label_mail": {
+        "text": "Email channel"
+    },
+    "moduleFormContact02_00_ph_mail": {
+        "placeholder": "neo@matrix.test"
+    },
+    "moduleFormContact02_00_label_message": {
+        "text": "Encrypted message"
+    },
+    "moduleFormContact02_00_ph_message": {
+        "placeholder": "Describe the enquiry we should review"
+    },
+    "moduleFormContact02_00_terms": {
+        "text": "I authorise the use of my data under the"
+    },
+    "moduleFormContact02_00_privacy": {
+        "text": "privacy policy",
+        "href": "#privacy",
+        "title": "Read the privacy policy"
+    },
+    "moduleFormContact02_00_terms_error": {
+        "text": "Authorise data processing before sending."
+    },
+    "moduleFormContact02_00_label_captcha": {
+        "text": "Confirm you are human"
+    },
+    "moduleFormContact02_00_ph_captcha": {
+        "placeholder": "Sum"
+    },
+    "moduleFormContact02_00_submit": {
+        "text": "Open channel"
+    },
+    "moduleFormContact02_00_sending": {
+        "text": "Connecting to the operator..."
+    },
+    "moduleFormContact02_00_success_title": {
+        "text": "Channel confirmed"
+    },
+    "moduleFormContact02_00_success_text": {
+        "text": "Your message crossed the system. Trinity will review it before replying through a secure channel."
+    },
+    "moduleFormContact02_00_new_query": {
+        "text": "Send another message"
+    },
+    "moduleFormContact02_00_network_error": {
+        "text": "The connection was interrupted. Please try again."
+    },
+    "moduleFormContact02_00_server_error": {
+        "text": "The operator is not available right now."
+    },
+    "moduleFormContact03_00_legend": {
+        "text": "moduleFormContact03 · Ledger form"
+    },
+    "moduleFormContact03_00_intro": {
+        "text": "Every decision leaves a line in the Matrix ledger. Record the essential details and write a precise enquiry so we can organise the next move."
+    },
+    "moduleFormContact03_00_label_name": {
+        "text": "Full name"
+    },
+    "moduleFormContact03_00_ph_name": {
+        "placeholder": "Operator name"
+    },
+    "moduleFormContact03_00_label_phone": {
+        "text": "Direct phone"
+    },
+    "moduleFormContact03_00_ph_phone": {
+        "placeholder": "Contact number"
+    },
+    "moduleFormContact03_00_label_mail": {
+        "text": "Reply email"
+    },
+    "moduleFormContact03_00_ph_mail": {
+        "placeholder": "trinity@matrix.test"
+    },
+    "moduleFormContact03_00_label_message": {
+        "text": "Entry"
+    },
+    "moduleFormContact03_00_ph_message": {
+        "placeholder": "Summarise the pending decision"
+    },
+    "moduleFormContact03_00_terms": {
+        "text": "I confirm that I have read and accept the"
+    },
+    "moduleFormContact03_00_privacy": {
+        "text": "privacy policy",
+        "href": "#privacy",
+        "title": "Review the privacy policy"
+    },
+    "moduleFormContact03_00_terms_error": {
+        "text": "Confirm the privacy policy to record the enquiry."
+    },
+    "moduleFormContact03_00_label_captcha": {
+        "text": "Record validation"
+    },
+    "moduleFormContact03_00_ph_captcha": {
+        "placeholder": "Total"
+    },
+    "moduleFormContact03_00_submit": {
+        "text": "Record enquiry"
+    },
+    "moduleFormContact03_00_sending": {
+        "text": "Recording the operation..."
+    },
+    "moduleFormContact03_00_success_title": {
+        "text": "Record completed"
+    },
+    "moduleFormContact03_00_success_text": {
+        "text": "The enquiry is now in the system and the team can analyse it before opening a new route."
+    },
+    "moduleFormContact03_00_new_query": {
+        "text": "Create another record"
+    },
+    "moduleFormContact03_00_network_error": {
+        "text": "The record is unreachable. Check your connection."
+    },
+    "moduleFormContact03_00_server_error": {
+        "text": "The record is temporarily unavailable."
     }
 }

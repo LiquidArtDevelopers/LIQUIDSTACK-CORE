@@ -4,6 +4,15 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Añadido
+- Recursos `art33` y `art34`, con raíz `article`, fichas `div`, encabezados
+  relativos, cantidad variable de ítems, contenido inyectable y CTA por ficha
+  o general.
+- Familia `moduleFormContact01/02/03`, con tres presentaciones del mismo
+  formulario atómico, envío asíncrono same-origin, IDs accesibles por
+  instancia y catálogo completo ES/EN/EU.
+- Backend genérico compatible con `POST /form`, plantillas de correo y
+  catálogos ES/EN/EU. Composer instala las semillas solo cuando faltan y
+  conserva las personalizaciones locales del endpoint, transporte y correo.
 - Dieciocho recursos reutilizables promovidos desde el laboratorio: los
   escenarios `hero06` y `hero07`, los módulos `moduleH1Type03`,
   `moduleH1Type04` y `moduleH2Type02`, los artículos `art20` a `art31` y
@@ -64,6 +73,18 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   alturas, saltos de línea y distribución responsive.
 
 ### Corregido
+- El instalador conserva el runtime legal y `footerInfo01` cuando un proyecto
+  los ha personalizado, evitando que una actualización de CORE sustituya copy
+  regulatorio o branding del consumidor.
+- `moduleH1Type02` admite `header_level`; `art15` recupera su anchura completa
+  y `artVideo01` limita su anchura al 80 % en tablet y al 60 % en escritorio.
+- El editor inline prioriza las colecciones editoriales en fase de captura y
+  neutraliza listeners antiguos que hayan quedado vivos durante HMR, de modo
+  que `Ctrl + doble clic` sobre el texto de un `li` abre siempre el listado
+  completo. El selector de icono pasa a ser opcional y el mismo contrato se
+  aplica a las listas nativas de `art17`, `art18`, `artPricingGlass01`,
+  `sectionParallax01`, `artHeroScroll01` y `artZipper`, sin interceptar las
+  imágenes editables ni las listas estructurales de navegación.
 - La sincronización de imágenes instala los logos genéricos que falten, pero
   conserva los logos homónimos existentes en cada consumidor para no sustituir
   su branding durante `composer install` o `composer update`.

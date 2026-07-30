@@ -3500,5 +3500,262 @@
         "src": "assets/img/system/check-OK.svg",
         "alt": "Egiaztapen-ikonoa",
         "title": "Egiaztapen-ikonoa"
+    },
+    "art33_00_headerPrimary": {
+        "text": "art33 · eduki modularreko artikulua"
+    },
+    "art33_00_headerSecondary_a": {
+        "text": "Follow the white rabbit."
+    },
+    "art33_00_headerSecondary_b": {
+        "text": "There is no spoon."
+    },
+    "art34_00_headerPrimary": {
+        "text": "art34 · CTA nagusidun artikulu modularra"
+    },
+    "art34_00_headerSecondary_a": {
+        "text": "Welcome to the real world."
+    },
+    "art34_00_headerSecondary_b": {
+        "text": "Free your mind."
+    },
+    "moduleParrafo01_05_p_text": {
+        "text": "Matrixek itxurazko errealitatea eraikitzen du, untxi zuriak beste bide bat erakusten duen bitartean. Probako paragrafo honek eduki modularrak txartel malgu batean duen portaera egiaztatzen du."
+    },
+    "moduleParrafo01_06_p_text": {
+        "text": "Neok kodea behatzen du, bere mugak zalantzan jartzen ditu eta hautua ere sistemaren parte dela deskubritzen du. Testu honek erritmo bertikala eta diseinu moldagarria probatzen ditu."
+    },
+    "moduleList01_04_marker_icon": "shield",
+    "moduleList01_04_a_li_text": {
+        "text": "Follow the white rabbit."
+    },
+    "moduleList01_04_b_li_text": {
+        "text": "There is no spoon."
+    },
+    "moduleList01_04_c_li_text": {
+        "text": "Free your mind."
+    },
+    "moduleList01_04_d_li_text": {
+        "text": "Welcome to the real world."
+    },
+    "moduleList01_05_marker_icon": "shield",
+    "moduleList01_05_a_li_text": {
+        "text": "Wake up, Neo."
+    },
+    "moduleList01_05_b_li_text": {
+        "text": "The Matrix has you."
+    },
+    "moduleList01_05_c_li_text": {
+        "text": "Choice is an illusion."
+    },
+    "moduleList01_05_d_li_text": {
+        "text": "Dodge this."
+    },
+    "moduleList01_05_e_li_text": {
+        "text": "Believe."
+    },
+    "moduleFormContact01_00_legend": {
+        "text": "moduleFormContact01 · Inprimaki editoriala"
+    },
+    "moduleFormContact01_00_intro": {
+        "text": "Neok kanal segurua irekitzen du Trinityk Matrixeko seinaleak ordenatzen dituen bitartean. Bete datuak eta sistemak zure kontsulta ibilbidearen hurrengo mailara eramango du."
+    },
+    "moduleFormContact01_00_label_name": {
+        "text": "Izena"
+    },
+    "moduleFormContact01_00_ph_name": {
+        "placeholder": "Idatzi zure izena"
+    },
+    "moduleFormContact01_00_label_phone": {
+        "text": "Telefonoa"
+    },
+    "moduleFormContact01_00_ph_phone": {
+        "placeholder": "Adierazi zure telefonoa"
+    },
+    "moduleFormContact01_00_label_mail": {
+        "text": "Posta elektronikoa"
+    },
+    "moduleFormContact01_00_ph_mail": {
+        "placeholder": "izena@matrix.test"
+    },
+    "moduleFormContact01_00_label_message": {
+        "text": "Kontsulta"
+    },
+    "moduleFormContact01_00_ph_message": {
+        "placeholder": "Azaldu zein seinale deskodetu nahi duzun"
+    },
+    "moduleFormContact01_00_terms": {
+        "text": "Nire datuen tratamendua onartzen dut honen arabera:"
+    },
+    "moduleFormContact01_00_privacy": {
+        "text": "pribatutasun politika",
+        "href": "#privacy",
+        "title": "Pribatutasun politika kontsultatu"
+    },
+    "moduleFormContact01_00_terms_error": {
+        "text": "Pribatutasun politika onartu behar duzu jarraitzeko."
+    },
+    "moduleFormContact01_00_label_captcha": {
+        "text": "Ebatzi egiaztapena"
+    },
+    "moduleFormContact01_00_ph_captcha": {
+        "placeholder": "Emaitza"
+    },
+    "moduleFormContact01_00_submit": {
+        "text": "Bidali kontsulta"
+    },
+    "moduleFormContact01_00_sending": {
+        "text": "Seinalea bidaltzen..."
+    },
+    "moduleFormContact01_00_success_title": {
+        "text": "Seinalea iritsi da"
+    },
+    "moduleFormContact01_00_success_text": {
+        "text": "Operadoreak zure mezua jaso du eta Matrixeko hurrengo nodoa erabilgarri dagoenean erantzungo dizu."
+    },
+    "moduleFormContact01_00_new_query": {
+        "text": "Kontsulta berria"
+    },
+    "moduleFormContact01_00_network_error": {
+        "text": "Sistema lineaz kanpo dago. Saiatu berriro."
+    },
+    "moduleFormContact01_00_server_error": {
+        "text": "Sistemak ezin izan du kontsulta prozesatu."
+    },
+    "moduleFormContact02_00_legend": {
+        "text": "moduleFormContact02 · Gaueko inprimakia"
+    },
+    "moduleFormContact02_00_intro": {
+        "text": "Morpheusek gaueko linea irekita mantentzen du sistemaren zaratatik kanpo. Utzi zure kontsulta eta taldeak arrastoa jarraituko du Matrixek kodea berriro erakustean."
+    },
+    "moduleFormContact02_00_label_name": {
+        "text": "Identitatea"
+    },
+    "moduleFormContact02_00_ph_name": {
+        "placeholder": "Nola deitu behar dizugu"
+    },
+    "moduleFormContact02_00_label_phone": {
+        "text": "Telefono kanala"
+    },
+    "moduleFormContact02_00_ph_phone": {
+        "placeholder": "Zure harremanetarako zenbakia"
+    },
+    "moduleFormContact02_00_label_mail": {
+        "text": "Posta kanala"
+    },
+    "moduleFormContact02_00_ph_mail": {
+        "placeholder": "neo@matrix.test"
+    },
+    "moduleFormContact02_00_label_message": {
+        "text": "Mezu zifratua"
+    },
+    "moduleFormContact02_00_ph_message": {
+        "placeholder": "Azaldu berrikusi behar dugun kontsulta"
+    },
+    "moduleFormContact02_00_terms": {
+        "text": "Nire datuak erabiltzea baimentzen dut honen arabera:"
+    },
+    "moduleFormContact02_00_privacy": {
+        "text": "pribatutasun politika",
+        "href": "#privacy",
+        "title": "Pribatutasun politika irakurri"
+    },
+    "moduleFormContact02_00_terms_error": {
+        "text": "Baimendu datuen tratamendua bidali aurretik."
+    },
+    "moduleFormContact02_00_label_captcha": {
+        "text": "Egiaztatu gizakia zarela"
+    },
+    "moduleFormContact02_00_ph_captcha": {
+        "placeholder": "Batuketa"
+    },
+    "moduleFormContact02_00_submit": {
+        "text": "Ireki kanala"
+    },
+    "moduleFormContact02_00_sending": {
+        "text": "Operadorearekin konektatzen..."
+    },
+    "moduleFormContact02_00_success_title": {
+        "text": "Kanala baieztatuta"
+    },
+    "moduleFormContact02_00_success_text": {
+        "text": "Zure mezuak sistema zeharkatu du. Trinityk berrikusiko du kanal seguru batetik erantzun aurretik."
+    },
+    "moduleFormContact02_00_new_query": {
+        "text": "Bidali beste mezu bat"
+    },
+    "moduleFormContact02_00_network_error": {
+        "text": "Konexioa eten da. Saiatu berriro."
+    },
+    "moduleFormContact02_00_server_error": {
+        "text": "Operadorea ez dago erabilgarri une honetan."
+    },
+    "moduleFormContact03_00_legend": {
+        "text": "moduleFormContact03 · Liburu nagusiko inprimakia"
+    },
+    "moduleFormContact03_00_intro": {
+        "text": "Erabaki bakoitzak lerro bat uzten du Matrixeko liburu nagusian. Erregistratu funtsezko datuak eta egin kontsulta zehatza hurrengo mugimendua antolatzeko."
+    },
+    "moduleFormContact03_00_label_name": {
+        "text": "Izen-abizenak"
+    },
+    "moduleFormContact03_00_ph_name": {
+        "placeholder": "Operadorearen izena"
+    },
+    "moduleFormContact03_00_label_phone": {
+        "text": "Zuzeneko telefonoa"
+    },
+    "moduleFormContact03_00_ph_phone": {
+        "placeholder": "Harremanetarako zenbakia"
+    },
+    "moduleFormContact03_00_label_mail": {
+        "text": "Erantzuteko posta"
+    },
+    "moduleFormContact03_00_ph_mail": {
+        "placeholder": "trinity@matrix.test"
+    },
+    "moduleFormContact03_00_label_message": {
+        "text": "Oharra"
+    },
+    "moduleFormContact03_00_ph_message": {
+        "placeholder": "Laburbildu zain dagoen erabakia"
+    },
+    "moduleFormContact03_00_terms": {
+        "text": "Irakurri dudala eta hau onartzen dudala baieztatzen dut:"
+    },
+    "moduleFormContact03_00_privacy": {
+        "text": "pribatutasun politika",
+        "href": "#privacy",
+        "title": "Pribatutasun politika berrikusi"
+    },
+    "moduleFormContact03_00_terms_error": {
+        "text": "Baieztatu pribatutasun politika kontsulta erregistratzeko."
+    },
+    "moduleFormContact03_00_label_captcha": {
+        "text": "Erregistroaren balidazioa"
+    },
+    "moduleFormContact03_00_ph_captcha": {
+        "placeholder": "Guztira"
+    },
+    "moduleFormContact03_00_submit": {
+        "text": "Erregistratu kontsulta"
+    },
+    "moduleFormContact03_00_sending": {
+        "text": "Eragiketa erregistratzen..."
+    },
+    "moduleFormContact03_00_success_title": {
+        "text": "Erregistroa osatuta"
+    },
+    "moduleFormContact03_00_success_text": {
+        "text": "Kontsulta sisteman dago eta taldeak aztertu ahal izango du ibilbide berri bat ireki aurretik."
+    },
+    "moduleFormContact03_00_new_query": {
+        "text": "Sortu beste erregistro bat"
+    },
+    "moduleFormContact03_00_network_error": {
+        "text": "Ezin da erregistrora sartu. Egiaztatu konexioa."
+    },
+    "moduleFormContact03_00_server_error": {
+        "text": "Erregistroa ez dago erabilgarri aldi baterako."
     }
 }

@@ -20,6 +20,12 @@ Al ejecutar `composer install` o `composer update` en un proyecto que consume es
    elementos que solo existen en el consumidor. Entre los ficheros gestionados
    está `App/app/updateLanguage.php`, necesario para el guardado individual y
    por lotes del editor inline.
+
+   La familia `moduleFormContact01/02/03` incluye además un backend de contacto
+   genérico (`formContact.php`, transporte PHPMailer, comprobaciones y
+   catálogos de correo ES/EN/EU). Estos ficheros se instalan únicamente cuando
+   faltan: un backend, transporte o catálogo `_email` ya personalizado por el
+   proyecto se conserva sin cambios.
 2. Se copian recursos frontend:
 - `resources/js` -> `src/js/resources` (y copia en `vendor/liquidstack/core/resources/js`).
 - `resources/scss` -> `src/scss/resources` (y copia en `vendor/liquidstack/core/resources/scss`).
@@ -31,6 +37,11 @@ contenido, salvo `public/assets/img/logos`: los logos canónicos se instalan si
 faltan, pero un logo ya existente se considera branding del proyecto y nunca
 se sobrescribe. La sincronización tampoco elimina imágenes o vídeos que solo
 existan en el consumidor.
+
+El contenido legal y el footer suelen contener datos regulatorios y branding
+propios. Por ello, `_terminos.js`, `_moduleTerminos.scss`, `footerInfo01.php` y
+`_footerInfo01.html` se instalan si faltan, pero una variante local existente
+no se sobrescribe desde CORE.
 
 3. Se fusionan dependencias de `package.core.json` en el `package.json` del proyecto consumidor.
 4. Se instala el watcher compartido de idiomas en
@@ -215,12 +226,61 @@ antes de `cookie_social=true`, y monta el iframe únicamente después de pulsar
 reproducir. El modo local admite WebM, MP4, poster y pistas VTT editables,
 valida rutas y extensiones y recarga el elemento `<video>` al guardar.
 
+### Formularios de contacto modulares
+
+`moduleFormContact01`, `moduleFormContact02` y `moduleFormContact03` comparten
+el mismo HTML accesible y el mismo runtime asíncrono; solo cambia su diseño.
+Son módulos atómicos con raíz `div`, sin encabezado documental, ficha de
+contacto ni mapa, para poder combinarlos con otros recursos.
+
+Por defecto envían el contrato legacy mediante `POST /form`:
+
+```php
+'/form' => 'formContact.php',
+```
+
+`App/config/routes/post.php` pertenece al proyecto y CORE no lo sobrescribe.
+El proyecto consumidor debe conservar esa entrada. El backend genérico se
+siembra desde CORE solo si no existe y utiliza:
+
+- `App/app/formContact.php`
+- `App/app/_phpmailer.php`
+- `App/class/_comprobaciones.php`
+- `App/config/languages/_email/{es,en,eu}.json`
+- `_formContactAdmin.html` y `_formContactUser.html`
+
+Configuración mínima en el `.env` del consumidor:
+
+```dotenv
+MAIL_HOST=
+MAIL_USERNAME=
+MAIL_PASSWORD=
+MAIL_PORT=465
+MAIL_WEB=
+MAIL_ADMIN=
+EMISOR_NAME=
+DOMAIN=
+DOMAIN_URL=
+```
+
+`MAIL_LAD` y `MAIL_LAD_BIS` son copias ocultas opcionales. Las credenciales,
+destinatarios, idiomas habilitados y plantillas personalizadas siguen siendo
+responsabilidad de cada proyecto.
+
+Este backend conserva compatibilidad con el flujo existente. No debe
+considerarse todavía un sistema antispam endurecido: el reto aritmético se
+resuelve en cliente y quedan pendientes para un refactor posterior CSRF,
+limitación de frecuencia y validación server-side del consentimiento.
+
 El editor inline sincronizado soporta fondos responsive, una imagen de fondo
-única, colecciones de lista con icono, medios de vídeo y grupos compuestos
-opt-in. La inicialización es segura frente a recargas HMR y sustituye su
-listener anterior antes de registrar el nuevo. Su endpoint gestionado es
-`App/app/updateLanguage.php`; las rutas del proyecto no se pisan, por lo que el
-consumidor debe conservar esta entrada en su configuración POST:
+única, colecciones de lista con icono opcional, medios de vídeo y grupos
+compuestos opt-in. En `moduleList01` y en las listas editoriales nativas de los
+recursos, `Ctrl + doble clic` sobre el propio texto abre todas las líneas del
+bloque. La inicialización usa captura temprana, es segura frente a recargas HMR
+y neutraliza listeners antiguos antes de que abran únicamente el `li`
+pulsado. Su endpoint gestionado es `App/app/updateLanguage.php`; las rutas del
+proyecto no se pisan, por lo que el consumidor debe conservar esta entrada en
+su configuración POST:
 
 ```php
 '/languages/update' => 'updateLanguage.php',

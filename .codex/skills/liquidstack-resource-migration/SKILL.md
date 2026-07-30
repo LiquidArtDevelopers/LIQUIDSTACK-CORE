@@ -91,6 +91,14 @@ explícitamente en `Installer::syncProjectAssets()` y comprobarse en un fixture
 de Composer; copiar únicamente el recurso visual deja la funcionalidad
 incompleta.
 
+Cuando un recurso reutiliza un backend configurable —formularios, correo,
+autenticación o integraciones— distribuir una semilla genérica solo si falta y
+preservar las copias locales existentes junto con sus catálogos y transporte.
+No copiar a CORE destinatarios, credenciales, BCC, branding, contenido legal o
+plantillas propias del cliente. Si un runtime canónico contiene datos
+regulatorios locales, separarlo en una variante o marcarlo como preservable
+antes de permitir que Composer actualice el consumidor.
+
 Los directorios de medios no se consideran distribuidos solo por existir en
 `resources`: verificar que `Installer::syncResources()` los copie al destino
 público correspondiente y que preserve archivos locales no gestionados.

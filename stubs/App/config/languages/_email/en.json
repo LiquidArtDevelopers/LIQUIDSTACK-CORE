@@ -1,0 +1,50 @@
+{
+    "fallos": {
+        "captcha1": "Please solve the operation",
+        "captcha2": "Please solve the operation correctly",
+        "nombre1": "Please enter your name",
+        "nombre2": "The name cannot be a number",
+        "nombre3": "The name must contain between 3 and 40 characters",
+        "tel1": "Please enter a telephone number",
+        "tel2": "The telephone number can contain up to 14 digits",
+        "correo1": "The email field cannot be empty",
+        "correo2": "The email address cannot be a number",
+        "correo3": "The email address can contain up to 100 characters",
+        "correo4": "The email address is not valid",
+        "consulta1": "Please enter your enquiry",
+        "consulta2": "The enquiry must contain between 10 and 500 characters"
+    },
+    "consulta_admin": {
+        "tipo": "Website enquiry",
+        "asunto": "New website enquiry from",
+        "title": "You have received a new enquiry",
+        "saludo": "Hello",
+        "contexto": "You have received an enquiry through the website",
+        "explicacion": "The details supplied by the user are shown below. The user has accepted the privacy terms and conditions.",
+        "datosEncabezado": "Enquiry details",
+        "headerNombre": "Name:",
+        "headerTelefono": "Telephone:",
+        "headerCorreo": "Email:",
+        "headerDate": "Enquiry date:",
+        "headerLang": "Website language:",
+        "headerConsulta": "Enquiry:",
+        "despedida": "Kind regards,",
+        "equipo": "The team at"
+    },
+    "consulta_user": {
+        "tipo": "Website enquiry",
+        "asunto": "We have received your enquiry,",
+        "title": "We have received your enquiry",
+        "saludo": "Hello",
+        "contexto": "We have received your enquiry through the website",
+        "explicacion": "The details you supplied are shown below. By submitting this form, you accepted the privacy and data processing policy.",
+        "datosEncabezado": "Details supplied",
+        "headerNombre": "Name:",
+        "headerTelefono": "Telephone:",
+        "headerCorreo": "Email:",
+        "headerDate": "Enquiry date:",
+        "headerConsulta": "Your enquiry:",
+        "despedida": "Kind regards,",
+        "equipo": "The team at"
+    }
+}

@@ -1,7 +1,7 @@
 @use '../config' as c;
 
 .art15{
-    width: c.$anchoMax;
+    width: c.$anchoFull;
     @media only screen and (min-width:c.$desktop){
         &{
             width: c.$anchoMedio;

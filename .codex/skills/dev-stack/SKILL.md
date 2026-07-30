@@ -140,8 +140,28 @@ controller('nombre', $index, [
   asociar a la imagen.
 - Usar `data-inline-group` solo en `DEV_MODE` y únicamente cuando varios
   campos de una misma unidad deban editarse juntos.
+- En una lista editorial editable, emitir solo en `DEV_MODE`
+  `data-inline-collection="lines"` y una
+  `data-inline-collection-key` única en su `ul`/`ol`; marcar cada unidad de
+  texto inmediata con `data-inline-collection-item` además de `data-lang`.
+  Mantener el selector de icono como contrato opcional y no aplicar esta
+  agrupación a menús, formularios ni listas estructurales o compuestas.
 - Hacer idempotente cualquier listener del editor que se reinstale mediante
   HMR, retirando el handler anterior antes de registrar el nuevo.
+
+### Formularios con backend
+
+- Fijar el contrato completo antes de replicar variantes visuales: nombres de
+  campo, endpoint, método, validaciones, esquema JSON, códigos de error y
+  estados de carga, éxito y reinicio.
+- Mantener IDs únicos por instancia, asociaciones `label`/`for`,
+  `aria-describedby`, errores locales y envío asíncrono acotado a la raíz.
+- Si se promueve a CORE, incluir en el mismo lote el runtime, una semilla
+  backend genérica, traducciones de correo y pruebas de instalación. El
+  instalador debe preservar endpoints, transporte, credenciales, destinatarios
+  y catálogos ya personalizados por cada consumidor.
+- Las rutas y secretos pertenecen al proyecto: documentar la entrada POST
+  requerida sin copiar ni sobrescribir `routes/post.php` o `.env`.
 
 ### SCSS
 

@@ -36,6 +36,12 @@ function controller_artHeroScroll01(int $i = 0, array $params = []): string
     $listItemsParam = $params['list_items'] ?? ($params['subitems'] ?? 3);
     unset($params['items'], $params['list_items'], $params['subitems']);
 
+    $devMode = filter_var(
+        $_ENV['DEV_MODE'] ?? getenv('DEV_MODE') ?? false,
+        FILTER_VALIDATE_BOOLEAN
+    );
+    $itemEditorAttribute = $devMode ? ' data-inline-collection-item' : '';
+
     $itemsHtml = '';
 
     for ($j = 0; $j < $itemsCount; $j++) {
@@ -74,9 +80,15 @@ function controller_artHeroScroll01(int $i = 0, array $params = []): string
 
             $listHtml .= '<li class="artHeroScroll01-listItem">'
                 . '<span class="artHeroScroll01-dash">&mdash;</span>'
-                . '<span data-lang="' . $subKey . '">' . $subText . '</span>'
+                . '<span' . $itemEditorAttribute . ' data-lang="' . $subKey . '">'
+                . $subText . '</span>'
                 . '</li>';
         }
+
+        $listEditorAttributes = $devMode && $listHtml !== ''
+            ? ' data-inline-collection="lines"'
+                . ' data-inline-collection-key="' . $pre . '_subitems"'
+            : '';
 
         $wordHtml = '';
         if ($wordText !== '') {
@@ -93,7 +105,8 @@ function controller_artHeroScroll01(int $i = 0, array $params = []): string
             . $titleText
             . '</h' . $itemLevel . '>'
             . '<p class="artHeroScroll01-text" data-lang="' . $pre . '_text">' . $textText . '</p>'
-            . '<ul class="artHeroScroll01-listItems">' . $listHtml . '</ul>'
+            . '<ul class="artHeroScroll01-listItems"' . $listEditorAttributes . '>'
+            . $listHtml . '</ul>'
             . '</div>'
             . '</article>';
     }

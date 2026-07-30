@@ -80,19 +80,25 @@ function controller_art18(int $i = 0, array $params = []): string
     $defaultList    = is_numeric($listItemsParam) ? (int) $listItemsParam : 0;
     unset($params['items'], $params['list_items']);
 
+    $devMode = filter_var(
+        $_ENV['DEV_MODE'] ?? getenv('DEV_MODE') ?? false,
+        FILTER_VALIDATE_BOOLEAN
+    );
+    $itemEditorAttribute = $devMode ? ' data-inline-collection-item' : '';
+
     $headerLevels = resolve_header_levels($params, '{header-primary}', 3);
     $baseLevel    = $headerLevels['base'];
     $itemLevel    = $headerLevels['child'];
 
     $listTpl = <<<'HTML'
-        <li data-lang="{X-li-dl}">{X-li-text}</li>
+        <li{X-item-editor-attribute} data-lang="{X-li-dl}">{X-li-text}</li>
     HTML;
 
     $itemTpl = <<<'HTML'
         <div class="card">
             {X-header-secondary}
             <p class="card-price" data-lang="{X-price-dl}">{X-price-text}</p>
-            <ul role="list" class="card-bullets flow">
+            <ul role="list" class="card-bullets flow"{X-list-editor-attributes}>
                 {X-list-items}
             </ul>
             <a class="cta" data-lang="{X-cta-dl}" href="{X-cta-href}" title="{X-cta-title}">{X-cta-text}</a>
@@ -137,7 +143,8 @@ function controller_art18(int $i = 0, array $params = []): string
         $ctaText      = (is_object($ctaObj) && isset($ctaObj->text)) ? $ctaObj->text : '';
 
         $listOverride = '{' . $letter . '-list-items}';
-        if (isset($params[$listOverride])) {
+        $usesGeneratedList = !isset($params[$listOverride]);
+        if (!$usesGeneratedList) {
             $listItemsHtml = (string) $params[$listOverride];
             unset($params[$listOverride]);
         } else {
@@ -177,18 +184,27 @@ function controller_art18(int $i = 0, array $params = []): string
                 }
 
                 $listItemsHtml .= str_replace(
-                    ['{X-li-dl}', '{X-li-text}'],
-                    [$listKey, $listObj->text ?? ''],
+                    ['{X-item-editor-attribute}', '{X-li-dl}', '{X-li-text}'],
+                    [$itemEditorAttribute, $listKey, $listObj->text ?? ''],
                     $listTpl
                 );
             }
         }
+
+        $listEditorAttributes = $devMode
+            && $usesGeneratedList
+            && $listItemsHtml !== ''
+                ? ' data-inline-collection="lines"'
+                    . ' data-inline-collection-key="art18_'
+                    . $pad . '_' . $letter . '_list"'
+                : '';
 
         $itemHtml = str_replace('{X', '{' . $letter, $itemTpl);
         $search   = [
             '{' . $letter . '-header-secondary}',
             '{' . $letter . '-price-dl}',
             '{' . $letter . '-price-text}',
+            '{' . $letter . '-list-editor-attributes}',
             '{' . $letter . '-list-items}',
             '{' . $letter . '-cta-dl}',
             '{' . $letter . '-cta-href}',
@@ -199,6 +215,7 @@ function controller_art18(int $i = 0, array $params = []): string
             '<h' . $itemLevel . ' class="card-heading" data-lang="' . $headerKey . '">' . ($headerObj->text ?? '') . '</h' . $itemLevel . '>',
             $priceKey,
             $priceObj->text ?? '',
+            $listEditorAttributes,
             $listItemsHtml,
             $ctaKey,
             $ctaHref,

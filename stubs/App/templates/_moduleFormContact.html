@@ -1,0 +1,225 @@
+<form
+    class="moduleFormContact-form {resource-class}-form"
+    id="{form-id}"
+    action="{form-action}"
+    method="post"
+    data-form-contact
+    data-network-error="{network-error-text}"
+    data-server-error="{server-error-text}"
+    aria-labelledby="{legend-id}"
+    novalidate
+>
+    <input type="hidden" name="lang" value="{form-lang}" data-form-lang>
+
+    <div class="moduleFormContact-body" data-form-body>
+        <fieldset class="moduleFormContact-fieldset">
+            <legend
+                class="moduleFormContact-legend"
+                id="{legend-id}"
+                data-lang="{legend-dl}"
+            >{legend-text}</legend>
+
+            <p class="moduleFormContact-intro" data-lang="{intro-dl}">{intro-text}</p>
+
+            <div class="moduleFormContact-fields">
+                <div class="moduleFormContact-field moduleFormContact-field--name">
+                    <label class="moduleFormContact-label" for="{name-id}">
+                        <span data-lang="{label-name-dl}">{label-name-text}</span>
+                    </label>
+                    <input
+                        class="moduleFormContact-control"
+                        id="{name-id}"
+                        name="nombre"
+                        type="text"
+                        autocomplete="name"
+                        minlength="3"
+                        maxlength="40"
+                        aria-describedby="{name-error-id}"
+                        data-lang="{ph-name-dl}"
+                        placeholder="{ph-name-text}"
+                        required
+                    >
+                    <span
+                        class="moduleFormContact-error"
+                        id="{name-error-id}"
+                        data-form-error="nombre_error"
+                        aria-live="polite"
+                    ></span>
+                </div>
+
+                <div class="moduleFormContact-field moduleFormContact-field--phone">
+                    <label class="moduleFormContact-label" for="{phone-id}">
+                        <span data-lang="{label-phone-dl}">{label-phone-text}</span>
+                    </label>
+                    <input
+                        class="moduleFormContact-control"
+                        id="{phone-id}"
+                        name="telefono"
+                        type="tel"
+                        autocomplete="tel"
+                        maxlength="14"
+                        aria-describedby="{phone-error-id}"
+                        data-lang="{ph-phone-dl}"
+                        placeholder="{ph-phone-text}"
+                        required
+                    >
+                    <span
+                        class="moduleFormContact-error"
+                        id="{phone-error-id}"
+                        data-form-error="telefono_error"
+                        aria-live="polite"
+                    ></span>
+                </div>
+
+                <div class="moduleFormContact-field moduleFormContact-field--email">
+                    <label class="moduleFormContact-label" for="{mail-id}">
+                        <span data-lang="{label-mail-dl}">{label-mail-text}</span>
+                    </label>
+                    <input
+                        class="moduleFormContact-control"
+                        id="{mail-id}"
+                        name="correo"
+                        type="email"
+                        autocomplete="email"
+                        maxlength="100"
+                        aria-describedby="{mail-error-id}"
+                        data-lang="{ph-mail-dl}"
+                        placeholder="{ph-mail-text}"
+                        required
+                    >
+                    <span
+                        class="moduleFormContact-error"
+                        id="{mail-error-id}"
+                        data-form-error="correo_error"
+                        aria-live="polite"
+                    ></span>
+                </div>
+
+                <div class="moduleFormContact-field moduleFormContact-field--message">
+                    <label class="moduleFormContact-label" for="{message-id}">
+                        <span data-lang="{label-message-dl}">{label-message-text}</span>
+                    </label>
+                    <textarea
+                        class="moduleFormContact-control"
+                        id="{message-id}"
+                        name="mensaje"
+                        autocomplete="off"
+                        minlength="10"
+                        maxlength="500"
+                        aria-describedby="{message-error-id}"
+                        data-lang="{ph-message-dl}"
+                        placeholder="{ph-message-text}"
+                        required
+                    ></textarea>
+                    <span
+                        class="moduleFormContact-error"
+                        id="{message-error-id}"
+                        data-form-error="mensaje_error"
+                        aria-live="polite"
+                    ></span>
+                </div>
+            </div>
+
+            <div class="moduleFormContact-captcha">
+                <label class="moduleFormContact-label" for="{captcha-id}">
+                    <span data-lang="{label-captcha-dl}">{label-captcha-text}</span>
+                    <span class="moduleFormContact-equation">
+                        <span data-form-captcha-a></span>
+                        <span aria-hidden="true">+</span>
+                        <span data-form-captcha-b></span>
+                        <span aria-hidden="true">=</span>
+                    </span>
+                </label>
+                <input
+                    class="moduleFormContact-control"
+                    id="{captcha-id}"
+                    name="respuesta"
+                    type="text"
+                    inputmode="numeric"
+                    pattern="[0-9]+"
+                    autocomplete="off"
+                    aria-describedby="{captcha-error-id}"
+                    data-lang="{ph-captcha-dl}"
+                    placeholder="{ph-captcha-text}"
+                    required
+                >
+                <input type="hidden" name="solucion" value="" data-form-captcha-solution>
+                <span
+                    class="moduleFormContact-error"
+                    id="{captcha-error-id}"
+                    data-form-error="captcha_error"
+                    aria-live="polite"
+                ></span>
+            </div>
+
+            <div class="moduleFormContact-terms">
+                <input
+                    id="{terms-id}"
+                    name="terminos"
+                    type="checkbox"
+                    value="1"
+                    aria-required="true"
+                    aria-describedby="{terms-error-id}"
+                    data-form-terms
+                >
+                <div class="moduleFormContact-termsCopy">
+                    <label for="{terms-id}">
+                        <span data-lang="{terms-dl}">{terms-text}</span>
+                    </label>
+                    <a
+                        href="{privacy-href}"
+                        title="{privacy-title}"
+                        data-lang="{privacy-dl}"
+                    >{privacy-text}</a>
+                </div>
+                <span
+                    class="moduleFormContact-error"
+                    id="{terms-error-id}"
+                    data-form-error="terminos_error"
+                    data-required-message="{terms-error-text}"
+                    aria-live="polite"
+                ></span>
+            </div>
+
+            <div class="moduleFormContact-actions">
+                <button
+                    class="moduleFormContact-submit"
+                    type="submit"
+                    data-lang="{submit-dl}"
+                    data-form-submit
+                >{submit-text}</button>
+            </div>
+        </fieldset>
+    </div>
+
+    <div
+        class="moduleFormContact-loader"
+        data-form-loader
+        role="status"
+        aria-hidden="true"
+        hidden
+    >
+        <span class="moduleFormContact-spinner" aria-hidden="true"></span>
+        <span data-lang="{sending-dl}">{sending-text}</span>
+    </div>
+
+    <div
+        class="moduleFormContact-success"
+        data-form-success
+        role="status"
+        aria-live="polite"
+        aria-hidden="true"
+        tabindex="-1"
+        hidden
+    >
+        <strong data-lang="{success-title-dl}">{success-title-text}</strong>
+        <p data-lang="{success-text-dl}">{success-text}</p>
+        <button
+            class="moduleFormContact-reset"
+            type="button"
+            data-lang="{new-query-dl}"
+            data-form-reset
+        >{new-query-text}</button>
+    </div>
+</form>
+

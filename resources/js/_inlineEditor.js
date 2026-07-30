@@ -2139,6 +2139,9 @@ export default function initInlineEditor() {
   const openLineCollectionEditor = async (collection) => {
     const itemElements = Array.from(
       collection.querySelectorAll("[data-inline-collection-item][data-lang]"),
+    ).filter(
+      (element) =>
+        element.closest('[data-inline-collection="lines"]') === collection,
     );
 
     if (!itemElements.length) {
@@ -2180,9 +2183,12 @@ export default function initInlineEditor() {
       : null;
     const iconOptions = parseCollectionIconOptions(collection);
     const allowedIcons = new Set(iconOptions.map((option) => option.value));
+    const hasIconControl = iconKey !== "" && iconOptions.length > 0;
 
-    let iconToken = collection.dataset.markerIcon || "default";
-    if (iconResolved) {
+    let iconToken = hasIconControl
+      ? (collection.dataset.markerIcon || "default")
+      : "";
+    if (hasIconControl && iconResolved) {
       if (iconResolved.type === "object") {
         iconToken = String(
           iconResolved.fields.value
@@ -2193,7 +2199,7 @@ export default function initInlineEditor() {
         iconToken = String(iconResolved.fields.text ?? iconToken);
       }
     }
-    if (!allowedIcons.has(iconToken)) {
+    if (hasIconControl && !allowedIcons.has(iconToken)) {
       iconToken = allowedIcons.has("default")
         ? "default"
         : (iconOptions[0]?.value ?? "");
@@ -2207,30 +2213,36 @@ export default function initInlineEditor() {
     const primaryScope = itemEntries[0].scope || config.route;
     const iconScope = primaryScope;
 
+    const fields = {
+      items: itemTexts.join("\n"),
+    };
+    const fieldMeta = {
+      items: {
+        label: `Elementos de la lista (${itemCount})`,
+        controlType: "textarea",
+        rows: Math.max(4, itemCount),
+        helpText: `Una línea corresponde a un <li>. Mantén exactamente ${itemCount} líneas.`,
+        dataset: {
+          multiline: "true",
+        },
+      },
+    };
+
+    if (hasIconControl) {
+      fields.icon = iconToken;
+      fieldMeta.icon = {
+        label: "Icono de la lista",
+        controlType: "select",
+        options: iconOptions,
+        helpText: "Se aplica a todos los elementos y se mantiene igual en todos los idiomas.",
+      };
+    }
+
     const entry = {
       key: collectionKey,
       scope: primaryScope,
-      fields: {
-        items: itemTexts.join("\n"),
-        icon: iconToken,
-      },
-      fieldMeta: {
-        items: {
-          label: `Elementos de la lista (${itemCount})`,
-          controlType: "textarea",
-          rows: Math.max(4, itemCount),
-          helpText: `Una línea corresponde a un <li>. Mantén exactamente ${itemCount} líneas.`,
-          dataset: {
-            multiline: "true",
-          },
-        },
-        icon: {
-          label: "Icono de la lista",
-          controlType: "select",
-          options: iconOptions,
-          helpText: "Se aplica a todos los elementos y se mantiene igual en todos los idiomas.",
-        },
-      },
+      fields,
+      fieldMeta,
       element: collection,
       related: [],
     };
@@ -2253,8 +2265,10 @@ export default function initInlineEditor() {
           throw new Error("Cada línea debe contener el texto de un elemento.");
         }
 
-        const nextIcon = String(values.icon ?? iconToken);
-        if (!allowedIcons.has(nextIcon)) {
+        const nextIcon = hasIconControl
+          ? String(values.icon ?? iconToken)
+          : "";
+        if (hasIconControl && !allowedIcons.has(nextIcon)) {
           throw new Error("El icono seleccionado no pertenece al catálogo permitido.");
         }
 
@@ -2282,7 +2296,7 @@ export default function initInlineEditor() {
         });
 
         let iconUpdate = null;
-        if (iconKey) {
+        if (hasIconControl) {
           let nextIconValue = nextIcon;
           if (iconResolved?.type === "object") {
             nextIconValue = { ...iconResolved.fields };
@@ -2340,7 +2354,9 @@ export default function initInlineEditor() {
           applyValuesToElement(itemEntry.element, savedValue, config);
         });
 
-        applyCollectionIcon(collection, nextIcon, iconOptions);
+        if (hasIconControl) {
+          applyCollectionIcon(collection, nextIcon, iconOptions);
+        }
       },
       onClose: () => {
         isOpen = false;
@@ -2412,19 +2428,55 @@ export default function initInlineEditor() {
   };
 
   const handleInlineEditorDoubleClick = async (event) => {
-    if (!event.ctrlKey || isOpen) {
+    if (!event.ctrlKey) {
       return;
     }
 
-    const collection = event.target instanceof Element
+    const eventTarget = event.target instanceof Element
+      ? event.target
+      : null;
+    const collectionCandidate = eventTarget
       ? event.target.closest('[data-inline-collection="lines"]')
       : null;
+    const collectionItem = eventTarget
+      ? eventTarget.closest("[data-inline-collection-item][data-lang]")
+      : null;
+    const standaloneLanguageElement = eventTarget
+      ? eventTarget.closest("[data-lang]:not([data-inline-collection-item])")
+      : null;
+    const collection = collectionCandidate
+      && (
+        (
+          collectionItem
+          && collectionItem.closest('[data-inline-collection="lines"]')
+            === collectionCandidate
+        )
+        || !standaloneLanguageElement
+      )
+      ? collectionCandidate
+      : null;
+    const targets = collection ? [] : collectLanguageElements(event);
+    const background = (
+      !collection
+      && !targets.length
+      && eventTarget
+    )
+      ? event.target.closest("[data-inline-background]")
+      : null;
+
+    if (!collection && !background && !targets.length) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    if (isOpen) {
+      return;
+    }
+    isOpen = true;
 
     if (collection) {
-      event.preventDefault();
-      event.stopPropagation();
-      isOpen = true;
-
       try {
         await openLineCollectionEditor(collection);
       } catch (error) {
@@ -2435,16 +2487,7 @@ export default function initInlineEditor() {
       return;
     }
 
-    const targets = collectLanguageElements(event);
-    const background = !targets.length && event.target instanceof Element
-      ? event.target.closest("[data-inline-background]")
-      : null;
-
     if (background) {
-      event.preventDefault();
-      event.stopPropagation();
-      isOpen = true;
-
       try {
         await openBackgroundEditor(background);
       } catch (error) {
@@ -2454,14 +2497,6 @@ export default function initInlineEditor() {
       }
       return;
     }
-
-    if (!targets.length) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    isOpen = true;
 
     try {
       const entries = [];
@@ -2544,14 +2579,20 @@ export default function initInlineEditor() {
     }
   };
 
+  const removeDoubleClickHandler = (handler) => {
+    if (typeof handler !== "function") {
+      return;
+    }
+    document.removeEventListener("dblclick", handler);
+    document.removeEventListener("dblclick", handler, true);
+  };
+
   const previousHandlers = window[INLINE_EDITOR_HANDLER_KEY];
   if (typeof previousHandlers === "function") {
     // Compatibilidad con inicializaciones anteriores durante HMR.
-    document.removeEventListener("dblclick", previousHandlers);
+    removeDoubleClickHandler(previousHandlers);
   } else if (previousHandlers && typeof previousHandlers === "object") {
-    if (typeof previousHandlers.doubleClick === "function") {
-      document.removeEventListener("dblclick", previousHandlers.doubleClick);
-    }
+    removeDoubleClickHandler(previousHandlers.doubleClick);
     if (typeof previousHandlers.anchorClick === "function") {
       document.removeEventListener("click", previousHandlers.anchorClick, true);
     }
@@ -2563,15 +2604,32 @@ export default function initInlineEditor() {
     }
   }
 
-  window[INLINE_EDITOR_HANDLER_KEY] = {
+  const handlers = {
     doubleClick: handleInlineEditorDoubleClick,
     anchorClick: handleInlineEditorAnchorClick,
     languageChange: handleInlineEditorLanguageChange,
   };
-  document.addEventListener("dblclick", handleInlineEditorDoubleClick);
+  const cleanupHandlers = () => {
+    removeDoubleClickHandler(handlers.doubleClick);
+    document.removeEventListener("click", handlers.anchorClick, true);
+    window.removeEventListener(
+      "app:languagechange",
+      handlers.languageChange,
+    );
+    if (window[INLINE_EDITOR_HANDLER_KEY] === handlers) {
+      delete window[INLINE_EDITOR_HANDLER_KEY];
+    }
+  };
+
+  window[INLINE_EDITOR_HANDLER_KEY] = handlers;
+  document.addEventListener("dblclick", handleInlineEditorDoubleClick, true);
   document.addEventListener("click", handleInlineEditorAnchorClick, true);
   window.addEventListener(
     "app:languagechange",
     handleInlineEditorLanguageChange,
   );
+
+  if (import.meta.hot) {
+    import.meta.hot.dispose(cleanupHandlers);
+  }
 }

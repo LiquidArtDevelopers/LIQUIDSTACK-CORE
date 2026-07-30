@@ -109,6 +109,8 @@ final class InstallerResourceSyncTest extends TestCase
             'art30',
             'art31',
             'art32',
+            'art33',
+            'art34',
             'artAccordion02',
         ] as $resource) {
             self::assertFileEquals(
@@ -128,6 +130,42 @@ final class InstallerResourceSyncTest extends TestCase
         self::assertFileEquals(
             $coreRoot . '/resources/js/_artAccordion02.js',
             $this->projectRoot . '/src/js/resources/_artAccordion02.js'
+        );
+
+        foreach ([
+            'moduleFormContact01',
+            'moduleFormContact02',
+            'moduleFormContact03',
+        ] as $resource) {
+            self::assertFileEquals(
+                $coreRoot . "/stubs/App/controllers/{$resource}.php",
+                $this->projectRoot . "/App/controllers/{$resource}.php"
+            );
+            self::assertFileEquals(
+                $coreRoot . "/stubs/App/templates/_{$resource}.html",
+                $this->projectRoot . "/App/templates/_{$resource}.html"
+            );
+            self::assertFileEquals(
+                $coreRoot . "/resources/scss/_{$resource}.scss",
+                $this->projectRoot . "/src/scss/resources/_{$resource}.scss"
+            );
+        }
+
+        self::assertFileEquals(
+            $coreRoot . '/stubs/App/controllers/_moduleFormContact.php',
+            $this->projectRoot . '/App/controllers/_moduleFormContact.php'
+        );
+        self::assertFileEquals(
+            $coreRoot . '/stubs/App/templates/_moduleFormContact.html',
+            $this->projectRoot . '/App/templates/_moduleFormContact.html'
+        );
+        self::assertFileEquals(
+            $coreRoot . '/resources/scss/_moduleFormContact.scss',
+            $this->projectRoot . '/src/scss/resources/_moduleFormContact.scss'
+        );
+        self::assertFileEquals(
+            $coreRoot . '/resources/js/_moduleFormContact.js',
+            $this->projectRoot . '/src/js/resources/_moduleFormContact.js'
         );
 
         self::assertFileEquals(
@@ -150,6 +188,24 @@ final class InstallerResourceSyncTest extends TestCase
             );
         }
 
+        foreach ([
+            'art17',
+            'art18',
+            'artPricingGlass01',
+            'sectionParallax01',
+            'artHeroScroll01',
+            'artZipper',
+        ] as $resource) {
+            self::assertFileEquals(
+                $coreRoot . "/stubs/App/controllers/{$resource}.php",
+                $this->projectRoot . "/App/controllers/{$resource}.php"
+            );
+        }
+        self::assertFileEquals(
+            $coreRoot . '/stubs/App/templates/_artZipper.html',
+            $this->projectRoot . '/App/templates/_artZipper.html'
+        );
+
         self::assertFileEquals(
             $coreRoot . '/resources/js/_inlineEditor.js',
             $this->projectRoot . '/src/js/resources/_inlineEditor.js'
@@ -162,6 +218,25 @@ final class InstallerResourceSyncTest extends TestCase
             $coreRoot . '/stubs/App/tools/update-languages.php',
             $this->projectRoot . '/App/tools/update-languages.php'
         );
+        self::assertFileEquals(
+            $coreRoot . '/stubs/App/app/formContact.php',
+            $this->projectRoot . '/App/app/formContact.php'
+        );
+        self::assertFileEquals(
+            $coreRoot . '/stubs/App/app/_phpmailer.php',
+            $this->projectRoot . '/App/app/_phpmailer.php'
+        );
+        self::assertFileEquals(
+            $coreRoot . '/stubs/App/class/_comprobaciones.php',
+            $this->projectRoot . '/App/class/_comprobaciones.php'
+        );
+        foreach (['es', 'en', 'eu'] as $language) {
+            self::assertFileEquals(
+                $coreRoot . "/stubs/App/config/languages/_email/{$language}.json",
+                $this->projectRoot
+                    . "/App/config/languages/_email/{$language}.json"
+            );
+        }
         self::assertStringContainsString(
             'CORE actualizará App/app/updateLanguage.php',
             $this->io->getOutput()
@@ -232,15 +307,43 @@ final class InstallerResourceSyncTest extends TestCase
         self::assertStringContainsString("controller('art02little'", $showroom);
         self::assertStringContainsString("controller('moduleList01'", $showroom);
         self::assertStringContainsString("controller('moduleParrafo01'", $showroom);
+        self::assertStringContainsString("controller('art33'", $showroom);
+        self::assertStringContainsString("controller('art34'", $showroom);
+        self::assertStringContainsString(
+            "controller('moduleFormContact01'",
+            $showroom
+        );
+        self::assertStringContainsString(
+            "controller('moduleFormContact02'",
+            $showroom
+        );
+        self::assertStringContainsString(
+            "controller('moduleFormContact03'",
+            $showroom
+        );
         self::assertStringContainsString("require __DIR__ . '/_showroom.php';", $templates);
         self::assertStringContainsString("@use './resources/art02little';", $entrypoint);
         self::assertStringContainsString("@use './resources/moduleList01';", $entrypoint);
         self::assertStringContainsString("@use './resources/moduleParrafo01';", $entrypoint);
+        self::assertStringContainsString("@use './resources/art33';", $entrypoint);
+        self::assertStringContainsString("@use './resources/art34';", $entrypoint);
+        self::assertStringContainsString(
+            "@use './resources/moduleFormContact03';",
+            $entrypoint
+        );
         self::assertStringContainsString(
             "import initArtAccordion02 from \"./resources/_artAccordion02.js\";",
             $scriptEntrypoint
         );
         self::assertStringContainsString('initArtAccordion02()', $scriptEntrypoint);
+        self::assertStringContainsString(
+            "from './resources/_moduleFormContact.js'",
+            $scriptEntrypoint
+        );
+        self::assertStringContainsString(
+            'initModuleFormContact()',
+            $scriptEntrypoint
+        );
 
         foreach ([
             'hero06',
@@ -264,6 +367,8 @@ final class InstallerResourceSyncTest extends TestCase
             'art30',
             'art31',
             'art32',
+            'art33',
+            'art34',
             'artAccordion02',
         ] as $resource) {
             self::assertStringContainsString(
@@ -294,7 +399,7 @@ final class InstallerResourceSyncTest extends TestCase
             $inlineEditor
         );
         self::assertStringContainsString(
-            'document.removeEventListener("dblclick", previousHandlers.doubleClick);',
+            'removeDoubleClickHandler(previousHandlers.doubleClick);',
             $inlineEditor
         );
         self::assertStringContainsString(
@@ -303,6 +408,18 @@ final class InstallerResourceSyncTest extends TestCase
         );
         self::assertStringContainsString(
             'previousHandlers.languageChange,',
+            $inlineEditor
+        );
+        self::assertStringContainsString(
+            'event.stopImmediatePropagation()',
+            $inlineEditor
+        );
+        self::assertStringContainsString(
+            'document.addEventListener("dblclick", handleInlineEditorDoubleClick, true);',
+            $inlineEditor
+        );
+        self::assertStringContainsString(
+            'import.meta.hot.dispose(cleanupHandlers);',
             $inlineEditor
         );
         self::assertStringContainsString("\$batchInput = \$data['updates'] ?? null;", $languageEndpoint);
@@ -336,6 +453,18 @@ final class InstallerResourceSyncTest extends TestCase
             );
             self::assertArrayHasKey('art30_00_d_img', $language);
             self::assertArrayHasKey('art32_00_h_img', $language);
+            self::assertArrayHasKey('art33_00_headerPrimary', $language);
+            self::assertArrayHasKey('art34_00_headerPrimary', $language);
+            self::assertArrayHasKey(
+                'moduleFormContact01_00_legend',
+                $language
+            );
+            self::assertArrayHasKey(
+                'moduleFormContact03_00_server_error',
+                $language
+            );
+            self::assertArrayHasKey('moduleList01_05_e_li_text', $language);
+            self::assertArrayHasKey('moduleParrafo01_06_p_text', $language);
             self::assertArrayHasKey(
                 'art30_00_benefit_f_img',
                 $language
@@ -353,6 +482,53 @@ final class InstallerResourceSyncTest extends TestCase
         self::assertSame(
             '<svg data-project-logo="true"></svg>',
             file_get_contents($logoPath)
+        );
+    }
+
+    public function testComposerUpdatePreservesProjectFormAndLegalOverrides(): void
+    {
+        $localFiles = [
+            '/App/app/formContact.php' => '<?php // local contact backend',
+            '/App/app/_phpmailer.php' => '<?php // local mail transport',
+            '/App/class/_comprobaciones.php' => '<?php // local checks',
+            '/App/config/languages/_email/es.json' => '{"local":"email copy"}',
+            '/App/controllers/footerInfo01.php' => '<?php // local footer',
+            '/App/templates/_footerInfo01.html' => '<div>local footer</div>',
+            '/src/js/resources/_terminos.js' => 'export const localLegal = true;',
+            '/src/scss/resources/_moduleTerminos.scss' => '.local-legal{}',
+        ];
+
+        foreach ($localFiles as $relativePath => $contents) {
+            $this->writeFile($this->projectRoot . $relativePath, $contents);
+        }
+
+        $postRoutes = (string) file_get_contents(
+            $this->projectRoot . '/App/config/routes/post.php'
+        );
+
+        Installer::postUpdate($this->createEvent());
+
+        foreach ($localFiles as $relativePath => $contents) {
+            self::assertSame(
+                $contents,
+                file_get_contents($this->projectRoot . $relativePath),
+                "Composer no debe sobrescribir {$relativePath}"
+            );
+        }
+
+        self::assertSame(
+            $postRoutes,
+            file_get_contents($this->projectRoot . '/App/config/routes/post.php')
+        );
+        self::assertFileEquals(
+            dirname(__DIR__, 2)
+                . '/stubs/App/config/languages/_email/en.json',
+            $this->projectRoot . '/App/config/languages/_email/en.json'
+        );
+        self::assertFileEquals(
+            dirname(__DIR__, 2)
+                . '/stubs/App/config/languages/_email/eu.json',
+            $this->projectRoot . '/App/config/languages/_email/eu.json'
         );
     }
 

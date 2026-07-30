@@ -1,0 +1,50 @@
+{
+    "fallos": {
+        "captcha1": "Eragiketa ebatzi behar duzu",
+        "captcha2": "Eragiketa behar bezala ebatzi behar duzu",
+        "nombre1": "Izena idatzi behar duzu",
+        "nombre2": "Izena ezin da zenbaki bat izan",
+        "nombre3": "Izenak 3 eta 40 karaktere artean izan behar ditu",
+        "tel1": "Telefono-zenbaki bat idatzi behar duzu",
+        "tel2": "Telefonoak gehienez 14 digitu izan ditzake",
+        "correo1": "Helbide elektronikoaren eremua ezin da hutsik egon",
+        "correo2": "Helbide elektronikoa ezin da zenbaki bat izan",
+        "correo3": "Helbide elektronikoak gehienez 100 karaktere izan ditzake",
+        "correo4": "Helbide elektronikoa ez da zuzena",
+        "consulta1": "Kontsulta idatzi behar duzu",
+        "consulta2": "Kontsultak 10 eta 500 karaktere artean izan behar ditu"
+    },
+    "consulta_admin": {
+        "tipo": "Webguneko kontsulta",
+        "asunto": "Webguneko kontsulta berria, honen eskutik:",
+        "title": "Kontsulta berri bat jaso duzu",
+        "saludo": "Kaixo",
+        "contexto": "Webgunearen bidez kontsulta bat jaso duzu",
+        "explicacion": "Erabiltzaileak emandako datuak behean ageri dira. Erabiltzaileak pribatutasun-baldintzak onartu ditu.",
+        "datosEncabezado": "Kontsultaren datuak",
+        "headerNombre": "Izena:",
+        "headerTelefono": "Telefonoa:",
+        "headerCorreo": "Helbide elektronikoa:",
+        "headerDate": "Kontsultaren data:",
+        "headerLang": "Webgunearen hizkuntza:",
+        "headerConsulta": "Kontsulta:",
+        "despedida": "Adeitasunez,",
+        "equipo": "Taldea:"
+    },
+    "consulta_user": {
+        "tipo": "Webguneko kontsulta",
+        "asunto": "Zure kontsulta jaso dugu,",
+        "title": "Zure kontsulta jaso dugu",
+        "saludo": "Kaixo",
+        "contexto": "Webgunearen bidez bidalitako kontsulta jaso dugu",
+        "explicacion": "Emandako datuak behean ageri dira. Inprimakia bidaltzean, pribatutasun- eta datu-tratamenduaren politika onartu duzu.",
+        "datosEncabezado": "Emandako datuak",
+        "headerNombre": "Izena:",
+        "headerTelefono": "Telefonoa:",
+        "headerCorreo": "Helbide elektronikoa:",
+        "headerDate": "Kontsultaren data:",
+        "headerConsulta": "Zure kontsulta:",
+        "despedida": "Adeitasunez,",
+        "equipo": "Taldea:"
+    }
+}

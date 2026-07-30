@@ -3500,5 +3500,262 @@
         "src": "assets/img/system/check-OK.svg",
         "alt": "Icono de verificación",
         "title": "Icono de verificación"
+    },
+    "art33_00_headerPrimary": {
+        "text": "art33 · artículo de contenido modular"
+    },
+    "art33_00_headerSecondary_a": {
+        "text": "Follow the white rabbit."
+    },
+    "art33_00_headerSecondary_b": {
+        "text": "There is no spoon."
+    },
+    "art34_00_headerPrimary": {
+        "text": "art34 · artículo modular con CTA general"
+    },
+    "art34_00_headerSecondary_a": {
+        "text": "Welcome to the real world."
+    },
+    "art34_00_headerSecondary_b": {
+        "text": "Free your mind."
+    },
+    "moduleParrafo01_05_p_text": {
+        "text": "La Matrix construye una realidad aparente mientras el conejo blanco señala otra ruta. Este párrafo de prueba permite comprobar cómo se comporta el contenido modular dentro de una ficha."
+    },
+    "moduleParrafo01_06_p_text": {
+        "text": "Neo observa el código, cuestiona sus límites y descubre que la elección también forma parte del sistema. Este texto prueba el ritmo vertical y la respuesta de una ficha."
+    },
+    "moduleList01_04_marker_icon": "shield",
+    "moduleList01_04_a_li_text": {
+        "text": "Follow the white rabbit."
+    },
+    "moduleList01_04_b_li_text": {
+        "text": "There is no spoon."
+    },
+    "moduleList01_04_c_li_text": {
+        "text": "Free your mind."
+    },
+    "moduleList01_04_d_li_text": {
+        "text": "Welcome to the real world."
+    },
+    "moduleList01_05_marker_icon": "shield",
+    "moduleList01_05_a_li_text": {
+        "text": "Wake up, Neo."
+    },
+    "moduleList01_05_b_li_text": {
+        "text": "The Matrix has you."
+    },
+    "moduleList01_05_c_li_text": {
+        "text": "Choice is an illusion."
+    },
+    "moduleList01_05_d_li_text": {
+        "text": "Dodge this."
+    },
+    "moduleList01_05_e_li_text": {
+        "text": "Believe."
+    },
+    "moduleFormContact01_00_legend": {
+        "text": "moduleFormContact01 · Formulario editorial"
+    },
+    "moduleFormContact01_00_intro": {
+        "text": "Neo abre un canal seguro mientras Trinity ordena las señales de la Matrix. Completa los datos y el sistema trasladará tu consulta al siguiente nivel del recorrido."
+    },
+    "moduleFormContact01_00_label_name": {
+        "text": "Nombre"
+    },
+    "moduleFormContact01_00_ph_name": {
+        "placeholder": "Escribe tu nombre"
+    },
+    "moduleFormContact01_00_label_phone": {
+        "text": "Teléfono"
+    },
+    "moduleFormContact01_00_ph_phone": {
+        "placeholder": "Indica tu teléfono"
+    },
+    "moduleFormContact01_00_label_mail": {
+        "text": "Correo electrónico"
+    },
+    "moduleFormContact01_00_ph_mail": {
+        "placeholder": "nombre@matrix.test"
+    },
+    "moduleFormContact01_00_label_message": {
+        "text": "Consulta"
+    },
+    "moduleFormContact01_00_ph_message": {
+        "placeholder": "Cuéntanos qué señal quieres descifrar"
+    },
+    "moduleFormContact01_00_terms": {
+        "text": "Acepto el tratamiento de mis datos según la"
+    },
+    "moduleFormContact01_00_privacy": {
+        "text": "política de privacidad",
+        "href": "#privacy",
+        "title": "Consultar la política de privacidad"
+    },
+    "moduleFormContact01_00_terms_error": {
+        "text": "Debes aceptar la política de privacidad para continuar."
+    },
+    "moduleFormContact01_00_label_captcha": {
+        "text": "Resuelve la verificación"
+    },
+    "moduleFormContact01_00_ph_captcha": {
+        "placeholder": "Resultado"
+    },
+    "moduleFormContact01_00_submit": {
+        "text": "Enviar consulta"
+    },
+    "moduleFormContact01_00_sending": {
+        "text": "Enviando la señal..."
+    },
+    "moduleFormContact01_00_success_title": {
+        "text": "La señal ha llegado"
+    },
+    "moduleFormContact01_00_success_text": {
+        "text": "El operador ha recibido tu mensaje y responderá cuando el siguiente nodo de la Matrix quede disponible."
+    },
+    "moduleFormContact01_00_new_query": {
+        "text": "Nueva consulta"
+    },
+    "moduleFormContact01_00_network_error": {
+        "text": "No hay conexión con el sistema. Inténtalo de nuevo."
+    },
+    "moduleFormContact01_00_server_error": {
+        "text": "El sistema no ha podido procesar la consulta."
+    },
+    "moduleFormContact02_00_legend": {
+        "text": "moduleFormContact02 · Formulario nocturno"
+    },
+    "moduleFormContact02_00_intro": {
+        "text": "Morpheus mantiene abierta una línea nocturna fuera del ruido del sistema. Deja tu consulta y el equipo seguirá el rastro cuando la Matrix vuelva a mostrar el código."
+    },
+    "moduleFormContact02_00_label_name": {
+        "text": "Identidad"
+    },
+    "moduleFormContact02_00_ph_name": {
+        "placeholder": "Cómo debemos llamarte"
+    },
+    "moduleFormContact02_00_label_phone": {
+        "text": "Canal telefónico"
+    },
+    "moduleFormContact02_00_ph_phone": {
+        "placeholder": "Tu número de contacto"
+    },
+    "moduleFormContact02_00_label_mail": {
+        "text": "Canal de correo"
+    },
+    "moduleFormContact02_00_ph_mail": {
+        "placeholder": "neo@matrix.test"
+    },
+    "moduleFormContact02_00_label_message": {
+        "text": "Mensaje cifrado"
+    },
+    "moduleFormContact02_00_ph_message": {
+        "placeholder": "Describe la consulta que debemos revisar"
+    },
+    "moduleFormContact02_00_terms": {
+        "text": "Autorizo el uso de mis datos conforme a la"
+    },
+    "moduleFormContact02_00_privacy": {
+        "text": "política de privacidad",
+        "href": "#privacy",
+        "title": "Leer la política de privacidad"
+    },
+    "moduleFormContact02_00_terms_error": {
+        "text": "Autoriza el tratamiento de datos antes de enviar."
+    },
+    "moduleFormContact02_00_label_captcha": {
+        "text": "Comprueba que eres humano"
+    },
+    "moduleFormContact02_00_ph_captcha": {
+        "placeholder": "Suma"
+    },
+    "moduleFormContact02_00_submit": {
+        "text": "Abrir canal"
+    },
+    "moduleFormContact02_00_sending": {
+        "text": "Conectando con el operador..."
+    },
+    "moduleFormContact02_00_success_title": {
+        "text": "Canal confirmado"
+    },
+    "moduleFormContact02_00_success_text": {
+        "text": "Tu mensaje ha atravesado el sistema. Trinity lo revisará antes de responder desde un canal seguro."
+    },
+    "moduleFormContact02_00_new_query": {
+        "text": "Enviar otro mensaje"
+    },
+    "moduleFormContact02_00_network_error": {
+        "text": "La conexión se ha interrumpido. Vuelve a intentarlo."
+    },
+    "moduleFormContact02_00_server_error": {
+        "text": "El operador no está disponible en este momento."
+    },
+    "moduleFormContact03_00_legend": {
+        "text": "moduleFormContact03 · Formulario libro mayor"
+    },
+    "moduleFormContact03_00_intro": {
+        "text": "Cada decisión deja una línea en el libro mayor de la Matrix. Registra los datos esenciales y formula una consulta precisa para que podamos ordenar el siguiente movimiento."
+    },
+    "moduleFormContact03_00_label_name": {
+        "text": "Nombre completo"
+    },
+    "moduleFormContact03_00_ph_name": {
+        "placeholder": "Nombre del operador"
+    },
+    "moduleFormContact03_00_label_phone": {
+        "text": "Teléfono directo"
+    },
+    "moduleFormContact03_00_ph_phone": {
+        "placeholder": "Número de contacto"
+    },
+    "moduleFormContact03_00_label_mail": {
+        "text": "Correo de respuesta"
+    },
+    "moduleFormContact03_00_ph_mail": {
+        "placeholder": "trinity@matrix.test"
+    },
+    "moduleFormContact03_00_label_message": {
+        "text": "Anotación"
+    },
+    "moduleFormContact03_00_ph_message": {
+        "placeholder": "Resume aquí la decisión pendiente"
+    },
+    "moduleFormContact03_00_terms": {
+        "text": "Confirmo que he leído y acepto la"
+    },
+    "moduleFormContact03_00_privacy": {
+        "text": "política de privacidad",
+        "href": "#privacy",
+        "title": "Revisar la política de privacidad"
+    },
+    "moduleFormContact03_00_terms_error": {
+        "text": "Confirma la política de privacidad para registrar la consulta."
+    },
+    "moduleFormContact03_00_label_captcha": {
+        "text": "Validación del registro"
+    },
+    "moduleFormContact03_00_ph_captcha": {
+        "placeholder": "Total"
+    },
+    "moduleFormContact03_00_submit": {
+        "text": "Registrar consulta"
+    },
+    "moduleFormContact03_00_sending": {
+        "text": "Registrando la operación..."
+    },
+    "moduleFormContact03_00_success_title": {
+        "text": "Registro completado"
+    },
+    "moduleFormContact03_00_success_text": {
+        "text": "La consulta ya figura en el sistema y el equipo podrá analizarla antes de abrir una nueva ruta."
+    },
+    "moduleFormContact03_00_new_query": {
+        "text": "Crear otro registro"
+    },
+    "moduleFormContact03_00_network_error": {
+        "text": "No se puede acceder al registro. Comprueba la conexión."
+    },
+    "moduleFormContact03_00_server_error": {
+        "text": "El registro no está disponible temporalmente."
     }
 }

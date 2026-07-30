@@ -328,18 +328,34 @@ class Installer
 
         foreach ($targets as $target) {
             $pairs = [
-                $resourcesDir . '/js'   => $target['js'],
-                $resourcesDir . '/scss' => $target['scss'],
+                [
+                    'source'            => $resourcesDir . '/js',
+                    'destination'       => $target['js'],
+                    'preserve_existing' => ['_terminos.js'],
+                ],
+                [
+                    'source'            => $resourcesDir . '/scss',
+                    'destination'       => $target['scss'],
+                    'preserve_existing' => ['_moduleTerminos.scss'],
+                ],
             ];
 
-            foreach ($pairs as $source => $destination) {
+            foreach ($pairs as $pair) {
+                $source      = $pair['source'];
+                $destination = $pair['destination'];
+
                 if (!is_dir($source)) {
                     $io->writeError(sprintf('<warning>Skipping missing resources dir: %s</warning>', $source));
                     continue;
                 }
 
                 try {
-                    self::mirrorWithoutDeletion($filesystem, $source, $destination);
+                    self::mirrorWithoutDeletion(
+                        $filesystem,
+                        $source,
+                        $destination,
+                        $pair['preserve_existing']
+                    );
                     $io->write(sprintf('<info>Synced resources to %s</info>', $destination));
                 } catch (\Throwable $exception) {
                     $io->writeError(sprintf('<error>Failed to sync %s to %s: %s</error>', $source, $destination, $exception->getMessage()));
@@ -392,15 +408,42 @@ class Installer
         $assets = [
             ['path' => 'public/index.php', 'type' => 'file'],
             ['path' => 'App/config/helpers.php', 'type' => 'file'],
-            ['path' => 'App/config/languages', 'type' => 'dir'],
+            [
+                'path'              => 'App/config/languages',
+                'type'              => 'dir',
+                'preserve_existing' => ['_email'],
+            ],
             ['path' => 'App/app/url.php', 'type' => 'file'],
+            [
+                'path'              => 'App/app/formContact.php',
+                'type'              => 'file',
+                'preserve_existing' => true,
+            ],
+            [
+                'path'              => 'App/app/_phpmailer.php',
+                'type'              => 'file',
+                'preserve_existing' => true,
+            ],
+            [
+                'path'              => 'App/class/_comprobaciones.php',
+                'type'              => 'file',
+                'preserve_existing' => true,
+            ],
             [
                 'path'           => 'App/app/updateLanguage.php',
                 'type'           => 'file',
                 'warn_on_change' => true,
             ],
-            ['path' => 'App/controllers', 'type' => 'dir'],
-            ['path' => 'App/templates', 'type' => 'dir'],
+            [
+                'path'              => 'App/controllers',
+                'type'              => 'dir',
+                'preserve_existing' => ['footerInfo01.php'],
+            ],
+            [
+                'path'              => 'App/templates',
+                'type'              => 'dir',
+                'preserve_existing' => ['_footerInfo01.html'],
+            ],
             ['path' => 'App/views', 'type' => 'dir'],
             ['path' => 'App/tools/build-sitemap.php', 'type' => 'file'],
             ['path' => 'App/tools/update-languages.php', 'type' => 'file'],
@@ -449,10 +492,21 @@ class Installer
 
             try {
                 if ($assetType === 'dir') {
-                    $filesystem->mirror($source, $target, null, [
-                        'override' => true,
-                        'delete'   => false,
-                    ]);
+                    self::mirrorWithoutDeletion(
+                        $filesystem,
+                        $source,
+                        $target,
+                        $asset['preserve_existing'] ?? []
+                    );
+                } elseif (
+                    ($asset['preserve_existing'] ?? false) === true
+                    && is_file($target)
+                ) {
+                    $io->write(sprintf(
+                        '<info>Preserved existing project asset: %s</info>',
+                        $assetPath
+                    ));
+                    continue;
                 } else {
                     $filesystem->copy($source, $target, true);
                 }

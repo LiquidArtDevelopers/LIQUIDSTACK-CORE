@@ -1,0 +1,190 @@
+@use '../config' as c;
+
+.moduleFormContact.moduleFormContact03 {
+    --module-form-background: #{c.$color00};
+    --module-form-surface: #{c.$color02bis2};
+    --module-form-control: #{c.$color00};
+    --module-form-text: #{c.$color01};
+    --module-form-muted: #{c.$color01bis};
+    --module-form-accent: #{c.$color02};
+    --module-form-border: #{c.$color02};
+    --module-form-focus: #{c.$color02};
+
+    .moduleFormContact-shell {
+        padding-block: 1.5rem;
+        border-top: 0.25rem solid c.$color03;
+        border-bottom: 1px solid c.$color02;
+    }
+
+    .moduleFormContact-form {
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        counter-reset: module-form-step;
+    }
+
+    .moduleFormContact-fieldset {
+        position: relative;
+        padding: 1.25rem;
+        border: 1px solid c.$color02;
+        background: c.$color02bis2;
+        counter-increment: module-form-step;
+
+        & + .moduleFormContact-fieldset {
+            margin-top: 1rem;
+        }
+    }
+
+    .moduleFormContact-legend {
+        width: auto;
+        padding-right: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.65rem;
+        background: c.$color00;
+        color: c.$color02;
+        font-size: clamp(1.05rem, 3vw, 1.35rem);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+
+        &::before {
+            content: counter(module-form-step, decimal-leading-zero);
+            width: 2rem;
+            height: 2rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: c.$color02;
+            color: c.$color00;
+            font-size: 0.75rem;
+            letter-spacing: 0;
+        }
+    }
+
+    .moduleFormContact-intro {
+        color: c.$color01;
+    }
+
+    .moduleFormContact-fields {
+        gap: 0.75rem;
+    }
+
+    .moduleFormContact-field {
+        padding: 0.9rem;
+        border-left: 0.2rem solid transparent;
+        background: c.$color00;
+        transition: border-color 180ms ease;
+
+        &:focus-within {
+            border-left-color: c.$color03;
+        }
+    }
+
+    .moduleFormContact-label {
+        color: c.$color02;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .moduleFormContact-control {
+        padding-inline: 0;
+        border: 0;
+        border-bottom: 1px solid c.$color01bis3;
+        border-radius: 0;
+        background: transparent;
+
+        &:focus-visible {
+            border-bottom-color: c.$color02;
+            box-shadow: 0 0.15rem 0 0 c.$color02;
+        }
+    }
+
+    .moduleFormContact-captcha,
+    .moduleFormContact-terms {
+        border-color: c.$color02;
+        border-radius: 0;
+        background: c.$color00;
+    }
+
+    .moduleFormContact-actions {
+        padding-top: 1.25rem;
+        border-top: 1px solid c.$color02;
+    }
+
+    .moduleFormContact-submit,
+    .moduleFormContact-reset {
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .moduleFormContact-success {
+        border-color: c.$color02;
+        border-radius: 0;
+        background: c.$color02bis2;
+    }
+
+    @media (min-width: c.$tablet) {
+        .moduleFormContact-shell {
+            padding-block: 2rem;
+        }
+
+        .moduleFormContact-fieldset {
+            padding: 2rem;
+        }
+
+        .moduleFormContact-fields {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .moduleFormContact-field {
+            &--name,
+            &--phone {
+                grid-column: span 1;
+            }
+
+            &--email,
+            &--message {
+                grid-column: 1 / -1;
+            }
+        }
+    }
+
+    @media (min-width: c.$desktop) {
+        .moduleFormContact-shell {
+            max-width: c.$textMax;
+        }
+
+        .moduleFormContact-fields {
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+        }
+
+        .moduleFormContact-field {
+            grid-column: span 6;
+
+            &--name {
+                grid-column: span 5;
+            }
+
+            &--phone {
+                grid-column: span 3;
+            }
+
+            &--email {
+                grid-column: span 4;
+            }
+
+            &--message {
+                grid-column: 1 / -1;
+            }
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .moduleFormContact-field {
+            transition: none;
+        }
+    }
+}
+

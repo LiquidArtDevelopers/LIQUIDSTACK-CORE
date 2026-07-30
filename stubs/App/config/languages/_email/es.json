@@ -1,0 +1,53 @@
+{  
+    "fallos":{
+        "captcha1":"Debes resolver la operación",
+        "captcha2":"Debes resolver correctamente la operación",
+        "nombre1":"Debes escribir un nombre",
+        "nombre2":"El nombre no puede ser un número",
+        "nombre3":"El nombre debe tener entre 3 y 40 caracteres máximo",
+        "tel1":"Debes escribir un teléfono",
+        "tel2":"El telefono debe tener máximo 14 dígitos",
+        "correo1":"El campo del correo no puede quedar vacio",
+        "correo2":"El correo no puede ser un número",
+        "correo3":"El correo debe tener 100 caracteres máximo",
+        "correo4":"El correo no tiene una sintaxis correcta",
+        "consulta1":"Debes escribir tu consulta",
+        "consulta2":"La consulta debe tener entre 10 y 500 caracteres máximo"
+        
+    },
+    "consulta_admin":{
+        "tipo": "Consulta web",
+        "asunto": "Nueva consulta web de",
+
+        "title": "Tienes una nueva consulta",
+        "saludo": "Hola",
+        "contexto": "Has recibido una consulta a través de la web",
+        "explicacion": "A continuación dispones de todos los datos que nos ha facilitado el usuario. El usuario ha aceptado los términos y condiciones de privacidad.",
+        "datosEncabezado": "Datos de la consulta",
+        "headerNombre": "Nombre:",
+        "headerTelefono": "Teléfono:",
+        "headerCorreo": "Correo:",
+        "headerDate": "Fecha de la consulta:",
+        "headerLang": "Lenguaje web:",
+        "headerConsulta": "Consulta:",
+        "despedida": "Un saludo,",
+        "equipo": "Equipo de"
+    },
+    "consulta_user":{
+        "tipo": "Consulta web",
+        "asunto": "Hemos recibido tu consulta,",
+
+        "title": "Hemos recibido tu consulta",
+        "saludo": "Hola",
+        "contexto": "Hemos recibido tu consulta a través de la web",
+        "explicacion": "A continuación dispones de todos los datos que nos has facilitado. Recuerda que para poder enviarnos este formulario, has tenido que aceptar primero nuestra política de privaciadad y tratamiento de datos.",
+        "datosEncabezado": "Estos son los datos que nos has facilitado",
+        "headerNombre": "Nombre:",
+        "headerTelefono": "Teléfono:",
+        "headerCorreo": "Correo:",
+        "headerDate": "Fecha de la consulta:",
+        "headerConsulta": "Tu Consulta:",
+        "despedida": "Un saludo,",
+        "equipo": "Equipo de"
+    }        
+}

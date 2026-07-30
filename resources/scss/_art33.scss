@@ -1,0 +1,86 @@
+@use '../config' as c;
+
+.art33 {
+    width: c.$anchoFull;
+    padding: clamp(c.$padMax, 10vw, 15rem) c.$padMin;
+    background-color: c.$color02;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(2rem, 5vw, c.$padMax);
+
+    .art33-title {
+        width: 100%;
+        max-width: c.$textMax;
+        margin: 0;
+        color: c.$color00;
+        text-align: center;
+    }
+
+    .art33-items {
+        width: 100%;
+        max-width: c.$textMax;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: c.$padMin;
+    }
+
+    .art33-item {
+        min-width: 0;
+        padding: clamp(c.$padMin, 4vw, c.$padMax);
+        border-radius: 1rem;
+        background-color: c.$color03bis;
+        box-shadow: c.$sombraMin;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+
+    .art33-itemTitle {
+        width: 100%;
+        margin: 0;
+        color: c.$color02bis3;
+    }
+
+    .art33-itemContent {
+        width: 100%;
+        min-width: 0;
+
+        .moduleList01 {
+            --moduleList01-marker-color: #{c.$color02};
+        }
+
+        .moduleList01-item > span:last-child,
+        .moduleParrafo01 {
+            color: c.$color01bis;
+        }
+    }
+
+    .art33-itemCta {
+        width: 100%;
+        margin-top: auto;
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    @media (min-width: c.$tablet) {
+        .art33-items {
+            grid-template-columns: repeat(
+                auto-fit,
+                minmax(min(100%, 22rem), 1fr)
+            );
+            gap: c.$padMax;
+        }
+    }
+
+    @media (min-width: c.$desktop) {
+        &--items-1 {
+            .moduleList01 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                column-gap: c.$padMax;
+            }
+        }
+    }
+}
+

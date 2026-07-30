@@ -665,6 +665,36 @@
                         '{b-content}'      => $art02littleListB,
                         '{c-content}'      => $art02littleListC,
                     ]);
+
+                    // art33:
+                    // - article con h3 natural y fichas div con h4.
+                    // - items: 1 - 26.
+                    // - {a-content}...: admite moduleParrafo01, moduleList01
+                    //   o cualquier otro recurso de contenido.
+                    // - {a-button-primary}...: CTA opcional por ficha.
+                    $art33Paragraph = controller('moduleParrafo01', 5);
+                    $art33List = controller('moduleList01', 4, [
+                        'items' => 4,
+                    ]);
+                    echo controller('art33', 0, [
+                        'items'                  => 2,
+                        '{a-content}'            => $art33Paragraph,
+                        '{b-content}'            => $art33List,
+                        '{a-button-primary}'     => $moduleButton02a,
+                    ]);
+
+                    // art34 conserva el mismo contrato semántico y añade un
+                    // CTA general dentro de la raíz mediante {button-primary}.
+                    $art34List = controller('moduleList01', 5, [
+                        'items' => 5,
+                    ]);
+                    $art34Paragraph = controller('moduleParrafo01', 6);
+                    echo controller('art34', 0, [
+                        'items'            => 2,
+                        '{a-content}'      => $art34List,
+                        '{b-content}'      => $art34Paragraph,
+                        '{button-primary}' => $moduleButton02,
+                    ]);
                     ?>
 
 
@@ -874,6 +904,28 @@
                     // Resumen: formulario completo con loader, validacion y bloque lateral.
                     echo controller('artForm01', 0);
                     ?>
+
+                    <?php
+                    // moduleFormContact01:
+                    // - Formulario editorial, sin ficha de contacto ni mapa.
+                    // - Reutiliza de forma asíncrona el endpoint POST /form.
+                    echo controller('moduleFormContact01', 0);
+                    ?>
+
+                    <?php
+                    // moduleFormContact02:
+                    // - Formulario en tarjeta nocturna, sin ficha de contacto ni mapa.
+                    // - Reutiliza de forma asíncrona el endpoint POST /form.
+                    echo controller('moduleFormContact02', 0);
+                    ?>
+
+                    <?php
+                    // moduleFormContact03:
+                    // - Formulario tipo libro mayor, sin ficha de contacto ni mapa.
+                    // - Reutiliza de forma asíncrona el endpoint POST /form.
+                    echo controller('moduleFormContact03', 0);
+                    ?>
+
                     <?php
                     // artAccordion01 Refactorizado (instancia 00)
                     echo controller('artAccordion01', 0, ['items' => 3]);

@@ -146,7 +146,19 @@ final class InlineEditorInfrastructureTest extends TestCase
             $source
         );
         self::assertStringContainsString(
-            'if (!event.ctrlKey || isOpen)',
+            'if (!event.ctrlKey)',
+            $source
+        );
+        self::assertStringContainsString(
+            'event.stopImmediatePropagation()',
+            $source
+        );
+        self::assertStringContainsString(
+            'const hasIconControl = iconKey !== "" && iconOptions.length > 0',
+            $source
+        );
+        self::assertStringContainsString(
+            'document.addEventListener("dblclick", handleInlineEditorDoubleClick, true);',
             $source
         );
         self::assertLessThan(
@@ -181,7 +193,7 @@ final class InlineEditorInfrastructureTest extends TestCase
             $source
         );
         self::assertStringContainsString(
-            'document.removeEventListener("dblclick", previousHandlers.doubleClick);',
+            'removeDoubleClickHandler(previousHandlers.doubleClick);',
             $source
         );
         self::assertStringContainsString(
@@ -197,7 +209,7 @@ final class InlineEditorInfrastructureTest extends TestCase
             $source
         );
         self::assertStringContainsString(
-            'window[INLINE_EDITOR_HANDLER_KEY] = {',
+            'const handlers = {',
             $source
         );
         self::assertStringContainsString(
@@ -209,7 +221,15 @@ final class InlineEditorInfrastructureTest extends TestCase
             $source
         );
         self::assertStringContainsString(
-            'document.addEventListener("dblclick", handleInlineEditorDoubleClick);',
+            'window[INLINE_EDITOR_HANDLER_KEY] = handlers;',
+            $source
+        );
+        self::assertStringContainsString(
+            'document.addEventListener("dblclick", handleInlineEditorDoubleClick, true);',
+            $source
+        );
+        self::assertStringContainsString(
+            'import.meta.hot.dispose(cleanupHandlers);',
             $source
         );
     }
@@ -262,6 +282,29 @@ final class InlineEditorInfrastructureTest extends TestCase
             'data-inline-icon-options="',
             $moduleListController
         );
+        foreach ([
+            'art17',
+            'art18',
+            'artPricingGlass01',
+            'sectionParallax01',
+            'artHeroScroll01',
+            'artZipper',
+        ] as $resource) {
+            $controller = (string) file_get_contents(
+                $coreRoot . "/stubs/App/controllers/{$resource}.php"
+            );
+
+            self::assertStringContainsString(
+                'data-inline-collection="lines"',
+                $controller,
+                "{$resource} debe declarar su listado editorial"
+            );
+            self::assertStringContainsString(
+                'data-inline-collection-item',
+                $controller,
+                "{$resource} debe marcar sus textos de lista"
+            );
+        }
         self::assertStringContainsString(
             '{editor-attributes}',
             (string) file_get_contents(
@@ -278,6 +321,12 @@ final class InlineEditorInfrastructureTest extends TestCase
             '{editor-attributes}',
             (string) file_get_contents(
                 $coreRoot . '/stubs/App/templates/_moduleList01.html'
+            )
+        );
+        self::assertStringContainsString(
+            '{list-editor-attributes}',
+            (string) file_get_contents(
+                $coreRoot . '/stubs/App/templates/_artZipper.html'
             )
         );
     }

@@ -1,0 +1,136 @@
+@use '../config' as c;
+
+.moduleFormContact.moduleFormContact01 {
+    --module-form-background: #{c.$color03bis};
+    --module-form-surface: #{c.$color00};
+    --module-form-control: transparent;
+    --module-form-text: #{c.$color01};
+    --module-form-muted: #{c.$color01bis};
+    --module-form-accent: #{c.$color02};
+    --module-form-border: #{c.$color01bis3};
+    --module-form-focus: #{c.$color03};
+
+    .moduleFormContact-shell {
+        padding-top: 1.5rem;
+
+        &::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4rem;
+            height: 0.2rem;
+            background: c.$color03;
+        }
+    }
+
+    .moduleFormContact-form {
+        padding-inline: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .moduleFormContact-fieldset {
+        padding-top: 1.5rem;
+        border-top: 1px solid c.$color01bis3;
+
+        & + .moduleFormContact-fieldset {
+            margin-top: 2.5rem;
+        }
+    }
+
+    .moduleFormContact-legend {
+        color: c.$color02;
+        font-family: c.$fuente01;
+        font-size: clamp(1.5rem, 4vw, 2.2rem);
+        font-weight: 400;
+    }
+
+    .moduleFormContact-intro {
+        color: c.$color01bis;
+    }
+
+    .moduleFormContact-label {
+        color: c.$color02;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .moduleFormContact-control {
+        padding-inline: 0;
+        border: 0;
+        border-bottom: 2px solid c.$color01bis3;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+
+        &:focus-visible {
+            border-bottom-color: c.$color03;
+            box-shadow: 0 0.2rem 0 0 c.$color03;
+        }
+
+        &[aria-invalid='true'] {
+            border-bottom-color: c.$colorERROR;
+        }
+    }
+
+    .moduleFormContact-captcha {
+        padding-inline: 0;
+        border: 0;
+        border-bottom: 1px solid c.$color01bis3;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .moduleFormContact-terms {
+        padding-top: 1rem;
+        border-top: 1px solid c.$color01bis3;
+    }
+
+    .moduleFormContact-submit,
+    .moduleFormContact-reset {
+        border-radius: 2rem;
+        box-shadow: none;
+    }
+
+    .moduleFormContact-success {
+        border-width: 1px 0;
+        border-radius: 0;
+        background: c.$color00;
+    }
+
+    @media (min-width: c.$tablet) {
+        .moduleFormContact-form {
+            padding-inline: 0;
+        }
+
+        .moduleFormContact-fields {
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+        }
+
+        .moduleFormContact-field {
+            &--name,
+            &--phone {
+                grid-column: span 6;
+            }
+
+            &--email,
+            &--message {
+                grid-column: 1 / -1;
+            }
+        }
+    }
+
+    @media (min-width: c.$desktop) {
+        .moduleFormContact-shell {
+            max-width: c.$textMax;
+        }
+
+        .moduleFormContact-form {
+            padding-inline: 0;
+        }
+    }
+}
+
