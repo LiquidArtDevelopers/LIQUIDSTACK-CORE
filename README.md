@@ -20,7 +20,9 @@ Al ejecutar `composer install` o `composer update` en un proyecto que consume es
    - Un fichero existente solo se actualiza si su estado registrado o una
      huella histórica de CORE permiten reconocer que sigue intacto. La
      comparación normaliza los finales de línea para que LF/CRLF no convierta
-     un fichero intacto en una falsa personalización.
+     un fichero intacto en una falsa personalización. También considera
+     equivalentes la ausencia de salto final y una o varias líneas vacías al
+     final, sin normalizar el contenido interno.
    - Si un controlador, template, SCSS, JS o asset de un recurso contiene una
      personalización desconocida, se conserva el grupo completo del recurso.
      Así no se mezclan piezas de contratos incompatibles.

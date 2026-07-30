@@ -167,6 +167,42 @@ final class ManagedFileSynchronizerTest extends TestCase
         self::assertSame(1, $sync->stats()['updated']);
     }
 
+    public function testHistoricalFingerprintIgnoresBlankLinesAtEof(): void
+    {
+        $sourceId = 'resources/scss/_legacy.scss';
+        $source = $this->packageRoot . '/' . $sourceId;
+        $target = $this->projectRoot
+            . '/src/scss/resources/_legacy.scss';
+        $legacy = ".legacy {\n  color: red;\n}\n";
+
+        $this->writeHistory([
+            $sourceId => ManagedFileRegistry::fingerprintContents(
+                $sourceId,
+                $legacy
+            ),
+        ]);
+        $this->writeFile($source, ".legacy {\n  color: blue;\n}\n");
+        $this->writeFile(
+            $target,
+            ".legacy {\r\n  color: red;\r\n}\r\n \r\n\t\r\n"
+        );
+
+        $sync = $this->synchronizer();
+        $sync->queueFile(
+            $source,
+            $target,
+            $sourceId,
+            'src/scss/resources/_legacy.scss'
+        );
+        $sync->apply();
+
+        self::assertSame(
+            ".legacy {\n  color: blue;\n}\n",
+            file_get_contents($target)
+        );
+        self::assertSame(1, $sync->stats()['updated']);
+    }
+
     public function testUnknownExistingFileIsPreserved(): void
     {
         $source = $this->packageRoot

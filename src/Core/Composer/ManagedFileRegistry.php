@@ -225,6 +225,16 @@ final class ManagedFileRegistry
         if (self::isTextPath($path)) {
             $normalized = str_replace(["\r\n", "\r"], "\n", $contents);
             $fingerprints[] = 'sha256:' . hash('sha256', $normalized);
+
+            // Mantener las huellas anteriores y añadir una comparación
+            // canónica que ignore únicamente el whitespace del EOF. Así, la
+            // ausencia de salto final o varias líneas vacías finales no
+            // convierten una copia intacta en una personalización local.
+            $normalizedEof = rtrim($normalized, " \t\n") . "\n";
+            $fingerprints[] = 'sha256:' . hash(
+                'sha256',
+                $normalizedEof
+            );
         }
 
         return array_values(array_unique($fingerprints));

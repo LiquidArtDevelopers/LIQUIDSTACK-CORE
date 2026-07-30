@@ -20,7 +20,9 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   `_config.scss` de los consumidores.
 - Historial de huellas gestionadas y comando
   `php tools/build-managed-file-history.php` para regenerarlo antes de
-  publicar una versión.
+  publicar una versión. La huella canónica de texto tolera LF/CRLF y
+  diferencias exclusivamente al final del fichero (sin salto final o con
+  líneas vacías), conservando las huellas anteriores por compatibilidad.
 - Compatibilidad con rutas legacy de showroom: cuando una ruta usa el bundle
   `templates` y el contenido `showroom`, se carga `templates` como catálogo
   base y `showroom` como override local.
