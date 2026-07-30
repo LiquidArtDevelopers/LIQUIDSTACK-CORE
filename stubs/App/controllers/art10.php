@@ -13,10 +13,6 @@ function controller_art10(int $i = 0, array $params = []): string
     $letters    = range('a', 'z');
     $itemsCount = max(0, (int) ($params['items'] ?? 3));
 
-    $vars = [
-        '{classVar}'       => "art10_{$pad}_classVar",
-    ];
-
     $headerLevels = resolve_header_levels($params, '{header-primary}', 3);
     $baseLevel    = $headerLevels['base'];
     $itemLevel    = $headerLevels['child'];
@@ -95,6 +91,7 @@ function controller_art10(int $i = 0, array $params = []): string
     $bottomFill = $GLOBALS["art10_{$pad}_bottom_fill"] ?? '';
 
     $vars = [
+        '{classVar}'       => "art10_{$pad}_classVar",
         '{header-primary}' => '<h' . $baseLevel . ' data-lang="art10_' . $pad . '_headerPrimary">' . $headerPrimary . '</h' . $baseLevel . '>',
         '{items}'          => $itemsHtml,
         '{top-fill}'       => $topFill,

@@ -27,7 +27,9 @@ function controller_art05(int $i = 0, array $params = []): string
         $firmaVar  = "art05_{$pad}_{$letter}_firma";
 
         $header = '<h' . $itemLevel . ' data-lang="' . $headerVar . '">' . ($GLOBALS[$headerVar]->text ?? '') . '</h' . $itemLevel . '>';
-        $imgSrc = $_ENV['RAIZ'].'/'.($GLOBALS[$imgVar]->src ?? '');
+        $imgSrc = rtrim($_ENV['RAIZ'] ?? '', '/')
+            . '/'
+            . ltrim((string) ($GLOBALS[$imgVar]->src ?? ''), '/');
         $imgAlt = $GLOBALS[$imgVar]->alt ?? '';
         $imgTitle = $GLOBALS[$imgVar]->title ?? '';
         $img  = '<img data-lang="'.$imgVar.'" src="'.$imgSrc.'" alt="'.$imgAlt.'" title="'.$imgTitle.'">';

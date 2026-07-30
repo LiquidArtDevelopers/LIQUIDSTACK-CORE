@@ -32,22 +32,6 @@ final class InstallerResourceSyncTest extends TestCase
             '<?php echo "local";'
         );
         $this->writeFile(
-            $this->projectRoot . '/App/views/_templates.php',
-            'obsolete managed view'
-        );
-        $this->writeFile(
-            $this->projectRoot . '/App/app/updateLanguage.php',
-            '<?php echo "obsolete language endpoint";'
-        );
-        $this->writeFile(
-            $this->projectRoot . '/App/tools/update-languages.php',
-            '<?php echo "obsolete language hydrator";'
-        );
-        $this->writeFile(
-            $this->projectRoot . '/src/scss/resources/_art02little.scss',
-            'obsolete managed stylesheet'
-        );
-        $this->writeFile(
             $this->projectRoot . '/App/config/routes/get.php',
             '<?php return ["project-route" => true];'
         );
@@ -238,8 +222,12 @@ final class InstallerResourceSyncTest extends TestCase
             );
         }
         self::assertStringContainsString(
-            'CORE actualizará App/app/updateLanguage.php',
+            'CORE sync seguro:',
             $this->io->getOutput()
+        );
+        self::assertFileExists(
+            $this->projectRoot
+                . '/.liquidstack/core/managed-files.json'
         );
 
         foreach ([

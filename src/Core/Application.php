@@ -129,15 +129,26 @@ class Application
         $resources = $rutaConfig['resources'] ?? null;
 
         if (is_string($content) && $content !== '') {
-            
-            $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/global/{$lang}.json"));
-            if ($data) {
-                extract($data);
-                foreach ($data as $k => $v) {
-                    $GLOBALS[$k] = $v;
-                }
+            $data = $this->readLanguageCatalog('global', $lang);
+
+            /*
+             * Compatibilidad con stacks anteriores a la vista canónica
+             * `_showroom.php`: CORE aporta las claves nuevas de `templates`
+             * como base, mientras que el catálogo local `showroom` conserva
+             * prioridad sobre cualquier copy ya personalizado.
+             */
+            if ($resources === 'templates' && $content === 'showroom') {
+                $data = array_replace(
+                    $data,
+                    $this->readLanguageCatalog('templates', $lang)
+                );
             }
-            $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/{$content}/{$lang}.json"));
+
+            $data = array_replace(
+                $data,
+                $this->readLanguageCatalog($content, $lang)
+            );
+
             if ($data) {
                 extract($data);
                 foreach ($data as $k => $v) {
@@ -161,6 +172,30 @@ class Application
         }
 
         require_once $view;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function readLanguageCatalog(string $catalog, string $lang): array
+    {
+        $path = Paths::appPath()
+            . "/config/languages/{$catalog}/{$lang}.json";
+
+        if (!is_file($path) || !is_readable($path)) {
+            return [];
+        }
+
+        $contents = file_get_contents($path);
+        if (!is_string($contents)) {
+            return [];
+        }
+
+        $decoded = json_decode($contents);
+
+        return is_object($decoded)
+            ? get_object_vars($decoded)
+            : [];
     }
 
     private function renderNotFound(string $lang): void

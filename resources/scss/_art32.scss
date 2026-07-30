@@ -3,6 +3,8 @@
 .art32{
     $cardFooterSpace: 3rem;
 
+    --art32-icon-filter: #{c.$filterColor02};
+
     width: c.$anchoFull;
     display: flex;
     flex-direction: column;
@@ -107,7 +109,7 @@
                 object-fit: contain;
                 object-position: center;
                 transform: translateX(-50%);
-                filter: c.$color03SVG;
+                filter: var(--art32-icon-filter);
             }
 
             >.art32-cardTitle{

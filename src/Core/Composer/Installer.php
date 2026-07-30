@@ -6,8 +6,6 @@ use App\Core\Support\Paths;
 use Composer\IO\IOInterface;
 use Composer\Script\Event;
 use FilesystemIterator;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Filesystem\Path;
 
@@ -20,18 +18,37 @@ class Installer
 
     public static function postInstall(Event $event): void
     {
-        self::syncProjectAssets($event);
-        self::syncResources($event);
+        self::syncManagedProjectFiles($event);
         self::syncAgentGuidance($event);
         self::syncFrontendDependencies($event);
     }
 
     public static function postUpdate(Event $event): void
     {
-        self::syncProjectAssets($event);
-        self::syncResources($event);
+        self::syncManagedProjectFiles($event);
         self::syncAgentGuidance($event);
         self::syncFrontendDependencies($event);
+    }
+
+    private static function syncManagedProjectFiles(Event $event): void
+    {
+        $synchronizer = self::createManagedFileSynchronizer($event);
+
+        self::syncProjectAssets($event, $synchronizer);
+        self::queueResources($event, $synchronizer);
+        $synchronizer->apply();
+
+        $projectRoot = self::resolveProjectRoot($event);
+        $packageRoot = dirname(__DIR__, 3);
+
+        self::syncViteLanguagePluginConfig(
+            new Filesystem(),
+            $projectRoot,
+            $packageRoot
+                . '/stubs/'
+                . self::VITE_LANGUAGE_PLUGIN_PATH,
+            $event->getIO()
+        );
     }
 
     public static function syncAgentGuidance(Event $event): void
@@ -308,10 +325,17 @@ class Installer
 
     public static function syncResources(Event $event): void
     {
-        $io         = $event->getIO();
-        $composer   = $event->getComposer();
-        $vendorDir  = rtrim($composer->getConfig()->get('vendor-dir'), DIRECTORY_SEPARATOR);
-        $projectRoot = dirname($vendorDir);
+        $synchronizer = self::createManagedFileSynchronizer($event);
+        self::queueResources($event, $synchronizer);
+        $synchronizer->apply();
+    }
+
+    private static function queueResources(
+        Event $event,
+        ManagedFileSynchronizer $synchronizer
+    ): void {
+        $io = $event->getIO();
+        $projectRoot = self::resolveProjectRoot($event);
 
         Paths::setProjectRoot($projectRoot);
 
@@ -324,19 +348,20 @@ class Installer
         }
 
         $targets = self::resolveResourceTargets($projectRoot);
-        $filesystem = new Filesystem();
 
         foreach ($targets as $target) {
             $pairs = [
                 [
-                    'source'            => $resourcesDir . '/js',
-                    'destination'       => $target['js'],
-                    'preserve_existing' => ['_terminos.js'],
+                    'source' => $resourcesDir . '/js',
+                    'destination' => $target['js'],
+                    'source_id' => 'resources/js',
+                    'target_id' => $target['js_id'],
                 ],
                 [
-                    'source'            => $resourcesDir . '/scss',
-                    'destination'       => $target['scss'],
-                    'preserve_existing' => ['_moduleTerminos.scss'],
+                    'source' => $resourcesDir . '/scss',
+                    'destination' => $target['scss'],
+                    'source_id' => 'resources/scss',
+                    'target_id' => $target['scss_id'],
                 ],
             ];
 
@@ -349,17 +374,13 @@ class Installer
                     continue;
                 }
 
-                try {
-                    self::mirrorWithoutDeletion(
-                        $filesystem,
-                        $source,
-                        $destination,
-                        $pair['preserve_existing']
-                    );
-                    $io->write(sprintf('<info>Synced resources to %s</info>', $destination));
-                } catch (\Throwable $exception) {
-                    $io->writeError(sprintf('<error>Failed to sync %s to %s: %s</error>', $source, $destination, $exception->getMessage()));
-                }
+                $synchronizer->queueDirectory(
+                    $source,
+                    $destination,
+                    $pair['source_id'],
+                    $pair['target_id'],
+                    $target['track_state']
+                );
             }
         }
 
@@ -367,38 +388,42 @@ class Installer
         $imagesDestination = self::resolveImageResourceTarget($projectRoot);
 
         if (is_dir($imagesSource)) {
-            try {
-                self::mirrorWithoutDeletion(
-                    $filesystem,
-                    $imagesSource,
+            $synchronizer->queueDirectory(
+                $imagesSource,
+                $imagesDestination,
+                'resources/img',
+                self::logicalTargetPrefix(
+                    $projectRoot,
                     $imagesDestination,
-                    ['logos']
-                );
-                $io->write(sprintf('<info>Synced resources to %s</info>', $imagesDestination));
-            } catch (\Throwable $exception) {
-                $io->writeError(sprintf('<error>Failed to sync %s to %s: %s</error>', $imagesSource, $imagesDestination, $exception->getMessage()));
-            }
+                    '@custom-resources/img'
+                )
+            );
         }
 
         $videosSource      = $resourcesDir . '/video';
         $videosDestination = self::resolveVideoResourceTarget($projectRoot);
 
         if (is_dir($videosSource)) {
-            try {
-                self::mirrorWithoutDeletion($filesystem, $videosSource, $videosDestination);
-                $io->write(sprintf('<info>Synced resources to %s</info>', $videosDestination));
-            } catch (\Throwable $exception) {
-                $io->writeError(sprintf('<error>Failed to sync %s to %s: %s</error>', $videosSource, $videosDestination, $exception->getMessage()));
-            }
+            $synchronizer->queueDirectory(
+                $videosSource,
+                $videosDestination,
+                'resources/video',
+                self::logicalTargetPrefix(
+                    $projectRoot,
+                    $videosDestination,
+                    '@custom-resources/video'
+                )
+            );
         }
     }
 
-    private static function syncProjectAssets(Event $event): void
+    private static function syncProjectAssets(
+        Event $event,
+        ManagedFileSynchronizer $synchronizer
+    ): void
     {
-        $io        = $event->getIO();
-        $composer  = $event->getComposer();
-        $vendorDir = rtrim($composer->getConfig()->get('vendor-dir'), DIRECTORY_SEPARATOR);
-        $projectRoot = dirname($vendorDir);
+        $io = $event->getIO();
+        $projectRoot = self::resolveProjectRoot($event);
 
         Paths::setProjectRoot($projectRoot);
 
@@ -408,45 +433,15 @@ class Installer
         $assets = [
             ['path' => 'public/index.php', 'type' => 'file'],
             ['path' => 'App/config/helpers.php', 'type' => 'file'],
-            [
-                'path'              => 'App/config/languages',
-                'type'              => 'dir',
-                'preserve_existing' => ['_email'],
-            ],
+            ['path' => 'App/config/languages', 'type' => 'dir'],
             ['path' => 'App/app/url.php', 'type' => 'file'],
-            [
-                'path'              => 'App/app/formContact.php',
-                'type'              => 'file',
-                'preserve_existing' => true,
-            ],
-            [
-                'path'              => 'App/app/_phpmailer.php',
-                'type'              => 'file',
-                'preserve_existing' => true,
-            ],
-            [
-                'path'              => 'App/class/_comprobaciones.php',
-                'type'              => 'file',
-                'preserve_existing' => true,
-            ],
-            [
-                'path'           => 'App/app/updateLanguage.php',
-                'type'           => 'file',
-                'warn_on_change' => true,
-            ],
-            [
-                'path'              => 'App/controllers',
-                'type'              => 'dir',
-                'preserve_existing' => ['footerInfo01.php'],
-            ],
-            [
-                'path'              => 'App/templates',
-                'type'              => 'dir',
-                'preserve_existing' => ['_footerInfo01.html'],
-            ],
+            ['path' => 'App/app/formContact.php', 'type' => 'file'],
+            ['path' => 'App/app/_phpmailer.php', 'type' => 'file'],
+            ['path' => 'App/class/_comprobaciones.php', 'type' => 'file'],
+            ['path' => 'App/app/updateLanguage.php', 'type' => 'file'],
+            ['path' => 'App/controllers', 'type' => 'dir'],
+            ['path' => 'App/templates', 'type' => 'dir'],
             ['path' => 'App/views', 'type' => 'dir'],
-            ['path' => 'App/tools/build-sitemap.php', 'type' => 'file'],
-            ['path' => 'App/tools/update-languages.php', 'type' => 'file'],
             ['path' => 'App/tools', 'type' => 'dir'],
             [
                 'path' => self::VITE_LANGUAGE_PLUGIN_PATH,
@@ -455,8 +450,6 @@ class Installer
             ['path' => 'src/js/templates.js', 'type' => 'file', 'base' => $packageRoot],
             ['path' => 'src/scss/templates.scss', 'type' => 'file', 'base' => $packageRoot],
         ];
-
-        $filesystem = new Filesystem();
 
         foreach ($assets as $asset) {
             $assetPath = $asset['path'];
@@ -476,53 +469,28 @@ class Installer
                 continue;
             }
 
-            if (
-                $assetType === 'file'
-                && ($asset['warn_on_change'] ?? false)
-                && is_file($target)
-                && hash_file('sha256', $source) !== hash_file('sha256', $target)
-            ) {
-                $io->writeError(sprintf(
-                    '<warning>CORE actualizará %s. Revisa antes cualquier personalización local de este fichero gestionado.</warning>',
+            $sourceId = $assetBase === $packageRoot
+                ? $assetPath
+                : 'stubs/' . $assetPath;
+
+            if ($assetType === 'dir') {
+                $synchronizer->queueDirectory(
+                    $source,
+                    $target,
+                    $sourceId,
                     $assetPath
-                ));
+                );
+                continue;
             }
 
-            $filesystem->mkdir(dirname($target), 0775);
-
-            try {
-                if ($assetType === 'dir') {
-                    self::mirrorWithoutDeletion(
-                        $filesystem,
-                        $source,
-                        $target,
-                        $asset['preserve_existing'] ?? []
-                    );
-                } elseif (
-                    ($asset['preserve_existing'] ?? false) === true
-                    && is_file($target)
-                ) {
-                    $io->write(sprintf(
-                        '<info>Preserved existing project asset: %s</info>',
-                        $assetPath
-                    ));
-                    continue;
-                } else {
-                    $filesystem->copy($source, $target, true);
-                }
-
-                $io->write(sprintf('<info>Synced %s</info>', $assetPath));
-            } catch (\Throwable $exception) {
-                $io->writeError(sprintf('<error>Failed to copy %s to %s: %s</error>', $source, $target, $exception->getMessage()));
-            }
+            $synchronizer->queueFile(
+                $source,
+                $target,
+                $sourceId,
+                $assetPath
+            );
         }
 
-        self::syncViteLanguagePluginConfig(
-            $filesystem,
-            $projectRoot,
-            $stubsDir . '/' . self::VITE_LANGUAGE_PLUGIN_PATH,
-            $io
-        );
     }
 
     private static function syncViteLanguagePluginConfig(
@@ -690,13 +658,60 @@ class Installer
             || self::startsWith($path, '\\\\');
     }
 
+    private static function createManagedFileSynchronizer(
+        Event $event
+    ): ManagedFileSynchronizer {
+        return new ManagedFileSynchronizer(
+            self::resolveProjectRoot($event),
+            dirname(__DIR__, 3),
+            $event->getIO()
+        );
+    }
+
+    private static function resolveProjectRoot(Event $event): string
+    {
+        $vendorDir = rtrim(
+            (string) $event
+                ->getComposer()
+                ->getConfig()
+                ->get('vendor-dir'),
+            DIRECTORY_SEPARATOR
+        );
+
+        return dirname($vendorDir);
+    }
+
+    private static function logicalTargetPrefix(
+        string $projectRoot,
+        string $target,
+        string $externalFallback
+    ): string {
+        $projectPath = rtrim(
+            str_replace('\\', '/', $projectRoot),
+            '/'
+        );
+        $targetPath = rtrim(str_replace('\\', '/', $target), '/');
+        $projectKey = PHP_OS_FAMILY === 'Windows'
+            ? strtolower($projectPath)
+            : $projectPath;
+        $targetKey = PHP_OS_FAMILY === 'Windows'
+            ? strtolower($targetPath)
+            : $targetPath;
+
+        if (str_starts_with($targetKey, $projectKey . '/')) {
+            return substr($targetPath, strlen($projectPath) + 1);
+        }
+
+        return $externalFallback;
+    }
+
     /**
      * Obtiene los destinos a los que se replicaran los assets front.
      *
      * Por defecto se copian a `src/js/resources` y `src/scss/resources` para
-     * que Vite recomponga cualquier archivo eliminado y, ademas, se mantiene
-     * una copia en `vendor/liquidstack/core/resources` para importaciones
-     * directas. Si se define la variable de entorno
+     * que Vite recomponga cualquier archivo eliminado. La copia original ya
+     * vive en `vendor/liquidstack/core/resources`. Si se define la variable
+     * de entorno
      * STACK_CORE_RESOURCES_TARGET, se tomara como raiz (absoluta o
      * relativa al proyecto) y se crearan las carpetas `js` y `scss` bajo dicha
      * ruta. Se mantiene compatibilidad con STACK_LIQUID_CORE_RESOURCES_TARGET
@@ -716,21 +731,21 @@ class Installer
                 : $projectRoot . DIRECTORY_SEPARATOR . ltrim($configured, DIRECTORY_SEPARATOR);
 
             return [[
-                'js'   => $base . DIRECTORY_SEPARATOR . 'js',
+                'js' => $base . DIRECTORY_SEPARATOR . 'js',
                 'scss' => $base . DIRECTORY_SEPARATOR . 'scss',
+                'js_id' => '@custom-resources/js',
+                'scss_id' => '@custom-resources/scss',
+                'track_state' => true,
             ]];
         }
 
-        return [
-            [
-                'js'   => $projectRoot . '/src/js/resources',
-                'scss' => $projectRoot . '/src/scss/resources',
-            ],
-            [
-                'js'   => $projectRoot . '/vendor/liquidstack/core/resources/js',
-                'scss' => $projectRoot . '/vendor/liquidstack/core/resources/scss',
-            ],
-        ];
+        return [[
+            'js' => $projectRoot . '/src/js/resources',
+            'scss' => $projectRoot . '/src/scss/resources',
+            'js_id' => 'src/js/resources',
+            'scss_id' => 'src/scss/resources',
+            'track_state' => true,
+        ]];
     }
 
     /**
@@ -1164,66 +1179,4 @@ class Installer
         return preg_match('/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/', $skillName) === 1;
     }
 
-    private static function mirrorWithoutDeletion(
-        Filesystem $filesystem,
-        string $source,
-        string $destination,
-        array $preserveExistingPrefixes = []
-    ): void {
-        $filesystem->mkdir($destination, 0775);
-
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($source, FilesystemIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::SELF_FIRST
-        );
-
-        foreach ($iterator as $item) {
-            $relativePath = $iterator->getSubPathName();
-            $targetPath   = $destination . DIRECTORY_SEPARATOR . $relativePath;
-
-            if ($item->isDir()) {
-                $filesystem->mkdir($targetPath, 0775);
-                continue;
-            }
-
-            $filesystem->mkdir(dirname($targetPath), 0775);
-
-            $preserveExisting = is_file($targetPath)
-                && self::matchesResourcePrefix($relativePath, $preserveExistingPrefixes);
-
-            $shouldCopy = !$preserveExisting
-                && (
-                    !is_file($targetPath)
-                    || md5_file($item->getPathname()) !== md5_file($targetPath)
-                );
-
-            if ($shouldCopy) {
-                $filesystem->copy($item->getPathname(), $targetPath, true);
-            }
-        }
-    }
-
-    /**
-     * @param list<string> $prefixes
-     */
-    private static function matchesResourcePrefix(string $relativePath, array $prefixes): bool
-    {
-        $normalizedPath = str_replace('\\', '/', ltrim($relativePath, '/\\'));
-
-        foreach ($prefixes as $prefix) {
-            $normalizedPrefix = trim(str_replace('\\', '/', $prefix), '/');
-
-            if (
-                $normalizedPrefix !== ''
-                && (
-                    $normalizedPath === $normalizedPrefix
-                    || self::startsWith($normalizedPath, $normalizedPrefix . '/')
-                )
-            ) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

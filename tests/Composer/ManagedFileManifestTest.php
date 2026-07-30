@@ -1,0 +1,156 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Core\Composer\ManagedFileRegistry;
+use PHPUnit\Framework\TestCase;
+
+final class ManagedFileManifestTest extends TestCase
+{
+    public function testHistoryContainsEveryCurrentManagedSource(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $manifest = json_decode(
+            (string) file_get_contents(
+                $root . '/manifests/managed-file-history.json'
+            ),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame(1, $manifest['schema'] ?? null);
+        self::assertSame(
+            'sha256-eol-lf-v1',
+            $manifest['algorithm'] ?? null
+        );
+        self::assertIsArray($manifest['files'] ?? null);
+
+        foreach ($this->currentFiles($root) as $sourceId => $path) {
+            self::assertArrayHasKey(
+                $sourceId,
+                $manifest['files'],
+                "Falta regenerar el historial para {$sourceId}"
+            );
+
+            $current = ManagedFileRegistry::fingerprintFile($path);
+            $known = $manifest['files'][$sourceId];
+
+            self::assertNotSame(
+                [],
+                array_intersect($current, $known),
+                "La huella actual de {$sourceId} no está registrada"
+            );
+        }
+    }
+
+    public function testProjectOwnedFilesAreOutsideTheRegistry(): void
+    {
+        foreach ([
+            'stubs/App/config/routes/get.php',
+            'stubs/App/config/routes/post.php',
+            'src/scss/_config.scss',
+            'src/scss/_global.scss',
+            'src/scss/home.scss',
+            'vite.config.js',
+        ] as $path) {
+            self::assertSame(
+                ManagedFileRegistry::POLICY_IGNORE,
+                ManagedFileRegistry::policyForSource($path),
+                "{$path} debe pertenecer al proyecto consumidor"
+            );
+        }
+    }
+
+    public function testHistoryBuilderIncludesUntrackedReleaseFiles(): void
+    {
+        $builder = (string) file_get_contents(
+            dirname(__DIR__, 2)
+                . '/tools/build-managed-file-history.php'
+        );
+
+        self::assertStringContainsString(
+            "'--others'",
+            $builder
+        );
+        self::assertStringContainsString(
+            "'--exclude-standard'",
+            $builder
+        );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function currentFiles(string $root): array
+    {
+        $files = [];
+        $roots = [
+            'resources/img',
+            'resources/js',
+            'resources/scss',
+            'resources/video',
+            'stubs/App/config/languages',
+            'stubs/App/controllers',
+            'stubs/App/templates',
+            'stubs/App/tools',
+            'stubs/App/views',
+        ];
+
+        foreach ($roots as $relativeRoot) {
+            $directory = $root . '/' . $relativeRoot;
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator(
+                    $directory,
+                    FilesystemIterator::SKIP_DOTS
+                )
+            );
+
+            foreach ($iterator as $item) {
+                if (!$item->isFile() || $item->isLink()) {
+                    continue;
+                }
+
+                $sourceId = str_replace(
+                    '\\',
+                    '/',
+                    substr(
+                        $item->getPathname(),
+                        strlen($root) + 1
+                    )
+                );
+
+                if (
+                    ManagedFileRegistry::policyForSource($sourceId)
+                        === ManagedFileRegistry::POLICY_MANAGED
+                ) {
+                    $files[$sourceId] = $item->getPathname();
+                }
+            }
+        }
+
+        foreach ([
+            'src/js/templates.js',
+            'src/scss/templates.scss',
+            'stubs/App/app/updateLanguage.php',
+            'stubs/App/app/url.php',
+            'stubs/App/config/helpers.php',
+            'stubs/public/index.php',
+            'stubs/tools/liquidstack/vite/update-languages-plugin.mjs',
+        ] as $sourceId) {
+            $path = $root . '/' . $sourceId;
+
+            if (
+                is_file($path)
+                && ManagedFileRegistry::policyForSource($sourceId)
+                    === ManagedFileRegistry::POLICY_MANAGED
+            ) {
+                $files[$sourceId] = $path;
+            }
+        }
+
+        ksort($files, SORT_STRING);
+
+        return $files;
+    }
+}

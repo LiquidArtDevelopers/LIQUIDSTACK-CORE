@@ -10,11 +10,13 @@ function controller_hero02(int $i = 0, array $params = []): string
     $vars = [
         '{hero02-content}'  => '',
         '{video-webm-dl}'   => 'hero02_video_webm',
-        '{video-webm}'      => $_ENV['RAIZ'].'/'.$GLOBALS['hero02_video_webm']->src,
+        '{video-webm}'      => rtrim($_ENV['RAIZ'] ?? '', '/')
+            . '/'
+            . ltrim((string) $GLOBALS['hero02_video_webm']->src, '/'),
         '{video-mp4-dl}'    => 'hero02_video_mp4',
-        '{video-mp4}'       => $_ENV['RAIZ'].'/'.$GLOBALS['hero02_video_mp4']->src,
-        // '{video-poster-dl}' => '',
-        // '{video-poster}'    => '',
+        '{video-mp4}'       => rtrim($_ENV['RAIZ'] ?? '', '/')
+            . '/'
+            . ltrim((string) $GLOBALS['hero02_video_mp4']->src, '/'),
         '{video-title-dl}'  => 'hero02_video_title',
         '{video-title}'     => $GLOBALS['hero02_video_title']->title,
     ];

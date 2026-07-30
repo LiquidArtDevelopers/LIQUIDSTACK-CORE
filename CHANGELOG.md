@@ -4,6 +4,26 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Añadido
+- Sincronización segura y aditiva para proyectos consumidores. CORE instala
+  ficheros nuevos, actualiza copias intactas reconocidas por su estado o por
+  huellas históricas normalizadas y registra el resultado versionable en
+  `.liquidstack/core/managed-files.json`. Las personalizaciones desconocidas se
+  conservan por grupo de recurso y no se elimina ningún fichero del proyecto.
+- Fusión recursiva de catálogos JSON que añade claves y propiedades ausentes
+  sin sustituir valores existentes, incluidos valores vacíos intencionales.
+  La inserción conserva el formato y los finales de línea del catálogo. Las
+  semillas de backend, email, runtime legal, footer y logos se instalan
+  únicamente cuando faltan.
+- Manifiesto del contrato SCSS v1 con las 40 variables admitidas por los
+  recursos estándar. Los valores específicos de cada recurso se exponen
+  mediante custom properties CSS con fallback al contrato, sin modificar el
+  `_config.scss` de los consumidores.
+- Historial de huellas gestionadas y comando
+  `php tools/build-managed-file-history.php` para regenerarlo antes de
+  publicar una versión.
+- Compatibilidad con rutas legacy de showroom: cuando una ruta usa el bundle
+  `templates` y el contenido `showroom`, se carga `templates` como catálogo
+  base y `showroom` como override local.
 - Recursos `art33` y `art34`, con raíz `article`, fichas `div`, encabezados
   relativos, cantidad variable de ítems, contenido inyectable y CTA por ficha
   o general.
@@ -73,6 +93,9 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   alturas, saltos de línea y distribución responsive.
 
 ### Corregido
+- Las rutas, el fichero Vite completo, `_config.scss`, `_global.scss`, los SCSS
+  de página y las configuraciones locales quedan fuera de la sincronización
+  gestionada por ser propiedad de cada proyecto.
 - El instalador conserva el runtime legal y `footerInfo01` cuando un proyecto
   los ha personalizado, evitando que una actualización de CORE sustituya copy
   regulatorio o branding del consumidor.
@@ -130,7 +153,12 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   altura reservada para sus encabezados de tarjeta, corrigiendo la falta de
   separación vertical y el exceso de espacio.
 - `art32` calcula sus cuatro columnas descontando los gaps y evita el desborde
-  horizontal que producía el `min-width` heredado de `art02` en portátiles.
+  horizontal que producía el `min-width` heredado de `art02` en portátiles. Su
+  filtro de icono usa una custom property con fallback del contrato SCSS v1.
+- `art10` resuelve siempre su clase, `art05` normaliza las rutas de imagen y
+  `hero02` ya no deja un placeholder de edición sin resolver. `hero04` genera
+  su textura de dithering en memoria y deja de solicitar el asset inexistente
+  `LDR_LLL1_0.png`. El catálogo EN elimina además tres claves duplicadas.
 - El editor inline retira durante HMR los listeners anteriores de doble clic,
   `Ctrl` + clic sobre enlaces y cambio de idioma, evitando manejadores
   duplicados.
@@ -157,10 +185,11 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 - Si el proyecto expone `/showroom`, configura esa ruta con
   `resources => templates` y `content => templates`; CORE no sobrescribe los
   ficheros de rutas propios de cada consumidor.
-- Revisa antes de actualizar cualquier personalización local de
-  `App/app/updateLanguage.php`: desde esta versión es un stub gestionado por
-  CORE. Conserva además la ruta POST `/languages/update` y la inicialización de
-  `_inlineEditor.js` en el `_global.js` local.
+- Las personalizaciones desconocidas de `App/app/updateLanguage.php` y
+  `_inlineEditor.js` se conservan juntas. Revisa el aviso de Composer y migra
+  ese grupo manualmente si quieres adoptar el contrato nuevo. Conserva además
+  la ruta POST `/languages/update` y la inicialización de `_inlineEditor.js` en
+  el `_global.js` local.
 - Vuelve a ejecutar `php App/tools/build-sitemap.php` tras definir la variable de entorno `RAIZ` (o su alias de host de producción) para regenerar el sitemap y sincronizar el `robots.txt` del proyecto.
 
 ## [1.0.0] - 2024-04-07

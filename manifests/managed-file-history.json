@@ -1,0 +1,1405 @@
+{
+    "schema": 1,
+    "algorithm": "sha256-eol-lf-v1",
+    "files": {
+        "resources/img/aniBackground01/clock-bigben-guide.png": [
+            "sha256:afe5a36556f8939e5bd95aad454b9dd076dabd60fcbaa0405a4fa1b6e5531e75"
+        ],
+        "resources/img/aniBackground01/clock-bigben-hours-guide.png": [
+            "sha256:8ddb6683f63317ab73d8a635ed6350f7e3ab98b33365b9773136cb1e21167b70"
+        ],
+        "resources/img/aniBackground01/clock-bigben-hours.png": [
+            "sha256:c2a393ffdc6a8d677c3b4eef2fc45906b481834cd744a8a5ffbd79af13a346b7"
+        ],
+        "resources/img/aniBackground01/clock-bigben-minuts-guide.png": [
+            "sha256:803ccbfff132ac20cdc47dcf8bbcd9fdc916d94762d07eb025f6b12f48d79438"
+        ],
+        "resources/img/aniBackground01/clock-bigben-minuts.png": [
+            "sha256:a167b99c06addb654c7c3171b17c52b1dc0822c53e665ea4541408d2a47e9d1e"
+        ],
+        "resources/img/aniBackground01/clock-bigben.png": [
+            "sha256:b6ae4cee90ce5cd5a836451e06bf2a6ac08a3333decb045675cdffd0b542d855"
+        ],
+        "resources/img/aniBackground01/clock-cocina-guide.png": [
+            "sha256:915eaf4b6a93fcc0f3d19862ad04c13e8f4de6b57d636d0f48c425f35f61c0f4"
+        ],
+        "resources/img/aniBackground01/clock-cocina.png": [
+            "sha256:6dfc67dc035ffd3cdb881cb9011f1f6a37bac3449c9f41eae0f2110aacc49a49"
+        ],
+        "resources/img/aniBackground01/clock-dali-guide.png": [
+            "sha256:53561cf3161f32e8d6167d0f777f64e71fe6355d4ceaba2ce34ce71531a6fa39"
+        ],
+        "resources/img/aniBackground01/clock-dali.png": [
+            "sha256:d0589c612a11006d40dcce586d6cbdd231e1d16fca53dcafdb41c96414010e2a"
+        ],
+        "resources/img/aniBackground01/clock-despertador-clasico-guide.png": [
+            "sha256:a8ea8b10a33e79737b9855ba3a6073d6481d59db3d0cf761da2deeb43f4cd879"
+        ],
+        "resources/img/aniBackground01/clock-despertador-clasico.png": [
+            "sha256:c2930b608adaf32d92a14bc8c120ba6f76e93a7c45e2b90c88ff8d0548757aa0"
+        ],
+        "resources/img/aniBackground01/clock-fifth-avenue-guide.png": [
+            "sha256:c9cf5fe017d2f7697edf7060c7f7fa0e8ebf02fac058b9c7270a1232c3da9241"
+        ],
+        "resources/img/aniBackground01/clock-fifth-avenue-hours-guide.png": [
+            "sha256:18ccbd7213178106582d42226d85718f93cf8f8064fc0a073db320ce3ee88784"
+        ],
+        "resources/img/aniBackground01/clock-fifth-avenue-hours.png": [
+            "sha256:f454e58cdd911b83212d63538e34b4503ecf61ab5cd5f1f1e141ac99cd8ec37c"
+        ],
+        "resources/img/aniBackground01/clock-fifth-avenue-minuts-guide.png": [
+            "sha256:345796fa490f9f6f7bb48062926a342cdd35c91a260a9ba3de4aaf737f2b7649"
+        ],
+        "resources/img/aniBackground01/clock-fifth-avenue-minuts.png": [
+            "sha256:b9d170833e7e9d01b849c9a81fbb771d2ed257dc27e45295703928cba88e5f33"
+        ],
+        "resources/img/aniBackground01/clock-fifth-avenue.png": [
+            "sha256:efc291205a41886fbe0d14ffefd0fab717cfbaa3fbcc69747a2535b0674608df"
+        ],
+        "resources/img/aniBackground01/clock-wake-up-neo-guide.png": [
+            "sha256:9f49c5d44c074f5dedf99ba454555f9aa2e4aaac40cdd1efd9c505b46b95b4df"
+        ],
+        "resources/img/aniBackground01/clock-wake-up-neo.png": [
+            "sha256:3d74a2c4d53062b5fa678132eb8524e0d7ea37eb7b61e7f307819bd267347436"
+        ],
+        "resources/img/dummy/dummy.jpg": [
+            "sha256:e3d9f0e6af7e0ea7488a4a36944be3a35bfc0bd9624dbabe8e4f20b3f7b092be"
+        ],
+        "resources/img/dummy/dummy01.avif": [
+            "sha256:0e785cb65e42dc97b6cd3634fad5b2c14f32976b9524b1669db0569725a4b515"
+        ],
+        "resources/img/dummy/dummy02.avif": [
+            "sha256:22064e57c31991b32145f13101c0246d87f49fbc5bdec83e0dd993e6a78230ff"
+        ],
+        "resources/img/dummy/dummy03.avif": [
+            "sha256:4f2f037d1d78accea7c50a621ddda05931e17dcdc9bed937c792f41a3a55f92e"
+        ],
+        "resources/img/dummy/dummy04.avif": [
+            "sha256:34ed17b7d23327725599bacae05308c6bdb8aedbee2153e2d898149d4b0f2715"
+        ],
+        "resources/img/dummy/dummy_1200.avif": [
+            "sha256:ccaa34e4168ede5bbfcd138ff5e503ed57cf3cafae27ccebb0a83ad8ad6905ad"
+        ],
+        "resources/img/dummy/dummy_1800.avif": [
+            "sha256:a93f510d5fbff6597efd2271d367305fff9bb6c2138b984c0e48fd464ed84c3d"
+        ],
+        "resources/img/dummy/dummy_2560.avif": [
+            "sha256:b2f85e5175ba829e6f7b1cf6803cb8ffc5592ebe80d03ad5db00f3c0dedf120f"
+        ],
+        "resources/img/dummy/dummy_900.avif": [
+            "sha256:1484588e470cb12433fad7224586521940a97c53dde9fd3d9c94b785cbc0465f"
+        ],
+        "resources/img/resources/aniBackground01/clock-back-to-future-guide.png": [
+            "sha256:04f438659e3ade69baec9d759378ee42c757c0abbaf475b00496b9d1e619d437"
+        ],
+        "resources/img/resources/aniBackground01/clock-back-to-future.png": [
+            "sha256:2e03c0b5f761d93926d36870bc91acfc4b86601c9950709fba4edb8cf35b5847"
+        ],
+        "resources/img/resources/aniBackground01/clock-bigben-guide.png": [
+            "sha256:afe5a36556f8939e5bd95aad454b9dd076dabd60fcbaa0405a4fa1b6e5531e75"
+        ],
+        "resources/img/resources/aniBackground01/clock-bigben-hours-guide.png": [
+            "sha256:8ddb6683f63317ab73d8a635ed6350f7e3ab98b33365b9773136cb1e21167b70"
+        ],
+        "resources/img/resources/aniBackground01/clock-bigben-hours.png": [
+            "sha256:c2a393ffdc6a8d677c3b4eef2fc45906b481834cd744a8a5ffbd79af13a346b7"
+        ],
+        "resources/img/resources/aniBackground01/clock-bigben-minuts-guide.png": [
+            "sha256:803ccbfff132ac20cdc47dcf8bbcd9fdc916d94762d07eb025f6b12f48d79438"
+        ],
+        "resources/img/resources/aniBackground01/clock-bigben-minuts.png": [
+            "sha256:a167b99c06addb654c7c3171b17c52b1dc0822c53e665ea4541408d2a47e9d1e"
+        ],
+        "resources/img/resources/aniBackground01/clock-bigben.png": [
+            "sha256:b6ae4cee90ce5cd5a836451e06bf2a6ac08a3333decb045675cdffd0b542d855"
+        ],
+        "resources/img/resources/aniBackground01/clock-casio-clasic.png": [
+            "sha256:962d330e6a6562e7188876c77652e2c387c434648bca711163b5822150c119fe"
+        ],
+        "resources/img/resources/aniBackground01/clock-cocina-guide.png": [
+            "sha256:915eaf4b6a93fcc0f3d19862ad04c13e8f4de6b57d636d0f48c425f35f61c0f4"
+        ],
+        "resources/img/resources/aniBackground01/clock-cocina.png": [
+            "sha256:6dfc67dc035ffd3cdb881cb9011f1f6a37bac3449c9f41eae0f2110aacc49a49"
+        ],
+        "resources/img/resources/aniBackground01/clock-dali-guide.png": [
+            "sha256:53561cf3161f32e8d6167d0f777f64e71fe6355d4ceaba2ce34ce71531a6fa39"
+        ],
+        "resources/img/resources/aniBackground01/clock-dali.png": [
+            "sha256:d0589c612a11006d40dcce586d6cbdd231e1d16fca53dcafdb41c96414010e2a"
+        ],
+        "resources/img/resources/aniBackground01/clock-despertador-clasico-guide.png": [
+            "sha256:a8ea8b10a33e79737b9855ba3a6073d6481d59db3d0cf761da2deeb43f4cd879"
+        ],
+        "resources/img/resources/aniBackground01/clock-despertador-clasico.png": [
+            "sha256:c2930b608adaf32d92a14bc8c120ba6f76e93a7c45e2b90c88ff8d0548757aa0"
+        ],
+        "resources/img/resources/aniBackground01/clock-fifth-avenue-guide.png": [
+            "sha256:c9cf5fe017d2f7697edf7060c7f7fa0e8ebf02fac058b9c7270a1232c3da9241"
+        ],
+        "resources/img/resources/aniBackground01/clock-fifth-avenue-hours-guide.png": [
+            "sha256:18ccbd7213178106582d42226d85718f93cf8f8064fc0a073db320ce3ee88784"
+        ],
+        "resources/img/resources/aniBackground01/clock-fifth-avenue-hours.png": [
+            "sha256:f454e58cdd911b83212d63538e34b4503ecf61ab5cd5f1f1e141ac99cd8ec37c"
+        ],
+        "resources/img/resources/aniBackground01/clock-fifth-avenue-minuts-guide.png": [
+            "sha256:345796fa490f9f6f7bb48062926a342cdd35c91a260a9ba3de4aaf737f2b7649"
+        ],
+        "resources/img/resources/aniBackground01/clock-fifth-avenue-minuts.png": [
+            "sha256:b9d170833e7e9d01b849c9a81fbb771d2ed257dc27e45295703928cba88e5f33"
+        ],
+        "resources/img/resources/aniBackground01/clock-fifth-avenue.png": [
+            "sha256:efc291205a41886fbe0d14ffefd0fab717cfbaa3fbcc69747a2535b0674608df"
+        ],
+        "resources/img/resources/aniBackground01/clock-wake-up-neo-guide.png": [
+            "sha256:9f49c5d44c074f5dedf99ba454555f9aa2e4aaac40cdd1efd9c505b46b95b4df"
+        ],
+        "resources/img/resources/aniBackground01/clock-wake-up-neo.png": [
+            "sha256:3d74a2c4d53062b5fa678132eb8524e0d7ea37eb7b61e7f307819bd267347436"
+        ],
+        "resources/img/resources/sectionParticles01/matrix.png": [
+            "sha256:b85796353c77d5634525444f0be9366f3f255a0be02c3898dec8ccf50879e6fb"
+        ],
+        "resources/img/system/arrow-forward-outline.svg": [
+            "sha256:334d43ff277b461eb2b069f061ed5499d3121dca8c9f293dcef539a2b676597a"
+        ],
+        "resources/img/system/book-outline.svg": [
+            "sha256:415014903f2d7ca7ea5d1b88dc84dc0247946664a553ea9e3cc47b2a203a8b55"
+        ],
+        "resources/img/system/bookmark-outline.svg": [
+            "sha256:1d7a1aa822f1375347d71f3837c92e9e37053b6130da23f23100f173d08c61e4"
+        ],
+        "resources/img/system/check-ERROR.svg": [
+            "sha256:748afd1272fb81e3ce44e99562e556a9f132efe7339748193beb3c7e99e6ea23",
+            "sha256:d46565a98f8d5e096e73f6b2e69c0a9c83784a4634b4ed855496538670a1f26d"
+        ],
+        "resources/img/system/check-OK.svg": [
+            "sha256:a75605a06965d23355d8ba57320146e2205ca061c658cd5c103521a110d3489e"
+        ],
+        "resources/img/system/checkmark-sharp.svg": [
+            "sha256:da5c88356c547c831f7c1ac1682a187e1c4688d16929c792c2a8854384772271"
+        ],
+        "resources/img/system/circle1.svg": [
+            "sha256:b800c17480359b0119d19e6077d18a79a4f925deadb5f0cb1a6a7f29e1b85d8a",
+            "sha256:f43a5f77ba1f15ca54c9a9fdcbac3a3731409a1f0244a83bed0c902704ad7589"
+        ],
+        "resources/img/system/code-slash-outline.svg": [
+            "sha256:7a712aa0b1278aabb2420ddd6c0d711d068ec0676184803e340b56dacee9c2a5"
+        ],
+        "resources/img/system/compass-outline.svg": [
+            "sha256:6c5b953bab2c2662621659d705fb0e1666823c8d5db797beb5de5b492530368c"
+        ],
+        "resources/img/system/cube-outline.svg": [
+            "sha256:b07a818bfd621eed62b7b879ff59d7fc46298c51c79750096819468c0539ab68"
+        ],
+        "resources/img/system/enviado.jpg": [
+            "sha256:98e9b81bcc88879b0f84a9eba1ab16ceb9489eb271ae7c14ebc1be23f01194c8"
+        ],
+        "resources/img/system/hidePassword.svg": [
+            "sha256:06cae3757000593a6cfc8421f3b65f1b4aae5fe3bfbf0030cad8a9edeaff2a36",
+            "sha256:ed72d648c94a5b8feaa28dc0c31fbb8f8d7e34dfbd305e0b6fcaf459f0b3992a"
+        ],
+        "resources/img/system/mail.svg": [
+            "sha256:0e51f47d561626a18b1ecc757ead02a1c4e25a32811f4168d43e456a945beae8",
+            "sha256:78168e4b360871c5c6efde16a45e73853b11854a902d2c7220f947479651ca64"
+        ],
+        "resources/img/system/people.svg": [
+            "sha256:3d044e85527723ff559703138da4fcb781f8ab28d084a5a652b7e9b106dd1489"
+        ],
+        "resources/img/system/ribbon-outline.svg": [
+            "sha256:a9e87820635bbb4e2a29dc7a7438dac9b4b17f701115f147c590942de0158594"
+        ],
+        "resources/img/system/school-outline.svg": [
+            "sha256:d6b2ff7d7fdbd295dd94f68d567c404bb264813b8099ed7b3ac327b44061b5a3"
+        ],
+        "resources/img/system/settings-outline.svg": [
+            "sha256:8d79802b074bb9b655d5eedc6ed0c0886d2dce7983e1b21ff7b844a910a002e0"
+        ],
+        "resources/img/system/shield-checkmark-outline.svg": [
+            "sha256:657ca0c94d2065a1c36c3fc95c547256aa605238b025c8d9d66d690fcc13cb99"
+        ],
+        "resources/img/system/showPassword.svg": [
+            "sha256:4cd7918d8d75c8ec371723dfee93d74e69769afec814411cae6af01a113daa34",
+            "sha256:935a5b073907960f281ba2392ea002de01e7f07cdb156c943ebb0151027d9a31"
+        ],
+        "resources/img/system/sparkles-outline.svg": [
+            "sha256:b2aed7404343881f3af557698827e11e819503e9585d64c245e223a86457ce68"
+        ],
+        "resources/img/system/speedometer-outline.svg": [
+            "sha256:7e73c807ee33e38fdf092cc098939f7080fa86d9e370d5ca463bf79b0ba99ab6"
+        ],
+        "resources/img/system/star-outline.svg": [
+            "sha256:e9fe0005f0474951df3c0ce9a3a7dd6e1b5c9ff99b56af6790dd4e533ccac850"
+        ],
+        "resources/img/system/stats-chart-outline.svg": [
+            "sha256:b400a3e8c77c9d79a91b5ef3d7bb73c6b849d5f0c8a834089362d229d8a4b08a"
+        ],
+        "resources/img/system/tel.svg": [
+            "sha256:53b4f6cb9fb09623a55d46a67ddbf6e3f4065ef99cbebac41916b294f8c46556",
+            "sha256:ef2a28566750c0c3031fad0fba59b6b8979ac92f1e19d06c670d5e81a67a8a4c"
+        ],
+        "resources/img/system/time.svg": [
+            "sha256:9b171ca167fedef8bbb4d5e445eef382c042019e9a9167bd7cd7629984a9e3d2"
+        ],
+        "resources/img/system/web.svg": [
+            "sha256:9479a82cd5100fc2330f2bb4b649a48cc384b54cef973b840ecb1559f7aece78",
+            "sha256:e51d812ea351e5e2ba035f752dfbe62429fb17c486210d1ae31347f03799e22d"
+        ],
+        "resources/img/system/wp.svg": [
+            "sha256:a0021f5e022b93355eea349ac815c01ab46cf79c75d0245665fe12bb7f149ace",
+            "sha256:f877a29ace2e6d358b56ee976e55439ea9c4ef22be4bc3c8a57b762430926878"
+        ],
+        "resources/js/_aniBackground01.js": [
+            "sha256:cd84d0b7e5787b21f4b0a521f2d3c6bb289472f7655fda4b36097b809c3dc4f7",
+            "sha256:d8c9db8c66cdd39c9d8969cef9beb5d36d4753f1da4d5a5907d38b27e00fd43f"
+        ],
+        "resources/js/_art11.js": [
+            "sha256:cd1b1e8ff035d64bd466cfd83cd73a0f0454db9d227c62e8ac9c109bd78aee3f"
+        ],
+        "resources/js/_art18.js": [
+            "sha256:7f3317d8a4da34f70ba5fe57026f1797ae9dff0d5e775d814858d5eaa5f91f33",
+            "sha256:f486f81ccdd54792b05d07111ecb3ce2bbbe1d2ad9c0bf55109ed7d328aa934f"
+        ],
+        "resources/js/_art19.js": [
+            "sha256:76897e48e5b0c38fe438796cd8f8f00689ffb9e03f6a0c33a71fd65e194c6a75",
+            "sha256:9f087ad64832c4b9bda6c7579d4ec29882da488f734f944c35bc8b4826b5734f"
+        ],
+        "resources/js/_artAccordion01.js": [
+            "sha256:7f415eaa21c0c62a77b8e0876bf6ce6924eb174a9ebcd1f3cb65d354a04b3ef9"
+        ],
+        "resources/js/_artAccordion02.js": [
+            "sha256:4c57c47217703ace47b2dcfd54150c88671a32738f57edc84ca3b909a214811c"
+        ],
+        "resources/js/_artHeroScroll01.js": [
+            "sha256:78add34b91495cee47678251d56a81a1dfea6c4d4bd9852318c34cbe41f08ca6",
+            "sha256:815c70b657e315976aaf5701a65b0a42390f0ba5c439a7721501f2eaa7964ffe"
+        ],
+        "resources/js/_artMarquee01.js": [
+            "sha256:fd10dca057f3a025983df0aebdfce202a61c480a2b7072377b8b879a69016109"
+        ],
+        "resources/js/_artPricingGlass01.js": [
+            "sha256:cd7a99f03002d9567198990314143aefcc40ba88bd7706d330f74da94cfbfabd"
+        ],
+        "resources/js/_artScale01.js": [
+            "sha256:097d55aaf657e096b63d83fcd71e632eaf4b5844b272aab82ea3c0e3dde0b7fd"
+        ],
+        "resources/js/_artScatter01.js": [
+            "sha256:b0d3f1999d979c90e51764a4b2ca36b62864b8119293f2bc0835a605137c1896"
+        ],
+        "resources/js/_artSlider01.js": [
+            "sha256:263e35a4be34377c2b15291861c35c745b9744160c0762ca599fb7c02f9bc7ef"
+        ],
+        "resources/js/_artSlider02.js": [
+            "sha256:c1708466a7572d17ddf7e8f22701932684c066412ee8e880a9bee6990a788ecb"
+        ],
+        "resources/js/_artWorksSkew01.js": [
+            "sha256:c537efa9e2d836c67ca342cc87712e83ca12a873e3184331821d9027c2179a97"
+        ],
+        "resources/js/_artZipper.js": [
+            "sha256:40218fa0537d1bca9dd9748df84f9529fb01b52f279c19c411d928ccfbedb1b7"
+        ],
+        "resources/js/_createCursorRippleEffect.js": [
+            "sha256:b40de7944ac551b43af0e094d2f2aaf98c1f3268bfb901bc4afac7280c6feb5c"
+        ],
+        "resources/js/_createCursorTraking.js": [
+            "sha256:0da80bf36db59965726c8021a636d1d4f75e102f315c2eb36ac572bf578a42f8"
+        ],
+        "resources/js/_downloadFiles.js": [
+            "sha256:a26641b20ccae3b8bf068653ea1144f28e469cd7d359977bf68cab3ed8e72d54"
+        ],
+        "resources/js/_formLogin.js": [
+            "sha256:27486b752ed5bdb03a8813bc14dd069bb2a2646a0a491c661bd37f61647a442b",
+            "sha256:3da06bc81a79edeb54d3efbdbab2560952bbda8355ec9ebbea5fee5197f6bfc1"
+        ],
+        "resources/js/_formRememberPassword.js": [
+            "sha256:c08816437d27d82f805f39f71d9d094a3640aad0e85c6ffc3b2bd5fb501ea2e4"
+        ],
+        "resources/js/_formResetPassword.js": [
+            "sha256:c35f4e8dbac79bb5b12edd27c5d655c2b1f162bbba63bf25fc3cc4a4571ee0e7"
+        ],
+        "resources/js/_globalForm.js": [
+            "sha256:08cebb9a8b5e22f857710e4449dd89e3e504455f802b48a80d18c18491fd6fe2"
+        ],
+        "resources/js/_gsapParallaxScroll.js": [
+            "sha256:403e35cc33749b4221fca1cadb305db748b1edca596bd9f024aa571f584d968f"
+        ],
+        "resources/js/_gsapScroll.js": [
+            "sha256:f578ae8cb58ebedf3db59bb89b626bb4c39647d7c88cc39ad50fdf77db67a441"
+        ],
+        "resources/js/_hero03.js": [
+            "sha256:924a47b5d9c29d506c56487803bebf1424fc6ce4364d95103b9f614fed6571fe"
+        ],
+        "resources/js/_hero04.js": [
+            "sha256:809d808731ff26e57998999f0ac5b669c770c89724c04b43f1dd75bd65136d48",
+            "sha256:e075009cedbb2c119668a70e072dc3942a3a30fbc9233206301eca65896a7a59"
+        ],
+        "resources/js/_hero05.js": [
+            "sha256:32f726ca5863e28b96f20aacd715198bbd535f801e0560b77c38f12f0c7b87ab",
+            "sha256:787a74f2bf7cf5ccae7d137aa5b391f5571175377868d5c13d49afd169b51798"
+        ],
+        "resources/js/_inlineEditor.js": [
+            "sha256:7d8b4cb590f17dcd6bd7bc6ad5b126bd379d1e0c1d818c8a9e2ab42682da3747",
+            "sha256:a9193adcac304dbf5f51e31d5ab64465ed8bb2d6fbb53ac2b0a102976afe366d",
+            "sha256:dcf41437a0db4dc5daefc4c974172911e3863c9890f59bdc6041c9939b77ff29",
+            "sha256:fca9978efb02f7a2889abf31bc56073bda1a3b329cea289abef9b58c6d6875c1"
+        ],
+        "resources/js/_moduleFormContact.js": [
+            "sha256:dbaab5dfbf16f26a838e205bf4076121dfd63fbf3de81b74c39d9d2693bf935c"
+        ],
+        "resources/js/_moduleVideo01.js": [
+            "sha256:17f22d6dec556c68895ae41f4d44f00c9412269129a05ca8d4b525a9089a1178"
+        ],
+        "resources/js/_navMegamenu01.js": [
+            "sha256:7938e075cdfb759f66042d0dd1e9ac4f4c8de5815993186be74766963461d993"
+        ],
+        "resources/js/_sectTabs01.js": [
+            "sha256:85a6d4afb6dc1271fb9d61f1656aac0dc14be500a5eca9dffa3944f18110ed17"
+        ],
+        "resources/js/_sectionDiskSlider01.js": [
+            "sha256:3570a7d9e991a088e81ad6911f7519cbc2033fb566aa99bdac635063eb106f89",
+            "sha256:791bc790a8fa798752f57b765e54418cb5f0fa6e41c1cd446551be8b52c3eba1"
+        ],
+        "resources/js/_sectionHScroll01.js": [
+            "sha256:187e8dcd0aabe12cccb775ee08893234c7d17514564e89a8118ebc5dc607b593",
+            "sha256:e6c3327af58ccadb3cf1424f6459ac04ae2f628bd132ce82d990e7568b64e648"
+        ],
+        "resources/js/_sectionParallax01.js": [
+            "sha256:aad606fd0a0e1863c32955e2401b7ca53f5e36d0f5582ba83e7e89532b869bea"
+        ],
+        "resources/js/_sectionParticles01.js": [
+            "sha256:8f7c5ed0855ffd15e5d7b54922aeec2d0ac166a12468c0186cc9c510dcd4a630",
+            "sha256:952f550a7001febd7fe08cf5b17662588eee716c9f0fe85bf534efc920eb1af2"
+        ],
+        "resources/js/_sectionSkewGallery01.js": [
+            "sha256:007b23fe35b0ecfabf8a6b987bd2c12fd3e4f08608b949fb26c86d8ac8cb6e38"
+        ],
+        "resources/js/_showPassword.js": [
+            "sha256:f6060e8c8a0c4990dbda03ea2bbed3616e249d21524949555da2a4eba4ba9f58"
+        ],
+        "resources/js/_toast.js": [
+            "sha256:27dcd6dfaef057dc6858155344273f8d4d4ab7a5667c9d78251406c706dc14a7"
+        ],
+        "resources/js/_toggle.js": [
+            "sha256:c891b6f6ecec69b192d5018f3e4f54b6de3a0bc0d8dc3042b605530041dff32c"
+        ],
+        "resources/js/_traducciones.js": [
+            "sha256:01fbf248ac98bc5a3848b08f635fda17b7bdcc8af315934f1d0ece775bab1acf",
+            "sha256:9b7c2f6cccc1c98b7fbb76aa67dc51d79391a8604ba93a05e7a04c4fa498c97d"
+        ],
+        "resources/scss/_aniBackground01.scss": [
+            "sha256:77d113916a91124a51e89f97fcb1a3b7589649fbeb249ccf7be6ef694ac37052"
+        ],
+        "resources/scss/_art01.scss": [
+            "sha256:4e63fbc6ef0a686f99e64dc927a798de1bf6285f06d0bd2d96e9014ded926002",
+            "sha256:55194f5c838be769ac3ad8f2b2f11593dc3a93523c8ff54c9d646f61f5bb6e02",
+            "sha256:629cedc56f3d6ce8f1d6b8dff1946e294e0c621e7fa510ced818205cd853e966"
+        ],
+        "resources/scss/_art02.scss": [
+            "sha256:056a57669f7afa7339926c295afbd182024dfb73be62bdfaa14f4ce19597199f",
+            "sha256:7976764228bcf31d429c7cb52822ce13dd057941d1367a9b121e4063155fcaed",
+            "sha256:8a08004218bc66d45f2943ee4f2cb5f819399c4231363a7cf3053a41aad90008"
+        ],
+        "resources/scss/_art02little.scss": [
+            "sha256:3461d08c44bf8dceee193d50ccb6c13402bad2e5d7e6e0461645388606969061",
+            "sha256:c17981cd5e58c685fe97f5b60f41af57a67f161ed591395142618dc3dc3b112a"
+        ],
+        "resources/scss/_art03.scss": [
+            "sha256:3d159a18970a435d97fab97603000617c501a4c2e1671a3f3c732c5a4e5b2a6c",
+            "sha256:f8ee3a726553df999026f651d271c17eba38fb92706e02716188173590069b4e"
+        ],
+        "resources/scss/_art04.scss": [
+            "sha256:134faef18977bb680a541c51f63d7780d8394bb0561e0126f0a46f13eb3f0787",
+            "sha256:5f8ad3fd43c0ddbf35f387423412f2f7e41deda64eb666c1b0d36a2c64e76172"
+        ],
+        "resources/scss/_art05.scss": [
+            "sha256:2a23c5ada3c2f792a4107c72309446709c848f7c0f66e427a8d261c56b0d9ebd",
+            "sha256:dd172d63e1854416f8d070b2673032fb1bc49661d0ee132fc463aaaffc87612b"
+        ],
+        "resources/scss/_art06.scss": [
+            "sha256:a0001447510f2c9b8756e4095dc5448d118c8ea73079201e0ec6207405d52ad2",
+            "sha256:e20e567a0f65eb7f86044eee6073859c926ea26e5bd3f1a42593c0788c40035f"
+        ],
+        "resources/scss/_art07.scss": [
+            "sha256:10983856c8583d72541be4c7b289718a4aff5e1a0ef8c1642f2b37f5857e6b49",
+            "sha256:e0fcb2e28553725ad39ee34df9616bd828285e93f6368415422dbc0294a67bf3"
+        ],
+        "resources/scss/_art08.scss": [
+            "sha256:202474b8f4c1c080f8d5ef586b6a60d87249e9fe0fc046c4c4cbe4c6240ce8bb",
+            "sha256:c9948f9845929b2b10f508b13db7a7c5a6363a1440c20b606cc688739f4ba8c4"
+        ],
+        "resources/scss/_art09.scss": [
+            "sha256:4cb567dae2ffb7f05f358503dea3dfe3d43b0060665989f6537bbf60b5dbc292",
+            "sha256:c70ad4a92fa156a8497fe4e5b1efeebbdff0dd66ac19b479d15713459e8789e8"
+        ],
+        "resources/scss/_art10.scss": [
+            "sha256:b3773a3d766343554ea973feaa9efc61c5e076893792dcc5e3f22e9ef169fa51",
+            "sha256:f5548c15148eb76fc1578a393f729d2ca43b8b1f6f5917fbd917a19bfad52bfc",
+            "sha256:fc6a0d00faea7b83a501fcb2bb19fdfd8440d6b1b1322f534d50a3fb001b0061"
+        ],
+        "resources/scss/_art11.scss": [
+            "sha256:7242ff51ad0d07223b1268bbb876f4d381754c20d10cfa771df242965cc76476",
+            "sha256:a22b7703a3f8526270c6a9c3f9220e373ad0b960dff5ee2399295248b022b1d6"
+        ],
+        "resources/scss/_art12.scss": [
+            "sha256:00b55f1af5822f899431d01f3a2033f00cdcee83670baac0cd63a7e278fd7251",
+            "sha256:85a6a3aa7946662a94aa9ccdca715f23b0b6ccd267d5a9023c55a7a22dd4b125",
+            "sha256:9be075342f581dc4a8dc824c4713b44e56480e190871f3b27a9c6c0d734c4156"
+        ],
+        "resources/scss/_art13.scss": [
+            "sha256:34501439afcd8bb51c8b103f0142834bd46cf36ce2ffd5921cfe3206971395a5",
+            "sha256:6fb846aa919be112db2cfcf404c9201dcc9218bc78563c6bbf5a332b1edd0fe5"
+        ],
+        "resources/scss/_art14.scss": [
+            "sha256:2c7de6f7f02bb749025bae55dcdee03e44cf3becb6bd5aa0322d9c4d8bf9e174",
+            "sha256:72d87cf3720cf07987f1107b58d33fd54cba9ee0a89984adea3443bfae85b201"
+        ],
+        "resources/scss/_art15.scss": [
+            "sha256:14c0d6d1bb51993691f6f1d5463252a68d0d9b161325f95a3c39c829ed2d6c36",
+            "sha256:2e533ec1e9287105a9a4b1c3c527a64a13c734c7b394d7c4eec38b64588629de",
+            "sha256:64ef98f5fcd8e96621d7d50390c16843b147e75e8494a07f6807720443e39dd0",
+            "sha256:d6041529b7945afe3171a290084d75c3dc4755731806247fa0f3fc7b5350b937",
+            "sha256:da9d6b49128c55cc155719e20e015aaad4e35058a9eafcbe7b159749efd019f9"
+        ],
+        "resources/scss/_art16.scss": [
+            "sha256:1fd089a10de9114297d98f297c6fdb7727feccfa27808c9c905f1d6308b70f7a",
+            "sha256:3f73ef8638eaf84d6ce11e6c7e676ba28715ee618ff8332e1044e9f6f70403ab",
+            "sha256:49b3678616caa7c8525bf75fc26c27d6441276ef4501bd75c3db601a5f7b7d97",
+            "sha256:5c3298e1c22c77842b6e222dc9a6c72777f731f4d54667a4087b942569dda77b",
+            "sha256:b34d9a0b309aa408284e401d06eb66375b0493c2d9ea45ff5ff265b1bbb30a65",
+            "sha256:e1fa66abafe90e765aae9824cbb9c76252f7ecd44994bd6fc93bc1fd485e8b52"
+        ],
+        "resources/scss/_art17.scss": [
+            "sha256:13f60a2c52ee1b2827e14eae1ad0260c99c9082a3818b1eb89ef87e7e1db4811"
+        ],
+        "resources/scss/_art18.scss": [
+            "sha256:cf667e8865c7f84af82e42ce0ac5da65de079278ee029f380aca7ad4bbda221e"
+        ],
+        "resources/scss/_art19.scss": [
+            "sha256:c22567e07e3debd4ad21c911a1b83d5ac601ee999e7b6b2336f7201e6b4bf047"
+        ],
+        "resources/scss/_art20.scss": [
+            "sha256:7d83b17a4ae92a902fd5340c8ce90c6af25a006787d6789f58ec721368e0c50a"
+        ],
+        "resources/scss/_art21.scss": [
+            "sha256:8bf41773c187a3c493d0aa39aadc4069de751f77dccee87110266ca3cc27a4fc"
+        ],
+        "resources/scss/_art22.scss": [
+            "sha256:be72cb476b67aa3b27515ca9d37d5c5a7cf9c34f70ad6e71660f92fcd10bb511"
+        ],
+        "resources/scss/_art23.scss": [
+            "sha256:e15bc31dbfdf2980e501d72b567ec3f7b9b2d55c89e4efab59a5c12b68b79553"
+        ],
+        "resources/scss/_art24.scss": [
+            "sha256:ba4e57d235a85a08d82240fbb4e6bfeb1d7f11ae8b71cd89f804e2895e0f7130"
+        ],
+        "resources/scss/_art25.scss": [
+            "sha256:1df393cfdcee9ec77c1592b91de1efba41f541d1adb439e81ee85c53df3d189f"
+        ],
+        "resources/scss/_art26.scss": [
+            "sha256:4ff52c2671f326e822473deb82cbef62f32aefe188f3412c1543fab57fb5a465"
+        ],
+        "resources/scss/_art27.scss": [
+            "sha256:65d4b3fb3f8fdddb854a2860c5ab91e87796074568a8076d34bdb7028b8f15ee"
+        ],
+        "resources/scss/_art28.scss": [
+            "sha256:7cc048da272a11fd6f0098642d8ddd17f7f9fe83bf8061fd1a8b024c12705215"
+        ],
+        "resources/scss/_art29.scss": [
+            "sha256:226ca748b6b98e0db6257a19a18eece559eee297fbf753344672f36e51b2cb35"
+        ],
+        "resources/scss/_art30.scss": [
+            "sha256:016ee1b06f234f7d772716662115a5b4fd8cfc10aad0e819f6e6dc26928697cd"
+        ],
+        "resources/scss/_art31.scss": [
+            "sha256:b2c2fe23db5ca86f5c3f89d987fe6234faead8eea2c66090e0d9b5545f30b660"
+        ],
+        "resources/scss/_art32.scss": [
+            "sha256:4a66cf164f88209a21110bae82a91ae4f75de3b9db155ed72b55efc32aa0aab3",
+            "sha256:6624608326a1960263bcf4ddd82725154a94140a37624ff5bc58fbf96a77ac0d"
+        ],
+        "resources/scss/_art33.scss": [
+            "sha256:4b662b56bd1488d3ecc342cf5e774436c14961bc1ef04072bfc016cad2b33470"
+        ],
+        "resources/scss/_art34.scss": [
+            "sha256:b8378a27544047798661f9704f857e72f8c2e0fa5955819b3be792a516b09490"
+        ],
+        "resources/scss/_artAccordion01.scss": [
+            "sha256:0b6dfabed652fab029b80dc2c226f88f3ca6fec1ee9d5b7ff86796f378ca4752",
+            "sha256:5501ff1874048bf17dab7a486c025f54cad082e4ec6a8c5d0e7ec6856a6237d4"
+        ],
+        "resources/scss/_artAccordion02.scss": [
+            "sha256:b186c17c3d105cebac732c4f64e535030df02ae73ac97006dd69358c700e09dc"
+        ],
+        "resources/scss/_artForm01.scss": [
+            "sha256:37bf4ce73ef5873c346f2e6fb24242758d787c526692549155180ce95f6edd68",
+            "sha256:b2fb66f5d1b5927a8627c6bcfbed7b643f45de686f0ea0ffafe03437ee5f903d"
+        ],
+        "resources/scss/_artHeroScroll01.scss": [
+            "sha256:40e95e48f466a82a0d46ffdbb58ce1ca0d93699206ad43ea9b1b97d2fbe5a982"
+        ],
+        "resources/scss/_artMarquee01.scss": [
+            "sha256:c48606be4e9ff1e3f2530abb7437e5316e7c40c47767193af48cb3f8c1128400"
+        ],
+        "resources/scss/_artPricingGlass01.scss": [
+            "sha256:a92ce209c82072b8e709087b43cf89c956260d39b63b47e991a2e02db67dbfa8",
+            "sha256:b6c2acfab9196ca03484c9b56cb72d09f3b517f0c255319abfc45195cd7ce003"
+        ],
+        "resources/scss/_artScale01.scss": [
+            "sha256:d596f494aec4334bfa42a53e253c22d62f53bb585155c9bbdc1359bd1f9fc624"
+        ],
+        "resources/scss/_artScatter01.scss": [
+            "sha256:8b667a66f87ee380af34fd119557307f0ec0e53cebcf3bd36611252b01853b4e"
+        ],
+        "resources/scss/_artSlider01.scss": [
+            "sha256:299e34a250c1a21e8174467ad43e8e6351d8d3222c91aae9330e23433c1c6d99",
+            "sha256:43ac1ca3af4c6d65c0406ad009f4f53fe387fa812296d02b5665fabe52d49792",
+            "sha256:8e44796c853c54ba9777b11dfd6fa8ad8360a610394bbe261272a1a502e1b5d6"
+        ],
+        "resources/scss/_artSlider02.scss": [
+            "sha256:0bb2ed6023b9896689246b3574890ab671352939586b27f7028615eb3a9e5737",
+            "sha256:486ada5f81bd094b97d430854b2bbe3f7c9a0484df315d8644475eeae72ff5b8"
+        ],
+        "resources/scss/_artVideo01.scss": [
+            "sha256:71ef9b26229914def2423e70019d00c493f3f60ed3301dc73931c5e3d04c753f",
+            "sha256:afdc969df3e05a20c0b01e4138e7c2eb09f0847051f63270222ffd29ef218e36"
+        ],
+        "resources/scss/_artVideo02.scss": [
+            "sha256:e92d90dd39b1b946346236f3c090c7d82ba967e972e52b496398f5c719e24ef5"
+        ],
+        "resources/scss/_artWorksSkew01.scss": [
+            "sha256:22594e1d846dc930e6196078d250296fd46dd407c2bb1841aa537fa0041ab5e2"
+        ],
+        "resources/scss/_artZipper.scss": [
+            "sha256:5d7d79742e7db78b3770ddb01c3fefb0af7e9a85516800eaf41c1feed5b795e7",
+            "sha256:c75c32daba0539a8ba199764faa6d64b10d6be3704a71ca3b922776c1b5be03f"
+        ],
+        "resources/scss/_cursorTracking.scss": [
+            "sha256:00a6bb67f30abe53fbc366fd8ebc573918f38d8099cab6444a7fe736c815c62c"
+        ],
+        "resources/scss/_footerInfo01.scss": [
+            "sha256:3af337a891d05759aa9d1834a0998840a32f63f8b760216ede7003b9297b9b3e",
+            "sha256:c066d0d0cb0f10072bbcb5202265831b032a0dda5d588fe464fd5424f7982ecb"
+        ],
+        "resources/scss/_form.scss": [
+            "sha256:077addf639d612a0eb0611e4098ccc877efcfd9be6f88af8479ef50d52efd449",
+            "sha256:1a2805d5b7ad728675db5fc52bbb742f3d666693ed8f9e45f811358f68940b7c"
+        ],
+        "resources/scss/_hero00.scss": [
+            "sha256:6f8c0c79b5fd3c8c88d436ff3d5a06015cdc7dfeb33a59ee239f2518db4fc966",
+            "sha256:7b8263c05bf0f9f2473ec9b881acef60be6d5273cf8b497f542113b44cb7e07f"
+        ],
+        "resources/scss/_hero01.scss": [
+            "sha256:64b07e4721569526be7c34f3b30c9b6dc6670a2809ae0205118bffa9b8528ac5",
+            "sha256:abbae5e145d78ebd52c94c2346edbcc0e4757ff0ad0760358f2599afc2f6b5d8"
+        ],
+        "resources/scss/_hero02.scss": [
+            "sha256:2f334484890269eca912d21cf956cb483a56ea54884ffa4924392b6304c6b2c1",
+            "sha256:acf89ee0e49e22eb9d237b6216a1782fa31d022098f29c902a55124e1f72a9e8"
+        ],
+        "resources/scss/_hero03.scss": [
+            "sha256:c631761add9b040057c3ebd068f86cee964762e93e41a3d2789bad1948a97d28"
+        ],
+        "resources/scss/_hero04.scss": [
+            "sha256:a4de3a886a92b89d32e95ecc848049b02227bc3e387b8b58a3ded456dde03fd7"
+        ],
+        "resources/scss/_hero05.scss": [
+            "sha256:8172b1f9217995334a1e3d7ec0dc1542f8d913520e2fe321bed3a0ec3e250da9"
+        ],
+        "resources/scss/_hero06.scss": [
+            "sha256:e4b57a0dad6f50c73a1281566b958c8485d8010327521c9e47ef4aedf417bc65"
+        ],
+        "resources/scss/_hero07.scss": [
+            "sha256:f6c399903eff12e0a39627182f78e08e5d022b9fc5ca9be8442eb4eaf595be4e"
+        ],
+        "resources/scss/_moduleButtonType01.scss": [
+            "sha256:b6379e009d23d35d5b461df34e960a66154788f30da23ec196814db7237a483b",
+            "sha256:f19dbd90f08d17a01f94f449ee0fc134af5ab73c83ccd5780a7e33fd5d1009c4"
+        ],
+        "resources/scss/_moduleButtonType02.scss": [
+            "sha256:a9a32868c6cf3fb782f3ca1c8fd371e38e4a13980685410cd5d2e6200d6af077",
+            "sha256:cabd599fd099427a466b1c3533ec364c8a2ba995d94cdcd04f060802371a068c",
+            "sha256:f67406b596799bce79fec59b345381236658fb02a4f5843ec1e03c2c7900ac69"
+        ],
+        "resources/scss/_moduleButtonType03.scss": [
+            "sha256:e048a777149dbde40c4be20121f7128f7c3a4d9302e409579bc25dc8f5218176"
+        ],
+        "resources/scss/_moduleButtonType04.scss": [
+            "sha256:02daf525a03fbc103299daf9ebadc1bd862b2f43fa6dd68df1bb04896b0076ba"
+        ],
+        "resources/scss/_moduleFormContact.scss": [
+            "sha256:57128090c922c024d4542382e664ca0c669d82558af3c43c8b4cf40f8961fd8f"
+        ],
+        "resources/scss/_moduleFormContact01.scss": [
+            "sha256:4ff9a054e672ef4ce3b200e9652e8977ad5f45c9c417c00e1b5d397c61a0737b"
+        ],
+        "resources/scss/_moduleFormContact02.scss": [
+            "sha256:664924a9961c4df136d50ac403fe7a852a18dd651ff59179df569135487a6ec4"
+        ],
+        "resources/scss/_moduleFormContact03.scss": [
+            "sha256:cfa9195842601456530fec604c87cbc4519107d1ffbc11a69121e0e00bde702b"
+        ],
+        "resources/scss/_moduleH1Type01.scss": [
+            "sha256:b719cb74b0a9ca7f60f5b849f03e4707f101ebf3ea1c443130d2f23c84e7010a",
+            "sha256:f3ef66a6783f1a58f5cb71a786f0482396877b134560ed4f0a23ef205a77fd35"
+        ],
+        "resources/scss/_moduleH1Type02.scss": [
+            "sha256:05e8c3d0522ed689dcbce15502c174990c6444ed4b12c3fd25a5abbef51eee1b",
+            "sha256:b4a5e402c02d09016d228b36c78d64243a3e57b5ef6ffe71938cabfd77777724"
+        ],
+        "resources/scss/_moduleH1Type03.scss": [
+            "sha256:91d69f49374bd668916a4d6b47aa8e27f9c23b5cf946c5fcc1916c3eabbcf824"
+        ],
+        "resources/scss/_moduleH1Type04.scss": [
+            "sha256:bd5df93c8a33a7d19ef8ac2453ee9cad076e890c4b8425b3fc55bc531bbd5c44"
+        ],
+        "resources/scss/_moduleH2Type01.scss": [
+            "sha256:207269c6ad8062670252d90e52794c7610826180aaaa9e2127d9211f5020ed67",
+            "sha256:73d67c541c3d1ec2a0431030e106bfc56e93f0e642bdbc8cca7fe232ab10b3a3"
+        ],
+        "resources/scss/_moduleH2Type02.scss": [
+            "sha256:da92885d47dcf4fc49e587285b7ba316d0d12e04d1ff76c42b52151b4fce6237"
+        ],
+        "resources/scss/_moduleImgType01.scss": [
+            "sha256:51a2ef63eaf501e99fec78486c0fc386658e5282e9344b84245be6b69539ae4b",
+            "sha256:e69b9d1872b30044085a7652c2a38a7eac6ab2a81316f52cfb1072fe866e04d8"
+        ],
+        "resources/scss/_moduleLiquidCaptcha.scss": [
+            "sha256:89815130efcdb8b589c93f223eae2299185207d85c6b192b9aedeedf7deae897",
+            "sha256:bb5d3552bf610cf542f365757c50653933dfdf36ee08cdbec685ad30e5a8f126"
+        ],
+        "resources/scss/_moduleList01.scss": [
+            "sha256:883136d7450040baec201503cea275f995ac9acd8c5e76855f3d0857dea1d9c8",
+            "sha256:8f26cbfc75af42ffe376a2a66281de54a95d3cf1debcf6fc34f5754082ae250a"
+        ],
+        "resources/scss/_moduleLoader01.scss": [
+            "sha256:1a11600a70ed9519e1d342878bb87da5c8d4a3f2e64c802939a6a1591acab878",
+            "sha256:699a50e8b8139d7229cdd8b90654f820e2e26c2c57a04acda215ebaff814176d"
+        ],
+        "resources/scss/_moduleParrafo01.scss": [
+            "sha256:a71721ff4e91e097b6d31f25e3a840640f75e3826888bbee77ede94463342a90"
+        ],
+        "resources/scss/_modulePassChecker.scss": [
+            "sha256:4b8ca717b5f3a2b4c88ad69ff36b7fd453579c8fba0d3a585a7367145415a6ed",
+            "sha256:8a063488c0c22ea7e76c48892918f36f2dd23947a15a45a1e3118cdc82d94ac1"
+        ],
+        "resources/scss/_moduleTest.scss": [
+            "sha256:4b1f6750eafa965fb010334823723069f27842d60b732224f11f091c9da55266",
+            "sha256:574b09da7766fab63e2079ce265838933ac0ef098fc049a3d54048546d7d71ae"
+        ],
+        "resources/scss/_moduleVideo01.scss": [
+            "sha256:69463581844489a390fb4f4eb2e54841b0475c1927e99423d15360bc505e5efc"
+        ],
+        "resources/scss/_navMegamenu01.scss": [
+            "sha256:e10840489866908cacb4f59db838d8d73fe3c7f6366fb8d8a47d223354809e50",
+            "sha256:ea40d346381fc74f8ae2d8283fd9e219921e223a02919207c0cd0c638b36076c"
+        ],
+        "resources/scss/_rippleCursor.scss": [
+            "sha256:2b7311c1f82f5d7d292c9ed993d7b40e09343075b90aa2ea2f7c49a839e18e13",
+            "sha256:aa48ccac1b4f8fe45ba4ac7ddcdc7d48b193d6a6b9d32697c9201565dabb14ae"
+        ],
+        "resources/scss/_sect01.scss": [
+            "sha256:3291298e8173dd8f978291d2d0369cd2224ba0d4a354ca23b13e6b677691c44a",
+            "sha256:830c8d1f88f89d52dd0f546e70f8b0794a413260608adb1891586433df01b1dd"
+        ],
+        "resources/scss/_sect02.scss": [
+            "sha256:240a3c91891442d473d83ed66709ccd4c8821df1d77fc3a5696de1e0364970dc",
+            "sha256:8dc6fd542a9eefb616e3dfdaf32c8d4762ae179107ef010c373fb586c924d422",
+            "sha256:bd9a8e85b02dbf9f44e9f5861d54a07691c8a444aa155913c46c32da2db8677d"
+        ],
+        "resources/scss/_sectTabs01.scss": [
+            "sha256:a153d2690ee5bfedec163a0ee441975d0f8d0f9521747a49a377804fcf3db089",
+            "sha256:ac5c31ffe74ea506291f92c100710f1a2caeda1e5ba64814dae71b3cf51ed78b"
+        ],
+        "resources/scss/_sectionDiskSlider01.scss": [
+            "sha256:cdfdc44bfc85060c62811f0d89a4da4d7cd51640114a19d4bd5cfcf31acecab2",
+            "sha256:d01faf08ffaba6a5d4a447391b78765d64194c1f10b1720bf73e541c90763547"
+        ],
+        "resources/scss/_sectionHScroll01.scss": [
+            "sha256:66e752206b13767b4903fcfda9ef7050924f804ccd08b1666185b234795c52ce"
+        ],
+        "resources/scss/_sectionParallax01.scss": [
+            "sha256:c2fff7828dc94820006ed59f29640382ee6b19fce82597e93373c8f99d05796f"
+        ],
+        "resources/scss/_sectionParticles01.scss": [
+            "sha256:6f9c35e87a2d6f2fbcc274f5c425508d611a61798a706c80169961bcf519f2d4"
+        ],
+        "resources/scss/_sectionSkewGallery01.scss": [
+            "sha256:54d248fac996dcbe0f183abdd1ddf264d9f652260cd4e0d0312175b7ac508d80",
+            "sha256:85bf2ec07eb6442b70220b1d834512099461cbd1338970b76182d69ab0274420"
+        ],
+        "resources/scss/_toast.scss": [
+            "sha256:17a55a7e0bc0eb43a91759e958f36bd3951fdcb83a597f5bbe01dbd99f8e3cf7",
+            "sha256:487a5f7babf5e892e70fd1b0b19ec62d27f62901b8581a468f621fb7e8250d8e"
+        ],
+        "resources/video/dummy/dummy-en.vtt": [
+            "sha256:37e0e2cc3b07f896ec0273d440886171c7770f61407cf8d8d20749c6641304d6"
+        ],
+        "resources/video/dummy/dummy-es.vtt": [
+            "sha256:eac2f2d5bf03c2c89a5b9cac8233b02cf162749db8fc44637270d76541712af6"
+        ],
+        "resources/video/dummy/dummy-eu.vtt": [
+            "sha256:08a5ca6f574ac57ab45d227d83cd4a4b6685ff4e739c50579625a564bb019d88"
+        ],
+        "resources/video/dummy/dummy.mp4": [
+            "sha256:4482553ebe45576bd75ea8ffe9b05bba16b0dc574daa9a7575dde1da49bd6f07"
+        ],
+        "resources/video/dummy/dummy.webm": [
+            "sha256:157d40cd3348b87dcb0adbf2e572ea11d62b08c7f27edfcfe938cbc0ad319c74"
+        ],
+        "src/js/templates.js": [
+            "sha256:0c0f3fa4cc826e19bfc31d75e004034c0b2cc40f073ec6dac28a38446bcdddf7",
+            "sha256:34ebbda5b56a193b549a5f492386106cc4a2d9f18adc25c91f16b80593274b1d",
+            "sha256:495ab52971721c3bd7f2d2df4df191429a47553032afb5a7b6de6de708c0b956",
+            "sha256:6e2b3bf964845528491e37ffd7cff10c81d40d1c736eeb14fe113ed80bb6676b",
+            "sha256:da782f227ac58fa3d8707457e8c12f7e362443a96f9850b5d90b24f3999e00d4",
+            "sha256:fd0e80c29580d621f304ad095c2b381161bacbd3a7fce90a1656c687f7956722"
+        ],
+        "src/scss/templates.scss": [
+            "sha256:8562e7e02266f49412b608e6f8d8a2000b63f0d3e729419e658b06d9902105a6",
+            "sha256:89e2e8a56292967c45cbcc97fca595799d634e9d30706fc4848952b23b32e2db",
+            "sha256:902ec197c0ba731a51e7523bc4613fed51265a583766be1e95a2318560005353",
+            "sha256:a12556bfb2825e634b61f3d41bc441c084363b5174a3060afe6e18e88622330c",
+            "sha256:b64e980e9526c0b2cbcaa1f7e563c4a7a689116f2067fad1de3263ac9ef8beda",
+            "sha256:c275cbe9eefddc45bf40ea5aae344dcffda41cd85a4b801fbd5880fb252280c3",
+            "sha256:cc7d37ca2a547f18e6c1cb8336c07ff051a90a07713c8d2cb134d16551e438c1"
+        ],
+        "stubs/App/app/updateLanguage.php": [
+            "sha256:684b230275602c9ec5839c6257e734baad16ec498dd4371f5857a8d1bd1498ff"
+        ],
+        "stubs/App/app/url.php": [
+            "sha256:1ff30d5ac8f9db3e1bec22432b47e433d7a273e91f1b9f2078314dbc8beef7f3",
+            "sha256:c6f3dc39ec5df799a7e37612086676a18035705ecac241ce0d99ddb13859ce97"
+        ],
+        "stubs/App/config/helpers.php": [
+            "sha256:06446170601d2b758cec7c3cde45ab66913e3dccd9fff5962f0e0967c3979d1f",
+            "sha256:1bff11e0583f293c7de85d064c3132ae4e166b632c5a6af8a2f01180d09ee491"
+        ],
+        "stubs/App/controllers/_moduleFormContact.php": [
+            "sha256:7f3b529ded372a2f404fb2ec0ab3e014ab5f759337cdb08b1701c864e7610990"
+        ],
+        "stubs/App/controllers/art01.php": [
+            "sha256:ccbea29921104b40489f46fb00fcc25d10720529cdfb98bef789ec1aa382eeee",
+            "sha256:dd301fa2532745637589fea2364bec09d1367454ee8fab7ebd3ae3070442fe5c"
+        ],
+        "stubs/App/controllers/art02.php": [
+            "sha256:0d4908a89c3a48fd3db292752ee43c6ad211de9db857d36a00f34b2c561716c4",
+            "sha256:550fcb1d71c03d9b47afc0c50effceb61c6c3de0ec8f150d94b2301919f70717",
+            "sha256:6fc80c38c55b603a67381cc36a17462a43c4654e4de968cf08120e0271ee00fd"
+        ],
+        "stubs/App/controllers/art02little.php": [
+            "sha256:2d95f5aa7fde637028fee28ce49eef0a645f5005b8d7038f2e9cfcba02287f49",
+            "sha256:e483d9514c1135e2a3c18ee5626e94a3285ee8d05a7583a024ffc522f21826fc"
+        ],
+        "stubs/App/controllers/art03.php": [
+            "sha256:ec321412146f487b7e481465cbd213bab7361a11935b6338b2e84d7c093f5d15",
+            "sha256:f24df951d4888eb2f13ed6c923b89cc03635c02e237f06dfab352e0d9570e028"
+        ],
+        "stubs/App/controllers/art04.php": [
+            "sha256:1f1e32db97763f8705190ac4bf40600f395261641bd9adce4a53da9a45abe29a",
+            "sha256:8b342fc4311a6fbac24199512f82ee275f7204244afd3a9fd4550330ed79ca74"
+        ],
+        "stubs/App/controllers/art05.php": [
+            "sha256:748e665ac2e03d64aa3dab96afad4c098f8d0c94c3ac0404737578d76af4a735",
+            "sha256:cf1373c6c0c454ba765b096ab6346a1ea50a2970a213d792feb2c85fd212b08f",
+            "sha256:d1577b04e74da7b9b26ab2a6964e08d5b51d1d0c95fa8765e9fa9bff80319eea"
+        ],
+        "stubs/App/controllers/art06.php": [
+            "sha256:452374fee14197bf027a8d7ce9b690c3d8b1f72a70bad7296f7f2c7f6a052599",
+            "sha256:7a65dcd1b71320da31bd45d3feb88e31fc275df4e6130885a52addecfc56a0e9"
+        ],
+        "stubs/App/controllers/art07.php": [
+            "sha256:05005a4095d1555c55c682d8e546e1e192e05dd6350fba7d15b4ed5481bff3cb",
+            "sha256:43f8489a6a65dbdac36fafa70a1e4b22769de7f6ee2a3a60f2606a748ba58a42"
+        ],
+        "stubs/App/controllers/art08.php": [
+            "sha256:d30aa570c6cd15d4169ec648a8bdcadff1a2157072acd059da45fc2a37d12169",
+            "sha256:e58434888547dc19de752a77d8802017393026c8bdb53e4cf7b4f728b7aebf1c"
+        ],
+        "stubs/App/controllers/art09.php": [
+            "sha256:3c01a689b5ed6d65fe58c4d9e53d919fc93fd047772e576fb69ed46788de34a8",
+            "sha256:e96a6302f6e3af055fec648b6899577d910f36ecc47aff3feb470d0c18f66c20"
+        ],
+        "stubs/App/controllers/art10.php": [
+            "sha256:091799f48d23c7b46f5000000b317d8196344fb8cad61720d18c0c603850fd1a",
+            "sha256:33ecdd7e702111122bb7ecc6b688173cba90384d057f0b8caf1334c889843317",
+            "sha256:f6cd8353232bc1a51f517cd3a9dd728a0100890e80f0c763089798b3a01c7ac7"
+        ],
+        "stubs/App/controllers/art11.php": [
+            "sha256:48c3804b1fa3c453b45fc713aab51e566131ec4aca1db511011d0c7a862dbc32",
+            "sha256:58d2159097f9da0878f723fb97cc3c93bb3781cf00e6fb9c7cafaf7f633aaeb3"
+        ],
+        "stubs/App/controllers/art12.php": [
+            "sha256:29a12a32eaa23612fdf03e86c55ca827be44b93fa349ebbc2ce43a8746330828",
+            "sha256:ac07c49c417beef9ac6e36d36119cd438ff8beb22e5c09e0395f652f9ba7493b"
+        ],
+        "stubs/App/controllers/art13.php": [
+            "sha256:ab6a2e98baf82c22b5d49536bff24890ee769dac9aaf38b7146162e0f41da293",
+            "sha256:bf6e7779e999c2b5a3e85c772bf076b243ee40c945d0f0331845e98345c09ff3"
+        ],
+        "stubs/App/controllers/art14.php": [
+            "sha256:28485180f26cf74b2a336a77bdbde01814ad034b61af5da92cda6b3ddd260286",
+            "sha256:934edeee8972560a3049304e366fa293c69c1c2c88213e1e8b9483f0243aa7b1"
+        ],
+        "stubs/App/controllers/art15.php": [
+            "sha256:1c31512e87e25e50c3d6cb1ef528b922ea22e3a9b6680d39efd38f91790b0d70",
+            "sha256:24c45a8d98bcff871a95ccf64facdb33c12cdccbd0cf69f56d1d53f30cea535e"
+        ],
+        "stubs/App/controllers/art16.php": [
+            "sha256:004cc2dfdcde11252dc9a9cd7f83b32d5ceb20a3f684f5702106e7f8810f870c",
+            "sha256:332047eb52cda44d694052787d9d50cccff9f48ff105b568371d731b529f0312",
+            "sha256:4f177152f7bb6ba83d35cd2de286455f677c11ccb6d7c40e2ae9266c0615a175"
+        ],
+        "stubs/App/controllers/art17.php": [
+            "sha256:8b1316ac1c40fff8ea82e94f71c4be1e9de1a88eb5f8b33df94d970c6e81eecf",
+            "sha256:d96ed69895a9d6610b08dfb23cf8423d56a606dc5fa25b33694fb4c10805895a"
+        ],
+        "stubs/App/controllers/art18.php": [
+            "sha256:53f725f602a42557797d8dfe1d00300b2b32c9f33f9b9fa36c650956d3fb5777",
+            "sha256:af2b1b7d9681f2c415bdbd3f5a6badf6168c72928f61b226fb28a073c2b8ba4f"
+        ],
+        "stubs/App/controllers/art19.php": [
+            "sha256:15172776155ec38e88ffeb60fd6b56e284e68ca62fbd86aaf079738e1f5ad1fa",
+            "sha256:77ac9f8de8376dc4d8e7b012d7ee0673766d703530c4e117b9382f80f5de2d2a"
+        ],
+        "stubs/App/controllers/art20.php": [
+            "sha256:01e5b74b972b5a5377f73b5ed396f7e016ae8d3a0d86bcdf25dcab0823b64c0f"
+        ],
+        "stubs/App/controllers/art21.php": [
+            "sha256:3ab17318dbeeac87cf25f6bb443bb43e253475950971934f2138ded7eb58d44f"
+        ],
+        "stubs/App/controllers/art22.php": [
+            "sha256:c527fb2cdebbfe1cf0be94bf729bd710b826e6a1c793bf85b1f52439973a72c1"
+        ],
+        "stubs/App/controllers/art23.php": [
+            "sha256:604cbe9e29c37acce8dd27971d902fa37f0695b97fd14f10842f0f7dd3dc87f0"
+        ],
+        "stubs/App/controllers/art24.php": [
+            "sha256:e0ddacc85119a8022d9da66846be62cabf2c6263402f191af39147651d5e634b"
+        ],
+        "stubs/App/controllers/art25.php": [
+            "sha256:11069e954e914f1423a9fda7fab8cd73dcb7f23838f093901c810f66ee4f4ab1"
+        ],
+        "stubs/App/controllers/art26.php": [
+            "sha256:5e8279d35ecbacdc552825a468cc3a4e9269eb5f813f63b829a7d455f6157fb4"
+        ],
+        "stubs/App/controllers/art27.php": [
+            "sha256:77a8ec5ec6d80760ad67f6cfd611733de968948694f6fb00fff23fd5f65c8a2a"
+        ],
+        "stubs/App/controllers/art28.php": [
+            "sha256:fc0db970a2695b9152ce395dea4422b4d2b84f61e96e2e6aaf7f846b8853bb15"
+        ],
+        "stubs/App/controllers/art29.php": [
+            "sha256:dcffc72629a279db41734d91783af176edd89936ea853ed58d5ef3c4f8d390b2"
+        ],
+        "stubs/App/controllers/art30.php": [
+            "sha256:cf1df2c05a55fc0f55f587e95041ec5c7d3383b8f18fdad7eca62c6a2a043172"
+        ],
+        "stubs/App/controllers/art31.php": [
+            "sha256:c8cc4a5c003581447ae3841ff78c33f8dc114f2d6489df774398367226d8e7d8"
+        ],
+        "stubs/App/controllers/art32.php": [
+            "sha256:51311b59eb5888c6cb5d871341ad2be6a547eeac390f719f1c03a03611120e9d"
+        ],
+        "stubs/App/controllers/art33.php": [
+            "sha256:6331160061171535f1aeac7ca751490521fccd285e8708f43c6ed382d2bec59d"
+        ],
+        "stubs/App/controllers/art34.php": [
+            "sha256:b8d52f6c9d3802dee534ff7913359a7565471ad9dcbec96093325de462f57a6a"
+        ],
+        "stubs/App/controllers/artAccordion01.php": [
+            "sha256:9fa6af85223d4d0a82e4be218141c0b3825b040c94b610e2d2af5e653f6ad8f6",
+            "sha256:a8e3241735bc9d6defa653e86a9ed280e6fa5a88fef5bbdded7a4cc3f77fde8e"
+        ],
+        "stubs/App/controllers/artAccordion02.php": [
+            "sha256:eb0148d1b45772576469394f83788f4787c94679f7a397d1e00cac8a63dbe48d"
+        ],
+        "stubs/App/controllers/artForm01.php": [
+            "sha256:511c72cddb16ca8505e085bbfdf4219daa91879ce4e9def410d11a09239a1ee4",
+            "sha256:b28ad8887839d89b20a77cd6f563f5968f56ca3f62c78cb48288521ea4dedec7"
+        ],
+        "stubs/App/controllers/artHeroScroll01.php": [
+            "sha256:1d440fb6362c1e3b238a71380ab1e5072c19172e676977470e9e18b41d4f271b",
+            "sha256:a4480fd6d145776eab5c6988e6888a2ebd0d1c421f1b30b6f435a64e37f72b76",
+            "sha256:b0b3f6f0c7b00e02ccf6f2bc3d8999c8b3663c799dcdc9f26e51522a61f81a74"
+        ],
+        "stubs/App/controllers/artMarquee01.php": [
+            "sha256:d72741bc631053fa0fefa2fa1661a3727bc52c164c83729ed351f19eb7f8a69e"
+        ],
+        "stubs/App/controllers/artPricingGlass01.php": [
+            "sha256:4039b5a557fbfcf7bcbcc4d656954de015c0d66a5b9fc52b59859dedc4d5d269",
+            "sha256:75e741376de99f6ade335e467f71f2be87d739e2054247521fc9daf9c87a35ee",
+            "sha256:b06b224d50fd53df3ac175cfddebf0bfd859dcfcf6121a5a4b13e73ca980ede4"
+        ],
+        "stubs/App/controllers/artScale01.php": [
+            "sha256:c8c5879079dfc56be4e9c83ae99ce06a1c70b4cd359b1826acf1340686dee9fa"
+        ],
+        "stubs/App/controllers/artScatter01.php": [
+            "sha256:15b4b832ebec2bdb93ccceb6388c37f5fadc80970d632c90e9925ad320da5b8e"
+        ],
+        "stubs/App/controllers/artSlider01.php": [
+            "sha256:828d2324c08c262a46956241de0dae8dd76a914fc91293e177ed1c7511cd19f9",
+            "sha256:f12cacc30aacd62a939994e9676a93e417b86d32f5ae27d1725c6be8d3476095"
+        ],
+        "stubs/App/controllers/artSlider02.php": [
+            "sha256:34299c935c702e3c9a970c6edafa3bbaeb6a5915f4e0b74d959427aaf7bd4e33",
+            "sha256:d648bbde73f507e2d6b5853b2e1cb641788ed96fc443696cea65e9ab083dad9e"
+        ],
+        "stubs/App/controllers/artVideo01.php": [
+            "sha256:2ac69999f4ea0c99a577f6a3e30033c640bd83ea9500e0583874c94eac08fafb"
+        ],
+        "stubs/App/controllers/artVideo02.php": [
+            "sha256:9536779053a7abd2f11062a196af8509c6a1903e01cdf8b059f7bb473fab1702"
+        ],
+        "stubs/App/controllers/artWorksSkew01.php": [
+            "sha256:b609518ef6e88360c50f91790c3a6bd343448146e033cec62ea6887172bf0f5f",
+            "sha256:c4b344962378891d002454aefa5b16786165aa6f687c3bb2cce43be0a178a1f1"
+        ],
+        "stubs/App/controllers/artZipper.php": [
+            "sha256:5536cb42007f24fdd2a086e99d58bded98e9bcb91d5973227b23f21a575c6004",
+            "sha256:a60f2b4d0310fb2d2b8bc981af072130888a3bb4ce34de0100ce84fa63aff5f3",
+            "sha256:fc493531f529df709e9c66e301f2651df0cfb84930ebfa74aab35196a5ae02f3"
+        ],
+        "stubs/App/controllers/hero00.php": [
+            "sha256:09ae6f8ce27810d62c6e516382398831dc51dc6aec2b6908a20880866f41b6fd",
+            "sha256:1117bf0625567767e46d3f49a2523c98bd6df741a7642293eb3ed155e714c126",
+            "sha256:25043fd2a2f47e3bf613dad4cccf936f0cefd4a084aa98751c1d602450bf01fb"
+        ],
+        "stubs/App/controllers/hero01.php": [
+            "sha256:37624e84f8eb4d579b2a2ca70cf3a63307ae0c8315bec718986c3882238f1400",
+            "sha256:91b31afbc5536e950c30cf1ecb3591e15376829f90fa2de2dfcbc7582064ddbf"
+        ],
+        "stubs/App/controllers/hero02.php": [
+            "sha256:72bd1263837777a4322d77d6330f9dab32c25798dce0cbbdfad217f603e58086",
+            "sha256:952afeb314f4d1c32f0ea3d8e1b64531ef1292a5f695e702984034b6e51805e4",
+            "sha256:a4365a81ed2d706054d7fc1a25ab344f9237047254b2cb78e3eec58a5e390fd4"
+        ],
+        "stubs/App/controllers/hero03.php": [
+            "sha256:e4a04b1f8d04ea69d43f6dce111ac0738cd4720c07d87820298121d785b576b5"
+        ],
+        "stubs/App/controllers/hero04.php": [
+            "sha256:d88ff83b7e23c9f36ef3f0a95b9c9cd7d7bc4fca44b603b0d6f1d550383f522e"
+        ],
+        "stubs/App/controllers/hero05.php": [
+            "sha256:25059d4f25e73d541c3a5126e693700e70bd7cc251bd1226ca574b0be95add88",
+            "sha256:f8428aa2910c7da9719f04bd96c1288ddcff23f8c899af40465dfa6d828d2aa7"
+        ],
+        "stubs/App/controllers/hero06.php": [
+            "sha256:ccb629631105d57319a7f49b9da86052cbdaf78e6c1368333f061292724d260f"
+        ],
+        "stubs/App/controllers/hero07.php": [
+            "sha256:1c77c147464de4984fe26bf80a934a6fe7c37356bbfed091fff92297f7ad7a46"
+        ],
+        "stubs/App/controllers/moduleButtonType01.php": [
+            "sha256:22c050f4b8b3f6cd2822afbc7e652d3e2c84a6133cd76c8b9db7334f2151c000",
+            "sha256:de76a489a01422b9cba3850cf35d1dee78c7ac556b086002779afedfa3c34c78"
+        ],
+        "stubs/App/controllers/moduleButtonType02.php": [
+            "sha256:aceaf82903e3a31f3c01867c00ddcb228542d04f888fd3c3d6498808669659e2",
+            "sha256:cf0c5065c84cc4c8cca139b7858190639b26a76b20e210960f51acecd7d574dc",
+            "sha256:db1e763898fce08cd1fd673aed2c0f5b974bc9c15493586811b2f596552bb8a9"
+        ],
+        "stubs/App/controllers/moduleButtonType03.php": [
+            "sha256:c3e8a8f5b047f64c1040b8c0de92550efb5daa58d10fe574b17ec7125c74a4e1"
+        ],
+        "stubs/App/controllers/moduleButtonType04.php": [
+            "sha256:d5c5c7c3f4b64976b70beee136fe2a61e53f57de41e960c798fb4d5adb6d4b29"
+        ],
+        "stubs/App/controllers/moduleFormContact01.php": [
+            "sha256:257a61a1d3bc7bbf8e691b2ce2f150c60e7861f0ce43e22dc76bce10f2b09334"
+        ],
+        "stubs/App/controllers/moduleFormContact02.php": [
+            "sha256:fccb0f0d4526dd0d7ad140359c3cf8a918ac6fec307ad875a9707b0589da0342"
+        ],
+        "stubs/App/controllers/moduleFormContact03.php": [
+            "sha256:4805d17428374ebd1112d6106a1b8c1e84758d673630837187e0a7b4c7968f60"
+        ],
+        "stubs/App/controllers/moduleH1Type01.php": [
+            "sha256:bea748b7697807bf373d087d8df8e0b7e489a7a2c6ccea260b93eaf9cc84cd7d",
+            "sha256:e0281c814b26136b14378981d19368efc63ce538205bc82087cd97ace2af2f1e"
+        ],
+        "stubs/App/controllers/moduleH1Type02.php": [
+            "sha256:4867513f29d5075979dd90631a581ffce17fc0b9e60a1935b761d9ba8e1084cb",
+            "sha256:d189562f9ff8e6430ffa08867f859b96abde3e20f714df301ff72b6935fcb7a0",
+            "sha256:e73bbcd12ca3ebdcc3938a82a9c699c57a0cb25b1525d8389a6f5792df2961be"
+        ],
+        "stubs/App/controllers/moduleH1Type03.php": [
+            "sha256:33ec8af7d9f8a2160f06e5b815a4f2bf32c90320c266289145f47d38a3ce10cc"
+        ],
+        "stubs/App/controllers/moduleH1Type04.php": [
+            "sha256:d92fada4fac7fab468d9cb051a5a2551af8216e39b512061d09732753fa4b534"
+        ],
+        "stubs/App/controllers/moduleH2Type01.php": [
+            "sha256:16de8d15195daa42e0564d1f85c5827bda4e644e47e978fe727bccdf737a8985",
+            "sha256:c8111e19d6a5c07b5c5de101383996d677b082f1fedc6e2ce880d3ffb7606561"
+        ],
+        "stubs/App/controllers/moduleH2Type02.php": [
+            "sha256:006d9a4978e7f90031254e940fc39614145eb48c51bc51ce1a1f91a01bf4f23f"
+        ],
+        "stubs/App/controllers/moduleImgType01.php": [
+            "sha256:6d4197f7896d3f5cc8b0ecdf4cd478450b53d6d11ddd58733204d121edee97bc",
+            "sha256:7d2aac0ebfda56821f5d8aef457d7029c6364983448dbaf133c0f7b104256f3b"
+        ],
+        "stubs/App/controllers/moduleList01.php": [
+            "sha256:420558fbe6efca249a8911aecd580bbd30707ff41a95b03d5a2201907ec88b2c",
+            "sha256:92b35512e22bb39cc05738fa729ff7195a38878a732bdb4bafc57af8643d6d09"
+        ],
+        "stubs/App/controllers/moduleLoader01.php": [
+            "sha256:48d012072036899e0355e6120d84ab2ce47d00de29943be0651e396b16b3aa30",
+            "sha256:f258928c703d68a48b941901a9e778f333762133f85c9a840bf9555bdab7921c"
+        ],
+        "stubs/App/controllers/moduleParrafo01.php": [
+            "sha256:cca81b76378135e56f69a8d8814601b7ca137af3163b44b89443a2f40947dfbd"
+        ],
+        "stubs/App/controllers/moduleTest.php": [
+            "sha256:44b1a2316c1ac995b3df5342c61d9683d1ef26d9277c7af4886662c94ed95ff3",
+            "sha256:fbd5a4c3afac6fb1e4c204929b29f90d5720008f971a688cf7619007d0cc4a9f"
+        ],
+        "stubs/App/controllers/moduleVideo01.php": [
+            "sha256:7f7851523750926c107ad0e79bea5cbc3174cf440254700ea6fb0d82bf3be183"
+        ],
+        "stubs/App/controllers/navMegamenu01.php": [
+            "sha256:73a820b15b013c3530fa622d63ac22344c910a8be2f6ec64c222f4ca92c9e203",
+            "sha256:7a8717e676510ad5f30e30762054c7c0ef3c4c64c546764205cb383bd4befe54",
+            "sha256:9078ebbf250a8cdec3e061a90b4a2399cbfa1893438b1bf2ffdfcc6ca963c177"
+        ],
+        "stubs/App/controllers/sect01.php": [
+            "sha256:78a9c05eccfee288bf47e164273ce6176c6efc45902298444a19d4333aee490d",
+            "sha256:b18c1bce4892a517509998d46f279d99d01c6309e7eaf87ebe8accb16e610a0e"
+        ],
+        "stubs/App/controllers/sect02.php": [
+            "sha256:4bb9696b75a749bb756554031364cba488b64be0b7cb816318198bc00a3855f3",
+            "sha256:9390727faf3a5b24e02259fa907aa9a135ffcfce1feed192fb2316e40df21df1"
+        ],
+        "stubs/App/controllers/sectTabs01.php": [
+            "sha256:402726d834c1bc43433a63a02f42abd1da4ebe63b92114bef9ec5bfee1c62b79",
+            "sha256:7418b71e59daff4ffc6be37a42ac72c196571ac3d69ad45f2e905b451cb486f7"
+        ],
+        "stubs/App/controllers/sectionDiskSlider01.php": [
+            "sha256:5bf8b503c9684f3bf009eee7587cd73ab0bcb4f35c551a0d9e5746f4858e7818",
+            "sha256:d271ce5fc3659a8c7caf83dbdb54df2eaff17ca06bb5d8eff6ebe0d1d64e7272"
+        ],
+        "stubs/App/controllers/sectionHScroll01.php": [
+            "sha256:7e19bbf0492a514f8ee5dca648d1441189cb3b6c00cbd01535d10527dfac690e",
+            "sha256:d9ee1abbcbe04c36cca9fd7abd266a4f56dfb86d82963609e9fef09f0a09c78e"
+        ],
+        "stubs/App/controllers/sectionParallax01.php": [
+            "sha256:103878b8dd25c4be078b5af6082614edc4aebf07f29685cb25dc8c014ac39abc",
+            "sha256:ee8798f0be414048a56f6d8e254e976f0738ba03451da61dfabcb9936259bb31"
+        ],
+        "stubs/App/controllers/sectionParticles01.php": [
+            "sha256:dafc68bf5b67f17e2ca2c0b3957abb6697d5247fe3e645771391bed0e6552ebd"
+        ],
+        "stubs/App/controllers/sectionSkewGallery01.php": [
+            "sha256:dec119477f1d4b5ae7940df3ef92421e3079d42f08b646e3868473aaf2905a60"
+        ],
+        "stubs/App/templates/_art01.html": [
+            "sha256:5e6782a1716f3ed45143a7ca983bc84cc7c9776d17c59c029c8fb382aaa7ff99"
+        ],
+        "stubs/App/templates/_art02.html": [
+            "sha256:f52fc8f84ee4b4e4f0fdd0c3aa79d14053690b14289b1bf670482ca7165d8e33"
+        ],
+        "stubs/App/templates/_art02little.html": [
+            "sha256:528a3b2ebdfb169ea49e946ec8adf173f17e07337fd742c82a43de6add25d1e8",
+            "sha256:913c80cd881bfbb53ce69b435081d3424deaf094000dc83ecaba37e90842a823"
+        ],
+        "stubs/App/templates/_art03.html": [
+            "sha256:17f63229eecb52502759f24495efc0df57157acba3c0e836a8c654cb206136e3"
+        ],
+        "stubs/App/templates/_art04.html": [
+            "sha256:515011d4457e33bc93dcb4110bdbbc943c479711d73c68edc6f05e545d90a1ec"
+        ],
+        "stubs/App/templates/_art05.html": [
+            "sha256:f500d2c9dd1bce1434a5d87c14b6326fd951769e9174922361d1d5a1d3c3f99e"
+        ],
+        "stubs/App/templates/_art06.html": [
+            "sha256:3455db63b11502f84d8da90e570d52a20bf9d210af99f9e157c47364ef78a3eb"
+        ],
+        "stubs/App/templates/_art07.html": [
+            "sha256:50d66a2a08d0007f87840adaa96ad037f61d5d0c03440c26bfa996b7359e8449"
+        ],
+        "stubs/App/templates/_art08.html": [
+            "sha256:a5497ee8039f703abb71bc4dc05bf588c48952b33cfb7c4eb7cefcd03a5f5157"
+        ],
+        "stubs/App/templates/_art09.html": [
+            "sha256:f5ad19db1880b83500666e84bb1deed5c17c64f2d2c35d6bf9cfad575c27576c"
+        ],
+        "stubs/App/templates/_art10.html": [
+            "sha256:3f5d1657f4f934083a65afdb6c8cf13ede8d7cd2679a198bb5837af20e38dd3e"
+        ],
+        "stubs/App/templates/_art11.html": [
+            "sha256:b49d99c9bad2c6231f2f7ba7138e0763533fbd8358d37e528b5e6efcb3cebaee"
+        ],
+        "stubs/App/templates/_art12.html": [
+            "sha256:ac4a85c80f749f167b6cb1ed5b0c25d6e68bb2cf4ef9e1161e79608b1911c4f6"
+        ],
+        "stubs/App/templates/_art13.html": [
+            "sha256:edc711a7c815e33be2b8e727fe491c8662e351058a58b385cfbfd84b1b0cbd93"
+        ],
+        "stubs/App/templates/_art14.html": [
+            "sha256:4fbc4a8fe384aab39c24643a82d3ace3dce2e23979d48b064460063534713669"
+        ],
+        "stubs/App/templates/_art15.html": [
+            "sha256:f44a2f239b8a77b536ff9bcf6416b2034d7826abd66ce06f0b1e201e57f7996c"
+        ],
+        "stubs/App/templates/_art16.html": [
+            "sha256:9f3624e0ceb57082e23c77ec1940bfb9c99a2101030866be9e2f447da634a768",
+            "sha256:e165d39b6e2c831eb9a56deaf0208382049e0a8c67d96fde53fee7ee97765c07"
+        ],
+        "stubs/App/templates/_art17.html": [
+            "sha256:98e187073fcf1d7833809fea241ae465c2cb1224a8b0c39e53f3cb8617d07145"
+        ],
+        "stubs/App/templates/_art18.html": [
+            "sha256:31c96fc43789dc86b60910af2c2382de47e3751c2d3c077c46b64ada79be8ba1"
+        ],
+        "stubs/App/templates/_art19.html": [
+            "sha256:39a4af7c109443ae0d7e31e2055279d9d8dbc31e20eff032fb6cf6f590c52cfc"
+        ],
+        "stubs/App/templates/_art20.html": [
+            "sha256:38d36d1f79d829c5a3e70e14b13ca0bdf8aa89d51fd9137e9ccb7a46f50ce4b8"
+        ],
+        "stubs/App/templates/_art21.html": [
+            "sha256:bc98f837b139b86cf988fcacaf0eb6e6ff3250018e7a08559b20392d876246eb"
+        ],
+        "stubs/App/templates/_art22.html": [
+            "sha256:960a3f91b3cfbfd91c071cc2d22ace2c577d9c519e2e192acca0ca3a3d4ea691"
+        ],
+        "stubs/App/templates/_art23.html": [
+            "sha256:ebb33e1a3d23822c24cbc66b3248affec11a52cadc2f74d2709258f89a9ea22d"
+        ],
+        "stubs/App/templates/_art24.html": [
+            "sha256:fc0985972fdd4646eb82fa9d52851e29c9d0b5556f88e1102b8c8d8d42543fb2"
+        ],
+        "stubs/App/templates/_art25.html": [
+            "sha256:24fb2a6752a8bb3ff45136d1221e55ed68753e48b115135025f88383cc95babb"
+        ],
+        "stubs/App/templates/_art26.html": [
+            "sha256:905bfd8324c56d01015f7e080ec7aad26a43cecb52115f4a914f5eef052f5967"
+        ],
+        "stubs/App/templates/_art27.html": [
+            "sha256:1cd1aa36ee7add86fde831c2a31e167155974fb5e316e8792fdf7ec1ab56b9ff"
+        ],
+        "stubs/App/templates/_art28.html": [
+            "sha256:288231c8833399a461e547fda3900b1433fd569b9d13407d9bea70a4d3ff8fab"
+        ],
+        "stubs/App/templates/_art29.html": [
+            "sha256:fce94ec35ac827e98c120e25d63d4256f7bbabaa2455ef0bee0ac825f261ebf4"
+        ],
+        "stubs/App/templates/_art30.html": [
+            "sha256:71d50962dd970098ed7c1bf083c505c481e73611428fb57a664e86ea8fd557aa"
+        ],
+        "stubs/App/templates/_art31.html": [
+            "sha256:19257e70bc81ad7f686750170659ec5b677b801dc5d65b248e7b900552bb1504"
+        ],
+        "stubs/App/templates/_art32.html": [
+            "sha256:faad7d43680da5f667eb16a036209e9989d5752fef346820ea397dd840e77268"
+        ],
+        "stubs/App/templates/_art33.html": [
+            "sha256:d42c00ddc7a93d1656670728438d4e13416322e32c8478967dfb6492d96e7416"
+        ],
+        "stubs/App/templates/_art34.html": [
+            "sha256:7ea100a0b70c9dd792b7ff8bb06fd3f1781ca6b8769d108de0430d8221750ac9"
+        ],
+        "stubs/App/templates/_artAccordion01.html": [
+            "sha256:ccb3f18c191001f15aa03ecb4f61ace263733c67ce9946b19c073e562c19abb0"
+        ],
+        "stubs/App/templates/_artAccordion02.html": [
+            "sha256:6cd391618ceec4a07a60b2ef8380739d131b8771ce7e208c4ff6a60bef276c1b"
+        ],
+        "stubs/App/templates/_artForm01.html": [
+            "sha256:5fddc19d99944439d35c6e88a07e486379936ae07c4de52a83fbd01720317501",
+            "sha256:98dc65ac606bcab95e21af9b74b43655a1d180a8c1cdebcd413d3209056c26e7"
+        ],
+        "stubs/App/templates/_artHeroScroll01.html": [
+            "sha256:0254482e6dbb0fbe02c8b0dd82ee8275e7f69386801dc6c5c330a437d391ee15",
+            "sha256:fd2f9801cdf1ebd1495b3acdff7eff3384302052ca250c922c879c3ff8ae2794"
+        ],
+        "stubs/App/templates/_artMarquee01.html": [
+            "sha256:76ee623144237a081c2b07ea5e12aaffb1cbaa5a52915cd4045cf0d30014597a"
+        ],
+        "stubs/App/templates/_artPricingGlass01.html": [
+            "sha256:ba70de859936edccbc0a318f9a3bb314775fe7a2423131d6eff8a59d472bd9d0"
+        ],
+        "stubs/App/templates/_artScale01.html": [
+            "sha256:0e4f2b0825216c32603a8cc770a8ef97f4a8cf4dc1c160de289145c413ac2c37"
+        ],
+        "stubs/App/templates/_artScatter01.html": [
+            "sha256:e3ba0c3415273a2cfd8b816ac980f61cdb639d61b2adf7a1754f7693a72bcaf0"
+        ],
+        "stubs/App/templates/_artSlider01.html": [
+            "sha256:72f16f0d2b18e27c88f8de277b4208d701b82ef0b1523744cf57a21b2234369a"
+        ],
+        "stubs/App/templates/_artSlider02.html": [
+            "sha256:c6876dd470581016432eb1b5010fa56e17fc2ca4528e3e68e728b8dac90bddbe"
+        ],
+        "stubs/App/templates/_artVideo01.html": [
+            "sha256:7fad689184d496ada7c5cc38da06abfb753e344de8014efdb91d997123888e3d"
+        ],
+        "stubs/App/templates/_artVideo02.html": [
+            "sha256:57105f6bf57211d0fbb20b69459a2f20fc64bceb4583cf2c1542c03c7b0d5c2e"
+        ],
+        "stubs/App/templates/_artWorksSkew01.html": [
+            "sha256:9235321b11c29f98063d5eb918049ef689068e58af11e0fa7a1e7d9bf40d088d"
+        ],
+        "stubs/App/templates/_artZipper.html": [
+            "sha256:7e336c1e3999dcee25e9f4babaa269d822f3ef4d8296271260e2c1fcfcbc4e2d",
+            "sha256:8d30c34fee009a67acc06acedf6c46295288da7ee4bab853631fa809e33e406b"
+        ],
+        "stubs/App/templates/_hero00.html": [
+            "sha256:a21dce1e72d350f1ab85f2f937fb03207b43f24929316a12a203f9430567cbca",
+            "sha256:a940147677c7d9dfeea8a18924ecafaf4a399e371efd7df3fddec4ae2e958145"
+        ],
+        "stubs/App/templates/_hero01.html": [
+            "sha256:b674a22a5a3024faab696ddad1e75484321424b4fb772811bd1bffd7b75e3593"
+        ],
+        "stubs/App/templates/_hero02.html": [
+            "sha256:5b689be707f520eca12c8e30a24e06be5cc90a10f8c6e39113ef6c50dead5fa7",
+            "sha256:f991d1b934d9bc1fb43a024a567ebd1cc6a47c3b88c024fd3737b0145af85d5d"
+        ],
+        "stubs/App/templates/_hero03.html": [
+            "sha256:0c0bb2051ff152f8093f123f64ac3631f3030970f6c64544ec21b60324491a31"
+        ],
+        "stubs/App/templates/_hero04.html": [
+            "sha256:d624745fccf36f79f281250426c1993b0283dd718bc4f8c497f129f359b28a23"
+        ],
+        "stubs/App/templates/_hero05.html": [
+            "sha256:0e51b84af38006def533b96a5f8497f0c3fa00eb96d25d2e9c396693e549270e"
+        ],
+        "stubs/App/templates/_hero06.html": [
+            "sha256:92bb92071a1100a537271ea1fce19d9f55a197928e80ee90053dbca4209af87f"
+        ],
+        "stubs/App/templates/_hero07.html": [
+            "sha256:69e4570621b84b04ef2f75f225ce9e58f66955ecb5c944077c09a1487f8ccfb5"
+        ],
+        "stubs/App/templates/_moduleButtonType01.html": [
+            "sha256:0f353574a09494ca587e62db6e7fdfa50c839c0f5ff126205f5da56851398528"
+        ],
+        "stubs/App/templates/_moduleButtonType02.html": [
+            "sha256:582a4c5f6b6aef2bbb41b4fb757d2ea64737bf004eb68c66829e88e2eed4fb44",
+            "sha256:58fd549deab4990383c2572f44f44a2240be7df3ca6dbf99fef5989c56a4e3dd"
+        ],
+        "stubs/App/templates/_moduleButtonType03.html": [
+            "sha256:2c2c85d1dc62ab3e14696541cb7bc627a018cfd3bcb6596081d47fbd3e2fa6b5"
+        ],
+        "stubs/App/templates/_moduleButtonType04.html": [
+            "sha256:bf701c295937cf9a1e011ca015777be7b701eb2d4b53e3d5cfc8364e063a2591"
+        ],
+        "stubs/App/templates/_moduleFormContact.html": [
+            "sha256:3cdf701f41e506ba56ee082da586cbf03f3ed4fd43350e0fe15eba4a03135a4d"
+        ],
+        "stubs/App/templates/_moduleFormContact01.html": [
+            "sha256:67dd8ed4008250842d07ca1c2d265c9b81adee2b02b37894535ee2fc215485e5"
+        ],
+        "stubs/App/templates/_moduleFormContact02.html": [
+            "sha256:c541ee1328462b6e160cbca44693e5a732fdfcfe1c532613bcc776e1c1af50ba"
+        ],
+        "stubs/App/templates/_moduleFormContact03.html": [
+            "sha256:f962597805d3835892d301f353123e2ffc1a9d8ba732e0d0579ed8be649a4ecb"
+        ],
+        "stubs/App/templates/_moduleH1Type01.html": [
+            "sha256:f6a48636c264aca1413061eb87ebf6d9fc7684762a5e5c3b235567aa5c9e9ca2"
+        ],
+        "stubs/App/templates/_moduleH1Type02.html": [
+            "sha256:48ca02682db62180ed36c5419f2686483e4842ad3bd5a5c216aea3d868d30937",
+            "sha256:a0b84ce0adc26de604106e5125eaf88fd7c829ea383991e410e05f293a25ebc0"
+        ],
+        "stubs/App/templates/_moduleH1Type03.html": [
+            "sha256:e3322ec5f3a6248d41b2ce369d6278c38e332730425c2627a85633bd2aa2ad70"
+        ],
+        "stubs/App/templates/_moduleH1Type04.html": [
+            "sha256:1573424553fd70724cb45ea46a90cda84d226fedb733d551b194fbe98dbf3a63"
+        ],
+        "stubs/App/templates/_moduleH2Type01.html": [
+            "sha256:8829bfacfc15dc5b5ff60b09af7d9bc04c7be6fdc740c5fb7c42fd3f410caca6"
+        ],
+        "stubs/App/templates/_moduleH2Type02.html": [
+            "sha256:fcdc08f66cbb4dfe62ca40b19bac68f948d4570971e2afaf7ba2ace9533fe66a"
+        ],
+        "stubs/App/templates/_moduleImgType01.html": [
+            "sha256:f0ab99c860e24c80dab5c8ff5c330ee6844f4d91c5af939dc7b9d6ce2a14b168"
+        ],
+        "stubs/App/templates/_moduleList01.html": [
+            "sha256:9519f349c9dec3ac726147717b30ac3027e78dcd69faeed825b1e84215dacf0d",
+            "sha256:ebeef57f0d8798cfc2fc9e56eb293c778d6aefcaf2913ca80e3796f667c44b67"
+        ],
+        "stubs/App/templates/_moduleLoader01.html": [
+            "sha256:46b5802fc4a7b260f9c6607a18800d0cdc4d0a4d1a5765b263f87cdae50efa73"
+        ],
+        "stubs/App/templates/_moduleParrafo01.html": [
+            "sha256:491a34c5bbc0df6c9aef50e3d4bba7b60019b554d716ef02513fe5b976b29619"
+        ],
+        "stubs/App/templates/_moduleTest.html": [
+            "sha256:f893b2d1ae61df771deb7c08943c9a31e513f6811abc547e52ab5d3ca4bc2f1b"
+        ],
+        "stubs/App/templates/_moduleVideo01.html": [
+            "sha256:7249913eb1ada23ec439fbd1157fae83a6da4b03ee2b1d55bda872489a1effb8"
+        ],
+        "stubs/App/templates/_navMegamenu01.html": [
+            "sha256:c5d76fb3be648a31a38b44b5c92ef51a3876ffdfb481d7800677205a9b81e769"
+        ],
+        "stubs/App/templates/_sect01.html": [
+            "sha256:3dc78ccccf01fe17c2acf6a687a1ee7c9f5f75a8c719449287b3c7e03d318af0"
+        ],
+        "stubs/App/templates/_sect02.html": [
+            "sha256:17b263fb6facf1a32d5074eda5590ad7e228e42be9e4fb6c5f26ac966ab4a4ae"
+        ],
+        "stubs/App/templates/_sectTabs01.html": [
+            "sha256:7f39f561ce41c7240ff424a10e5b6de96afc65fa0adbf80f14e871e0499f7a0f"
+        ],
+        "stubs/App/templates/_sectionDiskSlider01.html": [
+            "sha256:13faba98a67ca28d325c6492609e4775b0b78dcd240e6a1e10f56fe02ddccf29",
+            "sha256:fe31d09baeee032206882108496ad7a047f25c2aea8e127288863d349a595e07"
+        ],
+        "stubs/App/templates/_sectionHScroll01.html": [
+            "sha256:6bf00c7fc1104c9b76a723c1ce40dd5b4126c2ff08184ffdb05bd2a80545f089",
+            "sha256:7c01735924db6f2a8153d1331d7d788c6145179360f1beddcfab20bf644dfb92"
+        ],
+        "stubs/App/templates/_sectionParallax01.html": [
+            "sha256:53ae30074fffc2a05dbbfba1bb9117dfd33eac123524b1ade6648118dc8682bb"
+        ],
+        "stubs/App/templates/_sectionParticles01.html": [
+            "sha256:193e27026560b12d94b3084c3fc7e834984174399d08bf1bc37e338ee64ff40e"
+        ],
+        "stubs/App/templates/_sectionSkewGallery01.html": [
+            "sha256:3fc928272b5e061e504fc3672b94733225f2b78ac91c6087c617d883aefc3f7e",
+            "sha256:42f99c14b9c6cde84078d4e51322040c3460e5a8b092d8d9e41b71116403bb63"
+        ],
+        "stubs/App/templates/es/remember-password.html": [
+            "sha256:101ac435db9b9c42b3fa0bdcaf5cabcd5a698e98b167ca1d9c18bb8ff94bc7d4",
+            "sha256:5f168e2aa2f0da66ce56a8f5dd7c512cc58c7f509fd3bf094f1aeade36dab4b3"
+        ],
+        "stubs/App/templates/eu/remember-password.html": [
+            "sha256:41a0c58ef2713f4a660b679e7828901b4ae6be8dcf61dab4dde29bbe421bbbf7",
+            "sha256:b7d7a141f9149fadfecba1760a8a875226c2aa18acb07f5d2db39880a32b2905"
+        ],
+        "stubs/App/tools/build-sitemap.php": [
+            "sha256:355467ccb4e5cbfbf25a1658574dd2b64b68b6e474f6985af930987ebcdde256",
+            "sha256:d7e0780d8dd941992cb95fa781cfdb2fd1c77b3e51a3fca15d573bfda60c2d40",
+            "sha256:e1e119dfcb99e7e16ad023f7b70a5898f4c39c412eae037ce0adff3f74b69a85"
+        ],
+        "stubs/App/tools/update-languages.php": [
+            "sha256:0be58f9e455478c92f918fe89696e4e6ffc3dc1a931be5dcd6b7ef9acce740f3",
+            "sha256:37e2aace4a1ad35bdf5197642f554c756880198644e52c8c51cfa23cef76982e",
+            "sha256:836870942c4f19c6d8139c2b6c0cf11d0610e7a6356d75da6c042dfeb002eef0"
+        ],
+        "stubs/App/views/_showroom.php": [
+            "sha256:48422e64c39ff094875e86fbbe473dd44deddf7c36baa5741c853b5de41e39e1",
+            "sha256:c08275f5de2a37fb5668c2d1458bf17cd723282bd08fcc98c533db2e766d9cc3",
+            "sha256:cddce0b517497066e6f5c21bf4e29133773aa2fb1aba32450db44db6f5711a9d"
+        ],
+        "stubs/App/views/_templates.php": [
+            "sha256:639faad119ce523488ba6faf83a10a1ed71651cdeb8cc00e5ee76009f640bf49",
+            "sha256:73a0350d1bcbb74ff453150d2c0e47d7228c23867409b3c15180948f3667bed1",
+            "sha256:8eb81f7fa25a5d0b00396da324a0751465744d945e64ab5f08cc92794cafa4fe",
+            "sha256:bdae41d9f8c514bfe7d184fb446e88fad9f0f6c4b40af47d2d01e8242f313f49",
+            "sha256:c3f582ca3d4e72e7f74cddfa9ef4deedda98b294159ec833793028b018dea63d"
+        ],
+        "stubs/public/index.php": [
+            "sha256:908fe3651ac273a7a80c68f2f01066304541b78df05b0365464f7b34fbd048aa",
+            "sha256:9d8880e9ee4125d0c092ed36e6d0f20cfbdfe42dd65c6101ca8aa786b3dc8583"
+        ],
+        "stubs/tools/liquidstack/vite/update-languages-plugin.mjs": [
+            "sha256:3c29f94f3b20fe34c2bdfa1a0fd1391e7980ee18e47d2a4ec628f69a49a0db91"
+        ]
+    }
+}

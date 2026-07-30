@@ -1057,7 +1057,7 @@ let bloomFramebuffers = [];
 let sunrays;
 let sunraysTemp;
 
-let ditheringTexture = createTextureAsync('LDR_LLL1_0.png');
+let ditheringTexture = createDitheringTexture();
 
 const blurProgram            = new Program(blurVertexShader, blurShader);
 const copyProgram            = new Program(baseVertexShader, copyShader);
@@ -1223,36 +1223,46 @@ function resizeDoubleFBO (target, w, h, internalFormat, format, type, param) {
     return target;
 }
 
-function createTextureAsync (url) {
+function createDitheringTexture () {
     let texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 1, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255]));
 
-    let obj = {
+    const bayer = [
+        0, 128, 32, 160,
+        192, 64, 224, 96,
+        48, 176, 16, 144,
+        240, 112, 208, 80,
+    ];
+    const pixels = new Uint8Array(
+        bayer.flatMap((value) => [value, value, value])
+    );
+
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGB,
+        4,
+        4,
+        0,
+        gl.RGB,
+        gl.UNSIGNED_BYTE,
+        pixels
+    );
+
+    return {
         texture,
-        width: 1,
-        height: 1,
+        width: 4,
+        height: 4,
         attach (id) {
             gl.activeTexture(gl.TEXTURE0 + id);
             gl.bindTexture(gl.TEXTURE_2D, texture);
             return id;
         }
     };
-
-    let image = new Image();
-    image.onload = () => {
-        obj.width = image.width;
-        obj.height = image.height;
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
-    };
-    image.src = url;
-
-    return obj;
 }
 
 function updateKeywords () {

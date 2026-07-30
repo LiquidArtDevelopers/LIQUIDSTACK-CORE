@@ -14,34 +14,38 @@ Centraliza:
 
 Al ejecutar `composer install` o `composer update` en un proyecto que consume este paquete:
 
-1. Se copian stubs backend desde `stubs/` al proyecto.
-   Los archivos homónimos gestionados por CORE se actualizan; los archivos
-   adicionales del proyecto se conservan porque la sincronización no borra
-   elementos que solo existen en el consumidor. Entre los ficheros gestionados
-   está `App/app/updateLanguage.php`, necesario para el guardado individual y
-   por lotes del editor inline.
+1. Se sincronizan los stubs y recursos de forma **aditiva por defecto**:
+   - Un fichero nuevo de CORE se instala cuando todavía no existe en el
+     consumidor.
+   - Un fichero existente solo se actualiza si su estado registrado o una
+     huella histórica de CORE permiten reconocer que sigue intacto. La
+     comparación normaliza los finales de línea para que LF/CRLF no convierta
+     un fichero intacto en una falsa personalización.
+   - Si un controlador, template, SCSS, JS o asset de un recurso contiene una
+     personalización desconocida, se conserva el grupo completo del recurso.
+     Así no se mezclan piezas de contratos incompatibles.
+   - La sincronización nunca borra ficheros del consumidor.
+   - Los JSON de idiomas se fusionan recursivamente: CORE añade claves y
+     propiedades ausentes, pero no sustituye ningún valor existente, incluidos
+     `""`, `null`, `false`, `0` y las colecciones vacías. La inserción conserva
+     el formato y los finales de línea del catálogo; no reserializa el fichero
+     completo.
+
+   El resultado se registra en `.liquidstack/core/managed-files.json`. Este
+   manifiesto pertenece al proyecto consumidor y debe versionarse para que las
+   siguientes actualizaciones puedan distinguir con precisión los ficheros
+   intactos de sus personalizaciones.
 
    La familia `moduleFormContact01/02/03` incluye además un backend de contacto
    genérico (`formContact.php`, transporte PHPMailer, comprobaciones y
-   catálogos de correo ES/EN/EU). Estos ficheros se instalan únicamente cuando
-   faltan: un backend, transporte o catálogo `_email` ya personalizado por el
-   proyecto se conserva sin cambios.
+   catálogos de correo ES/EN/EU). El backend, las plantillas de email, el
+   runtime legal, el footer y los logos son semillas: se instalan únicamente
+   cuando faltan y cualquier variante local existente se conserva.
 2. Se copian recursos frontend:
-- `resources/js` -> `src/js/resources` (y copia en `vendor/liquidstack/core/resources/js`).
-- `resources/scss` -> `src/scss/resources` (y copia en `vendor/liquidstack/core/resources/scss`).
+- `resources/js` -> `src/js/resources`.
+- `resources/scss` -> `src/scss/resources`.
 - `resources/img` -> `public/assets/img`.
 - `resources/video` -> `public/assets/video`.
-
-Los recursos de imagen gestionados por CORE se actualizan cuando cambia su
-contenido, salvo `public/assets/img/logos`: los logos canónicos se instalan si
-faltan, pero un logo ya existente se considera branding del proyecto y nunca
-se sobrescribe. La sincronización tampoco elimina imágenes o vídeos que solo
-existan en el consumidor.
-
-El contenido legal y el footer suelen contener datos regulatorios y branding
-propios. Por ello, `_terminos.js`, `_moduleTerminos.scss`, `footerInfo01.php` y
-`_footerInfo01.html` se instalan si faltan, pero una variante local existente
-no se sobrescribe desde CORE.
 
 3. Se fusionan dependencias de `package.core.json` en el `package.json` del proyecto consumidor.
 4. Se instala el watcher compartido de idiomas en
@@ -69,11 +73,16 @@ La sincronizacion automatica anterior la realiza el plugin en los eventos
 `post-install-cmd` y `post-update-cmd`. Los errores de la guia para agentes se
 registran sin interrumpir Composer.
 
-Los ficheros canónicos gestionados —entre ellos `_showroom.php`,
-`templates/*.json`, `src/scss/templates.scss` y `src/js/templates.js`— se
-actualizan completos. Antes de ejecutar Composer, promueve a CORE cualquier
-recurso o clave local añadida dentro de esos ficheros. Las vistas, rutas,
-idiomas de páginas y recursos adicionales con nombres distintos se conservan.
+Son propiedad del proyecto y no se sobrescriben automáticamente las rutas,
+el fichero `vite.config.js` completo, `src/scss/_config.scss`,
+`src/scss/_global.scss`, los SCSS propios de páginas y las configuraciones
+locales. Las vistas, idiomas de páginas y recursos adicionales con nombres
+distintos también se conservan.
+
+CORE puede migrar de forma quirúrgica el watcher legacy dentro de
+`vite.config.js` únicamente cuando reconoce exactamente su implementación
+histórica. Si la configuración no coincide con ese contrato, la preserva y
+muestra las instrucciones para integrar el plugin manualmente.
 
 ## Scripts Composer y paquete raiz
 
@@ -143,7 +152,7 @@ Esa estructura se conserva en destino. Ejemplo:
 
 ## Importante sobre `src/scss/_config.scss`, `src/scss/_global.scss` y `src/js/_global.js`
 
-Esos archivos **no** se sincronizan automaticamente a proyectos cliente en el instalador actual.
+Esos archivos **no** se sincronizan automaticamente a proyectos cliente.
 Solo se sincronizan de `src/`:
 
 - `src/js/templates.js`
@@ -153,6 +162,15 @@ Por tanto:
 
 - Los archivos `_config.scss` y `_global.scss` del proyecto cliente no se pisan.
 - En este core se mantienen como referencia/base para desarrollo, pero no como override forzado en clientes.
+- Los recursos estándar de CORE deben limitar sus referencias `c.$...` al
+  contrato SCSS v1 de 40 variables documentado en
+  `manifests/scss-config-contract-v1.json`.
+- Un valor de tema específico de un recurso debe exponerse como una custom
+  property CSS con fallback a una variable del contrato. El consumidor puede
+  modificarla desde el contexto que hidrata la vista sin ampliar ni reescribir
+  su `_config.scss`.
+- Los SCSS de páginas son siempre locales y no forman parte de la
+  sincronización gestionada.
 
 ### 3) Backend/stubs del recurso
 
@@ -291,12 +309,9 @@ seguir `<clave-base>_srcset01`, `<clave-base>_srcset02`, etc. y existir en
 todos los idiomas. El editor las presenta junto a `src`, `alt` y `title` y
 actualiza el atributo `srcset` sin recargar la página.
 
-Al adoptar esta versión, Composer actualiza cualquier
-`App/app/updateLanguage.php` homónimo. Si un proyecto había personalizado ese
-endpoint, debe conservar o reaplicar su autenticación y validaciones sobre la
-versión de CORE antes de ejecutar la actualización en producción. El
-instalador muestra un aviso cuando detecta que el fichero local que va a
-actualizar es distinto.
+Al adoptar esta versión, Composer actualiza `App/app/updateLanguage.php` si
+reconoce una copia intacta de CORE. Si el endpoint contiene una personalización
+desconocida, conserva el grupo del editor inline para no mezclar contratos.
 
 `src/js/_global.js` tampoco se sobrescribe. El proyecto debe conservar la
 activación del editor:
@@ -312,6 +327,12 @@ initInlineEditor();
 `_showroom.php` es el catálogo canónico de recursos. `_templates.php` se
 mantiene como alias para no romper los stacks que todavía acceden a
 `/{lang}/templates`. Ambas vistas usan el bundle y los idiomas `templates`.
+
+Las rutas legacy que mantienen `resources => templates` y
+`content => showroom` también son compatibles: la aplicación carga primero el
+catálogo `templates` como base y después `showroom` como override. Así conserva
+el copy particular existente y completa de forma aditiva las claves nuevas de
+controladores sin reescribir el JSON legacy.
 
 El instalador sincroniza las vistas, pero deliberadamente no sobrescribe
 `App/config/routes/get.php` ni `App/config/rutas.js`, porque contienen rutas
@@ -347,6 +368,8 @@ Reglas de fusion en proyecto cliente:
 
 ### 5) Validación antes de publicar
 
+- Regenerar las huellas históricas después de cerrar los cambios gestionados:
+  `php tools/build-managed-file-history.php`.
 - Ejecutar `php -l` sobre los controladores y vistas añadidos.
 - Validar los JSON de `templates` en todos los idiomas base.
 - Compilar `src/scss/templates.scss`.
@@ -421,6 +444,7 @@ Uso rapido desde PowerShell:
 ```powershell
 cd C:\xampp\htdocs\__LIQUIDSTACK\LIQUIDSTACK-CORE
 
+php tools/build-managed-file-history.php
 git add .
 git commit -m "Descripción del cambio"
 

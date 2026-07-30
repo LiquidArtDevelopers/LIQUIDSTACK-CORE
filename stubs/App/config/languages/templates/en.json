@@ -1750,7 +1750,7 @@
         "text": "Consumo optimizado en vivienda unifamiliar"
     },
     "art05_00_a_img": {
-        "src": "/assets/img/system/bookmark-outline.svg",
+        "src": "assets/img/system/bookmark-outline.svg",
         "alt": "Técnica revisando inversores solares en planta industrial",
         "title": "Supervisión profesional de inversores industriales en operación"
     },
@@ -1764,7 +1764,7 @@
         "text": "Cadena hotelera con autoconsumo activo"
     },
     "art05_00_b_img": {
-        "src": "/assets/img/system/bookmark-outline.svg",
+        "src": "assets/img/system/bookmark-outline.svg",
         "alt": "Gestora analizando panel de monitorización solar",
         "title": "Seguimiento digital del autoconsumo en hoteles"
     },
@@ -1778,7 +1778,7 @@
         "text": "Cooperativa agro instala bombeo eficiente"
     },
     "art05_00_c_img": {
-        "src": "/assets/img/system/bookmark-outline.svg",
+        "src": "assets/img/system/bookmark-outline.svg",
         "alt": "Técnica revisa cuadros solares en cooperativa rural",
         "title": "Supervisión de bombeo fotovoltaico cooperativo"
     },
@@ -1792,7 +1792,7 @@
         "text": "Industria alimentaria optimiza autoconsumo frío"
     },
     "art05_00_d_img": {
-        "src": "/assets/img/system/bookmark-outline.svg",
+        "src": "assets/img/system/bookmark-outline.svg",
         "alt": "Operario ajusta paneles solares en cubierta logística",
         "title": "Mantenimiento fotovoltaico en planta alimentaria"
     },
@@ -2028,17 +2028,6 @@
         "text": "artVideo02 · Column video"
     },
 
-    "hero02_video_poster": {
-        "src": "assets/img/dummy/dummy_2560.avif"
-    },
-
-    "art03_00_headerSecondary_d": {
-        "text": "Planes de continuidad certificados ISO"
-    },
-
-    "art05_00_headerSecondary_d": {
-        "text": "Industria alimentaria optimiza autoconsumo frío"
-    },
     "art17_00_a_list_c": {
         "text": "Tailored strategy for the long term"
     },

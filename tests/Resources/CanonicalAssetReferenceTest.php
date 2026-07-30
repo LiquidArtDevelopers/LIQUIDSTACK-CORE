@@ -71,4 +71,25 @@ final class CanonicalAssetReferenceTest extends TestCase
             );
         }
     }
+
+    public function testHero04DitheringDoesNotRequestAnUndistributedFile(): void
+    {
+        $javascript = file_get_contents(
+            dirname(__DIR__, 2) . '/resources/js/_hero04.js'
+        );
+
+        self::assertIsString($javascript);
+        self::assertStringContainsString(
+            'createDitheringTexture()',
+            $javascript
+        );
+        self::assertStringNotContainsString(
+            'LDR_LLL1_0.png',
+            $javascript
+        );
+        self::assertStringNotContainsString(
+            'createTextureAsync(',
+            $javascript
+        );
+    }
 }

@@ -1744,7 +1744,7 @@
         "text": "The Matrix has you."
     },
     "art05_00_a_img": {
-        "src": "/assets/img/system/bookmark-outline.svg",
+        "src": "assets/img/system/bookmark-outline.svg",
         "alt": "Believe.",
         "title": "Ignorance is bliss."
     },
@@ -1758,7 +1758,7 @@
         "text": "Choice is an illusion."
     },
     "art05_00_b_img": {
-        "src": "/assets/img/system/bookmark-outline.svg",
+        "src": "assets/img/system/bookmark-outline.svg",
         "alt": "Choice is an illusion.",
         "title": "Welcome to the real world."
     },
@@ -1772,7 +1772,7 @@
         "text": "You are the One."
     },
     "art05_00_c_img": {
-        "src": "/assets/img/system/bookmark-outline.svg",
+        "src": "assets/img/system/bookmark-outline.svg",
         "alt": "Ignorance is bliss.",
         "title": "Believe."
     },
@@ -1783,7 +1783,7 @@
         "text": "Red pill or blue pill."
     },
     "art05_00_d_img": {
-        "src": "/assets/img/system/bookmark-outline.svg",
+        "src": "assets/img/system/bookmark-outline.svg",
         "alt": "Believe.",
         "title": "Welcome to the real world."
     },
