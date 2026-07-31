@@ -128,6 +128,9 @@ const plugin = createUpdateLanguagesPlugin(
 plugin.handleHotUpdate({
   file: String.raw`C:\stack\App\views\_showroom.php`,
 });
+plugin.handleHotUpdate({
+  file: String.raw`C:\stack\App\views\showroom\_heroes.php`,
+});
 plugin.handleHotUpdate({ file: "/stack/App/views/quienes-somos.php" });
 plugin.handleHotUpdate({ file: "App/includes/navigation.php" });
 plugin.handleHotUpdate({ file: "/stack/src/ignored.js" });
@@ -149,6 +152,7 @@ process.stdout.write(JSON.stringify({
   name: plugin.name,
   resolutions: [
     resolveLanguageUpdate(String.raw`C:\stack\App\views\_templates.php`),
+    resolveLanguageUpdate("/stack/App/views/showroom/_local.php"),
     resolveLanguageUpdate("App/views/home.php"),
     resolveLanguageUpdate("/stack/App/includes/footer.php"),
     resolveLanguageUpdate("/stack/App/controllers/home.php"),
@@ -182,7 +186,7 @@ JS;
 
         self::assertSame('update-languages', $result['name']);
         self::assertSame(
-            ['_showroom.php', 'quienes-somos.php', 'global'],
+            ['_showroom.php', '_showroom.php', 'quienes-somos.php', 'global'],
             $result['calls']
         );
         self::assertSame([], $result['logs']);
@@ -190,9 +194,10 @@ JS;
             '_templates.php',
             $result['resolutions'][0]['slug']
         );
-        self::assertSame('home.php', $result['resolutions'][1]['slug']);
-        self::assertSame('global', $result['resolutions'][2]['slug']);
-        self::assertNull($result['resolutions'][3]);
+        self::assertSame('_showroom.php', $result['resolutions'][1]['slug']);
+        self::assertSame('home.php', $result['resolutions'][2]['slug']);
+        self::assertSame('global', $result['resolutions'][3]['slug']);
+        self::assertNull($result['resolutions'][4]);
         self::assertSame([], $result['skippedCalls']);
         self::assertCount(1, $result['skippedLogs']);
         self::assertStringContainsString(

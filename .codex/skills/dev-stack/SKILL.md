@@ -34,8 +34,9 @@ Un recurso reutilizable completo suele incluir:
 - `src/scss/resources/_<recurso>.scss`
 - `src/js/resources/_<recurso>.js` solo si necesita comportamiento
 - imports SCSS/JS en la entrada de la vista
-- ejemplo e hidratación en `App/views/_showroom.php`; `_templates.php` debe
-  cargar el mismo catálogo como alias compatible
+- ejemplo e hidratación en el partial de categoría
+  `App/views/showroom/_<categoria>.php`; `_showroom.php` es el shell canónico
+  y `_templates.php` carga ese mismo catálogo como alias compatible
 - valores de referencia en `App/config/languages/templates/{es,eu,en}.json`, según los idiomas presentes
 
 Seguir siempre el patrón real del repositorio si una ruta difiere.
@@ -81,9 +82,14 @@ controller('nombre', $index, [
 - `$params` reúne reemplazos de placeholders y opciones del controlador.
 - `items` controla los elementos repetibles y debe viajar dentro de `$params`, no como cuarto argumento.
 - `header_level` fija el nivel principal cuando no puede inferirse del placeholder inyectado.
-- Registrar en `App/views/_showroom.php` una instancia completa y funcional
-  que actúe como contrato de referencia, y comprobar que `_templates.php`
-  carga el mismo catálogo.
+- Registrar una instancia completa y funcional en el partial adecuado de
+  `App/views/showroom/`: `heroes`, `particles`, `gsap-specials`, `common`,
+  `cards-grids`, `media`, `forms-interactive` o `modules-sections`. Comprobar
+  que `/showroom/<categoria>` y `/templates/<categoria>` cargan el mismo
+  catálogo.
+- No añadir recursos directamente al shell `_showroom.php`. Un experimento
+  local que aún no viaja a CORE debe usar `App/views/showroom/_local.php` y
+  limitarse por `$showroomCategory`, sin modificar los ficheros gestionados.
 - Hacer que el copy del encabezado principal del ejemplo contenga el
   identificador exacto del recurso (`art02`, `sectionHScroll01`, etc.) para
   localizarlo con la búsqueda del navegador. Si se inyecta un encabezado
@@ -107,7 +113,7 @@ controller('nombre', $index, [
 ### Idiomas e hidratación
 
 - Conservar en los JSON de `templates` valores dummy para todos los items
-  mostrados en `_showroom.php`; ambas rutas deben usar el contenido
+  mostrados en los partials del showroom; ambas familias de rutas deben usar el contenido
   `templates`.
 - No borrar ni inventar valores dummy acordados con un cliente.
 - Mantener cada `data-lang` como objeto con las propiedades necesarias (`text`, `alt`, `title`, `href`, etc.); evitar entradas planas si el recurso necesita atributos.
@@ -193,8 +199,15 @@ controller('nombre', $index, [
 - Acotar selectores a la raíz del recurso y soportar varias instancias.
 - Basar items variables en índices/elementos del DOM, no en claves de idioma usadas como `data-*`.
 - Limpiar listeners, animaciones, timelines, `ScrollTrigger`, RAF, observadores o WebGL cuando el recurso pueda reinicializarse.
-- Registrar import e inicialización tanto en la entrada de la vista como en
-  `src/js/templates.js` cuando el showroom lo necesite.
+- Registrar import e inicialización en la entrada de la vista. Para el
+  showroom, añadir el init al módulo dinámico
+  `src/js/showroom/<categoria>.js` y sus estilos a
+  `src/scss/showroom/<categoria>.scss`; no volver a convertir
+  `templates.js`/`templates.scss` en bundles monolíticos.
+- Un recurso local en pruebas puede usar
+  `src/js/showroom/local/<categoria>.js` e importar allí su SCSS. CORE
+  descubrirá ese hook sin que el proyecto personalice el entrypoint
+  gestionado.
 
 ## Jerarquía de encabezados
 
@@ -222,7 +235,7 @@ Antes de entregar:
 2. Ejecutar el actualizador de idiomas para las vistas afectadas y revisar el diff.
 3. Verificar cantidad de `$items`, prefijos, `$pad`, `$letter` y unicidad de claves.
 4. Verificar placeholders sin resolver y estructura de objetos `data-lang`.
-5. Verificar imports/inits de la vista y del showroom.
+5. Verificar imports/inits de la vista y de la categoría del showroom.
 6. Compilar o ejecutar las pruebas frontend pertinentes.
 7. Inspeccionar el recurso en navegador en mobile, tablet y desktop cuando esté disponible.
 8. Auditar que ningún SCSS de recurso use `color04+` ni `filterColor*`.

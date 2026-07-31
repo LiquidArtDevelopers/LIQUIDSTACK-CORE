@@ -88,6 +88,45 @@ export default class traduccionClass {
     return `${pathOrigin}/${lang}/${href}`;
   }
 
+  resolveRouteContext(pathActual, currentLang, targetLang = currentLang) {
+    const currentRoutes = rutas[currentLang] ?? {};
+    const targetRoutes = rutas[targetLang] ?? {};
+    const decodedPath = decodeURI(pathActual);
+    let routeIndex = Object.keys(currentRoutes).indexOf(decodedPath);
+    const directTarget =
+      routeIndex >= 0 ? Object.keys(targetRoutes)[routeIndex] : null;
+
+    if (directTarget) {
+      return {
+        path: directTarget,
+        route: targetRoutes[directTarget] ?? null,
+      };
+    }
+
+    const category = document.body?.dataset.showroomCategory ?? "";
+    if (
+      category === ""
+      || category === "index"
+      || !decodedPath.endsWith(`/${category}`)
+    ) {
+      return { path: null, route: null };
+    }
+
+    const parentPath = decodedPath.slice(0, -(category.length + 1));
+    routeIndex = Object.keys(currentRoutes).indexOf(parentPath);
+    const targetParent =
+      routeIndex >= 0 ? Object.keys(targetRoutes)[routeIndex] : null;
+
+    if (!targetParent) {
+      return { path: null, route: null };
+    }
+
+    return {
+      path: `${targetParent.replace(/\/$/, "")}/${category}`,
+      route: targetRoutes[targetParent] ?? null,
+    };
+  }
+
   //Función para quitar los estilos al selector de idiomas
   resetearIdioma() {
     this.listadoIdiomas = document.getElementsByClassName("btn_idioma");
@@ -157,7 +196,11 @@ export default class traduccionClass {
     // console.log(pathLang)
 
     //OBTENEMOS LA RUTA FINAL SEGÚN EL IDIOMA DE LA PATHNAME NUEVA
-    let ruta = rutas[pathLang][pathActual];
+    let ruta = this.resolveRouteContext(
+      pathActual,
+      pathLang,
+      this.idioma || pathLang
+    ).route;
     // console.log(ruta)
 
     // COGEMOS EL JSON DEL GLOBAL E IDIOMA CORRESPONDIENTE
@@ -319,21 +362,13 @@ export default class traduccionClass {
       pathLang = DEFAULT_LANG;
     }
 
-    //BUSCAMOS EL ÍNDICE DE LA RUTA DENTRO DEL IDIOMA DEL PATHNAME, PARA ELLO CONVERTIMOS A ARRAY EL SEGUNDO NIVEL DEL OBJETO QUE HEMOS BUSCADO POR EL IDIOMA DEL PATHNAME, Y NOS QUEDAMOS CON SU ÍNDICE.
-    let indiceRuta = Object.keys(rutas[pathLang]).indexOf(
-      decodeURI(pathActual)
+    const routeContext = this.resolveRouteContext(
+      pathActual,
+      pathLang,
+      this.idioma
     );
-    // console.log(indiceRuta);
-
-    //BUSCAMOS LA RUTA EQUIVALENTE SEGÚN EL IDIOMA SELECCIONADO
-    // console.log(this.idioma)
-
-    let pathNueva = Object.keys(rutas[this.idioma])[indiceRuta];
-    // console.log(pathNueva)
-
-    //OBTENEMOS LA RUTA FINAL SEGÚN EL IDIOMA DE LA PATHNAME NUEVA
-    let ruta = rutas[this.idioma][pathNueva];
-    // console.log(ruta)
+    const pathNueva = routeContext.path ?? pathActual;
+    const ruta = routeContext.route;
 
     const normalizedRoute = ruta ?? (appConfig?.route ?? null);
 
@@ -347,6 +382,7 @@ export default class traduccionClass {
           lang: targetLang,
           route: normalizedRoute,
           defaultLang: DEFAULT_LANG,
+          path: pathNueva,
         },
       })
     );

@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
+
+require_once dirname(__DIR__) . '/Support/ShowroomCatalogFixture.php';
 use Symfony\Component\Filesystem\Filesystem;
 
 final class VideoResourceContractTest extends TestCase
@@ -413,19 +415,16 @@ final class VideoResourceContractTest extends TestCase
 
     public function testShowroomImportsAndEveryTemplateCatalogExposeBothModes(): void
     {
-        $scss = $this->readFile(self::coreRoot() . '/src/scss/templates.scss');
-        $javascript = $this->readFile(self::coreRoot() . '/src/js/templates.js');
-        $showroom = $this->readFile(self::coreRoot() . '/stubs/App/views/_showroom.php');
+        $scss = ShowroomCatalogFixture::scss(self::coreRoot());
+        $javascript = ShowroomCatalogFixture::javascript(self::coreRoot());
+        $showroom = ShowroomCatalogFixture::corePhp(self::coreRoot());
 
-        self::assertSame(1, substr_count($scss, "@use './resources/artVideo01';"));
-        self::assertSame(1, substr_count($scss, "@use './resources/artVideo02';"));
-        self::assertSame(1, substr_count($scss, "@use './resources/moduleVideo01';"));
-        self::assertSame(
-            1,
-            substr_count(
-                $javascript,
-                "import initModuleVideo01 from './resources/_moduleVideo01.js'"
-            )
+        self::assertSame(1, substr_count($scss, "@use '../resources/artVideo01';"));
+        self::assertSame(1, substr_count($scss, "@use '../resources/artVideo02';"));
+        self::assertSame(1, substr_count($scss, "@use '../resources/moduleVideo01';"));
+        self::assertStringContainsString(
+            "import initModuleVideo01 from '../resources/_moduleVideo01.js'",
+            $javascript
         );
         self::assertSame(1, substr_count($javascript, 'initModuleVideo01()'));
         self::assertSame(2, substr_count($showroom, "controller('artVideo01'"));

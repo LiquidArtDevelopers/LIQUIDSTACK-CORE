@@ -7,6 +7,7 @@ use App\Core\Composer\Plugin;
 use Composer\Composer;
 use Composer\Config;
 use Composer\IO\BufferIO;
+use Composer\Plugin\PluginEvents;
 use Composer\Script\Event;
 use Composer\Script\ScriptEvents;
 use PHPUnit\Framework\TestCase;
@@ -54,9 +55,10 @@ final class InstallerAgentGuidanceTest extends TestCase
         }
     }
 
-    public function testPluginSubscribesBothComposerLifecycleEvents(): void
+    public function testPluginSubscribesComposerLifecycleAndRequireEvents(): void
     {
         self::assertSame([
+            PluginEvents::PRE_COMMAND_RUN => 'onPreCommandRun',
             ScriptEvents::POST_INSTALL_CMD => 'onPostInstall',
             ScriptEvents::POST_UPDATE_CMD  => 'onPostUpdate',
         ], Plugin::getSubscribedEvents());

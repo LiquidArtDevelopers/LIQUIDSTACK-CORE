@@ -9,6 +9,7 @@ use FilesystemIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Filesystem\Path;
 
 final class ManagedFileSynchronizer
 {
@@ -30,6 +31,9 @@ final class ManagedFileSynchronizer
      * }>
      */
     private array $queue = [];
+
+    /** @var array<string, string> */
+    private array $queuedTargets = [];
 
     /**
      * @var array<string, list<string>>
@@ -100,6 +104,21 @@ final class ManagedFileSynchronizer
         }
 
         $queueKey = $targetId . "\0" . $sourceId;
+        $targetKey = Path::canonicalize(str_replace('\\', '/', $target));
+        if (PHP_OS_FAMILY === 'Windows') {
+            $targetKey = strtolower($targetKey);
+        }
+
+        if (
+            isset($this->queuedTargets[$targetKey])
+            && $this->queuedTargets[$targetKey] !== $queueKey
+        ) {
+            throw new \RuntimeException(sprintf(
+                'Colisión de sincronización: más de un origen apunta a %s.',
+                $target
+            ));
+        }
+        $this->queuedTargets[$targetKey] = $queueKey;
 
         $this->queue[$queueKey] = [
             'source' => $source,
@@ -118,7 +137,9 @@ final class ManagedFileSynchronizer
         string $target,
         string $sourceIdPrefix,
         string $targetIdPrefix,
-        bool $trackState = true
+        bool $trackState = true,
+        ?string $policy = null,
+        ?string $group = null
     ): void {
         if (!is_dir($source)) {
             $this->io->writeError(sprintf(
@@ -159,8 +180,8 @@ final class ManagedFileSynchronizer
                 rtrim($targetIdPrefix, '/')
                     . '/'
                     . $relativePath,
-                null,
-                null,
+                $policy,
+                $group,
                 $trackState
             );
         }

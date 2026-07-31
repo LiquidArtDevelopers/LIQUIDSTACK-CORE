@@ -23,6 +23,67 @@
         "content": "nofollow, noindex, max-snippet:-1, max-video-preview:-1, max-image-preview:large"
     },
 
+    "showroom_catalog_title": {
+        "text": "Catálogo de recursos LiquidStack"
+    },
+    "showroom_catalog_intro": {
+        "text": "Selecciona una categoría para revisar recursos sin cargar el catálogo completo."
+    },
+    "showroom_catalog_nav": {
+        "text": "Categorías del showroom"
+    },
+    "showroom_catalog_index": {
+        "text": "Índice"
+    },
+    "showroom_catalog_category_heroes_label": {
+        "text": "Héroes"
+    },
+    "showroom_catalog_category_heroes_description": {
+        "text": "Headers de apertura y sus composiciones H1."
+    },
+    "showroom_catalog_category_particles_label": {
+        "text": "Partículas"
+    },
+    "showroom_catalog_category_particles_description": {
+        "text": "Fondos de partículas, canvas y WebGL."
+    },
+    "showroom_catalog_category_gsap_specials_label": {
+        "text": "GSAP especiales"
+    },
+    "showroom_catalog_category_gsap_specials_description": {
+        "text": "Experiencias inmersivas, pin, scroll y WebGL."
+    },
+    "showroom_catalog_category_common_label": {
+        "text": "Artículos comunes"
+    },
+    "showroom_catalog_category_common_description": {
+        "text": "Composiciones directas de imagen, título y texto."
+    },
+    "showroom_catalog_category_cards_grids_label": {
+        "text": "Fichas y rejillas"
+    },
+    "showroom_catalog_category_cards_grids_description": {
+        "text": "Cards, matrices, listados y bloques repetibles."
+    },
+    "showroom_catalog_category_media_label": {
+        "text": "Multimedia"
+    },
+    "showroom_catalog_category_media_description": {
+        "text": "Vídeo, imagen, sliders y galerías interactivas."
+    },
+    "showroom_catalog_category_forms_interactive_label": {
+        "text": "Formularios e interacción"
+    },
+    "showroom_catalog_category_forms_interactive_description": {
+        "text": "Formularios, acordeones y pestañas."
+    },
+    "showroom_catalog_category_modules_sections_label": {
+        "text": "Módulos y secciones"
+    },
+    "showroom_catalog_category_modules_sections_description": {
+        "text": "Átomos reutilizables y composiciones de sección."
+    },
+
     "hero00_bg_mobile": {
         "src": "assets/img/dummy/dummy_900.avif"
     },

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Directrices de copy para artHeroScroll01:
  * - Encabezado principal: 3-7 palabras.

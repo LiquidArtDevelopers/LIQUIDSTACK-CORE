@@ -11,6 +11,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
 require_once dirname(__DIR__, 2) . '/src/Core/Composer/Installer.php';
+require_once dirname(__DIR__) . '/Support/ShowroomCatalogFixture.php';
 
 final class InstallerResourceSyncTest extends TestCase
 {
@@ -58,6 +59,16 @@ final class InstallerResourceSyncTest extends TestCase
 
     public function testComposerUpdatePromotesResourcesAndBothCatalogViews(): void
     {
+        $localShowroomExtensions = [
+            '/App/views/showroom/_local.php'
+                => '<?php echo "project showroom extension";',
+            '/src/js/showroom/local/media.js'
+                => 'export default () => "project media extension";',
+        ];
+        foreach ($localShowroomExtensions as $relativePath => $contents) {
+            $this->writeFile($this->projectRoot . $relativePath, $contents);
+        }
+
         Installer::postUpdate($this->createEvent());
 
         $coreRoot = dirname(__DIR__, 2);
@@ -274,6 +285,41 @@ final class InstallerResourceSyncTest extends TestCase
             $coreRoot . '/stubs/App/views/_templates.php',
             $this->projectRoot . '/App/views/_templates.php'
         );
+        foreach ([
+            'heroes',
+            'particles',
+            'gsap-specials',
+            'common',
+            'cards-grids',
+            'media',
+            'forms-interactive',
+            'modules-sections',
+        ] as $category) {
+            self::assertFileEquals(
+                $coreRoot . "/stubs/App/views/showroom/_{$category}.php",
+                $this->projectRoot
+                    . "/App/views/showroom/_{$category}.php"
+            );
+            self::assertFileEquals(
+                $coreRoot . "/src/js/showroom/{$category}.js",
+                $this->projectRoot . "/src/js/showroom/{$category}.js"
+            );
+            self::assertFileEquals(
+                $coreRoot . "/src/scss/showroom/{$category}.scss",
+                $this->projectRoot . "/src/scss/showroom/{$category}.scss"
+            );
+        }
+        self::assertFileEquals(
+            $coreRoot . '/src/js/showroom/catalog-routing.mjs',
+            $this->projectRoot . '/src/js/showroom/catalog-routing.mjs'
+        );
+        foreach ($localShowroomExtensions as $relativePath => $contents) {
+            self::assertSame(
+                $contents,
+                file_get_contents($this->projectRoot . $relativePath),
+                "Composer no debe sobrescribir {$relativePath}"
+            );
+        }
         self::assertFileExists($this->projectRoot . '/App/views/project-only.php');
         self::assertSame(
             '<?php return ["project-route" => true];',
@@ -288,11 +334,11 @@ final class InstallerResourceSyncTest extends TestCase
             file_get_contents($this->projectRoot . '/App/config/rutas.js')
         );
 
-        $showroom = file_get_contents($this->projectRoot . '/App/views/_showroom.php');
+        $showroom = ShowroomCatalogFixture::php($this->projectRoot);
         $templates = file_get_contents($this->projectRoot . '/App/views/_templates.php');
-        $entrypoint = file_get_contents($this->projectRoot . '/src/scss/templates.scss');
-        $scriptEntrypoint = file_get_contents(
-            $this->projectRoot . '/src/js/templates.js'
+        $entrypoint = ShowroomCatalogFixture::scss($this->projectRoot);
+        $scriptEntrypoint = ShowroomCatalogFixture::javascript(
+            $this->projectRoot
         );
 
         self::assertIsString($showroom);
@@ -317,23 +363,23 @@ final class InstallerResourceSyncTest extends TestCase
             $showroom
         );
         self::assertStringContainsString("require __DIR__ . '/_showroom.php';", $templates);
-        self::assertStringContainsString("@use './resources/art02little';", $entrypoint);
-        self::assertStringContainsString("@use './resources/moduleList01';", $entrypoint);
-        self::assertStringContainsString("@use './resources/moduleParrafo01';", $entrypoint);
-        self::assertStringContainsString("@use './resources/moduleTable01';", $entrypoint);
-        self::assertStringContainsString("@use './resources/art33';", $entrypoint);
-        self::assertStringContainsString("@use './resources/art34';", $entrypoint);
+        self::assertStringContainsString("@use '../resources/art02little';", $entrypoint);
+        self::assertStringContainsString("@use '../resources/moduleList01';", $entrypoint);
+        self::assertStringContainsString("@use '../resources/moduleParrafo01';", $entrypoint);
+        self::assertStringContainsString("@use '../resources/moduleTable01';", $entrypoint);
+        self::assertStringContainsString("@use '../resources/art33';", $entrypoint);
+        self::assertStringContainsString("@use '../resources/art34';", $entrypoint);
         self::assertStringContainsString(
-            "@use './resources/moduleFormContact03';",
+            "@use '../resources/moduleFormContact03';",
             $entrypoint
         );
         self::assertStringContainsString(
-            "import initArtAccordion02 from \"./resources/_artAccordion02.js\";",
+            "import initArtAccordion02 from '../resources/_artAccordion02.js';",
             $scriptEntrypoint
         );
         self::assertStringContainsString('initArtAccordion02()', $scriptEntrypoint);
         self::assertStringContainsString(
-            "from './resources/_moduleFormContact.js'",
+            "from '../resources/_moduleFormContact.js'",
             $scriptEntrypoint
         );
         self::assertStringContainsString(
@@ -373,7 +419,7 @@ final class InstallerResourceSyncTest extends TestCase
                 $showroom
             );
             self::assertStringContainsString(
-                "@use './resources/{$resource}';",
+                "@use '../resources/{$resource}';",
                 $entrypoint
             );
         }

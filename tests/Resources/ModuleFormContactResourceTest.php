@@ -6,6 +6,8 @@ use App\Core\Support\Paths;
 use PHPUnit\Framework\TestCase;
 use function App\Core\Support\controller;
 
+require_once dirname(__DIR__) . '/Support/ShowroomCatalogFixture.php';
+
 final class ModuleFormContactResourceTest extends TestCase
 {
     private const RESOURCES = [
@@ -452,54 +454,43 @@ final class ModuleFormContactResourceTest extends TestCase
 
     public function testExistingShowroomAndEntrypointRegistrationsStayComplete(): void
     {
-        $showroom = $this->readFile(
-            Paths::appPath() . '/views/_showroom.php'
-        );
-        if (str_contains($showroom, 'moduleFormContact')) {
-            foreach (self::RESOURCES as $resource) {
-                self::assertSame(
-                    1,
-                    preg_match_all(
-                        "/controller\\(\\s*['\"]{$resource}['\"]\\s*,\\s*0\\b/",
-                        $showroom
-                    ),
-                    "{$resource} debe aparecer una sola vez en el showroom"
-                );
-            }
+        $showroom = ShowroomCatalogFixture::php(Paths::projectRoot());
+        foreach (self::RESOURCES as $resource) {
+            self::assertSame(
+                1,
+                preg_match_all(
+                    "/controller\\(\\s*['\"]{$resource}['\"]\\s*,\\s*0\\b/",
+                    $showroom
+                ),
+                "{$resource} debe aparecer una sola vez en el showroom"
+            );
         }
 
-        $scss = $this->readFile(
-            dirname(__DIR__, 2) . '/src/scss/templates.scss'
-        );
-        if (str_contains($scss, 'moduleFormContact')) {
-            foreach (self::RESOURCES as $resource) {
-                self::assertSame(
-                    1,
-                    substr_count(
-                        $scss,
-                        "@use './resources/{$resource}';"
-                    ),
-                    "{$resource} debe importarse una sola vez"
-                );
-            }
-        }
-
-        $javascript = $this->readFile(
-            dirname(__DIR__, 2) . '/src/js/templates.js'
-        );
-        if (str_contains($javascript, '_moduleFormContact.js')) {
+        $coreRoot = dirname(__DIR__, 2);
+        $scss = ShowroomCatalogFixture::scss($coreRoot);
+        foreach (self::RESOURCES as $resource) {
             self::assertSame(
                 1,
                 substr_count(
-                    $javascript,
-                    "from './resources/_moduleFormContact.js'"
-                )
-            );
-            self::assertSame(
-                1,
-                substr_count($javascript, 'initModuleFormContact()')
+                    $scss,
+                    "@use '../resources/{$resource}';"
+                ),
+                "{$resource} debe importarse una sola vez"
             );
         }
+
+        $javascript = ShowroomCatalogFixture::javascript($coreRoot);
+        self::assertSame(
+            1,
+            substr_count(
+                $javascript,
+                "from '../resources/_moduleFormContact.js'"
+            )
+        );
+        self::assertSame(
+            1,
+            substr_count($javascript, 'initModuleFormContact()')
+        );
     }
 
     private function createXpath(string $html): DOMXPath

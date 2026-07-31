@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Core\Support\Paths;
 use PHPUnit\Framework\TestCase;
+
+require_once dirname(__DIR__) . '/Support/ShowroomCatalogFixture.php';
 use function App\Core\Support\controller;
 
 final class Art33Art34ContractTest extends TestCase
@@ -125,10 +127,8 @@ final class Art33Art34ContractTest extends TestCase
     public function testCatalogAndShowroomRegistrationsAreComplete(): void
     {
         $coreRoot = dirname(__DIR__, 2);
-        $showroom = (string) file_get_contents(
-            $coreRoot . '/stubs/App/views/_showroom.php'
-        );
-        $scss = (string) file_get_contents($coreRoot . '/src/scss/templates.scss');
+        $showroom = ShowroomCatalogFixture::corePhp($coreRoot);
+        $scss = ShowroomCatalogFixture::scss($coreRoot);
 
         foreach (['art33', 'art34'] as $resource) {
             self::assertFileExists(
@@ -145,7 +145,7 @@ final class Art33Art34ContractTest extends TestCase
                 substr_count($showroom, "controller('{$resource}', 0")
             );
             self::assertStringContainsString(
-                "@use './resources/{$resource}';",
+                "@use '../resources/{$resource}';",
                 $scss
             );
         }

@@ -94,6 +94,7 @@ de un checkout de CORE):
 
 ```bash
 composer test
+composer test:module-e2e
 composer release
 composer liquidstack-core:sync-resources
 composer liquidstack-core:sync-frontend-deps
@@ -114,6 +115,31 @@ necesita comandos manuales, debe declararlos expresamente en el
   }
 }
 ```
+
+## WebAdmin y Blog como módulos internos
+
+CORE es el único paquete físico. `liquidstack/webadmin` y `liquidstack/blog`
+son selectores lógicos declarados por el proyecto consumidor; Blog activa
+también WebAdmin como dependencia interna:
+
+```bash
+composer require liquidstack/webadmin
+composer require liquidstack/blog
+```
+
+El atajo sin versión requiere que CORE ya esté instalado y que los plugins de
+Composer estén activos. El fallback es añadir `:*`. Para actualizar el código
+se sigue usando `composer update liquidstack/core`.
+
+`composer test:module-e2e` crea y retira un consumidor temporal para
+comprobar el alta y baja reales de los selectores. No forma parte de la suite
+unitaria porque resuelve dependencias con Composer y puede necesitar red o
+caché local.
+
+La selección lee solo `require` del `composer.json` raíz. Retirar un selector
+desactiva su registro, pero nunca elimina datos, medios, configuración ni
+ficheros del cliente. El contrato completo y su estado de implementación están
+en [arquitectura de módulos internos](docs/arquitectura-modulos-internos.md).
 
 Variables de entorno soportadas:
 
@@ -149,8 +175,11 @@ Esa estructura se conserva en destino. Ejemplo:
 
 ### 2) Registro del recurso en plantillas base del core
 
-- Actualizar `src/js/templates.js` (imports + init del recurso).
-- Actualizar `src/scss/templates.scss` (imports SCSS del recurso).
+- Registrar el JS y su inicialización en
+  `src/js/showroom/<categoria>.js`.
+- Registrar el SCSS en `src/scss/showroom/<categoria>.scss`.
+- `src/js/templates.js` y `src/scss/templates.scss` son únicamente el shell
+  ligero del catálogo; no deben volver a acumular todos los recursos.
 
 ## Importante sobre `src/scss/_config.scss`, `src/scss/_global.scss` y `src/js/_global.js`
 
@@ -159,6 +188,8 @@ cliente. Solo se sincronizan de `src/`:
 
 - `src/js/templates.js`
 - `src/scss/templates.scss`
+- `src/js/showroom/`
+- `src/scss/showroom/`
 
 Por tanto:
 
@@ -214,7 +245,9 @@ Por tanto:
   `resources/js/_inlineEditor.js` y `stubs/App/app/updateLanguage.php`, y
   comprobar que este último sigue registrado en
   `Installer::syncProjectAssets()`.
-- Registrar la composición en `stubs/App/views/_showroom.php`.
+- Registrar la composición en el parcial de su categoría dentro de
+  `stubs/App/views/showroom/`. El shell `stubs/App/views/_showroom.php` solo
+  se modifica cuando cambia la navegación o nace una categoría.
 - Hacer que el encabezado principal del ejemplo contenga el identificador
   exacto del recurso para poder localizarlo con la busqueda del navegador. Si
   el encabezado se inyecta desde otro modulo, usar un indice independiente y
@@ -355,9 +388,38 @@ initInlineEditor();
 
 ### Showroom canónico y ruta compatible
 
-`_showroom.php` es el catálogo canónico de recursos. `_templates.php` se
+`_showroom.php` es el shell canónico del catálogo y `_templates.php` se
 mantiene como alias para no romper los stacks que todavía acceden a
-`/{lang}/templates`. Ambas vistas usan el bundle y los idiomas `templates`.
+`/{lang}/templates`. La ruta padre muestra un índice ligero y cada categoría
+vive en una subruta:
+
+- `heroes`
+- `particles`
+- `gsap-specials`
+- `common`
+- `cards-grids`
+- `media`
+- `forms-interactive`
+- `modules-sections`
+
+Por ejemplo, si el proyecto registra `/es/showroom`, CORE resuelve
+automáticamente `/es/showroom/media`. Solo acepta esas ocho categorías,
+únicamente bajo una ruta padre ya registrada con `resources => templates` y
+vista `_showroom.php` o `_templates.php`. No modifica `get.php` ni
+`rutas.js`, y la misma regla sirve para `/es/templates/media`.
+
+Cada parcial PHP vive en `App/views/showroom/_<categoria>.php`. Vite carga
+dinámicamente solo el JS y SCSS de la categoría solicitada, por lo que visitar
+el índice o un grupo no descarga el catálogo completo. El plugin de idiomas,
+sin embargo, hidrata siempre el shell y todos los parciales para conservar un
+único catálogo `templates`.
+
+El shell, el menú y las descripciones usan claves
+`showroom_catalog_*` del catálogo `templates`; así el cambio de idioma sin
+recarga conserva también la categoría activa y recalcula todos los enlaces
+del índice. El SSR consume las claves ya hidratadas desde `$GLOBALS` con
+fallback por idioma, y `getMatchRouteByLang()` recompone la misma subruta para
+que el selector de idioma funcione también sin JavaScript.
 
 Las rutas legacy que mantienen `resources => templates` y
 `content => showroom` también son compatibles: la aplicación carga primero el
@@ -385,6 +447,15 @@ En `App/config/rutas.js`, la ruta homóloga debe apuntar igualmente a
 '/es/showroom': 'templates',
 ```
 
+Los proyectos pueden ampliar el catálogo sin personalizar el grupo gestionado:
+
+- `App/views/showroom/_local.php` para composición PHP local, comprobando
+  `$showroomCategory` antes de renderizar.
+- `src/js/showroom/local/<categoria>.js` para inicialización local; ese módulo
+  puede importar su SCSS propio.
+
+CORE no distribuye ni elimina esos hooks locales.
+
 ### 4) Dependencias NPM del recurso
 
 Si el recurso necesita librerias nuevas (ejemplo `three`):
@@ -403,7 +474,8 @@ Reglas de fusion en proyecto cliente:
   `php tools/build-managed-file-history.php`.
 - Ejecutar `php -l` sobre los controladores y vistas añadidos.
 - Validar los JSON de `templates` en todos los idiomas base.
-- Compilar `src/scss/templates.scss`.
+- Compilar `src/scss/templates.scss` y comprobar los ocho chunks de
+  `src/scss/showroom/`.
 - Ejecutar `composer test`.
 - Probar `/showroom` y `/templates` en un consumidor enlazado, sin usar como
   fixture un proyecto que tenga cambios locales coincidentes.
@@ -537,6 +609,10 @@ Despues de publicar:
 
 ## Mejoras pendientes
 
+- [Auditoría de compatibilidad en proyectos consumidores](docs/mejoras-pendientes/auditoria-compatibilidad-proyectos-consumidores.md):
+  protocolo obligatorio para probar las actualizaciones de CORE en AIWA,
+  ARRO, un starter BASE limpio y el resto de consumidores antes de desplegar
+  una versión estructural de forma general.
 - [Autocompletado de recursos LiquidStack para VS Code](docs/mejoras-pendientes/autocompletado-vscode-recursos.md):
   propuesta de extensión propia para insertar controladores y completar sus
   opciones y slots públicos a partir de un índice generado por CORE.

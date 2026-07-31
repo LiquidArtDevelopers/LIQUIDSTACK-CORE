@@ -64,13 +64,13 @@ Copiar o adaptar:
 | `App/templates/_<recurso>.html` | `stubs/App/templates/_<recurso>.html` |
 | `App/controllers/<recurso>.php` | `stubs/App/controllers/<recurso>.php` |
 | `App/config/languages/templates/*.json` | `stubs/App/config/languages/templates/*.json` |
-| ejemplo de `App/views/_showroom.php` | `stubs/App/views/_showroom.php` |
+| ejemplo de `App/views/showroom/_<categoria>.php` | `stubs/App/views/showroom/_<categoria>.php` |
 | `App/app/updateLanguage.php` cuando cambia el editor | `stubs/App/app/updateLanguage.php` |
 
 Actualizar además:
 
-- `src/scss/templates.scss`
-- `src/js/templates.js` si hay comportamiento
+- `src/scss/showroom/<categoria>.scss`
+- `src/js/showroom/<categoria>.js` si hay comportamiento
 - `package.core.json` si se añade una dependencia frontend
 - `resources/img` con dummies reutilizables, no imágenes privadas de cliente
 - `resources/video` con medios y pistas dummy estrictamente necesarios, nunca
@@ -87,9 +87,15 @@ consumidor.
 
 No es necesario inventariar individualmente cada recurso en el Installer
 mientras esté dentro de estos directorios ya sincronizados; sí es obligatorio
-registrar el showroom canónico, mantener `_templates.php` como acceso
-compatible, registrar el controlador y comprobar la hidratación. Ambas rutas
-usan normalmente el bundle y los idiomas `templates`.
+registrarlo una sola vez en la categoría correcta del showroom, mantener
+`_templates.php` como acceso compatible, registrar el controlador y comprobar
+la hidratación. Las subrutas de ambos accesos usan el bundle y los idiomas
+`templates`.
+
+No añadir un recurso estable directamente a `_showroom.php` ni reintroducir
+todos sus imports en `templates.js`/`templates.scss`: el shell, el menú y el
+loader son infraestructura compartida. Los recursos locales sin promover usan
+los hooks `_local.php` y `src/js/showroom/local/<categoria>.js`.
 
 Si el recurso amplía infraestructura compartida —por ejemplo fondos
 responsive, colecciones o selectores de icono del editor inline— promover en
@@ -119,7 +125,10 @@ CORE no debe copiar ni sobrescribir `App/config/routes/get.php` o
 `App/config/rutas.js` completos: contienen rutas propias de cada consumidor.
 Si se incorpora `/showroom`, registrar o documentar en cada proyecto una ruta
 con `resources => templates`, `content => templates` y la vista
-`_showroom.php`; mapear igualmente esa URL a `templates` en `rutas.js`.
+`_showroom.php`; mapear igualmente esa URL a `templates` en `rutas.js`. CORE
+resuelve después, mediante allowlist, las subrutas de categoría que cuelgan de
+ese padre; no es necesario multiplicarlas en todos los ficheros de rutas una
+vez instalada la versión compatible.
 Por el mismo motivo, al promover el editor de idiomas se sincroniza
 `App/app/updateLanguage.php`, pero se conserva la ruta POST local del
 consumidor. Verificar que `/languages/update` siga apuntando a
@@ -140,7 +149,8 @@ consumidor. Verificar que `/languages/update` siga apuntando a
 
 1. Ejecutar `php -l` en controladores y vistas modificados.
 2. Validar JSON.
-3. Compilar frontend y probar `/showroom` y el alias `/templates`.
+3. Compilar frontend y probar el índice, todas las subrutas de `/showroom` y
+   sus equivalentes bajo `/templates`.
 4. Probar múltiples instancias e items.
 5. Revisar mobile, tablet y desktop.
 6. Verificar limpieza de JS, accesibilidad y jerarquía de encabezados.

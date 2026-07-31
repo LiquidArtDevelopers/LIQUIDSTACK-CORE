@@ -6,6 +6,8 @@ use Composer\Composer;
 use Composer\EventDispatcher\EventSubscriberInterface;
 use Composer\IO\IOInterface;
 use Composer\Plugin\PluginInterface;
+use Composer\Plugin\PluginEvents;
+use Composer\Plugin\PreCommandRunEvent;
 use Composer\Script\Event;
 use Composer\Script\ScriptEvents;
 
@@ -29,9 +31,32 @@ class Plugin implements PluginInterface, EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
+            PluginEvents::PRE_COMMAND_RUN => 'onPreCommandRun',
             ScriptEvents::POST_INSTALL_CMD => 'onPostInstall',
             ScriptEvents::POST_UPDATE_CMD  => 'onPostUpdate',
         ];
+    }
+
+    public function onPreCommandRun(PreCommandRunEvent $event): void
+    {
+        if ($event->getCommand() !== 'require') {
+            return;
+        }
+
+        $input = $event->getInput();
+        if (!$input->hasArgument('packages')) {
+            return;
+        }
+
+        $packages = $input->getArgument('packages');
+        if (!is_array($packages)) {
+            return;
+        }
+
+        $input->setArgument(
+            'packages',
+            ModuleRequirementNormalizer::normalize($packages)
+        );
     }
 
     public function onPostInstall(Event $event): void

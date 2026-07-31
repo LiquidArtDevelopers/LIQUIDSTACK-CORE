@@ -2,6 +2,7 @@
 
 namespace App\Core;
 
+use App\Core\Routing\ShowroomCategoryRoute;
 use App\Core\Routing\UrlResolver;
 use App\Core\Support\Paths;
 use Dotenv\Dotenv;
@@ -115,6 +116,12 @@ class Application
 
         if ($matched) {
             $this->renderMatchedRoute($lang, $requestedUrl, $rutasPorIdioma[$requestedUrl]);
+            return;
+        }
+
+        $showroomRoute = ShowroomCategoryRoute::resolve($url, $rutasPorIdioma);
+        if ($showroomRoute !== null) {
+            $this->renderMatchedRoute($lang, $url, $showroomRoute);
             return;
         }
 

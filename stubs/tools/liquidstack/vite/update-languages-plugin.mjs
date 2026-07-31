@@ -20,6 +20,15 @@ export const resolveLanguageUpdate = (file) => {
     return null;
   }
 
+  if (/(?:^|\/)app\/views\/showroom\//.test(lowerPath)) {
+    return {
+      file: normalized,
+      // Los partials comparten el catálogo `templates`. El updater sigue los
+      // requires literales del shell y recalcula el contrato completo.
+      slug: "_showroom.php",
+    };
+  }
+
   const filename = normalized.split("/").pop() ?? "";
   if (filename.replace(/\.php$/i, "").replace(/^_+/, "") === "") {
     return null;

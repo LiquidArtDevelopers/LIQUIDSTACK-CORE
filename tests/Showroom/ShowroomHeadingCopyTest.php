@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 
+require_once dirname(__DIR__) . '/Support/ShowroomCatalogFixture.php';
+
 final class ShowroomHeadingCopyTest extends TestCase
 {
     /**
@@ -115,10 +117,7 @@ final class ShowroomHeadingCopyTest extends TestCase
 
     public function testSharedHeadingsUseIndependentShowroomInstances(): void
     {
-        $path = dirname(__DIR__, 2) . '/stubs/App/views/_showroom.php';
-        $showroom = file_get_contents($path);
-
-        self::assertIsString($showroom);
+        $showroom = ShowroomCatalogFixture::corePhp(dirname(__DIR__, 2));
 
         foreach ([0, 1, 2, 3] as $index) {
             self::assertStringContainsString(
@@ -163,10 +162,7 @@ final class ShowroomHeadingCopyTest extends TestCase
 
     public function testPromotedResourcesAreRegisteredInTheShowroom(): void
     {
-        $path = dirname(__DIR__, 2) . '/stubs/App/views/_showroom.php';
-        $showroom = file_get_contents($path);
-
-        self::assertIsString($showroom);
+        $showroom = ShowroomCatalogFixture::corePhp(dirname(__DIR__, 2));
 
         foreach ([
             'moduleH2Type02',
@@ -264,9 +260,7 @@ final class ShowroomHeadingCopyTest extends TestCase
     public function testArt02ShowroomUsesEightIconCardsWithSubstantialCopy(): void
     {
         $root = dirname(__DIR__, 2);
-        $showroom = file_get_contents($root . '/stubs/App/views/_showroom.php');
-
-        self::assertIsString($showroom);
+        $showroom = ShowroomCatalogFixture::corePhp($root);
         self::assertSame(
             1,
             preg_match_all(

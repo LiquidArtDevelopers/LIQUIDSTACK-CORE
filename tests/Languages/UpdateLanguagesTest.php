@@ -422,6 +422,112 @@ PHP
         ];
     }
 
+    public function testCanonicalSegmentedShowroomHydratesAllPartialsWithoutPruningItsCopy(): void
+    {
+        $coreRoot = dirname(__DIR__, 2);
+        $this->configureRouteAwareViewFixture('templates');
+
+        $this->filesystem->copy(
+            $coreRoot . '/stubs/App/views/_showroom.php',
+            $this->fixtureRoot . '/App/views/_showroom.php',
+            true
+        );
+        $this->filesystem->mirror(
+            $coreRoot . '/stubs/App/views/showroom',
+            $this->fixtureRoot . '/App/views/showroom',
+            null,
+            ['override' => true]
+        );
+        $this->filesystem->mirror(
+            $coreRoot . '/stubs/App/controllers',
+            $this->fixtureRoot . '/App/controllers',
+            null,
+            ['override' => true]
+        );
+        $this->filesystem->mirror(
+            $coreRoot . '/stubs/App/templates',
+            $this->fixtureRoot . '/App/templates',
+            null,
+            ['override' => true]
+        );
+
+        foreach (['es', 'en'] as $language) {
+            $catalog = $this->readJson(
+                "{$coreRoot}/stubs/App/config/languages/templates/{$language}.json"
+            );
+            $catalog['showroom_catalog_title']['text'] =
+                "Título local {$language}";
+            $catalog['art19_00_headerPrimary']['text'] =
+                "art19 local {$language}";
+            $catalog['obsolete_showroom_key'] = [
+                'text' => 'Debe podarse',
+            ];
+            $this->writeJson(
+                $this->fixtureRoot
+                    . "/App/config/languages/templates/{$language}.json",
+                $catalog
+            );
+        }
+
+        $this->runUpdater('_showroom.php', ['--prune-unused']);
+
+        $categoryKeys = [
+            'heroes',
+            'particles',
+            'gsap_specials',
+            'common',
+            'cards_grids',
+            'media',
+            'forms_interactive',
+            'modules_sections',
+        ];
+        $partialResourceKeys = [
+            'hero03_00_front_text',
+            'moduleH2Type01_06_h2_text',
+            'artPricingGlass01_00_headerSecondary_a',
+            'art01_00_headerPrimary',
+            'art34_00_headerPrimary',
+            'art19_00_headerPrimary',
+            'moduleFormContact03_00_legend',
+            'moduleTable01_00_caption',
+        ];
+
+        foreach (['es', 'en'] as $language) {
+            $catalog = $this->readJson(
+                $this->fixtureRoot
+                    . "/App/config/languages/templates/{$language}.json"
+            );
+
+            self::assertSame(
+                "Título local {$language}",
+                $catalog['showroom_catalog_title']['text']
+            );
+            self::assertSame(
+                "art19 local {$language}",
+                $catalog['art19_00_headerPrimary']['text']
+            );
+            self::assertArrayNotHasKey('obsolete_showroom_key', $catalog);
+
+            foreach ($categoryKeys as $category) {
+                self::assertArrayHasKey(
+                    "showroom_catalog_category_{$category}_label",
+                    $catalog
+                );
+                self::assertArrayHasKey(
+                    "showroom_catalog_category_{$category}_description",
+                    $catalog
+                );
+            }
+            foreach ($partialResourceKeys as $key) {
+                self::assertArrayHasKey(
+                    $key,
+                    $catalog,
+                    "{$language}: falta {$key} desde un parcial"
+                );
+            }
+        }
+    }
+
     public function testCanonicalCatalogCoversEveryAuditedVariableAxis(): void
     {
         $root = dirname(__DIR__, 2);

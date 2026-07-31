@@ -23,6 +23,67 @@
         "content": "nofollow, noindex, max-snippet:-1, max-video-preview:-1, max-image-preview:large"
     },
 
+    "showroom_catalog_title": {
+        "text": "LiquidStack baliabideen katalogoa"
+    },
+    "showroom_catalog_intro": {
+        "text": "Aukeratu kategoria bat katalogo osoa kargatu gabe baliabideak berrikusteko."
+    },
+    "showroom_catalog_nav": {
+        "text": "Showroom kategoriak"
+    },
+    "showroom_catalog_index": {
+        "text": "Aurkibidea"
+    },
+    "showroom_catalog_category_heroes_label": {
+        "text": "Heroiak"
+    },
+    "showroom_catalog_category_heroes_description": {
+        "text": "Hasierako headerrak eta haien H1 konposizioak."
+    },
+    "showroom_catalog_category_particles_label": {
+        "text": "Partikulak"
+    },
+    "showroom_catalog_category_particles_description": {
+        "text": "Partikula, canvas eta WebGL atzeko planoak."
+    },
+    "showroom_catalog_category_gsap_specials_label": {
+        "text": "GSAP bereziak"
+    },
+    "showroom_catalog_category_gsap_specials_description": {
+        "text": "Pin, scroll eta WebGL esperientzia murgiltzaileak."
+    },
+    "showroom_catalog_category_common_label": {
+        "text": "Artikulu arruntak"
+    },
+    "showroom_catalog_category_common_description": {
+        "text": "Irudi, izenburu eta testu konposizio zuzenak."
+    },
+    "showroom_catalog_category_cards_grids_label": {
+        "text": "Fitxak eta saretak"
+    },
+    "showroom_catalog_category_cards_grids_description": {
+        "text": "Txartelak, matrizeak, zerrendak eta bloke errepikagarriak."
+    },
+    "showroom_catalog_category_media_label": {
+        "text": "Multimedia"
+    },
+    "showroom_catalog_category_media_description": {
+        "text": "Bideoa, irudia, sliderrak eta galeria interaktiboak."
+    },
+    "showroom_catalog_category_forms_interactive_label": {
+        "text": "Formularioak eta interakzioa"
+    },
+    "showroom_catalog_category_forms_interactive_description": {
+        "text": "Formularioak, akordeoiak eta fitxak."
+    },
+    "showroom_catalog_category_modules_sections_label": {
+        "text": "Moduluak eta sekzioak"
+    },
+    "showroom_catalog_category_modules_sections_description": {
+        "text": "Atomo berrerabilgarriak eta sekzio konposizioak."
+    },
+
     "hero00_bg_mobile": {
         "src": "assets/img/dummy/dummy_900.avif"
     },

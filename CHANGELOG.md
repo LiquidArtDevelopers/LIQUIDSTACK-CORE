@@ -4,6 +4,27 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Añadido
+- Infraestructura de módulos internos para WebAdmin y Blog dentro del único
+  paquete físico `liquidstack/core`: manifiestos validados, cierre de la
+  dependencia Blog → WebAdmin, selección exclusiva desde `require` directo y
+  publicación aditiva de ficheros declarados sin ejecutar migraciones.
+- Selectores Composer lógicos `liquidstack/webadmin` y `liquidstack/blog`
+  mediante `replace: self.version`, con normalización automática a `:*` al
+  ejecutar `composer require` sin constraint y fallback documentado para
+  ejecuciones sin plugins.
+- Showroom segmentado en ocho categorías con índice ligero, menú accesible,
+  parciales PHP y chunks JS/SCSS cargados bajo demanda. Las subrutas se
+  resuelven solo desde un padre `/showroom` o `/templates` ya registrado y
+  nunca reescriben los ficheros de rutas del consumidor. El submenú permanece
+  visible bajo la navegación global tanto con ScrollSmoother como con scroll
+  táctil nativo.
+- Copy del shell y de las categorías integrado en el catálogo `templates`
+  ES/EN/EU, incluida la conservación de la subruta al cambiar de idioma sin
+  recargar la página, la reescritura de enlaces del índice y la resolución
+  SSR del selector de idioma.
+- Hooks locales preservados `App/views/showroom/_local.php` y
+  `src/js/showroom/local/<categoria>.js` para ampliar el catálogo sin
+  personalizar el grupo gestionado por CORE.
 - Sincronización segura y aditiva para proyectos consumidores. CORE instala
   ficheros nuevos, actualiza copias intactas reconocidas por su estado o por
   huellas históricas normalizadas y registra el resultado versionable en
@@ -32,6 +53,8 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 - Compatibilidad con rutas legacy de showroom: cuando una ruta usa el bundle
   `templates` y el contenido `showroom`, se carga `templates` como catálogo
   base y `showroom` como override local.
+- Eliminado el BOM UTF-8 de `artHeroScroll01.php`, que podía emitir salida
+  invisible antes de las cabeceras HTTP al incluir el controlador.
 - Recursos `art33` y `art34`, con raíz `article`, fichas `div`, encabezados
   relativos, cantidad variable de ítems, contenido inyectable y CTA por ficha
   o general.
@@ -104,6 +127,13 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   alturas, saltos de línea y distribución responsive.
 
 ### Corregido
+- `build-sitemap.php` normaliza CRLF sin duplicar líneas vacías en Windows y
+  respeta `sitemap => false` para excluir rutas privadas declaradas por cada
+  proyecto.
+- Las plantillas legacy de recuperación de contraseña dejan de incluir marca,
+  enlaces y dominio de un cliente concreto. `navMegamenu01` admite ahora el
+  parámetro `offices`; un starter puede pasar un array vacío sin alterar el
+  fallback de compatibilidad de los stacks existentes.
 - El selector cromático del editor inline ya no interpreta las variables
   `colorNNSVG` como colores CSS editables y elimina el sufijo Sass `!default`
   de las variables añadidas por Composer antes de mostrarlas.

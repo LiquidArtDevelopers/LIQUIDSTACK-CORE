@@ -426,6 +426,34 @@ final class ManagedFileSynchronizerTest extends TestCase
         self::assertSame(1, $sync->stats()['errors']);
     }
 
+    public function testDifferentSourcesCannotTargetTheSameFile(): void
+    {
+        $firstSource = $this->packageRoot . '/modules/one/app.js';
+        $secondSource = $this->packageRoot . '/modules/two/app.js';
+        $target = $this->projectRoot . '/public/assets/modules/app.js';
+        $this->writeFile($firstSource, 'one');
+        $this->writeFile($secondSource, 'two');
+
+        $sync = $this->synchronizer();
+        $sync->queueFile(
+            $firstSource,
+            $target,
+            'modules/one/app.js',
+            'public/assets/modules/app.js',
+            ManagedFileRegistry::POLICY_MANAGED
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Colisión de sincronización');
+        $sync->queueFile(
+            $secondSource,
+            $target,
+            'modules/two/app.js',
+            'public/assets/modules/app.js',
+            ManagedFileRegistry::POLICY_MANAGED
+        );
+    }
+
     private function synchronizer(): ManagedFileSynchronizer
     {
         return new ManagedFileSynchronizer(

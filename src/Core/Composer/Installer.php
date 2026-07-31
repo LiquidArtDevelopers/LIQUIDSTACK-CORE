@@ -2,6 +2,8 @@
 
 namespace App\Core\Composer;
 
+use App\Core\Modules\ModuleCatalog;
+use App\Core\Modules\ModuleSelection;
 use App\Core\Support\Paths;
 use Composer\IO\IOInterface;
 use Composer\Script\Event;
@@ -34,18 +36,25 @@ class Installer
 
     private static function syncManagedProjectFiles(Event $event): void
     {
-        if (!self::syncScssConfigContract($event)) {
+        $scssContractReady = self::syncScssConfigContract($event);
+        if (!$scssContractReady) {
             $event->getIO()->writeError(
-                '<warning>Se omite la sincronización gestionada para no instalar recursos cuyo contrato SCSS no está garantizado.</warning>'
+                '<warning>Se omiten los recursos base cuyo contrato SCSS no está garantizado; los módulos internos se resolverán de forma independiente.</warning>'
             );
-            return;
         }
 
         $synchronizer = self::createManagedFileSynchronizer($event);
 
-        self::syncProjectAssets($event, $synchronizer);
-        self::queueResources($event, $synchronizer);
+        if ($scssContractReady) {
+            self::syncProjectAssets($event, $synchronizer);
+            self::queueResources($event, $synchronizer);
+        }
+        self::queueInternalModules($event, $synchronizer);
         $synchronizer->apply();
+
+        if (!$scssContractReady) {
+            return;
+        }
 
         $projectRoot = self::resolveProjectRoot($event);
         $packageRoot = dirname(__DIR__, 3);
@@ -494,6 +503,8 @@ class Installer
                 'path' => self::VITE_LANGUAGE_PLUGIN_PATH,
                 'type' => 'file',
             ],
+            ['path' => 'src/js/showroom', 'type' => 'dir', 'base' => $packageRoot],
+            ['path' => 'src/scss/showroom', 'type' => 'dir', 'base' => $packageRoot],
             ['path' => 'src/js/templates.js', 'type' => 'file', 'base' => $packageRoot],
             ['path' => 'src/scss/templates.scss', 'type' => 'file', 'base' => $packageRoot],
         ];
@@ -538,6 +549,40 @@ class Installer
             );
         }
 
+    }
+
+    private static function queueInternalModules(
+        Event $event,
+        ManagedFileSynchronizer $synchronizer
+    ): void {
+        $io = $event->getIO();
+        $projectRoot = self::resolveProjectRoot($event);
+        $packageRoot = dirname(__DIR__, 3);
+
+        try {
+            $catalog = ModuleCatalog::fromCoreRoot($packageRoot);
+            $selection = ModuleSelection::fromComposerJson(
+                $catalog,
+                $projectRoot . '/composer.json'
+            );
+        } catch (\Throwable $exception) {
+            $io->writeError(sprintf(
+                '<warning>No se pudieron resolver los módulos internos; el CORE base continuará sincronizándose: %s</warning>',
+                $exception->getMessage()
+            ));
+            return;
+        }
+
+        $active = array_merge(['core'], $selection->enabledIds());
+        $io->write(sprintf(
+            '<info>Módulos LiquidStack activos: %s.</info>',
+            implode(', ', $active)
+        ));
+
+        (new ModuleProjectFileSynchronizer($projectRoot, $io))->queue(
+            $selection,
+            $synchronizer
+        );
     }
 
     private static function syncViteLanguagePluginConfig(

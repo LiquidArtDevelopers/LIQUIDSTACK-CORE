@@ -1,0 +1,18 @@
+{
+    "schema": 1,
+    "id": "blog",
+    "package": "liquidstack/blog",
+    "requires": [
+        "webadmin"
+    ],
+    "providers": {
+        "routes": [],
+        "middleware": [],
+        "services": [],
+        "navigation": [],
+        "capabilities": [],
+        "migrations": [],
+        "sitemap": []
+    },
+    "project_files": []
+}

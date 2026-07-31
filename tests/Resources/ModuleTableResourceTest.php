@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
+
+require_once dirname(__DIR__) . '/Support/ShowroomCatalogFixture.php';
 use Symfony\Component\Filesystem\Filesystem;
 
 require_once dirname(__DIR__, 2)
@@ -179,12 +181,8 @@ final class ModuleTableResourceTest extends TestCase
 
     public function testResourceIsRegisteredInShowroomAndScssEntrypoint(): void
     {
-        $showroom = $this->readFile(
-            self::coreRoot() . '/stubs/App/views/_showroom.php'
-        );
-        $entrypoint = $this->readFile(
-            self::coreRoot() . '/src/scss/templates.scss'
-        );
+        $showroom = ShowroomCatalogFixture::corePhp(self::coreRoot());
+        $entrypoint = ShowroomCatalogFixture::scss(self::coreRoot());
 
         self::assertSame(
             1,
@@ -197,7 +195,7 @@ final class ModuleTableResourceTest extends TestCase
             1,
             substr_count(
                 $entrypoint,
-                "@use './resources/moduleTable01';"
+                "@use '../resources/moduleTable01';"
             )
         );
         self::assertFileExists(

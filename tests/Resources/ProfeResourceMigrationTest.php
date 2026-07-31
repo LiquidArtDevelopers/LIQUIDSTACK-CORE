@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
+
+require_once dirname(__DIR__) . '/Support/ShowroomCatalogFixture.php';
 use Symfony\Component\Filesystem\Filesystem;
 
 final class ProfeResourceMigrationTest extends TestCase
@@ -167,18 +169,16 @@ final class ProfeResourceMigrationTest extends TestCase
 
     public function testStylesheetEntrypointsRegisterAllResources(): void
     {
-        $templatesEntry = $this->readFile(
-            self::coreRoot() . '/src/scss/templates.scss'
-        );
+        $templatesEntry = ShowroomCatalogFixture::scss(self::coreRoot());
 
         foreach (self::RESOURCES as $resource) {
-            self::assertSame(
+            self::assertGreaterThanOrEqual(
                 1,
                 substr_count(
                     $templatesEntry,
-                    "@use './resources/{$resource}';"
+                    "@use '../resources/{$resource}';"
                 ),
-                "{$resource}: templates.scss must register exactly one import"
+                "{$resource}: a showroom category must register the resource"
             );
         }
 
@@ -470,14 +470,14 @@ final class ProfeResourceMigrationTest extends TestCase
         );
         self::assertStringContainsString('gsap.killTweensOf(panel)', $resourceScript);
 
-        $entry = $this->readFile(self::coreRoot() . '/src/js/templates.js');
+        $entry = ShowroomCatalogFixture::javascript(self::coreRoot());
         self::assertStringContainsString(
             "import gsap from 'gsap';",
             $entry,
             'templates.js debe importar GSAP antes de usar delayedCall al redimensionar'
         );
         self::assertMatchesRegularExpression(
-            '/import\s+initArtAccordion02\s+from\s+[\'"]\.\/resources\/_artAccordion02\.js[\'"]\s*;/',
+            '/import\s+initArtAccordion02\s+from\s+[\'"]\.\.\/resources\/_artAccordion02\.js[\'"]\s*;/',
             $entry
         );
         self::assertMatchesRegularExpression(

@@ -2,6 +2,7 @@
 
 namespace App\Core\Support {
 
+use App\Core\Routing\ShowroomCategoryRoute;
 use DateTime;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -439,6 +440,41 @@ function getMatchRouteByLang($route, $lang){
             $route_lang = $routes_for_lang[$routeIndex] ?? null;
             return $route_lang;
         }
+
+        $showroomRoute = ShowroomCategoryRoute::resolve(
+            (string) $route,
+            $options_routes
+        );
+        if ($showroomRoute === null) {
+            continue;
+        }
+
+        $parentRoute = $showroomRoute['showroom_base_path'];
+        $parentIndex = array_search(
+            $parentRoute,
+            array_keys($options_routes),
+            true
+        );
+        $targetRoutes = $arrayRoutes[$lang] ?? null;
+        if ($parentIndex === false || !is_array($targetRoutes)) {
+            return null;
+        }
+
+        $targetParent = array_keys($targetRoutes)[$parentIndex] ?? null;
+        $category = $showroomRoute['showroom_category'] ?? null;
+        if (!is_string($targetParent) || !is_string($category)) {
+            return null;
+        }
+
+        $localizedRoute = rtrim($targetParent, '/') . '/' . $category;
+        if (
+            ShowroomCategoryRoute::resolve($localizedRoute, $targetRoutes)
+                === null
+        ) {
+            return null;
+        }
+
+        return $localizedRoute;
     }
     return null;
 }
@@ -710,6 +746,10 @@ function generarSitemapMultilingue(array $rutas, string $outputDir): void
 
 function shouldExcludeFromSitemap(string $url, array $meta): bool
 {
+    if (($meta['sitemap'] ?? true) === false) {
+        return true;
+    }
+
     if (str_contains($url, '/templates') || str_contains($url, '/descargar')) {
         return true;
     }

@@ -1,0 +1,16 @@
+{
+    "schema": 1,
+    "id": "webadmin",
+    "package": "liquidstack/webadmin",
+    "requires": [],
+    "providers": {
+        "routes": [],
+        "middleware": [],
+        "services": [],
+        "navigation": [],
+        "capabilities": [],
+        "migrations": [],
+        "sitemap": []
+    },
+    "project_files": []
+}

@@ -58,6 +58,8 @@ final class ManagedFileRegistry
         'resources/js/',
         'resources/scss/',
         'resources/video/',
+        'src/js/showroom/',
+        'src/scss/showroom/',
         'stubs/App/config/languages/',
         'stubs/App/controllers/',
         'stubs/App/templates/',
@@ -121,11 +123,20 @@ final class ManagedFileRegistry
         $sourceId = self::normalizePath($sourceId);
 
         if (in_array($sourceId, [
+            'resources/js/_traducciones.js',
             'src/js/templates.js',
             'src/scss/templates.scss',
             'stubs/App/views/_showroom.php',
             'stubs/App/views/_templates.php',
         ], true)) {
+            return 'catalog:showroom';
+        }
+
+        if (
+            str_starts_with($sourceId, 'src/js/showroom/')
+            || str_starts_with($sourceId, 'src/scss/showroom/')
+            || str_starts_with($sourceId, 'stubs/App/views/showroom/')
+        ) {
             return 'catalog:showroom';
         }
 

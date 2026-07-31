@@ -92,5 +92,5 @@ function ensureRobotsTxtHasSitemap(string $robotsPath, string $sitemapUrl): void
 
 function normalizeLineEndings(string $content): string
 {
-    return str_replace(["\r\n", "\r"], PHP_EOL, $content);
+    return (string) preg_replace('/\r\n|\r|\n/', PHP_EOL, $content);
 }

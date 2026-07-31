@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Core\Composer\ManagedFileRegistry;
+use App\Core\Modules\ModuleCatalog;
+use App\Core\Modules\ModulePublishedSourceFinder;
 use PHPUnit\Framework\TestCase;
 
 final class ManagedFileManifestTest extends TestCase
@@ -77,6 +79,71 @@ final class ManagedFileManifestTest extends TestCase
             "'--exclude-standard'",
             $builder
         );
+        self::assertStringContainsString(
+            'managed-file-legacy-baselines.json',
+            $builder
+        );
+        self::assertStringContainsString(
+            'ModulePublishedSourceFinder::currentManagedFiles',
+            $builder
+        );
+        self::assertStringContainsString(
+            'addTaggedModuleSources',
+            $builder
+        );
+    }
+
+    public function testVerifiedBaseLegacyFilesRemainRecognized(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $history = json_decode(
+            (string) file_get_contents(
+                $root . '/manifests/managed-file-history.json'
+            ),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        $baselines = json_decode(
+            (string) file_get_contents(
+                $root . '/manifests/managed-file-legacy-baselines.json'
+            ),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        foreach ($baselines['files'] as $sourceId => $fingerprints) {
+            self::assertSame(
+                [],
+                array_values(array_diff(
+                    $fingerprints,
+                    $history['files'][$sourceId] ?? []
+                )),
+                "Faltan baselines legacy verificados para {$sourceId}"
+            );
+        }
+    }
+
+    public function testSegmentedShowroomFilesShareOneAtomicGroup(): void
+    {
+        foreach ([
+            'resources/js/_traducciones.js',
+            'stubs/App/views/_showroom.php',
+            'stubs/App/views/_templates.php',
+            'stubs/App/views/showroom/_heroes.php',
+            'src/js/templates.js',
+            'src/js/showroom/heroes.js',
+            'src/js/showroom/catalog-routing.mjs',
+            'src/scss/templates.scss',
+            'src/scss/showroom/heroes.scss',
+        ] as $sourceId) {
+            self::assertSame(
+                'catalog:showroom',
+                ManagedFileRegistry::groupForSource($sourceId),
+                "{$sourceId} debe actualizarse con el catálogo completo"
+            );
+        }
     }
 
     /**
@@ -90,6 +157,8 @@ final class ManagedFileManifestTest extends TestCase
             'resources/js',
             'resources/scss',
             'resources/video',
+            'src/js/showroom',
+            'src/scss/showroom',
             'stubs/App/config/languages',
             'stubs/App/controllers',
             'stubs/App/templates',
@@ -147,6 +216,14 @@ final class ManagedFileManifestTest extends TestCase
             ) {
                 $files[$sourceId] = $path;
             }
+        }
+
+        foreach (
+            ModulePublishedSourceFinder::currentManagedFiles(
+                ModuleCatalog::fromCoreRoot($root)
+            ) as $sourceId => $path
+        ) {
+            $files[$sourceId] = $path;
         }
 
         ksort($files, SORT_STRING);

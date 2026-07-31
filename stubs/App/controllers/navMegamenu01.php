@@ -190,9 +190,22 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
     $col3Html = '<ul>';
     $col3Html .= '<li><a data-lang="'."{$pref}correo_link".'" href="mailto:'.$GLOBALS["{$pref}correo_link_href"].'" title="'.$GLOBALS["{$pref}correo_link"]->title.'" class="si_select linkReducido"><img data-lang="'."{$pref}correo_img".'" src="'.$_ENV['RAIZ'].'/'.$GLOBALS["{$pref}correo_img"]->src.'" alt="'.$GLOBALS["{$pref}correo_img"]->alt.'" title="'.$GLOBALS["{$pref}correo_img"]->title.'"><span data-lang="'."{$pref}correo_text".'">'.$GLOBALS["{$pref}correo_text"]->text.'</span></a></li>';
 
-    $sedes = [
-        ['label'=>'DONOSTIA','tels'=>['943 21 53 54'],'addr'=>'Hegaztien Pasealekua, 5, 20009 Donostia / San Sebastián, Gipuzkoa','map'=>'https://maps.app.goo.gl/1irmxtrYHNRD3HQe9'],
-    ];
+    /*
+     * Compatibilidad: los stacks existentes mantienen la sede histórica
+     * mientras no declaren el parámetro. BASE pasa `offices => []` para que
+     * todo proyecto nuevo nazca sin datos de un cliente anterior.
+     */
+    $sedes = array_key_exists('offices', $params)
+        && is_array($params['offices'])
+            ? $params['offices']
+            : [
+                [
+                    'label' => 'DONOSTIA',
+                    'tels' => ['943 21 53 54'],
+                    'addr' => 'Hegaztien Pasealekua, 5, 20009 Donostia / San Sebastián, Gipuzkoa',
+                    'map' => 'https://maps.app.goo.gl/1irmxtrYHNRD3HQe9',
+                ],
+            ];
 
     foreach ($sedes as $s) {
         $col3Html .= '<li><p class="resaltado">'.$s['label'].'</p><div>';

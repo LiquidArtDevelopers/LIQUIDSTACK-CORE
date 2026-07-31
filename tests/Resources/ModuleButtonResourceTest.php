@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Core\Support\Paths;
 use PHPUnit\Framework\TestCase;
+
+require_once dirname(__DIR__) . '/Support/ShowroomCatalogFixture.php';
 use Symfony\Component\Filesystem\Filesystem;
 
 final class ModuleButtonResourceTest extends TestCase
@@ -83,9 +85,7 @@ final class ModuleButtonResourceTest extends TestCase
 
     public function testButtonFamilyProvidesAndRegistersEveryStaticFile(): void
     {
-        $templatesEntry = $this->readFile(
-            self::coreRoot() . '/src/scss/templates.scss'
-        );
+        $templatesEntry = ShowroomCatalogFixture::scss(self::coreRoot());
 
         foreach (self::RESOURCES as $resource) {
             self::assertFileExists(
@@ -97,13 +97,13 @@ final class ModuleButtonResourceTest extends TestCase
             self::assertFileExists(
                 self::coreRoot() . "/resources/scss/_{$resource}.scss"
             );
-            self::assertSame(
+            self::assertGreaterThanOrEqual(
                 1,
                 substr_count(
                     $templatesEntry,
-                    "@use './resources/{$resource}';"
+                    "@use '../resources/{$resource}';"
                 ),
-                "{$resource}: templates.scss must register exactly one import"
+                "{$resource}: a showroom category must register the resource"
             );
         }
 

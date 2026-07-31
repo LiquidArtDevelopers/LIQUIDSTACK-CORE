@@ -23,6 +23,67 @@
         "content": "nofollow, noindex, max-snippet:-1, max-video-preview:-1, max-image-preview:large"
     },
 
+    "showroom_catalog_title": {
+        "text": "LiquidStack resource catalogue"
+    },
+    "showroom_catalog_intro": {
+        "text": "Choose a category to review resources without loading the complete catalogue."
+    },
+    "showroom_catalog_nav": {
+        "text": "Showroom categories"
+    },
+    "showroom_catalog_index": {
+        "text": "Index"
+    },
+    "showroom_catalog_category_heroes_label": {
+        "text": "Heroes"
+    },
+    "showroom_catalog_category_heroes_description": {
+        "text": "Opening headers and their H1 compositions."
+    },
+    "showroom_catalog_category_particles_label": {
+        "text": "Particles"
+    },
+    "showroom_catalog_category_particles_description": {
+        "text": "Particle, canvas and WebGL backgrounds."
+    },
+    "showroom_catalog_category_gsap_specials_label": {
+        "text": "GSAP specials"
+    },
+    "showroom_catalog_category_gsap_specials_description": {
+        "text": "Immersive pin, scroll and WebGL experiences."
+    },
+    "showroom_catalog_category_common_label": {
+        "text": "Common articles"
+    },
+    "showroom_catalog_category_common_description": {
+        "text": "Straightforward image, heading and text compositions."
+    },
+    "showroom_catalog_category_cards_grids_label": {
+        "text": "Cards and grids"
+    },
+    "showroom_catalog_category_cards_grids_description": {
+        "text": "Cards, matrices, lists and repeatable blocks."
+    },
+    "showroom_catalog_category_media_label": {
+        "text": "Media"
+    },
+    "showroom_catalog_category_media_description": {
+        "text": "Video, image, sliders and interactive galleries."
+    },
+    "showroom_catalog_category_forms_interactive_label": {
+        "text": "Forms and interaction"
+    },
+    "showroom_catalog_category_forms_interactive_description": {
+        "text": "Forms, accordions and tabs."
+    },
+    "showroom_catalog_category_modules_sections_label": {
+        "text": "Modules and sections"
+    },
+    "showroom_catalog_category_modules_sections_description": {
+        "text": "Reusable atoms and section compositions."
+    },
+
     "hero00_bg_mobile": {
         "src": "assets/img/dummy/dummy_900.avif"
     },
