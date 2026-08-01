@@ -86,7 +86,9 @@ return [
 - En el servidor integrado usar `php -S localhost:1309 -t public
   App/tools/php-dev-router.php`; sin el router, rutas dinámicas con extensión
   como `/blog-sitemap.xml` pueden no llegar a CORE. No alterar por ello el
-  perfil ni el flujo de `npm run build`.
+  perfil ni el flujo de `npm run build`. El router debe cargar el front
+  controller con `public` como directorio de trabajo para conservar las rutas
+  relativas legacy.
 - Reservar `LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL` y `LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL` para el bootstrap explícito. No mostrar sus valores.
 - Configurar el correo solo mediante
   `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, `LIQUIDSTACK_WEBADMIN_SMTP_HOST`,

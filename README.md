@@ -408,8 +408,10 @@ HTTP únicamente con `DEV_MODE=1`, una `RAIZ` loopback, coincidencia exacta de
 `X-Forwarded-Proto`. Una petición insegura o malformada devuelve `400` antes
 de abrir PDO. El script canónico arranca
 `php -S localhost:1309 -t public App/tools/php-dev-router.php`, necesario para
-que `/blog-sitemap.xml` llegue a CORE. `npm run build` sigue aplicando el perfil
-de producción. Si existe un proxy, el virtual host debe traducir de forma
+que `/blog-sitemap.xml` llegue a CORE y para cargar el front controller desde
+`public`, como requieren las rutas relativas legacy. `npm run build` sigue
+aplicando el perfil de producción. Si existe un proxy, el virtual host debe
+traducir de forma
 verificada el estado TLS y configurar `REMOTE_ADDR` con una capa de proxies
 confiables; WebAdmin usa esa dirección para el bucket agregado de rate limit.
 Los fallos internos solo registran códigos estables y mantienen la respuesta

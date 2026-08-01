@@ -4,6 +4,9 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Corregido
+- El router de desarrollo cambia al directorio `public` antes de cargar el
+  front controller, preservando las rutas relativas de las vistas legacy sin
+  dejar de enrutar endpoints dinámicos con extensión como el sitemap de Blog.
 - El sitemap dinámico de Blog se declara ahora como endpoint público exacto
   pre-bootstrap: llega al módulo antes de la redirección multidioma y no crea
   `PHPSESSID`. Las rutas GET, los ficheros y las subrutas de showroom propiedad

@@ -103,6 +103,19 @@ if (is_string($requestPath) && !str_contains($requestPath, "\0")) {
     }
 }
 
+/*
+ * El front controller y el catálogo legacy conservan rutas relativas a
+ * `public` (por ejemplo `../App/views/home.php`). El router se ejecuta desde
+ * la raíz del proyecto, así que debe restaurar explícitamente ese contrato
+ * antes de incluir `public/index.php`.
+ */
+if (!@chdir($publicRoot)) {
+    http_response_code(500);
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo "Development server configuration error.\n";
+    exit(1);
+}
+
 require $frontController;
 
 return true;

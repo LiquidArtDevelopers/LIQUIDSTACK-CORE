@@ -1640,6 +1640,7 @@
             "sha256:e1e119dfcb99e7e16ad023f7b70a5898f4c39c412eae037ce0adff3f74b69a85"
         ],
         "stubs/App/tools/php-dev-router.php": [
+            "sha256:362c22eb9339d3a013ea641a09f765f9164e04c0096d02bc35880fbd02019321",
             "sha256:d757f1eeb78e4755a8e99c844b300663ab8f534c3bdc9056959a806230a4ae5c"
         ],
         "stubs/App/tools/update-languages.php": [

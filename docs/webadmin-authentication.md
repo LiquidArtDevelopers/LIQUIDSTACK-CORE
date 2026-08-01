@@ -53,8 +53,9 @@ php -S localhost:1309 -t public App/tools/php-dev-router.php
 ```
 
 El router devuelve al servidor únicamente ficheros reales dentro de `public`;
-el resto pasa por `public/index.php`. `npm run build` mantiene el perfil de
-producción y no utiliza este router.
+el resto pasa por `public/index.php` con `public` como directorio de trabajo,
+preservando las rutas relativas del stack legacy. `npm run build` mantiene el
+perfil de producción y no utiliza este router.
 
 ## Rutas HTTP
 

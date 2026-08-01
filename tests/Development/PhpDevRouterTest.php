@@ -34,6 +34,10 @@ final class PhpDevRouterTest extends TestCase
             <<<'PHP'
 <?php
 header('X-LiquidStack-Front: yes');
+header(
+    'X-LiquidStack-Cwd: '
+    . (realpath((string) getcwd()) === realpath(__DIR__) ? 'public' : 'other')
+);
 echo 'front:' . ($_SERVER['REQUEST_URI'] ?? '');
 PHP
         );
@@ -74,6 +78,7 @@ PHP
         self::assertSame(200, $dynamic['status']);
         self::assertSame('front:/admin/blog?draft=1', $dynamic['body']);
         self::assertSame('yes', $dynamic['headers']['x-liquidstack-front'] ?? null);
+        self::assertSame('public', $dynamic['headers']['x-liquidstack-cwd'] ?? null);
 
         $sitemap = $this->request('/blog-sitemap.xml');
 
@@ -83,6 +88,7 @@ PHP
             'yes',
             $sitemap['headers']['x-liquidstack-front'] ?? null
         );
+        self::assertSame('public', $sitemap['headers']['x-liquidstack-cwd'] ?? null);
 
         $directory = $this->request('/assets');
 
