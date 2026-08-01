@@ -1,0 +1,328 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Core\Application;
+use App\Core\Http\Request;
+use App\Core\Http\Response;
+use App\Core\Modules\ModulePublicRouteProviderInterface;
+use App\Core\Modules\ModuleRuntimeContext;
+use App\Core\Routing\ModulePublicRouteCollection;
+use App\Core\Support\Paths;
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\Filesystem\Filesystem;
+
+final class ApplicationPublicRouteProviderFixture implements ModulePublicRouteProviderInterface
+{
+    public static int $prefixReads = 0;
+    public static int $constructions = 0;
+    public static int $registrations = 0;
+    public static int $handlerCalls = 0;
+
+    public function __construct()
+    {
+        self::$constructions++;
+    }
+
+    public static function moduleId(): string
+    {
+        return 'blog';
+    }
+
+    public static function publicRoutePrefixes(
+        ModuleRuntimeContext $context
+    ): array {
+        self::$prefixReads++;
+
+        return ['/noticias', '/showroom'];
+    }
+
+    public function registerPublicRoutes(
+        ModulePublicRouteCollection $routes,
+        ModuleRuntimeContext $context
+    ): void {
+        self::$registrations++;
+
+        foreach (self::publicPrefixesWithoutProbe() as $prefix) {
+            $routes->addGet(
+                self::moduleId(),
+                $prefix,
+                static function (Request $request): ?Response {
+                    self::$handlerCalls++;
+
+                    if ($request->path() === '/noticias/missing') {
+                        return null;
+                    }
+
+                    return new Response(
+                        200,
+                        'late-public',
+                        ['X-Late-Public' => 'yes']
+                    );
+                }
+            );
+        }
+    }
+
+    public static function reset(): void
+    {
+        self::$prefixReads = 0;
+        self::$constructions = 0;
+        self::$registrations = 0;
+        self::$handlerCalls = 0;
+    }
+
+    /** @return list<string> */
+    private static function publicPrefixesWithoutProbe(): array
+    {
+        return ['/noticias', '/showroom'];
+    }
+}
+
+final class ApplicationPublicModuleRouteTest extends TestCase
+{
+    private string $fixtureRoot;
+    private string $coreRoot;
+    private Filesystem $filesystem;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->filesystem = new Filesystem();
+        $this->fixtureRoot = sys_get_temp_dir()
+            . '/liquidstack-app-public-route-'
+            . bin2hex(random_bytes(8));
+        $this->coreRoot = $this->fixtureRoot . '/core';
+        $this->filesystem->mkdir([
+            $this->fixtureRoot . '/App/app',
+            $this->fixtureRoot . '/App/config/enums',
+            $this->fixtureRoot . '/App/config/languages/global',
+            $this->fixtureRoot . '/App/config/languages/404',
+            $this->fixtureRoot . '/App/config/routes',
+            $this->fixtureRoot . '/App/views',
+            $this->fixtureRoot . '/sessions',
+            $this->coreRoot . '/modules/blog',
+        ]);
+
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/composer.json',
+            json_encode(
+                ['require' => ['liquidstack/blog' => '*']],
+                JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR
+            ) . PHP_EOL
+        );
+        $this->filesystem->dumpFile(
+            $this->coreRoot . '/modules/blog/module.json',
+            json_encode([
+                'schema' => 1,
+                'id' => 'blog',
+                'package' => 'liquidstack/blog',
+                'requires' => [],
+                'providers' => [
+                    'routes' => [ApplicationPublicRouteProviderFixture::class],
+                ],
+                'project_files' => [],
+            ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . PHP_EOL
+        );
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/config.php',
+            "<?php\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/enums/_roles.php',
+            "<?php\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/langs.php',
+            "<?php\nreturn ['es'];\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/languages/global/es.json',
+            "{}\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/languages/404/es.json',
+            "{}\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/views/404.php',
+            "<?php echo 'legacy-404';\n"
+        );
+        $this->writeGetRoutes([]);
+        $this->writePostRoutes([]);
+
+        self::assertTrue(ini_set(
+            'session.save_path',
+            $this->fixtureRoot . '/sessions'
+        ) !== false);
+        self::assertTrue(ini_set('session.use_cookies', '0') !== false);
+        self::assertTrue(ini_set('session.cache_limiter', '') !== false);
+        session_id('liquidstack-' . bin2hex(random_bytes(8)));
+
+        $_COOKIE = [];
+        $_GET = [];
+        $_POST = [];
+        $_ENV = [
+            'LANG_DEFAULT' => 'es',
+            'MULTILANG' => '0',
+            'ES_SIMPLIFICADO' => '1',
+            'DEV_MODE' => '1',
+        ];
+        ApplicationPublicRouteProviderFixture::reset();
+    }
+
+    protected function tearDown(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        $this->filesystem->remove($this->fixtureRoot);
+        Paths::setProjectRoot(dirname(__DIR__));
+
+        parent::tearDown();
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testStaticGetWinsWithoutEvenReadingPublicPrefixes(): void
+    {
+        $view = $this->fixtureRoot . '/App/views/static.php';
+        $this->filesystem->dumpFile($view, "<?php echo 'static-get';\n");
+        $this->writeGetRoutes([
+            '/noticias/fija' => ['view' => $view],
+        ]);
+
+        self::assertSame('static-get', $this->runApplication('GET', '/noticias/fija'));
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$prefixReads);
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testShowroomDynamicRouteWinsBeforePublicModule(): void
+    {
+        $view = $this->fixtureRoot . '/App/views/_showroom.php';
+        $this->filesystem->dumpFile($view, "<?php echo 'showroom-media';\n");
+        $this->writeGetRoutes([
+            '/showroom' => [
+                'view' => $view,
+                'resources' => 'templates',
+            ],
+        ]);
+
+        self::assertSame('showroom-media', $this->runApplication('GET', '/showroom/media'));
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$prefixReads);
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testStaticPostWinsBeforeRecognizedPublicPrefix(): void
+    {
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/app/static-post.php',
+            "<?php echo 'static-post';\n"
+        );
+        $this->writePostRoutes([
+            '/noticias/fija' => 'static-post.php',
+        ]);
+
+        self::assertSame('static-post', $this->runApplication('POST', '/noticias/fija'));
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$prefixReads);
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testLatePublicGetIsDispatchedAfterStaticMiss(): void
+    {
+        self::assertSame(
+            'late-public',
+            $this->runApplication('GET', '/noticias/dinamica')
+        );
+        self::assertSame(200, http_response_code());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testLatePublicHeadEmitsNoBodyAndKeepsStatus(): void
+    {
+        self::assertSame('', $this->runApplication('HEAD', '/noticias/dinamica'));
+        self::assertSame(200, http_response_code());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testRecognizedPublicPostEmits405WithoutConstructingProvider(): void
+    {
+        self::assertSame(
+            'Method not allowed',
+            $this->runApplication('POST', '/noticias/dinamica')
+        );
+        self::assertSame(405, http_response_code());
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$registrations);
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testUnrelatedAndFallenThroughUrlsKeepTheExisting404(): void
+    {
+        self::assertSame('legacy-404', $this->runApplication('GET', '/contacto'));
+        self::assertSame(404, http_response_code());
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testMatchedHandlerMayFallThroughToTheExisting404(): void
+    {
+        self::assertSame(
+            'legacy-404',
+            $this->runApplication('GET', '/noticias/missing')
+        );
+        self::assertSame(404, http_response_code());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    private function runApplication(string $method, string $uri): string
+    {
+        $_SERVER = [
+            'REQUEST_METHOD' => $method,
+            'REQUEST_URI' => $uri,
+            'QUERY_STRING' => '',
+            'HTTPS' => 'on',
+        ];
+
+        ob_start();
+        (new Application($this->fixtureRoot, $this->coreRoot))->run();
+
+        return (string) ob_get_clean();
+    }
+
+    /** @param array<string, array<string, mixed>> $routes */
+    private function writeGetRoutes(array $routes): void
+    {
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/routes/get.php',
+            "<?php\nreturn ['es' => " . var_export($routes, true) . "];\n"
+        );
+    }
+
+    /** @param array<string, string> $routes */
+    private function writePostRoutes(array $routes): void
+    {
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/routes/post.php',
+            "<?php\nreturn " . var_export($routes, true) . ";\n"
+        );
+    }
+}

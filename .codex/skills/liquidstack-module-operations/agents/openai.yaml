@@ -1,0 +1,4 @@
+interface:
+  display_name: "LiquidStack Module Operations"
+  short_description: "Operate WebAdmin and Blog modules safely"
+  default_prompt: "Use $liquidstack-module-operations to activate and diagnose WebAdmin or Blog safely in this LiquidStack project."

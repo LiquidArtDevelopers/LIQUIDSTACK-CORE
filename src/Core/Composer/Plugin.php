@@ -5,13 +5,15 @@ namespace App\Core\Composer;
 use Composer\Composer;
 use Composer\EventDispatcher\EventSubscriberInterface;
 use Composer\IO\IOInterface;
+use Composer\Plugin\Capable;
+use Composer\Plugin\Capability\CommandProvider as CommandProviderCapability;
 use Composer\Plugin\PluginInterface;
 use Composer\Plugin\PluginEvents;
 use Composer\Plugin\PreCommandRunEvent;
 use Composer\Script\Event;
 use Composer\Script\ScriptEvents;
 
-class Plugin implements PluginInterface, EventSubscriberInterface
+class Plugin implements PluginInterface, EventSubscriberInterface, Capable
 {
     public function activate(Composer $composer, IOInterface $io): void
     {
@@ -34,6 +36,16 @@ class Plugin implements PluginInterface, EventSubscriberInterface
             PluginEvents::PRE_COMMAND_RUN => 'onPreCommandRun',
             ScriptEvents::POST_INSTALL_CMD => 'onPostInstall',
             ScriptEvents::POST_UPDATE_CMD  => 'onPostUpdate',
+        ];
+    }
+
+    /**
+     * @return array<class-string, class-string>
+     */
+    public function getCapabilities(): array
+    {
+        return [
+            CommandProviderCapability::class => LiquidStackCommandProvider::class,
         ];
     }
 

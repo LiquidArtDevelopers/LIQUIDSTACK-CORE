@@ -1,0 +1,245 @@
+---
+name: liquidstack-module-operations
+description: Activación, diagnóstico, actualización y desarrollo seguro de los módulos internos WebAdmin y Blog de LiquidStack. Usar cuando Codex deba ejecutar o revisar composer require/remove/update de liquidstack/webadmin o liquidstack/blog, configurar App/config/modules, comprobar /admin, interpretar liquidstack:doctor, preparar o revisar migraciones, validar adopción en un stack consumidor o modificar manifiestos/providers modulares en liquidstack/core.
+---
+
+# Operar módulos LiquidStack
+
+## Mantener el modelo correcto
+
+- Tratar `liquidstack/core` como único paquete, repositorio y release físicos.
+- Tratar `liquidstack/webadmin` y `liquidstack/blog` como selectores lógicos declarados en el `require` directo del proyecto.
+- Recordar que Blog activa WebAdmin por dependencia interna. WebAdmin puede existir sin Blog.
+- No confundir WebAdmin con una zona privada legacy del cliente. No compartir sus rutas, tablas, endpoints, modelos, cookie o sesión.
+- No editar `vendor/liquidstack/core` ni decidir módulos desde `composer.lock`, `replace`, `provide` o `InstalledVersions`.
+
+## Activar o retirar un módulo
+
+1. Comprobar el estado de Git y leer `composer.json` antes de mutar dependencias.
+2. Usar uno de estos comandos desde el proyecto consumidor:
+
+   ```bash
+   composer require liquidstack/webadmin
+   composer require liquidstack/blog
+   ```
+
+   Si el plugin instalado aún no normaliza el selector, usar explícitamente `:*`.
+3. Actualizar el código físico con `composer update liquidstack/core`; actualizar CORE por sí solo no activa WebAdmin ni Blog.
+4. Para desactivar, usar `composer remove` sobre el selector directo. Nunca borrar automáticamente tablas, usuarios, artículos, medios, configuración o assets conservados.
+5. Revisar el resumen del sincronizador: un fichero project-owned o personalizado debe preservarse salvo que exista un contrato de versión gestionada reconocido.
+
+No ejecutar `require`, `remove`, migraciones, commit, push o release si el usuario solo ha pedido una auditoría.
+
+## Configurar WebAdmin
+
+Usar opcionalmente `App/config/modules/webadmin.php`, propiedad del proyecto:
+
+```php
+<?php
+
+return [
+    'path' => '/admin',
+    'database' => [
+        'connection' => 'shared',
+        'table_prefix' => 'ls_webadmin_',
+    ],
+    'session' => [
+        'cookie_name' => 'LS_WEBADMIN_SID',
+        'idle_ttl_seconds' => 1800,
+        'absolute_ttl_seconds' => 28800,
+    ],
+];
+```
+
+- Mantener secretos fuera de este fichero. Composer no debe crearlo, fusionarlo ni sobrescribirlo.
+- Reutilizar la conexión física del stack mediante `BBDD_SERVER`, `BBDD_USER`, `BBDD_PASS` y `BBDD_NAME` hasta que el contrato admita otra conexión.
+- Guardar `LIQUIDSTACK_WEBADMIN_SECURITY_KEY` únicamente en el entorno o gestor
+  de secretos: debe contener 32 bytes aleatorios como base64url canónico de 43
+  caracteres. No reutilizar una contraseña ni registrar su valor.
+- Exigir `zend.exception_ignore_args=On` en CLI y en el SAPI web antes de
+  habilitar autenticación.
+- Exigir soporte Argon2id para la política productiva fija `argon2id-v1`; no
+  sustituirla automáticamente por bcrypt según el host.
+- Servir WebAdmin solo por HTTPS. El request no confía en cabeceras
+  `Forwarded`; detrás de un proxy, configurar el servidor para afirmar el TLS
+  ya verificado y reescribir `REMOTE_ADDR` solo desde proxies autorizados.
+- Reservar `LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL` y `LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL` para el bootstrap explícito. No mostrar sus valores.
+- Configurar el correo solo mediante
+  `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, `LIQUIDSTACK_WEBADMIN_SMTP_HOST`,
+  `LIQUIDSTACK_WEBADMIN_SMTP_PORT`,
+  `LIQUIDSTACK_WEBADMIN_SMTP_ENCRYPTION`,
+  `LIQUIDSTACK_WEBADMIN_SMTP_USERNAME`,
+  `LIQUIDSTACK_WEBADMIN_SMTP_PASSWORD`,
+  `LIQUIDSTACK_WEBADMIN_MAIL_FROM_ADDRESS` y
+  `LIQUIDSTACK_WEBADMIN_MAIL_FROM_NAME`. El origen debe ser HTTPS explícito y
+  nunca derivarse de `Host` o cabeceras `Forwarded`.
+- Mantener el prefijo fuera de los idiomas activos y de rutas GET/POST existentes. `/admin` es el default neutral.
+- Determinar las colisiones con el catálogo estructurado de `doctor` o con el inspector estático de rutas. Una mención textual en la configuración, comentarios, documentación o código de negocio no convierte por sí sola el prefijo en una ruta ocupada; una búsqueda general solo aporta pistas. Las claves de ruta calculadas, concatenadas o añadidas mediante índices son deliberadamente no analizables: bloquean WebAdmin con `route_file.dynamic_key` hasta convertirlas en un catálogo literal o estático.
+- No escribir valores en `.env`; como máximo documentar nombres vacíos en `.env.example` cuando la tarea lo autorice.
+
+## Diagnosticar sin mutar
+
+Ejecutar:
+
+```bash
+composer liquidstack:doctor
+composer liquidstack:doctor --format=json
+composer liquidstack:migrate --plan
+composer liquidstack:migrate --dry-run
+```
+
+- Tratar `doctor` como preflight operativo: catálogo, selectores, providers,
+  config, nombres de entorno, assets, conexión compartida y esquema aplicado.
+  El probe DB es estrictamente de solo lectura.
+- No copiar valores de entorno a logs, respuestas o informes. Los errores de parseo deben ser genéricos.
+- Entender `runtime_ready` (incluye clave, Argon2id y protección de trazas) por
+  separado de `bootstrap_ready` (incluye los dos correos, pero no la clave
+  HTTP).
+- Entender `mail_ready` y `mail_blockers` como un eje adicional: una
+  configuración SMTP ausente bloquea el dispatcher, no el login ni el
+  bootstrap que solo encola trabajo.
+- Usar `--plan` para revisar el catálogo sin conexión y `--dry-run` para
+  comprobar el estado real de la DB sin escribir.
+- No ejecutar `--apply` salvo autorización expresa. Antes, revisar el hash y
+  los bloqueadores del dry-run. La aplicación exige `--yes` o confirmación
+  interactiva; en JSON siempre `--yes`.
+- Si hay migraciones destructivas, exigir a la vez
+  `--allow-destructive --backup-confirmed`. No interpretar esos flags como la
+  creación automática de un backup.
+- Si aparece `migration.precondition_failed`, no adoptar, completar ni borrar
+  objetos por intuición. Inspeccionar el namespace, conservar una copia
+  recuperable y resolver manualmente la colisión o el DDL parcial. `retrySafe`
+  solo cubre la forma idempotente de cada sentencia MySQL, no un rollback
+  integral de DDL no transaccional.
+- No copiar a informes credenciales, SQL ni mensajes internos de PDO.
+- Una petición insegura o malformada debe fallar con `400` antes de abrir PDO.
+  Cuando el runtime, la conexión o el esquema no están listos, un `503`
+  genérico en `/admin` es el fallo cerrado esperado.
+
+## Operar bootstrap y correo
+
+1. Ejecutar en orden `doctor`, `migrate --dry-run`, `migrate --apply`,
+   `liquidstack:webadmin:bootstrap` y
+   `liquidstack:webadmin:mail:dispatch`. `--apply` y bootstrap exigen sus
+   propias confirmaciones; el dispatch es una invocación explícita con efecto
+   SMTP y bootstrap únicamente encola invitaciones.
+2. Programar `liquidstack:webadmin:mail:dispatch` como tarea one-shot
+   recurrente, con `--limit` entre 1 y 100. No convertirlo en daemon ni
+   registrar destinatarios, tokens o diagnósticos SMTP.
+3. Asumir entrega al menos una vez: una caída después de que SMTP acepte el
+   mensaje y antes del ACK puede causar un duplicado. No alterar manualmente
+   locks, hashes ni estados para simular exactly-once.
+4. Usar `liquidstack:webadmin:bootstrap --resend-invites` solo con
+   confirmación para invitaciones bootstrap ya enviadas o en fallo terminal.
+   No sirve para saltar el backoff de filas `pending`/`processing`; revoca los
+   enlaces vivos antes de reencolar y requiere otro dispatch posterior.
+5. Redaccionar el parámetro `token` de `/activate` y `/password/reset` en los
+   access logs del edge, servidor web y APM. El `303` limpia la navegación
+   posterior, no el log de la primera petición.
+
+## Gestionar editores
+
+- Usar exclusivamente la superficie privada `/admin/users` y UUID públicos;
+  no añadir IDs internos, roles o capabilities a query strings de resultado.
+- Mantener separados los cuatro gates:
+  `webadmin.users.view`, `webadmin.users.invite`,
+  `webadmin.users.suspend` y
+  `webadmin.users.capabilities.manage`. Ocultar una acción en HTML no sustituye
+  su revalidación dentro de la transacción.
+- No permitir que esta UI cree, reasigne, suspenda o modifique
+  `system_superadmin`, `site_admin`, el propio actor ni una identidad con otro
+  rol protegido/no delegable. Las cuentas protegidas solo nacen del bootstrap.
+- Delegar una capability únicamente cuando el módulo está activo,
+  `is_delegable=1` y el actor la posee. Al reemplazar, conservar las
+  capabilities inactivas, no delegables o fuera del alcance del actor.
+- Tratar `display_name` como opcional y el correo como identidad canónica
+  única. Nunca registrar correo, nombre, SID, CSRF, token, hash o contenido del
+  formulario en auditoría o excepciones.
+- No enviar SMTP desde la petición. Invitar, reenviar o reactivar una cuenta
+  nunca activada solo encola outbox; el dispatcher one-shot realiza la entrega.
+- Suspender como operación de contención: revocar sesiones y tokens, cerrar
+  entregas abiertas e incrementar `auth_version`, incluso si el lifecycle del
+  objetivo contiene deriva. Reactivar una credencial de política antigua debe
+  permitir después el reset, no dejar la cuenta irrecuperable.
+- Mantener el orden de bloqueo `outbox objetivo → users por ID → SID actor →
+  action tokens objetivo → target sessions`, y actualizar solo filas que ya se
+  hayan bloqueado. La carrera de correo duplicado debe acabar en un único
+  editor y un conflicto controlado.
+- Probar HEAD sin mutación, CSRF, no enumeración para actores sin permiso,
+  preservación de capabilities, self/protegidos, rollback de auditoría,
+  lifecycle completo y carrera real sobre MariaDB aislada. El contrato
+  detallado vive en `docs/webadmin-editor-management.md`.
+
+## Operar Liquid Blog
+
+- Activar Blog solo mediante el selector directo `liquidstack/blog`; su cierre
+  de dependencias debe activar WebAdmin antes. No registrar rutas, navegación,
+  migraciones ni diagnósticos Blog en un proyecto core-only o WebAdmin-only.
+- Tratar `App/config/modules/blog.php` como configuración project-owned. Puede
+  declarar `public_paths` por cada idioma activo, `sitemap_path` y el prefijo
+  de tablas sobre la conexión `shared`; Composer no debe crearlo, fusionarlo ni
+  sobrescribirlo.
+- Exigir que las claves de `public_paths` coincidan exactamente con
+  `App/config/langs.php`, que sus rutas sean absolutas y únicas y que no
+  colisionen con rutas o ficheros del proyecto. El path base puede pertenecer a
+  un índice estático; las URLs de artículo viven en `{public_path}/{slug}`.
+- Reutilizar `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` como origen canónico HTTPS
+  del sitemap y de los artículos. No derivarlo de `Host`, `Forwarded` ni del
+  request. Blog no debe depender de que el transporte SMTP esté listo.
+- Aplicar en orden `doctor`, `migrate --plan`, `migrate --dry-run`,
+  `migrate --apply`, `webadmin:bootstrap` y un segundo `doctor`. Repetir el
+  bootstrap es obligatorio al añadir Blog a un WebAdmin ya inicializado para
+  completar de forma idempotente las capacidades de las cuentas protegidas.
+- Mantener separados `blog.articles.view`, `blog.articles.edit` y
+  `blog.articles.publish`. Ocultar botones no sustituye el gate transaccional:
+  SID, CSRF, lifecycle, `auth_version` y capability deben revalidarse con el
+  mismo PDO y dentro de la transacción Blog.
+- Conservar el agregado y cada variante por idioma como unidades estables. En
+  el MVP solo existen `draft` y `published`; una variante publicada se retira
+  antes de editarla, cada escritura usa `lock_version` y no existe borrado HTTP.
+- Mantener el cuerpo como texto plano validado. No introducir HTML libre,
+  uploads, bloques, categorías, traducción IA o programación dentro del MVP
+  0001 por conveniencia local.
+- Resolver Blog público únicamente después de que fallen las rutas estáticas
+  del proyecto. Un borrador o slug desconocido continúa al 404 legacy; un
+  runtime reconocido pero no operativo responde `503`, y un método de escritura
+  reconocido responde `405` sin abrir PDO.
+- Servir el sitemap desde la DB de producción. Nunca reescribir
+  `public/sitemap.xml`, `robots.txt`, Git o el deploy al publicar. Consultar como
+  máximo 50.001 filas para admitir 50.000 y fallar cerrado ante overflow, sin
+  truncar silenciosamente.
+- Probar SQLite aislado y, ante cambios de DDL, repositorio, locks o auditoría,
+  la integración opt-in MySQL/MariaDB. Cubrir create/add-locale/save/publish/
+  unpublish, stale writes con dos PDO, rollback conjunto de contenido y
+  auditoría, prioridad estática, sitemap y ausencia de mutaciones en `HEAD`.
+- Consultar `docs/liquid-blog.md` como contrato completo antes de ampliar el
+  módulo. Categorías, medios, editor enriquecido, IA y recursos de showroom
+  requieren cortes versionados posteriores.
+
+## Modificar la infraestructura en CORE
+
+1. Leer `docs/arquitectura-modulos-internos.md` y el manifiesto `modules/<id>/module.json`.
+2. Mantener providers ejecutables solo para módulos activos y validar su interfaz, `moduleId` y construcción sin argumentos cuando corresponda.
+3. Resolver rutas operativas antes del bootstrap, sesión y router multidioma legacy. Una ruta no reclamada debe continuar exactamente por el flujo anterior.
+4. Hacer que una configuración inválida falle cerrada dentro de su namespace sin derribar rutas públicas ni revelar la causa al visitante.
+5. Mantener `project_files` limitado a namespaces de assets del módulo. Rutas, `.env`, configuración, sitemap y datos siguen siendo project-owned.
+6. Registrar toda migración con ID estable, checksum, orden por dependencias y
+   carácter destructivo. Su aplicación debe seguir siendo explícita, bloqueada
+   y auditable; `doctor` y `--dry-run` nunca escriben.
+7. Probar como mínimo estas matrices:
+
+   - Core-only: no reserva `/admin` ni registra diagnósticos opcionales.
+   - WebAdmin: reclama solo su prefijo y no inicia la sesión legacy.
+   - Blog: activa primero WebAdmin.
+   - GET y POST públicos: conservan el comportamiento legacy con módulos activos.
+   - Config inválida, prefijo localizado o colisión: la web pública permanece operativa.
+
+8. Ejecutar `composer validate --strict --no-check-publish`, `composer test` y `composer test:module-e2e`. El E2E debe usar un consumidor temporal y demostrar que `doctor` y `migrate --plan` no modifican configuración, lock, `.env` ni datos. Los tests SQLite deben demostrar además que `--dry-run` no muta y que solo `--apply` confirmado escribe. Ante cambios de DDL o persistencia, ejecutar también `composer test:mysql-integration` con sus variables TEST contra versiones soportadas reales; debe cubrir el ciclo outbox/acciones, gestión de editores, carrera de identidad única y los órdenes concurrentes de locks, y nunca apuntar a la DB de un proyecto.
+9. Actualizar README, arquitectura, changelog y esta skill cuando cambie el contrato operativo.
+
+## Adoptar cambios en un consumidor
+
+- Comparar primero el estado local con la versión canónica y preservar personalizaciones reales.
+- Probar el update en un stack controlado antes de recomendarlo a proyectos publicados.
+- Verificar selectores activos, salida de `doctor`, rutas públicas, `/admin`, ausencia de `Set-Cookie` legacy en la ruta neutral y suite/build propios del consumidor.
+- No publicar una etiqueta ni ejecutar deploy sin autorización expresa.

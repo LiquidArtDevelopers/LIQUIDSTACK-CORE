@@ -1,0 +1,213 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Core\Blog\BlogDraft;
+use App\Core\Blog\BlogPostSummary;
+use App\Core\Blog\BlogPostVariant;
+use App\Core\Blog\BlogService;
+use App\Core\Blog\Http\BlogAdminHtmlRenderer;
+use PHPUnit\Framework\TestCase;
+
+final class BlogAdminHtmlRendererTest extends TestCase
+{
+    public function testListIsAccessibleEscapedAndUsesPublicIdentifiers(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $summary = new BlogPostSummary(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            'matrix',
+            'Matrix & "agents"',
+            BlogPostVariant::DRAFT,
+            null,
+            2,
+            $now
+        );
+        $html = (new BlogAdminHtmlRenderer())->index(
+            '/admin/blog',
+            [$summary],
+            true
+        );
+
+        self::assertStringContainsString('<table>', $html);
+        self::assertStringContainsString(
+            'Matrix &amp; &quot;agents&quot;',
+            $html
+        );
+        self::assertStringContainsString(
+            'post=11111111-1111-4111-8111-111111111111&amp;locale=es',
+            $html
+        );
+        self::assertStringContainsString('/admin/blog/posts/new', $html);
+    }
+
+    public function testEditFormCarriesCsrfVersionAndPlainTextEscaped(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $variant = new BlogPostVariant(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            new BlogDraft(
+                'Matrix',
+                'Safe & plain',
+                'matrix',
+                'SEO title',
+                'Description',
+                'Excerpt'
+            ),
+            BlogPostVariant::DRAFT,
+            null,
+            7,
+            '33333333-3333-4333-8333-333333333333',
+            '33333333-3333-4333-8333-333333333333',
+            $now,
+            $now
+        );
+        $html = (new BlogAdminHtmlRenderer())->editForm(
+            '/admin/blog',
+            'csrf-token-safe',
+            $variant,
+            true
+        );
+
+        self::assertStringContainsString('name="csrf" value="csrf-token-safe"', $html);
+        self::assertStringContainsString('name="lock_version" value="7"', $html);
+        self::assertStringContainsString('Safe &amp; plain', $html);
+        self::assertStringContainsString('/admin/blog/posts/publish', $html);
+        self::assertStringNotContainsString('33333333-', $html);
+    }
+
+    public function testCreateFormSupportsNewAggregateAndExistingPost(): void
+    {
+        $renderer = new BlogAdminHtmlRenderer();
+        $new = $renderer->createForm(
+            '/admin/blog',
+            'csrf-token',
+            ['es', 'en']
+        );
+        self::assertStringContainsString('name="post" value=""', $new);
+        self::assertSame(2, substr_count($new, '<option'));
+
+        $existing = $renderer->createForm(
+            '/admin/blog',
+            'csrf-token',
+            ['es'],
+            '11111111-1111-4111-8111-111111111111'
+        );
+        self::assertStringContainsString(
+            'name="post" value="11111111-1111-4111-8111-111111111111"',
+            $existing
+        );
+    }
+
+    public function testReadOnlyListDoesNotExposeMutationLinks(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $summary = new BlogPostSummary(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            'matrix',
+            'Matrix',
+            BlogPostVariant::DRAFT,
+            null,
+            1,
+            $now
+        );
+
+        $html = (new BlogAdminHtmlRenderer())->index(
+            '/admin/blog',
+            [$summary],
+            false
+        );
+
+        self::assertStringContainsString('Solo lectura', $html);
+        self::assertStringNotContainsString('/posts/edit', $html);
+        self::assertStringNotContainsString('/posts/new', $html);
+    }
+
+    public function testPublishedVariantMustBeWithdrawnBeforeEditing(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $variant = new BlogPostVariant(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            new BlogDraft(
+                'Matrix',
+                'Published body',
+                'matrix',
+                'Matrix title',
+                'Matrix description',
+                'Matrix excerpt'
+            ),
+            BlogPostVariant::PUBLISHED,
+            $now,
+            3,
+            '33333333-3333-4333-8333-333333333333',
+            '33333333-3333-4333-8333-333333333333',
+            $now,
+            $now
+        );
+
+        $html = (new BlogAdminHtmlRenderer())->editForm(
+            '/admin/blog',
+            'csrf-token',
+            $variant,
+            true
+        );
+
+        self::assertStringContainsString('Retira la variante', $html);
+        self::assertStringContainsString(' readonly', $html);
+        self::assertStringContainsString('/posts/unpublish', $html);
+        self::assertStringNotContainsString('/posts/save', $html);
+        self::assertStringNotContainsString('Guardar cambios', $html);
+    }
+
+    public function testPaginationIsAccessibleBoundedAndOmitsZeroOffset(): void
+    {
+        $renderer = new BlogAdminHtmlRenderer();
+        $first = $renderer->index(
+            '/admin/blog',
+            [],
+            true,
+            0,
+            true
+        );
+        self::assertStringContainsString(
+            'aria-label="Paginaci&oacute;n de art&iacute;culos"',
+            $first
+        );
+        self::assertStringContainsString(
+            'rel="next" href="/admin/blog?offset=50"',
+            $first
+        );
+        self::assertStringNotContainsString('rel="prev"', $first);
+
+        $last = $renderer->index(
+            '/admin/blog',
+            [],
+            true,
+            50,
+            false
+        );
+        self::assertStringContainsString(
+            'rel="prev" href="/admin/blog"',
+            $last
+        );
+        self::assertStringNotContainsString('offset=0', $last);
+        self::assertStringNotContainsString('rel="next"', $last);
+
+        $bounded = $renderer->index(
+            '/admin/blog',
+            [],
+            true,
+            BlogService::MAX_LIST_OFFSET,
+            true
+        );
+        self::assertStringNotContainsString('rel="next"', $bounded);
+    }
+}

@@ -4,12 +4,16 @@
     "package": "liquidstack/webadmin",
     "requires": [],
     "providers": {
-        "routes": [],
+        "routes": [
+            "App\\Core\\Modules\\WebAdmin\\WebAdminRouteProvider"
+        ],
         "middleware": [],
         "services": [],
         "navigation": [],
         "capabilities": [],
-        "migrations": [],
+        "migrations": [
+            "App\\Core\\Modules\\WebAdmin\\WebAdminMigrationProvider"
+        ],
         "sitemap": []
     },
     "project_files": []

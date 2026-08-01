@@ -12,6 +12,86 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   mediante `replace: self.version`, con normalización automática a `:*` al
   ejecutar `composer require` sin constraint y fallback documentado para
   ejecuciones sin plugins.
+- Capability CLI del plugin con `liquidstack:doctor` (texto o JSON) y
+  `liquidstack:migrate` en modos exclusivos `--plan`, `--dry-run` y `--apply`.
+  El plan permanece offline, el dry-run consulta la DB en solo lectura y apply
+  es la única mutación, con confirmación, hash esperado, lock y doble puerta
+  para cambios destructivos. Ningún modo expone secretos, SQL o mensajes PDO.
+- Dispatcher neutral de módulos antes del bootstrap y la sesión legacy.
+  WebAdmin reserva `/admin` solo cuando su selector está activo, responde en
+  fallo cerrado sin crear `PHPSESSID`, conserva GET/POST públicos y detecta
+  estáticamente colisiones con rutas project-owned sin ejecutar sus PHP.
+- Configuración WebAdmin opcional en `App/config/modules/webadmin.php`, con
+  defaults seguros y diagnóstico operativo de configuración, ruta, assets,
+  DB compartida, esquema, clave de seguridad y protección de argumentos en
+  trazas. El informe no revela valores y distingue `runtime_ready` de
+  `bootstrap_ready`.
+- Esquema inicial versionado de identidad, roles, capacidades, tokens,
+  sesiones, límites, auditoría, outbox y estado; bootstrap explícito e
+  idempotente de `system_superadmin`/`site_admin`; y primer flujo HTTP aislado
+  de login, autorización, panel mínimo y logout. Las migraciones y el bootstrap
+  nunca se ejecutan durante `composer update`.
+- Contrato PDO compartido estricto para MySQL/MariaDB y SQLite, registro de
+  migraciones con checksum/scope, postcondiciones auditables de esquema,
+  constraints, semillas y datos, precondición versionada de namespace vacío
+  antes de cualquier escritura y gate HTTP acotado que evita repetir la
+  inspección completa de `INFORMATION_SCHEMA` en cada petición.
+- Autenticación WebAdmin con política productiva fija `argon2id-v1`, sesiones
+  revocables, CSRF HMAC estable por sesión, autorización revalidada contra DB,
+  rate limit, auditoría sin secretos y preflight HTTPS/morfología antes de PDO.
+  HTTP y CLI comparten además el cargador y la precedencia del entorno, por lo
+  que los secretos de proceso funcionan aunque `variables_order` omita `E` y
+  un `.env` inválido bloquea el runtime sin usar una configuración parcial.
+- Flujos HTTP no enumerables de activación inicial y recuperación de
+  contraseña. El token de correo se vincula a una sesión de acción, responde
+  con `303` hacia una URL limpia, exige CSRF y nunca inicia login automático.
+  Las cookies autenticada, preautenticada y de acción quedan separadas por
+  propósito; la contraseña conserva el contrato UTF-8 de 15–1024 bytes.
+- Outbox asíncrono de WebAdmin y transporte SMTP desacoplado, con origen
+  público HTTPS explícito, tokens brutos solo en memoria, leases de cinco
+  minutos, fencing, cinco intentos y backoff acotado. El nuevo comando
+  `liquidstack:webadmin:mail:dispatch` procesa lotes one-shot de 1–100,
+  devuelve contadores seguros en texto/JSON y falla con código no cero ante
+  retry, fallo terminal o resultado cercado.
+- `liquidstack:webadmin:bootstrap --resend-invites` recupera de forma
+  confirmada invitaciones iniciales ya enviadas o fallidas: omite entregas
+  abiertas y cuentas activadas, revoca enlaces anteriores y reencola sin
+  enviar directamente. `doctor` informa `mail_ready`/`mail_blockers` por
+  separado de `runtime_ready` y `bootstrap_ready`.
+- Gestión privada de editores en WebAdmin: listado paginado por cursor firmado,
+  invitación y reenvío mediante outbox, suspensión/reactivación, capacidades
+  estrictamente delegables y UI accesible bajo `/admin/users`. Las mutaciones
+  revalidan SID, CSRF, versión, lifecycle, roles y permisos dentro de la
+  transacción; excluyen self/roles protegidos, preservan asignaciones fuera del
+  alcance del actor y auditan sin PII ni secretos. El cursor transporta solo el
+  UUID público; los locks de sesión usan parámetros constantes aunque crezca el
+  historial de tokens, y los touches idempotentes son compatibles con el
+  recuento de filas modificadas de MySQL/MariaDB.
+- MVP `Liquid Blog 0001`: esquema versionado MySQL/SQLite, capacidades
+  delegables registradas sobre el scope efectivo de WebAdmin, artículos con
+  variantes localizadas independientes, borrador/publicación, concurrencia
+  optimista, UI privada accesible en `/admin/blog` y auditoría atómica. Las
+  rutas públicas DB-backed se resuelven después de las rutas estáticas del
+  proyecto y el sitemap dinámico refleja publicar/retirar sin modificar el
+  repositorio ni desplegar; detecta de forma acotada el límite de 50.000 URLs.
+- El prefijo neutral ya no puede sombrear silenciosamente rutas legacy con
+  claves dinámicas: una clave calculada, concatenada o añadida mediante índice
+  bloquea el registro y aparece como `route_file.dynamic_key`. La autorización
+  exige además el token secreto de sesión y no confía en DTOs construibles.
+- Arnés opt-in `composer test:mysql-integration` para probar en una DB aislada
+  colisiones sin mutación, runner real, postcondiciones, idempotencia,
+  bootstrap, outbox/ACK, activación, login, reset, revocación de sesión y los
+  órdenes concurrentes `user → session`, `user → action → session` y
+  `outbox → user`. También prueba una carrera real de invitación duplicada con
+  dos actores y exige un único ganador sobre InnoDB, además del gate y la
+  limpieza exacta. El corte se ha validado localmente sobre MariaDB 10.4.32;
+  MySQL 8 queda incorporado como matriz obligatoria de CI o entorno compatible.
+- Skill base `liquidstack-module-operations`, distribuida a los consumidores
+  para guiar la activación, diagnóstico, adopción y evolución segura de
+  WebAdmin y Blog.
+- Resolución de dependencias de desarrollo fijada al mínimo soportado PHP 8.1,
+  evitando que un entorno local PHP 8.2 genere un lock de pruebas incompatible
+  con el contrato declarado del paquete.
 - Showroom segmentado en ocho categorías con índice ligero, menú accesible,
   parciales PHP y chunks JS/SCSS cargados bajo demanda. Las subrutas se
   resuelven solo desde un padre `/showroom` o `/templates` ya registrado y

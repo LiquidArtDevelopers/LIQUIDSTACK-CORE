@@ -78,9 +78,20 @@ final class InstallerAgentGuidanceTest extends TestCase
             dirname(__DIR__, 2) . '/.codex/skills/dev-stack/SKILL.md',
             $this->projectRoot . '/.codex/skills/dev-stack/SKILL.md'
         );
+        self::assertFileEquals(
+            dirname(__DIR__, 2)
+                . '/.codex/skills/liquidstack-module-operations/SKILL.md',
+            $this->projectRoot
+                . '/.codex/skills/liquidstack-module-operations/SKILL.md'
+        );
         self::assertDirectoryDoesNotExist($this->projectRoot . '/.agents');
         self::assertSame(
-            ['dev-stack', 'liquidstack-resource-migration', 'seo-content'],
+            [
+                'dev-stack',
+                'liquidstack-module-operations',
+                'liquidstack-resource-migration',
+                'seo-content',
+            ],
             $this->readManagedSkills($this->projectRoot . '/.codex/skills')
         );
     }
@@ -118,7 +129,12 @@ final class InstallerAgentGuidanceTest extends TestCase
         self::assertDirectoryDoesNotExist(dirname($retiredSkill));
         self::assertDirectoryDoesNotExist($this->projectRoot . '/.agents');
         self::assertSame(
-            ['dev-stack', 'liquidstack-resource-migration', 'seo-content'],
+            [
+                'dev-stack',
+                'liquidstack-module-operations',
+                'liquidstack-resource-migration',
+                'seo-content',
+            ],
             $this->readManagedSkills($this->projectRoot . '/.codex/skills')
         );
     }

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Core\Modules\ModuleProviderInterface;
 use App\Core\Modules\ModuleRegistry;
+use App\Core\Modules\ModuleRouteProviderInterface;
+use App\Core\Modules\ModuleRuntimeContext;
+use App\Core\Routing\ModuleRouteCollection;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -20,6 +23,24 @@ final class BlogRouteProviderFixture implements ModuleProviderInterface
     public static function moduleId(): string
     {
         return 'blog';
+    }
+}
+
+final class RequiredConstructorRouteProviderFixture implements ModuleRouteProviderInterface
+{
+    public function __construct(private readonly string $requiredValue)
+    {
+    }
+
+    public static function moduleId(): string
+    {
+        return 'webadmin';
+    }
+
+    public function registerRoutes(
+        ModuleRouteCollection $routes,
+        ModuleRuntimeContext $context
+    ): void {
     }
 }
 
@@ -118,6 +139,38 @@ final class ModuleRegistryTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('no implementa');
         $this->registry()->providers('routes');
+    }
+
+    public function testRouteProvidersMustImplementTheTypedContract(): void
+    {
+        $this->writeComposer([
+            'liquidstack/core' => '^1.9',
+            'liquidstack/webadmin' => '*',
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('ModuleRouteProviderInterface');
+
+        $this->registry()->routeProviders();
+    }
+
+    public function testRouteProvidersMustBeConstructibleWithoutArguments(): void
+    {
+        $this->writeManifest(
+            'webadmin',
+            'liquidstack/webadmin',
+            [],
+            RequiredConstructorRouteProviderFixture::class
+        );
+        $this->writeComposer([
+            'liquidstack/core' => '^1.9',
+            'liquidstack/webadmin' => '*',
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('sin argumentos');
+
+        $this->registry()->routeProviders();
     }
 
     private function registry(): ModuleRegistry

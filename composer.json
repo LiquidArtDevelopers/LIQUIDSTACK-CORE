@@ -35,6 +35,9 @@
         "test": [
             "@php vendor/bin/phpunit --configuration phpunit.xml.dist --do-not-cache-result"
         ],
+        "test:mysql-integration": [
+            "@php vendor/bin/phpunit --configuration phpunit.xml.dist --do-not-cache-result --group mysql-integration"
+        ],
         "test:module-e2e": [
             "@php tools/test-module-composer-e2e.php"
         ],
@@ -44,6 +47,11 @@
         "liquidstack-core:sync-frontend-deps": [
             "App\\Core\\Composer\\Installer::syncFrontendDependencies"
         ]
+    },
+    "config": {
+        "platform": {
+            "php": "8.1.0"
+        }
     },
     "extra": {
         "class": "App\\Core\\Composer\\Plugin",

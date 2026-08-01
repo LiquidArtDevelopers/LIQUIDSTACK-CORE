@@ -152,6 +152,14 @@ final class ModuleDefinition
     }
 
     /**
+     * @return list<string>
+     */
+    public static function providerTypes(): array
+    {
+        return self::PROVIDER_TYPES;
+    }
+
+    /**
      * @param array<string, mixed> $manifest
      */
     private static function requiredIdentifier(

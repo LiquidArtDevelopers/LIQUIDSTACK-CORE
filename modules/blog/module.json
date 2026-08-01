@@ -6,12 +6,19 @@
         "webadmin"
     ],
     "providers": {
-        "routes": [],
+        "routes": [
+            "App\\Core\\Modules\\Blog\\BlogRouteProvider",
+            "App\\Core\\Modules\\Blog\\BlogPublicRouteProvider"
+        ],
         "middleware": [],
         "services": [],
-        "navigation": [],
+        "navigation": [
+            "App\\Core\\Modules\\Blog\\BlogWebAdminNavigationProvider"
+        ],
         "capabilities": [],
-        "migrations": [],
+        "migrations": [
+            "App\\Core\\Modules\\Blog\\BlogMigrationProvider"
+        ],
         "sitemap": []
     },
     "project_files": []

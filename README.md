@@ -94,6 +94,7 @@ de un checkout de CORE):
 
 ```bash
 composer test
+composer test:mysql-integration
 composer test:module-e2e
 composer release
 composer liquidstack-core:sync-resources
@@ -131,10 +132,208 @@ El atajo sin versión requiere que CORE ya esté instalado y que los plugins de
 Composer estén activos. El fallback es añadir `:*`. Para actualizar el código
 se sigue usando `composer update liquidstack/core`.
 
-`composer test:module-e2e` crea y retira un consumidor temporal para
-comprobar el alta y baja reales de los selectores. No forma parte de la suite
-unitaria porque resuelve dependencias con Composer y puede necesitar red o
-caché local.
+El plugin expone los comandos operativos en los proyectos consumidores.
+`doctor`, `migrate --plan` y `migrate --dry-run` son de solo lectura;
+bootstrap y `migrate --apply` requieren confirmación explícita. El dispatcher
+de correo procesa un lote finito ya encolado:
+
+```bash
+composer liquidstack:doctor
+composer liquidstack:doctor --format=json
+composer liquidstack:migrate --plan
+composer liquidstack:migrate --dry-run
+composer liquidstack:migrate --apply
+composer liquidstack:webadmin:bootstrap
+composer liquidstack:webadmin:bootstrap --resend-invites
+composer liquidstack:webadmin:mail:dispatch
+composer liquidstack:webadmin:mail:dispatch --limit=20 --format=json
+```
+
+`doctor` valida el catálogo, la selección, los providers tipados, la
+configuración conocida, el entorno de seguridad y, con WebAdmin activo, abre
+la conexión compartida para comprobar en solo lectura el registro de
+migraciones, el esquema y sus postcondiciones. Su salida separa
+`runtime_ready`, `bootstrap_ready` y `mail_ready`: el runtime exige además una
+clave
+operativa válida, `zend.exception_ignore_args=On` y soporte para la política
+fija `argon2id-v1`; el bootstrap exige los dos correos iniciales, pero no esa
+clave HTTP; el correo exige su origen público y transporte SMTP, pero no
+bloquea por sí solo el login. El dispatcher sigue exigiendo módulo, trazas,
+ruta, conexión y esquema operativos. `migrate --plan` sigue siendo
+completamente offline y solo enumera metadatos. `--dry-run` compara el catálogo
+con `ls_module_migrations`, pero no escribe. `--apply` muestra el plan, exige
+`--yes` o confirmación interactiva y lo aplica con lock y verificación del
+hash. Una migración destructiva requiere además
+`--allow-destructive --backup-confirmed`; en JSON, `--apply` siempre requiere
+`--yes`. Ninguna salida incluye credenciales, claves, correos, DSN, SQL ni
+mensajes PDO.
+
+El orden de una instalación nueva es: activar el selector, actualizar CORE,
+configurar entorno, ejecutar `doctor`, revisar y aplicar migraciones, ejecutar
+el bootstrap y, por último, despachar su outbox. El bootstrap solo encola las
+dos invitaciones iniciales. `--resend-invites` es una recuperación confirmada
+para invitaciones bootstrap ya enviadas o fallidas de forma terminal; no
+duplica filas `pending`/`processing` y tampoco envía el correo directamente.
+
+La precondición de la migración inicial se comprueba en `--dry-run` y otra vez
+bajo lock antes de escribir. WebAdmin solo parte de un namespace totalmente
+vacío y de una versión MySQL/MariaDB compatible. Si detecta una tabla, vista,
+constraint o resto parcial devuelve `migration.precondition_failed`: no lo
+adopta ni lo borra. `retrySafe` describe la idempotencia de cada sentencia
+permitida, no una recuperación integral después de un DDL MySQL parcialmente
+confirmado; ese estado requiere inspección, copia recuperable y resolución
+manual antes de reintentar.
+
+El entorno operativo de WebAdmin necesita una clave base64url canónica de 32
+bytes bajo `LIQUIDSTACK_WEBADMIN_SECURITY_KEY`. Puede generarse una vez con:
+
+```bash
+php -r "echo rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '='), PHP_EOL;"
+```
+
+Guárdala solo en el gestor de secretos o `.env` no versionado. La directiva
+`zend.exception_ignore_args=On` debe estar activa tanto en el PHP de consola
+como en el SAPI que sirve la web; reinicia el proceso correspondiente tras
+cambiar `php.ini`.
+
+La entrega de invitaciones y recuperaciones requiere además:
+
+- `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`;
+- `LIQUIDSTACK_WEBADMIN_SMTP_HOST`;
+- `LIQUIDSTACK_WEBADMIN_SMTP_PORT`;
+- `LIQUIDSTACK_WEBADMIN_SMTP_ENCRYPTION` (`starttls` o `smtps`);
+- `LIQUIDSTACK_WEBADMIN_SMTP_USERNAME`;
+- `LIQUIDSTACK_WEBADMIN_SMTP_PASSWORD`;
+- `LIQUIDSTACK_WEBADMIN_MAIL_FROM_ADDRESS`;
+- `LIQUIDSTACK_WEBADMIN_MAIL_FROM_NAME`.
+
+El origen debe ser un origen HTTPS explícito; nunca se infiere de `Host` o
+cabeceras `Forwarded`. El dispatcher está pensado como tarea one-shot de cron o
+scheduler. Su contrato de leases, cinco intentos, backoff, entrega al menos una
+vez y redacción de tokens se documenta en
+[correo y outbox de WebAdmin](docs/webadmin-mail-outbox.md).
+
+HTTP y CLI usan el mismo cargador: las variables inyectadas por el proceso
+tienen prioridad sobre `.env`, con independencia de `variables_order`, y las
+referencias `${NOMBRE}` se resuelven contra esa vista inmutable. Si el fichero
+existe pero es ilegible o no se puede parsear, WebAdmin falla cerrado en vez
+de usar una configuración parcial.
+
+Con WebAdmin activo, su prefijo neutral se resuelve antes de cargar
+`App/config/config.php`, roles, sesión o router multidioma legacy. El default
+es `/admin`; puede configurarse en `App/config/modules/webadmin.php`, que sigue
+siendo propiedad del proyecto. CORE analiza las claves literales de
+`App/config/routes/get.php` y `post.php` sin ejecutar esos ficheros: una
+colisión conserva la ruta existente y queda reflejada como bloqueador en
+`doctor`. Si una clave se calcula, concatena o se añade mediante asignación a
+un índice, el análisis se considera incompleto y WebAdmin tampoco reclama el
+prefijo. Para activarlo, las rutas legacy deben declarar sus claves de forma
+literal o disponer de un catálogo estático equivalente.
+
+La ruta WebAdmin falla cerrada con `503` cuando el entorno, la DB o el esquema
+no están preparados y nunca inicia la cookie legacy. Cuando el diagnóstico de
+runtime está listo, sirve el acceso aislado bajo el prefijo neutral. La skill
+base `liquidstack-module-operations` documenta el flujo operativo y se
+sincroniza con las demás skills de CORE.
+
+El acceso usa cookies separadas por propósito: la autenticada
+`LS_WEBADMIN_SID` (`SameSite=Strict`), la preautenticación
+`LS_WEBADMIN_PREAUTH` (`Lax`) y las acciones de credencial
+`LS_WEBADMIN_ACTION` (`Lax`). Invitación y recuperación vinculan el token en
+el primer `GET` y redirigen con `303` a una URL limpia; no crean login
+automático. La política de contraseña valida UTF-8 y entre 15 y 1024 bytes. El
+contrato completo está en
+[autenticación de WebAdmin](docs/webadmin-authentication.md) y la operación
+inicial en [bootstrap de WebAdmin](docs/webadmin-bootstrap.md).
+
+Los administradores del sitio pueden gestionar editores desde `/admin/users`:
+listado paginado, invitación asíncrona, reenvío, suspensión/reactivación y
+asignación del subconjunto de capacidades activas que sean delegables y que el
+propio actor posea. Las cuentas protegidas y el propio actor quedan fuera de la
+superficie; SID, CSRF, versión, roles y capacidades se revalidan bajo lock en
+cada mutación. El contrato de rutas, preservación de permisos, lifecycle,
+outbox y auditoría se documenta en
+[gestión de editores de WebAdmin](docs/webadmin-editor-management.md).
+
+### Liquid Blog 0001
+
+El selector `liquidstack/blog` habilita un primer flujo editorial completo y
+activa WebAdmin como dependencia. Cada artículo conserva un UUID estable y
+variantes independientes por idioma con slug, H1, title SEO, description,
+extracto, cuerpo de texto plano, estado y versión de concurrencia. La UI vive
+bajo el prefijo WebAdmin efectivo (`/admin/blog` por defecto), no permite
+borrado y exige retirar una variante publicada antes de volver a editarla.
+
+La configuración opcional sigue siendo propiedad del proyecto en
+`App/config/modules/blog.php`:
+
+```php
+<?php
+
+return [
+    'public_paths' => [
+        'es' => '/noticias',
+        'eu' => '/eu/albisteak',
+        'en' => '/en/news',
+    ],
+    'sitemap_path' => '/blog-sitemap.xml',
+    'database' => [
+        'connection' => 'shared',
+        'table_prefix' => 'ls_blog_',
+    ],
+];
+```
+
+Los idiomas deben coincidir exactamente con `App/config/langs.php`. Las rutas
+estáticas del proyecto conservan prioridad; Blog resuelve sus URLs DB-backed
+solo después de que el router existente falle. El path base —por ejemplo
+`/noticias`— puede seguir perteneciendo a una vista estática del proyecto,
+mientras los descendientes publicados se sirven como
+`/noticias/{slug}`. El endpoint de sitemap consulta producción en cada
+petición, admite hasta 50.000 URLs y nunca modifica `public/sitemap.xml` ni
+requiere un deploy al publicar.
+
+Blog reutiliza `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` como origen HTTPS canónico,
+pero no necesita que SMTP esté configurado. Después de activar el selector se
+deben revisar y aplicar las migraciones explícitas y volver a ejecutar el
+bootstrap idempotente de WebAdmin para garantizar las capacidades protegidas:
+
+```bash
+composer liquidstack:doctor
+composer liquidstack:migrate --plan
+composer liquidstack:migrate --dry-run
+composer liquidstack:migrate --apply
+composer liquidstack:webadmin:bootstrap
+composer liquidstack:doctor
+```
+
+Composer no ejecuta esos pasos ni toca la DB durante un update. El contrato de
+rutas, estados, permisos, auditoría y exclusiones del MVP está en
+[Liquid Blog](docs/liquid-blog.md).
+
+La frontera HTTP exige que el servidor local afirme HTTPS; no confía en
+`Forwarded` ni `X-Forwarded-Proto`. Una petición insegura o malformada devuelve
+`400` antes de abrir PDO. Si existe un proxy, el virtual host debe traducir de
+forma verificada el estado TLS y configurar `REMOTE_ADDR` con una capa de
+proxies confiables; WebAdmin usa esa dirección para el bucket agregado de rate
+limit. Los fallos internos solo registran códigos estables y mantienen la
+respuesta pública genérica.
+
+`composer test:module-e2e` crea y retira un consumidor temporal para comprobar
+el alta y baja reales de los selectores, el descubrimiento de los comandos y
+que `doctor` y `migrate --plan` no mutan el consumidor. No forma parte de la
+suite unitaria porque resuelve dependencias con Composer y puede necesitar red
+o caché local.
+
+`composer test:mysql-integration` es una prueba opt-in sobre una DB aislada
+`liquidstack_core_test_*`. Ejecuta el runner, postcondición, semillas,
+idempotencia, bootstrap, outbox/ACK, activación, login, reset, gestión de
+editores, una carrera de identidad única y probes concurrentes de orden de
+locks InnoDB. Con Blog activo cubre además sus dos scopes, CRUD localizado,
+publicación/retirada, resolución pública, sitemap, stale writes con dos PDO y
+rollback atómico de auditoría. No contacta SMTP y limpia solo los objetos
+conocidos. Su contrato y variables `LIQUIDSTACK_TEST_MYSQL_*` se documentan en
+[integración MySQL/MariaDB de WebAdmin](docs/webadmin-mysql-integration-test.md).
 
 La selección lee solo `require` del `composer.json` raíz. Retirar un selector
 desactiva su registro, pero nunca elimina datos, medios, configuración ni

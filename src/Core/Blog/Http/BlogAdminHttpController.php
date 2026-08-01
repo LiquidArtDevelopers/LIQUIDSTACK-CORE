@@ -1,0 +1,535 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Core\Blog\Http;
+
+use App\Core\Blog\BlogDraft;
+use App\Core\Blog\BlogException;
+use App\Core\Blog\BlogService;
+use App\Core\Blog\Routing\BlogPublicationRouteGuard;
+use App\Core\Http\Request;
+use App\Core\Http\Response;
+use App\Core\WebAdmin\Configuration\WebAdminConfig;
+use App\Core\WebAdmin\Security\ConstantTime;
+
+final class BlogAdminHttpController
+{
+    public const VIEW_CAPABILITY = 'blog.articles.view';
+    public const EDIT_CAPABILITY = 'blog.articles.edit';
+    public const PUBLISH_CAPABILITY = 'blog.articles.publish';
+
+    private readonly BlogAdminRequestPolicy $requestPolicy;
+    private readonly BlogAdminHtmlRenderer $renderer;
+    private readonly BlogPublicationRouteGuard $publicationRouteGuard;
+
+    public function __construct(
+        private readonly BlogAdminHttpRuntimeInterface $runtime,
+        ?BlogAdminRequestPolicy $requestPolicy = null,
+        ?BlogAdminHtmlRenderer $renderer = null,
+        ?BlogPublicationRouteGuard $publicationRouteGuard = null
+    ) {
+        $this->requestPolicy = $requestPolicy
+            ?? new BlogAdminRequestPolicy();
+        $this->renderer = $renderer ?? new BlogAdminHtmlRenderer();
+        $this->publicationRouteGuard = $publicationRouteGuard
+            ?? new BlogPublicationRouteGuard();
+    }
+
+    public function index(Request $request): Response
+    {
+        if (!$this->accepts($request, 'index')) {
+            return $this->plain(400, 'Bad request');
+        }
+        if ($request->method() === 'HEAD') {
+            return $this->html(200, '');
+        }
+
+        $context = $this->authorizedContext(
+            $request,
+            self::VIEW_CAPABILITY
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        $offset = $request->query('offset');
+        $offset = is_string($offset) ? (int) $offset : 0;
+        $summaries = $this->runtime->service()->listPosts(
+            BlogService::DEFAULT_LIST_LIMIT + 1,
+            $offset
+        );
+        $hasNext = count($summaries) > BlogService::DEFAULT_LIST_LIMIT
+            && $offset <= BlogService::MAX_LIST_OFFSET
+                - BlogService::DEFAULT_LIST_LIMIT;
+
+        return $this->html(200, $this->renderer->index(
+            $this->basePath(),
+            array_slice($summaries, 0, BlogService::DEFAULT_LIST_LIMIT),
+            $this->runtime->authorization()->hasCapability(
+                $context['session'],
+                self::EDIT_CAPABILITY
+            ),
+            $offset,
+            $hasNext
+        ));
+    }
+
+    public function newPost(Request $request): Response
+    {
+        if (!$this->accepts($request, 'new')) {
+            return $this->plain(400, 'Bad request');
+        }
+        if ($request->method() === 'HEAD') {
+            return $this->html(200, '');
+        }
+
+        $context = $this->authorizedContext(
+            $request,
+            self::EDIT_CAPABILITY
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+        $post = $request->query('post');
+
+        return $this->html(200, $this->renderer->createForm(
+            $this->basePath(),
+            $context['csrf'],
+            $this->activeLanguages(),
+            is_string($post) ? $post : null
+        ));
+    }
+
+    public function create(Request $request): Response
+    {
+        if (!$this->accepts($request, 'create')) {
+            return $this->plain(400, 'Bad request');
+        }
+        $context = $this->authorizedContext(
+            $request,
+            self::EDIT_CAPABILITY,
+            true
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+        $locale = (string) $request->form('locale');
+        if (!$this->isActiveLocale($locale)) {
+            return $this->plain(422, 'Unprocessable content');
+        }
+
+        try {
+            $gate = $this->runtime->mutationGate(
+                $context['session'],
+                (string) $request->form('csrf'),
+                self::EDIT_CAPABILITY
+            );
+            $draft = $this->draft($request);
+            $post = (string) $request->form('post');
+            if ($post === '') {
+                $this->runtime->service()->createPost(
+                    $gate,
+                    $locale,
+                    $draft
+                );
+            } else {
+                $this->runtime->service()->addLocalization(
+                    $gate,
+                    $post,
+                    $locale,
+                    $draft
+                );
+            }
+
+            return $this->updatedRedirect();
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+    }
+
+    public function edit(Request $request): Response
+    {
+        if (!$this->accepts($request, 'edit')) {
+            return $this->plain(400, 'Bad request');
+        }
+        if ($request->method() === 'HEAD') {
+            return $this->html(200, '');
+        }
+
+        $context = $this->authorizedContext(
+            $request,
+            self::EDIT_CAPABILITY
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        try {
+            $variant = $this->runtime->service()->loadPost(
+                (string) $request->query('post'),
+                (string) $request->query('locale')
+            );
+
+            return $this->html(200, $this->renderer->editForm(
+                $this->basePath(),
+                $context['csrf'],
+                $variant,
+                $this->runtime->authorization()->hasCapability(
+                    $context['session'],
+                    self::PUBLISH_CAPABILITY
+                )
+            ));
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+    }
+
+    public function save(Request $request): Response
+    {
+        if (!$this->accepts($request, 'save')) {
+            return $this->plain(400, 'Bad request');
+        }
+        $context = $this->authorizedContext(
+            $request,
+            self::EDIT_CAPABILITY,
+            true
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        try {
+            $this->runtime->service()->saveDraft(
+                $this->runtime->mutationGate(
+                    $context['session'],
+                    (string) $request->form('csrf'),
+                    self::EDIT_CAPABILITY
+                ),
+                (string) $request->form('post'),
+                (string) $request->form('locale'),
+                (int) $request->form('lock_version'),
+                $this->draft($request)
+            );
+
+            return $this->updatedRedirect();
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+    }
+
+    public function publish(Request $request): Response
+    {
+        if (!$this->accepts($request, 'transition')) {
+            return $this->plain(400, 'Bad request');
+        }
+        $context = $this->authorizedContext(
+            $request,
+            self::PUBLISH_CAPABILITY,
+            true
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+        $locale = (string) $request->form('locale');
+        if (!$this->isActiveLocale($locale)) {
+            return $this->plain(422, 'Unprocessable content');
+        }
+
+        try {
+            $post = (string) $request->form('post');
+            $variant = $this->runtime->service()->loadPost($post, $locale);
+            $slug = $variant->draft()->slug();
+            if ($slug === null) {
+                throw new BlogException(BlogException::PUBLISH_INCOMPLETE);
+            }
+            $this->publicationRouteGuard->assertAvailable(
+                $this->runtime->projectRoot(),
+                $this->runtime->blogConfig(),
+                $locale,
+                $slug
+            );
+            $this->runtime->service()->publish(
+                $this->runtime->mutationGate(
+                    $context['session'],
+                    (string) $request->form('csrf'),
+                    self::PUBLISH_CAPABILITY
+                ),
+                $post,
+                $locale,
+                (int) $request->form('lock_version')
+            );
+
+            return $this->updatedRedirect();
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+    }
+
+    public function unpublish(Request $request): Response
+    {
+        if (!$this->accepts($request, 'transition')) {
+            return $this->plain(400, 'Bad request');
+        }
+        $context = $this->authorizedContext(
+            $request,
+            self::PUBLISH_CAPABILITY,
+            true
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        try {
+            $this->runtime->service()->unpublish(
+                $this->runtime->mutationGate(
+                    $context['session'],
+                    (string) $request->form('csrf'),
+                    self::PUBLISH_CAPABILITY
+                ),
+                (string) $request->form('post'),
+                (string) $request->form('locale'),
+                (int) $request->form('lock_version')
+            );
+
+            return $this->updatedRedirect();
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+    }
+
+    public function updated(Request $request): Response
+    {
+        if (!$this->accepts($request, 'updated')) {
+            return $this->plain(400, 'Bad request');
+        }
+        if ($request->method() === 'HEAD') {
+            return $this->html(200, '');
+        }
+
+        $context = $this->authorizedContext(
+            $request,
+            self::VIEW_CAPABILITY
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        return $this->html(
+            200,
+            $this->renderer->operationCompleted($this->basePath())
+        );
+    }
+
+    /**
+     * @return array{session: string, csrf: string}|Response
+     */
+    private function authorizedContext(
+        Request $request,
+        string $capability,
+        bool $validateSubmittedCsrf = false
+    ): array|Response {
+        $sessionToken = $request->cookie(
+            $this->runtime->webAdminConfig()->cookieName()
+        );
+        if ($sessionToken === null) {
+            return $this->redirectToLogin();
+        }
+        $session = $this->runtime->authentication()
+            ->resolveAuthenticatedSession($sessionToken);
+        if ($session === null) {
+            return $this->withExpiredCookie($this->redirectToLogin());
+        }
+        if (!$this->runtime->authorization()->mayAccessWebAdmin(
+            $sessionToken
+        )) {
+            $this->runtime->authentication()->revokeSession($sessionToken);
+
+            return $this->withExpiredCookie($this->redirectToLogin());
+        }
+        if (!$this->runtime->authorization()->hasCapability(
+            $sessionToken,
+            $capability
+        )) {
+            return $this->plain(403, 'Forbidden');
+        }
+
+        $csrf = $this->runtime->authentication()
+            ->authenticatedCsrfToken($sessionToken);
+        if ($csrf === null) {
+            return $this->withExpiredCookie($this->redirectToLogin());
+        }
+        $csrfToken = $csrf->csrfToken();
+        if (
+            $validateSubmittedCsrf
+            && !ConstantTime::equals(
+                $csrfToken,
+                (string) $request->form('csrf')
+            )
+        ) {
+            return $this->plain(403, 'Forbidden');
+        }
+
+        return [
+            'session' => $sessionToken,
+            'csrf' => $csrfToken,
+        ];
+    }
+
+    private function draft(Request $request): BlogDraft
+    {
+        return new BlogDraft(
+            (string) $request->form('h1'),
+            (string) $request->form('body_text'),
+            $this->nullableForm($request, 'slug'),
+            $this->nullableForm($request, 'seo_title'),
+            $this->nullableForm($request, 'meta_description'),
+            $this->nullableForm($request, 'excerpt')
+        );
+    }
+
+    private function nullableForm(Request $request, string $key): ?string
+    {
+        $value = (string) $request->form($key);
+
+        return trim($value) === '' ? null : $value;
+    }
+
+    private function isActiveLocale(string $locale): bool
+    {
+        return in_array($locale, $this->runtime->languages(), true)
+            && $this->runtime->blogConfig()->publicPath($locale) !== null;
+    }
+
+    /** @return list<string> */
+    private function activeLanguages(): array
+    {
+        return array_values(array_filter(
+            $this->runtime->languages(),
+            fn (string $locale): bool => $this->isActiveLocale($locale)
+        ));
+    }
+
+    private function accepts(Request $request, string $operation): bool
+    {
+        if (!$request->isSecureTransport()) {
+            return false;
+        }
+
+        return match ($operation) {
+            'index' => $this->requestPolicy->acceptsIndex($request),
+            'updated' => $this->requestPolicy->acceptsUpdated($request),
+            'new' => $this->requestPolicy->acceptsNew($request),
+            'create' => $this->requestPolicy->acceptsCreate($request),
+            'edit' => $this->requestPolicy->acceptsEdit($request),
+            'save' => $this->requestPolicy->acceptsSave($request),
+            'transition' => $this->requestPolicy->acceptsTransition($request),
+            default => false,
+        };
+    }
+
+    private function domainFailure(BlogException $exception): Response
+    {
+        return match ($exception->issueCode()) {
+            BlogException::ACTOR_GATE_FAILED =>
+                $this->plain(403, 'Forbidden'),
+            BlogException::INVALID_INPUT,
+            BlogException::PUBLISH_INCOMPLETE =>
+                $this->plain(422, 'Unprocessable content'),
+            BlogException::LOCALE_CONFLICT,
+            BlogException::SLUG_CONFLICT,
+            BlogException::LOCK_CONFLICT,
+            BlogException::INVALID_STATE =>
+                $this->plain(409, 'Conflict'),
+            BlogException::POST_NOT_FOUND,
+            BlogException::VARIANT_NOT_FOUND =>
+                $this->plain(404, 'Not found'),
+            BlogException::STORAGE_UNAVAILABLE =>
+                $this->plain(503, 'Service unavailable'),
+            default => $this->plain(503, 'Service unavailable'),
+        };
+    }
+
+    private function basePath(): string
+    {
+        return rtrim(
+            $this->runtime->webAdminConfig()->basePath(),
+            '/'
+        ) . '/blog';
+    }
+
+    private function updatedRedirect(): Response
+    {
+        return $this->redirect($this->basePath() . '/posts/updated');
+    }
+
+    private function redirectToLogin(): Response
+    {
+        return $this->redirect(
+            $this->runtime->webAdminConfig()->basePath() . '/login'
+        );
+    }
+
+    private function withExpiredCookie(Response $response): Response
+    {
+        $config = $this->runtime->webAdminConfig();
+        $value = $config->cookieName()
+            . '=; Path=' . $config->cookiePath()
+            . '; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0'
+            . '; Secure; HttpOnly; SameSite='
+            . WebAdminConfig::COOKIE_SAME_SITE;
+
+        return $response->withAddedHeader('Set-Cookie', $value);
+    }
+
+    /** @param array<string, string> $headers */
+    private function html(
+        int $status,
+        string $body,
+        array $headers = []
+    ): Response {
+        return new Response($status, $body, $headers + $this->headers(
+            "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+        ) + [
+            'Content-Type' => 'text/html; charset=utf-8',
+            'Content-Language' => 'es',
+        ]);
+    }
+
+    /** @param array<string, string> $headers */
+    private function plain(
+        int $status,
+        string $body,
+        array $headers = []
+    ): Response {
+        return new Response($status, $body, $headers + $this->headers(
+            "default-src 'none'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'"
+        ) + ['Content-Type' => 'text/plain; charset=utf-8']);
+    }
+
+    private function redirect(string $path): Response
+    {
+        return new Response(303, '', ['Location' => $path] + $this->headers(
+            "default-src 'none'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'"
+        ));
+    }
+
+    /** @return array<string, string> */
+    private function headers(string $csp): array
+    {
+        return [
+            'Cache-Control' =>
+                'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+            'Content-Security-Policy' => $csp,
+            'Permissions-Policy' =>
+                'camera=(), microphone=(), geolocation=()',
+            'Referrer-Policy' => 'no-referrer',
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Frame-Options' => 'DENY',
+            'Cross-Origin-Opener-Policy' => 'same-origin',
+            'Cross-Origin-Resource-Policy' => 'same-origin',
+        ];
+    }
+}

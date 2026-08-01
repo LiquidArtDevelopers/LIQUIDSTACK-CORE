@@ -2,45 +2,87 @@
 
 namespace App\Core;
 
+use App\Core\Environment\ProjectEnvironmentLoader;
+use App\Core\Environment\ProjectEnvironmentLoadResult;
+use App\Core\Http\Request;
+use App\Core\Routing\ModulePublicRouteDispatcher;
+use App\Core\Routing\ModuleRouteDispatcher;
 use App\Core\Routing\ShowroomCategoryRoute;
 use App\Core\Routing\UrlResolver;
 use App\Core\Support\Paths;
-use Dotenv\Dotenv;
 use RuntimeException;
 
 class Application
 {
     private string $projectRoot;
 
-    public function __construct(string $projectRoot)
+    private ?string $coreRoot;
+
+    public function __construct(string $projectRoot, ?string $coreRoot = null)
     {
         $this->projectRoot = rtrim($projectRoot, DIRECTORY_SEPARATOR);
+        $this->coreRoot = $coreRoot;
         Paths::setProjectRoot($this->projectRoot);
     }
 
     public function run(): void
     {
-        $this->bootEnvironment();
+        $environmentResult = $this->bootEnvironment();
+        $environment = $environmentResult->values();
+
+        /*
+         * Mantiene el contrato legacy de $_ENV, pero usa la misma vista
+         * combinada del entorno que los comandos CLI. De este modo, los
+         * secretos inyectados por el proceso no desaparecen en instalaciones
+         * cuyo variables_order no contiene la letra E.
+         */
+        $_ENV = array_replace($_ENV, $environment);
+
+        $request = Request::fromGlobals();
+        $moduleResponse = ModuleRouteDispatcher::forProject(
+            $this->projectRoot,
+            $environment,
+            $this->coreRoot,
+            $environmentResult->isUsable()
+        )->dispatch($request);
+
+        if ($moduleResponse !== null) {
+            $moduleResponse->emit();
+            return;
+        }
+
+        /*
+         * Los módulos operativos tienen un bootstrap propio. Resolverlos antes
+         * de incluir configuración legacy evita heredar sesiones, cookies,
+         * cabeceras o efectos laterales de proyectos ya existentes.
+         */
         $this->loadProjectConfig();
         $this->ensureSession();
 
         if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-            $this->handlePost();
+            $this->handlePost(
+                $request,
+                $environment,
+                $environmentResult->isUsable()
+            );
             return;
         }
 
-        $this->handleGet();
+        $this->handleGet(
+            $request,
+            $environment,
+            $environmentResult->isUsable()
+        );
     }
 
-    private function bootEnvironment(): void
+    private function bootEnvironment(): ProjectEnvironmentLoadResult
     {
         $autoloadPath = $this->projectRoot . '/vendor/autoload.php';
         if (is_file($autoloadPath)) {
             require_once $autoloadPath;
         }
 
-        $dotenv = Dotenv::createImmutable($this->projectRoot);
-        $dotenv->safeLoad();
+        return (new ProjectEnvironmentLoader())->load($this->projectRoot);
     }
 
     private function loadProjectConfig(): void
@@ -64,7 +106,14 @@ class Application
         }
     }
 
-    private function handlePost(): void
+    /**
+     * @param array<string, mixed> $environment
+     */
+    private function handlePost(
+        Request $request,
+        array $environment,
+        bool $environmentUsable
+    ): void
     {
         $url            = urldecode($_SERVER['REQUEST_URI'] ?? '/');
         $routesPath     = Paths::appPath() . '/config/routes/post.php';
@@ -72,6 +121,17 @@ class Application
 
         if (isset($arrayRutasPost[$url])) {
             require_once Paths::appPath() . '/app/' . $arrayRutasPost[$url];
+            return;
+        }
+
+        $moduleResponse = ModulePublicRouteDispatcher::forProject(
+            $this->projectRoot,
+            $environment,
+            $this->coreRoot,
+            $environmentUsable
+        )->dispatch($request);
+        if ($moduleResponse !== null) {
+            $moduleResponse->emit();
             return;
         }
 
@@ -84,7 +144,14 @@ class Application
         echo $message_not_found;
     }
 
-    private function handleGet(): void
+    /**
+     * @param array<string, mixed> $environment
+     */
+    private function handleGet(
+        Request $request,
+        array $environment,
+        bool $environmentUsable
+    ): void
     {
         $context = UrlResolver::resolve($_SERVER, $_COOKIE, $_ENV);
 
@@ -122,6 +189,17 @@ class Application
         $showroomRoute = ShowroomCategoryRoute::resolve($url, $rutasPorIdioma);
         if ($showroomRoute !== null) {
             $this->renderMatchedRoute($lang, $url, $showroomRoute);
+            return;
+        }
+
+        $moduleResponse = ModulePublicRouteDispatcher::forProject(
+            $this->projectRoot,
+            $environment,
+            $this->coreRoot,
+            $environmentUsable
+        )->dispatch($request);
+        if ($moduleResponse !== null) {
+            $moduleResponse->emit();
             return;
         }
 
