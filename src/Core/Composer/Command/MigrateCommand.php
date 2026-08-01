@@ -287,12 +287,12 @@ final class MigrateCommand extends BaseCommand
         OutputInterface $output
     ): int {
         try {
-            $report = ($this->doctor ?? new ModuleDoctor())->inspect(
-                $this->projectRoot
-                    ?? ProjectRootLocator::fromComposerContext(),
-                $this->coreRoot ?? dirname(__DIR__, 4),
-                false
-            );
+            $report = ($this->doctor ?? new ModuleDoctor())
+                ->inspectMigrationCatalog(
+                    $this->projectRoot
+                        ?? ProjectRootLocator::fromComposerContext(),
+                    $this->coreRoot ?? dirname(__DIR__, 4)
+                );
 
             if ($format === 'json') {
                 $output->writeln($this->encodeJson(

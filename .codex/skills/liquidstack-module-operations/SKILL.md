@@ -117,6 +117,10 @@ composer liquidstack:migrate --dry-run
   bootstrap que solo encola trabajo.
 - Usar `--plan` para revisar el catálogo sin conexión y `--dry-run` para
   comprobar el estado real de la DB sin escribir.
+- Tratar `--plan` como un preflight exclusivamente de metadatos modulares y de
+  migraciones. La ausencia de origen público, SMTP, credenciales DB u otros
+  requisitos operativos se diagnostica en `doctor` o `--dry-run`, pero no
+  invalida un catálogo correcto.
 - No ejecutar `--apply` salvo autorización expresa. Antes, revisar el hash y
   los bloqueadores del dry-run. La aplicación exige `--yes` o confirmación
   interactiva; en JSON siempre `--yes`.
@@ -262,6 +266,17 @@ composer liquidstack:migrate --dry-run
 - Para una instalación nueva con DB dedicada, crear primero una DB vacía y un
   usuario acotado, declarar las seis variables `LIQUIDSTACK_DB_*` fuera de Git
   y seleccionar `connection => liquidstack` en los dos configs project-owned.
+- Registrar el entorno real antes de operar. AIWA usa actualmente una DB
+  modular local de XAMPP; otros consumidores pueden usar local, staging o
+  producción, pero el código no cambia entre ellos y los secretos nunca se
+  reutilizan.
+- Distinguir una producción vacía de una promoción con datos. En el primer
+  caso se aplica el catálogo sobre destino vacío; en el segundo se exige un
+  plan coordinado para esquemas, `ls_module_migrations`, datos y medios. Un
+  cambio de `LIQUIDSTACK_DB_*` nunca mueve ni adopta contenido.
+- Antes de apuntar a producción, rotar cualquier credencial usada o compartida
+  durante desarrollo y consultar
+  `docs/mejoras-pendientes/promocion-db-modulos-local-produccion.md`.
 - Ejecutar `doctor`, `migrate --plan` y `migrate --dry-run` antes de pedir
   autorización. No presentar `--apply` como parte automática de la adopción.
 - Si el proyecto ya tiene datos bajo `shared`, no cambiar la selección hasta

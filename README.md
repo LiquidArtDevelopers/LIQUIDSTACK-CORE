@@ -879,6 +879,11 @@ Despues de publicar:
 
 ## Mejoras pendientes
 
+- [Promoción de la DB modular entre local y producción](docs/mejoras-pendientes/promocion-db-modulos-local-produccion.md):
+  AIWA trabaja actualmente sobre XAMPP local; queda definido el contrato para
+  proyectos que usen DB local o producción y el protocolo para cambiar de
+  entorno sin modificar código, reutilizar secretos ni mover datos de forma
+  implícita.
 - [Auditoría de compatibilidad en proyectos consumidores](docs/mejoras-pendientes/auditoria-compatibilidad-proyectos-consumidores.md):
   protocolo obligatorio para probar las actualizaciones de CORE en AIWA,
   ARRO, un starter BASE limpio y el resto de consumidores antes de desplegar

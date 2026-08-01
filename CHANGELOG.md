@@ -215,6 +215,10 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   alturas, saltos de línea y distribución responsive.
 
 ### Corregido
+- `composer liquidstack:migrate --plan` usa ahora un diagnóstico realmente
+  `catalog-only`: valida solo Composer, selección modular, providers de
+  migración y sus metadatos, sin quedar bloqueado por el origen público, SMTP,
+  credenciales o cualquier otro requisito operativo ajeno al plan offline.
 - `build-sitemap.php` normaliza CRLF sin duplicar líneas vacías en Windows y
   respeta `sitemap => false` para excluir rutas privadas declaradas por cada
   proyecto.

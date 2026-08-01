@@ -272,6 +272,162 @@ final class ModuleDoctor
     }
 
     /**
+     * Inspects only the module and migration metadata required by
+     * `liquidstack:migrate --plan`.
+     *
+     * This boundary deliberately ignores runtime configuration, environment
+     * values and database readiness. Those belong to `doctor` and
+     * `migrate --dry-run`; the catalog plan must remain offline and must not
+     * fail because an unrelated operational capability is not configured.
+     */
+    public function inspectMigrationCatalog(
+        string $projectRoot,
+        string $coreRoot
+    ): DoctorReport {
+        $projectRoot = rtrim($projectRoot, '/\\');
+        $coreRoot = rtrim($coreRoot, '/\\');
+        $checks = [];
+        $requested = [];
+        $enabled = [];
+        $providerCounts = [];
+        $migrationPlan = MigrationPlan::empty();
+
+        $composerPath = $projectRoot . '/composer.json';
+        $composerReady = $this->isRegularReadableFile($composerPath);
+        $checks[] = $composerReady
+            ? DiagnosticCheck::ok(
+                'project.composer',
+                'composer.json del proyecto está disponible.'
+            )
+            : DiagnosticCheck::error(
+                'project.composer',
+                'composer.json no existe, no es regular o no se puede leer.'
+            );
+
+        try {
+            $catalog = ModuleCatalog::fromCoreRoot($coreRoot);
+            $checks[] = DiagnosticCheck::ok(
+                'modules.catalog',
+                sprintf(
+                    'Catálogo modular válido: %d módulo(s).',
+                    count($catalog->all())
+                )
+            );
+        } catch (\Throwable) {
+            $checks[] = DiagnosticCheck::error(
+                'modules.catalog',
+                'No se pudo cargar el catálogo modular de forma segura.'
+            );
+
+            return new DoctorReport(
+                $projectRoot,
+                $checks,
+                $requested,
+                $enabled,
+                $providerCounts,
+                $migrationPlan
+            );
+        }
+
+        if (!$composerReady) {
+            return new DoctorReport(
+                $projectRoot,
+                $checks,
+                $requested,
+                $enabled,
+                $providerCounts,
+                $migrationPlan
+            );
+        }
+
+        try {
+            $selection = ModuleSelection::fromComposerJson(
+                $catalog,
+                $composerPath
+            );
+            $requested = $selection->requestedIds();
+            $enabled = $selection->enabledIds();
+            $checks[] = DiagnosticCheck::ok(
+                'modules.selection',
+                $enabled === []
+                    ? 'No hay módulos opcionales activos.'
+                    : sprintf(
+                        'Módulos activos en orden de dependencias: %s.',
+                        implode(', ', $enabled)
+                    )
+            );
+        } catch (\Throwable) {
+            $checks[] = DiagnosticCheck::error(
+                'modules.selection',
+                'No se pudo resolver la selección modular del proyecto.'
+            );
+
+            return new DoctorReport(
+                $projectRoot,
+                $checks,
+                $requested,
+                $enabled,
+                $providerCounts,
+                $migrationPlan
+            );
+        }
+
+        try {
+            $registry = ModuleRegistry::fromSelection($selection);
+            $providerCounts['migrations'] = count(
+                $registry->providers('migrations')
+            );
+            $checks[] = DiagnosticCheck::ok(
+                'modules.providers.migrations',
+                sprintf(
+                    'Providers de migraciones activos validados: %d.',
+                    $providerCounts['migrations']
+                )
+            );
+        } catch (\Throwable) {
+            $providerCounts['migrations'] = 0;
+            $checks[] = DiagnosticCheck::error(
+                'modules.providers.migrations',
+                'Un provider activo de migraciones no cumple el contrato.'
+            );
+
+            return new DoctorReport(
+                $projectRoot,
+                $checks,
+                $requested,
+                $enabled,
+                $providerCounts,
+                $migrationPlan
+            );
+        }
+
+        try {
+            $migrationPlan = MigrationCatalog::fromRegistry($registry)->plan();
+            $checks[] = DiagnosticCheck::ok(
+                'migrations.catalog',
+                sprintf(
+                    'Catálogo de migraciones válido: %d definición(es); estado DB no evaluado.',
+                    count($migrationPlan->entries())
+                )
+            );
+        } catch (\Throwable) {
+            $checks[] = DiagnosticCheck::error(
+                'migrations.catalog',
+                'El catálogo de migraciones activo no cumple el contrato.'
+            );
+        }
+
+        return new DoctorReport(
+            $projectRoot,
+            $checks,
+            $requested,
+            $enabled,
+            $providerCounts,
+            $migrationPlan
+        );
+    }
+
+    /**
      * @param list<DiagnosticCheck> $checks
      * @return array<string, mixed>
      */

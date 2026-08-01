@@ -133,6 +133,14 @@ El primer contrato dedicado está limitado a `localhost` o redes confiables.
 No debe utilizarse a través de un transporte no confiable hasta que CORE
 incorpore un perfil TLS probado con CA y verificación del servidor.
 
+AIWA desarrolla actualmente estos módulos contra una DB local de XAMPP. El
+mismo código deberá poder apuntar en otros proyectos a local, staging o
+producción cambiando únicamente secretos `LIQUIDSTACK_DB_*`. La promoción a
+una DB vacía y el traslado de datos existentes son operaciones diferentes;
+ninguna se infiere de un cambio de entorno. El diseño y runbook pendientes se
+mantienen en
+[`promocion-db-modulos-local-produccion.md`](mejoras-pendientes/promocion-db-modulos-local-produccion.md).
+
 ### Diagnóstico y plan de migraciones
 
 El plugin registra comandos únicamente en los proyectos consumidores donde

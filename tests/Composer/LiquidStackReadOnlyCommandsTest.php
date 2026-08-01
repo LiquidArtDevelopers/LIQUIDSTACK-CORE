@@ -173,6 +173,103 @@ final class LiquidStackReadOnlyCommandsTest extends TestCase
         );
     }
 
+    public function testMigrationPlanIgnoresOperationalBlogReadiness(): void
+    {
+        $environmentPath = $this->projectRoot . '/.env';
+        $environment = (string) file_get_contents($environmentPath);
+        $this->filesystem->dumpFile(
+            $environmentPath,
+            str_replace(
+                "LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN=https://example.test\n",
+                '',
+                $environment
+            )
+        );
+        $before = $this->snapshot($this->projectRoot);
+        $tester = $this->tester(new MigrateCommand(
+            $this->projectRoot,
+            $this->root
+        ));
+
+        $status = $tester->execute([
+            '--plan' => true,
+            '--format' => 'json',
+        ]);
+        $payload = json_decode(
+            $tester->getDisplay(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame(Command::SUCCESS, $status);
+        self::assertTrue($payload['ok']);
+        self::assertSame($before, $this->snapshot($this->projectRoot));
+        self::assertSame('catalog-only', $payload['migrations']['mode']);
+        self::assertNotContains(
+            'blog.environment.public_origin',
+            array_column($payload['checks'], 'id')
+        );
+    }
+
+    public function testMigrationPlanRejectsInvalidMigrationProvider(): void
+    {
+        $this->writeManifest('blog', ['webadmin'], [
+            'migrations' => [\stdClass::class],
+        ]);
+        $tester = $this->tester(new MigrateCommand(
+            $this->projectRoot,
+            $this->root
+        ));
+
+        $status = $tester->execute([
+            '--plan' => true,
+            '--format' => 'json',
+        ]);
+        $payload = json_decode(
+            $tester->getDisplay(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame(Command::FAILURE, $status);
+        self::assertFalse($payload['ok']);
+        self::assertContains(
+            'modules.providers.migrations',
+            array_column($payload['checks'], 'id')
+        );
+    }
+
+    public function testMigrationPlanDoesNotValidateUnrelatedProviders(): void
+    {
+        $this->writeManifest('webadmin', [], [
+            'routes' => [GenericRouteProviderForDoctorFixture::class],
+        ]);
+        $tester = $this->tester(new MigrateCommand(
+            $this->projectRoot,
+            $this->root
+        ));
+
+        $status = $tester->execute([
+            '--plan' => true,
+            '--format' => 'json',
+        ]);
+        $payload = json_decode(
+            $tester->getDisplay(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame(Command::SUCCESS, $status);
+        self::assertTrue($payload['ok']);
+        self::assertNotContains(
+            'modules.providers.routes',
+            array_column($payload['checks'], 'id')
+        );
+    }
+
     public function testMigrationCommandRequiresExactlyOneExplicitMode(): void
     {
         $tester = $this->tester(new MigrateCommand(
