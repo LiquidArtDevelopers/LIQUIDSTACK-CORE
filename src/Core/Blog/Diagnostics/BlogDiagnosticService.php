@@ -104,9 +104,14 @@ final class BlogDiagnosticService
 
         $originReady = false;
         $originIssue = null;
+        $originSource = null;
+        $originUsesLegacyCompatibilityOverride = false;
         try {
-            BlogPublicOrigin::fromEnvironment($environment);
+            $origin = BlogPublicOrigin::fromEnvironment($environment);
             $originReady = true;
+            $originSource = $origin->source();
+            $originUsesLegacyCompatibilityOverride =
+                $origin->usesLegacyCompatibilityOverride();
         } catch (BlogConfigException $exception) {
             $originIssue = [
                 'code' => $exception->issueCode(),
@@ -153,8 +158,12 @@ final class BlogDiagnosticService
             'environment' => [
                 'public_origin' => [
                     'ready' => $originReady,
-                    'required_name' => BlogPublicOrigin::ENV,
+                    'required_name' =>
+                        BlogPublicOrigin::PROJECT_ORIGIN_ENV,
                     'issue' => $originIssue,
+                    'source' => $originSource,
+                    'legacy_compatibility_override' =>
+                        $originUsesLegacyCompatibilityOverride,
                 ],
             ],
             'routing' => $routing,

@@ -100,6 +100,34 @@ final class BlogAdminRequestPolicyTest extends TestCase
         )));
     }
 
+    public function testPreviewAcceptsOnlyExactStoredVariantNavigation(): void
+    {
+        $query = ['post' => $this->uuid(), 'locale' => 'es'];
+        self::assertTrue($this->policy->acceptsPreview($this->get(
+            '/admin/blog/posts/preview',
+            $query
+        )));
+        self::assertTrue($this->policy->acceptsPreview(Request::fromInput([
+            'REQUEST_METHOD' => 'HEAD',
+            'REQUEST_URI' => '/admin/blog/posts/preview',
+            'HTTPS' => 'on',
+        ], query: $query)));
+
+        self::assertFalse($this->policy->acceptsPreview($this->get(
+            '/admin/blog/posts/preview',
+            $query + ['extra' => 'x']
+        )));
+        self::assertFalse($this->policy->acceptsPreview($this->get(
+            '/admin/blog/posts/preview',
+            ['post' => $this->uuid(), 'locale' => 'ES']
+        )));
+        self::assertFalse($this->policy->acceptsPreview(Request::fromInput([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin/blog/posts/preview',
+            'HTTPS' => 'on',
+        ], query: $query, form: ['unexpected' => 'body'])));
+    }
+
     public function testWrongContentTypeKeysVersionsAndLimitsFailClosed(): void
     {
         $form = [

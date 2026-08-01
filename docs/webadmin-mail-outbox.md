@@ -6,7 +6,7 @@ SMTP y `composer update` nunca envía correo. El bootstrap y la solicitud de
 recuperación solo crean trabajo `pending`; un scheduler ejecuta el dispatcher
 de forma separada.
 
-## Configuración SMTP
+## Configuración SMTP productiva
 
 Las ocho variables siguientes son obligatorias para el transporte:
 
@@ -36,6 +36,51 @@ Los secretos pertenecen al gestor de secretos o al `.env` no versionado del
 consumidor. No deben colocarse en `App/config/modules/webadmin.php`, el
 repositorio, argumentos CLI, unidades de scheduler visibles o logs.
 
+## Captura local tipada
+
+El laboratorio puede recorrer la activación y recuperación reales sin usar
+credenciales SMTP productivas. El modo es explícito y solo admite un capturador
+SMTP sobre la interfaz loopback:
+
+```dotenv
+RAIZ=http://localhost:1309
+DEV_MODE=1
+LIQUIDSTACK_WEBADMIN_MAIL_TRANSPORT=local_capture_smtp
+LIQUIDSTACK_WEBADMIN_SMTP_HOST=127.0.0.1
+LIQUIDSTACK_WEBADMIN_SMTP_PORT=1025
+LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN=
+LIQUIDSTACK_WEBADMIN_SMTP_ENCRYPTION=
+LIQUIDSTACK_WEBADMIN_SMTP_USERNAME=
+LIQUIDSTACK_WEBADMIN_SMTP_PASSWORD=
+LIQUIDSTACK_WEBADMIN_MAIL_FROM_ADDRESS=webadmin@example.test
+LIQUIDSTACK_WEBADMIN_MAIL_FROM_NAME="Example WebAdmin dev"
+```
+
+En este perfil el origen de los enlaces procede exclusivamente de `RAIZ`.
+`LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, `SMTP_ENCRYPTION`, `SMTP_USERNAME` y
+`SMTP_PASSWORD` deben quedar ausentes o vacíos. El cargador exige a la vez
+`DEV_MODE=1`, una `RAIZ` HTTP loopback canónica y un host SMTP `127.0.0.1` o
+`[::1]`. Cualquier perfil de producción, origen remoto, credencial o petición de
+TLS lo invalida antes de abrir PDO o construir el transporte. El SMTP
+productivo mantiene obligatorios autenticación y STARTTLS/SMTPS.
+
+Mailpit es el capturador recomendado, pero CORE solo depende del protocolo
+SMTP local y no instala ni arranca herramientas del sistema. Para evitar que
+la interfaz o los mensajes salgan de la máquina, se puede ejecutar el binario
+con almacenamiento temporal y ambos listeners ligados a loopback:
+
+```console
+mailpit --smtp 127.0.0.1:1025 --listen 127.0.0.1:8025 --max 50 --max-age 24h --disable-version-check
+```
+
+No se configura relay ni forwarding. Antes del dispatch se comprueba
+manualmente `http://127.0.0.1:8025`; después, una invocación explícita del
+comando entrega al capturador el mensaje que contiene el enlace. No existe un
+comando que imprima tokens: el valor bruto conserva su ciclo normal
+outbox/mensaje/ACK y nunca aparece en la salida CLI. Al volver a
+`DEV_MODE=0`, aunque el resto de claves permanezca en un `.env` local, el
+dispatcher queda bloqueado.
+
 Antes de habilitar la tarea:
 
 ```console
@@ -49,7 +94,9 @@ dispatcher, pero tampoco bloquea por sí sola el login o un bootstrap que solo
 encola trabajo. `mail_ready` valida el transporte, no sustituye el preflight
 completo: el comando exige además selector activo, entorno legible,
 `zend.exception_ignore_args=On`, ruta efectiva segura, conexión PDO y esquema
-WebAdmin aplicado.
+WebAdmin aplicado. Tampoco prueba que el proceso SMTP local o remoto esté
+escuchando; esa disponibilidad se verifica antes de consumir intentos del
+outbox.
 
 ## Comando de despacho
 

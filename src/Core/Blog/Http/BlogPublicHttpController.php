@@ -33,13 +33,13 @@ final class BlogPublicHttpController
             if ($base === null) {
                 throw new BlogPublicHttpRuntimeException();
             }
-            $canonical = $this->runtime->origin()->absoluteUrl(
-                $base . '/' . $slug
-            );
-
             return new Response(
                 200,
-                $this->articleRenderer->render($variant, $canonical),
+                $this->articleRenderer->renderFromOrigin(
+                    $variant,
+                    $this->runtime->origin(),
+                    $base . '/' . $slug
+                ),
                 $this->articleHeaders()
             );
         } catch (BlogException $exception) {

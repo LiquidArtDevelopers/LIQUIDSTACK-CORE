@@ -66,6 +66,16 @@ final class BlogAdminRequestPolicy
 
     public function acceptsEdit(Request $request): bool
     {
+        return $this->acceptsVariantQuery($request);
+    }
+
+    public function acceptsPreview(Request $request): bool
+    {
+        return $this->acceptsVariantQuery($request);
+    }
+
+    private function acceptsVariantQuery(Request $request): bool
+    {
         if (!$this->safeGet($request)) {
             return false;
         }

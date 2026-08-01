@@ -80,6 +80,25 @@ final class BlogPublicRendererTest extends TestCase
         );
     }
 
+    public function testTypedLoopbackOriginCanRenderInDevelopment(): void
+    {
+        $origin = BlogPublicOrigin::fromEnvironment([
+            BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                'http://localhost:1309',
+            'DEV_MODE' => '1',
+        ]);
+        $html = (new BlogPublicHtmlRenderer())->renderFromOrigin(
+            $this->variant('Matrix body'),
+            $origin,
+            '/en/news/matrix'
+        );
+
+        self::assertStringContainsString(
+            '<link rel="canonical" href="http://localhost:1309/en/news/matrix">',
+            $html
+        );
+    }
+
     private function variant(string $body): BlogPostVariant
     {
         $now = new DateTimeImmutable('2026-01-01T00:00:00Z');

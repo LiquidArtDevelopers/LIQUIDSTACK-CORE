@@ -109,6 +109,8 @@ final class MailDispatchCliTransportFixture implements
 final class WebAdminMailDispatchCommandTest extends TestCase
 {
     private const MANAGED_ENVIRONMENT_NAMES = [
+        'RAIZ',
+        'DEV_MODE',
         'BBDD_SERVER',
         'BBDD_USER',
         'BBDD_PASS',
@@ -120,6 +122,7 @@ final class WebAdminMailDispatchCommandTest extends TestCase
         'LIQUIDSTACK_DB_PASSWORD',
         'LIQUIDSTACK_DB_CHARSET',
         WebAdminMailConfiguration::PUBLIC_ORIGIN_ENV,
+        WebAdminMailConfiguration::TRANSPORT_ENV,
         WebAdminMailConfiguration::SMTP_HOST_ENV,
         WebAdminMailConfiguration::SMTP_PORT_ENV,
         WebAdminMailConfiguration::SMTP_ENCRYPTION_ENV,
@@ -628,6 +631,78 @@ final class WebAdminMailDispatchCommandTest extends TestCase
         self::assertStringNotContainsString('origin-leak', $display);
     }
 
+    public function testRealFactoryRejectsLocalCaptureOutsideDevBeforeDatabase(): void
+    {
+        $project = $this->createProject(
+            'local-capture-production-blocked',
+            true,
+            $this->localCaptureEnvironment([
+                'RAIZ' => 'https://www.example.test',
+                'DEV_MODE' => '0',
+            ])
+        );
+        $databaseCalls = 0;
+        $transportCalls = 0;
+        $factory = new WebAdminMailDispatchCommandRuntimeFactory(
+            connectionFactoryResolver: static function () use (
+                &$databaseCalls
+            ): PdoConnectionFactoryInterface {
+                ++$databaseCalls;
+                throw new RuntimeException('Database must not be reached.');
+            },
+            transportResolver: static function () use (
+                &$transportCalls
+            ): WebAdminMailTransportInterface {
+                ++$transportCalls;
+                throw new RuntimeException('Transport must not be reached.');
+            }
+        );
+
+        $tester = $this->tester($factory, $project, dirname(__DIR__, 2));
+        $status = $tester->execute(['--format' => 'json']);
+        $display = $tester->getDisplay();
+        $payload = json_decode($display, true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertSame(Command::FAILURE, $status);
+        self::assertSame(
+            'webadmin.mail.configuration_invalid',
+            $payload['error']['code']
+        );
+        self::assertSame(0, $databaseCalls);
+        self::assertSame(0, $transportCalls);
+        self::assertStringNotContainsString('https://www.example.test', $display);
+    }
+
+    public function testRealFactoryBuildsLocalCaptureRuntimeWithoutSending(): void
+    {
+        if (!in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+            self::markTestSkipped('pdo_sqlite es necesario para probar el CLI.');
+        }
+
+        $prefix = 'local_capture_webadmin_';
+        $project = $this->createProject(
+            'local-capture-runtime',
+            true,
+            $this->localCaptureEnvironment(),
+            $prefix
+        );
+        $coreRoot = dirname(__DIR__, 2);
+        $pdo = $this->sqlite();
+        $this->applyWebAdminSchema($pdo, $project, $coreRoot, $prefix);
+        $pdoFactory = new MailDispatchCliPdoFactoryFixture($pdo);
+        $factory = new WebAdminMailDispatchCommandRuntimeFactory(
+            connectionFactoryResolver: static fn (
+                array $_environment
+            ): PdoConnectionFactoryInterface => $pdoFactory
+        );
+
+        $runtime = $factory->create($project, $coreRoot);
+        $report = $runtime->dispatch(1);
+
+        self::assertSame(0, $report->examined());
+        self::assertSame(1, $pdoFactory->connectCalls);
+    }
+
     public function testRealFactoryRequiresAppliedSchemaBeforeBuildingTransport(): void
     {
         if (!in_array('sqlite', PDO::getAvailableDrivers(), true)) {
@@ -1025,6 +1100,26 @@ final class WebAdminMailDispatchCommandTest extends TestCase
         }
 
         return implode("\n", $lines) . "\n";
+    }
+
+    /** @param array<string, string> $overrides */
+    private function localCaptureEnvironment(array $overrides = []): string
+    {
+        return $this->environment(array_replace([
+            'RAIZ' => 'http://localhost:1309',
+            'DEV_MODE' => '1',
+            WebAdminMailConfiguration::TRANSPORT_ENV =>
+                WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+            WebAdminMailConfiguration::PUBLIC_ORIGIN_ENV => '',
+            WebAdminMailConfiguration::SMTP_HOST_ENV => '127.0.0.1',
+            WebAdminMailConfiguration::SMTP_PORT_ENV => '1025',
+            WebAdminMailConfiguration::SMTP_ENCRYPTION_ENV => '',
+            WebAdminMailConfiguration::SMTP_USERNAME_ENV => '',
+            WebAdminMailConfiguration::SMTP_PASSWORD_ENV => '',
+            WebAdminMailConfiguration::FROM_ADDRESS_ENV =>
+                'webadmin@aiwa.test',
+            WebAdminMailConfiguration::FROM_NAME_ENV => 'AIWA WebAdmin dev',
+        ], $overrides));
     }
 
     private function createProject(

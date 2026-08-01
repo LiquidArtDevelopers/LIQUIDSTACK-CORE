@@ -55,10 +55,17 @@ los dos ficheros de módulo y sus prefijos son project-owned; Composer no los
 crea, fusiona ni sobrescribe.
 
 El prefijo puede personalizarse, pero no se infiere ni se copia desde
-WebAdmin. Las URLs absolutas reutilizan
-`LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, que debe ser un origen HTTPS sin path,
-query ni credenciales. Blog necesita ese origen aunque el transporte SMTP de
-WebAdmin no se haya configurado.
+WebAdmin. Las URLs absolutas usan `RAIZ` como origen canónico del proyecto:
+debe ser un origen HTTPS sin path, query ni credenciales en producción. El
+laboratorio admite `http://localhost:1309` —o el loopback canónico
+equivalente— exclusivamente con `DEV_MODE=1`. El alias anterior
+`LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` sigue siendo compatible durante la
+transición. Para no cambiar URLs canónicas en una actualización, una
+discrepancia real en producción conserva temporalmente el alias y `doctor`
+emite un aviso; se deben alinear ambos valores antes de retirar el alias. En
+desarrollo, la `RAIZ` loopback prevalece para no convertir el origen de correo
+de producción en una URL local del Blog. Ninguno se deriva de `Host`,
+`Forwarded` ni del request, y Blog no depende de que SMTP esté listo.
 
 ## Modelo editorial
 
@@ -93,7 +100,7 @@ El contrato inicial registra tres capacidades delegables:
 
 | Capacidad | Permite |
 | --- | --- |
-| `blog.articles.view` | Consultar el listado y los formularios del Blog. |
+| `blog.articles.view` | Consultar el listado y la vista previa privada guardada. |
 | `blog.articles.edit` | Crear y editar borradores o variantes. |
 | `blog.articles.publish` | Publicar y retirar variantes. |
 
@@ -121,6 +128,7 @@ Rutas del MVP:
 | `GET`/`HEAD` | `/admin/blog/posts/new` | Alta de artículo o idioma. |
 | `POST` | `/admin/blog/posts/create` | Crear variante. |
 | `GET`/`HEAD` | `/admin/blog/posts/edit` | Formulario por UUID y locale. |
+| `GET`/`HEAD` | `/admin/blog/posts/preview` | Vista previa privada de la versión guardada. |
 | `POST` | `/admin/blog/posts/save` | Guardar con versión optimista. |
 | `POST` | `/admin/blog/posts/publish` | Publicar una variante completa. |
 | `POST` | `/admin/blog/posts/unpublish` | Retirar una variante. |
@@ -138,6 +146,13 @@ correo, SID, CSRF ni IP.
 El listado se pagina en bloques de 50 mediante offsets canónicos y acotados;
 consulta una fila adicional para saber si existe página siguiente y nunca
 oculta silenciosamente las variantes posteriores.
+
+La vista previa carga la variante persistida por UUID y locale, exige
+`blog.articles.view` y no representa cambios todavía sin guardar. Funciona con
+borradores incompletos, no necesita origen público y nunca emite canonical,
+metadatos SEO públicos, slug ni una URL compartible. Su respuesta conserva
+`no-store`, `noindex`, CSP privada y el resto de cabeceras de WebAdmin. No
+publica, audita ni modifica la variante.
 
 ## Resolución pública y prioridad
 
@@ -165,8 +180,9 @@ Blog devuelve `405` con `Allow: GET, HEAD`.
 ## Sitemap dinámico
 
 El endpoint configurado, `/blog-sitemap.xml` por defecto, consulta únicamente
-variantes publicadas y construye URLs desde un origen HTTPS configurado, nunca
-desde `Host`, `Forwarded` o cabeceras del cliente. No modifica
+variantes publicadas y construye URLs desde `RAIZ`: HTTPS fuera del laboratorio
+y HTTP solo bajo el perfil loopback tipado de desarrollo. Nunca usa `Host`,
+`Forwarded` o cabeceras del cliente como origen. No modifica
 `public/sitemap.xml`, el repositorio ni el deploy. Publicar o retirar cambia su
 respuesta inmediatamente porque la DB de producción es la fuente de verdad.
 El documento admite como máximo 50.000 URLs: la consulta obtiene hasta 50.001
@@ -176,6 +192,10 @@ sin cargar un conjunto ilimitado ni truncarlo silenciosamente.
 Una ruta o fichero project-owned con el mismo path bloquea `sitemap_ready` y se
 muestra en `doctor`; no se reemplaza automáticamente. Desactivar el selector
 retira rutas, navegación y sitemap, pero conserva tablas y contenido.
+
+Durante `npm run lad`, el servidor PHP debe usar
+`App/tools/php-dev-router.php`; sin él, `php -S` intenta resolver una ruta con
+extensión como fichero y puede devolver su propio 404 antes de llegar a CORE.
 
 ## Diagnóstico y migraciones
 
@@ -217,7 +237,8 @@ Quedan expresamente para cortes posteriores:
 
 - categorías, etiquetas, buscador, archivos, relacionados, RSS y comentarios;
 - biblioteca de medios, uploads, AVIF y metadatos de imagen;
-- editor enriquecido, bloques, revisiones, previews y plantillas múltiples;
+- editor enriquecido, bloques, revisiones, previews compartibles y plantillas
+  múltiples;
 - workflow de aprobación, programación y borrado;
 - redirecciones automáticas por cambio de slug;
 - traducción mediante IA y generación automática de variantes;

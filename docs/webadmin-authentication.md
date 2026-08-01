@@ -37,6 +37,25 @@ el proceso prevalecen sobre `.env`, incluso si `variables_order` omite `E`. Un
 `.env` ilegible o inválido bloquea WebAdmin antes de abrir PDO; no se utiliza
 una vista parcial de la configuración.
 
+En producción y en cualquier host no local, las rutas privadas continúan
+exigiendo HTTPS afirmado por el servidor. El laboratorio admite una única
+excepción acotada para el flujo habitual `npm run lad`: `DEV_MODE=1`,
+`RAIZ=http://localhost:1309` —o el loopback canónico equivalente— y una
+petición cuyo `Host` y puerto coincidan exactamente y cuyo `REMOTE_ADDR` sea
+una representación válida de loopback. Si falta una de esas condiciones, HTTP responde `400` antes de abrir
+PDO. `Forwarded` y `X-Forwarded-*` nunca habilitan la excepción.
+
+El servidor integrado debe arrancarse con el router distribuido por CORE para
+que también enrute endpoints dinámicos con extensión:
+
+```bash
+php -S localhost:1309 -t public App/tools/php-dev-router.php
+```
+
+El router devuelve al servidor únicamente ficheros reales dentro de `public`;
+el resto pasa por `public/index.php`. `npm run build` mantiene el perfil de
+producción y no utiliza este router.
+
 ## Rutas HTTP
 
 Las rutas siguientes se registran bajo el prefijo efectivo. Si el proyecto
@@ -80,6 +99,10 @@ por `HEAD`.
 
 Las tres cookies son host-only, `Secure`, `HttpOnly`, limitadas al prefijo
 WebAdmin y nunca se aceptan de forma intercambiable:
+
+En Chrome, `Secure` se mantiene también sobre el origen especialmente
+confiable `http://localhost`; el laboratorio no rebaja flags de cookie. No se
+debe sustituir `localhost` por un dominio arbitrario resuelto a `127.0.0.1`.
 
 | Cookie | Propósito | SameSite |
 | --- | --- | --- |

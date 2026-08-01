@@ -40,6 +40,8 @@ final class BlogAdminHtmlRendererTest extends TestCase
             'post=11111111-1111-4111-8111-111111111111&amp;locale=es',
             $html
         );
+        self::assertStringContainsString('/admin/blog/posts/preview', $html);
+        self::assertStringContainsString('Vista previa guardada', $html);
         self::assertStringContainsString('/admin/blog/posts/new', $html);
     }
 
@@ -76,8 +78,100 @@ final class BlogAdminHtmlRendererTest extends TestCase
         self::assertStringContainsString('name="csrf" value="csrf-token-safe"', $html);
         self::assertStringContainsString('name="lock_version" value="7"', $html);
         self::assertStringContainsString('Safe &amp; plain', $html);
+        self::assertStringContainsString('/admin/blog/posts/preview', $html);
+        self::assertStringContainsString('versi&oacute;n guardada', $html);
         self::assertStringContainsString('/admin/blog/posts/publish', $html);
         self::assertStringNotContainsString('33333333-', $html);
+    }
+
+    public function testPrivatePreviewEscapesStoredContentWithoutPublicSeo(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $variant = new BlogPostVariant(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            new BlogDraft(
+                'Matrix & "agents"',
+                "Primer & principal.\n\nSegundo \"final\".",
+                'private-matrix',
+                'SEO title must stay private',
+                'SEO description must stay private',
+                'Extracto & "safe"'
+            ),
+            BlogPostVariant::DRAFT,
+            null,
+            7,
+            '33333333-3333-4333-8333-333333333333',
+            '33333333-3333-4333-8333-333333333333',
+            $now,
+            $now
+        );
+
+        $html = (new BlogAdminHtmlRenderer())->preview(
+            '/admin/blog',
+            $variant,
+            true
+        );
+
+        self::assertStringContainsString(
+            '<article lang="es" aria-labelledby="blog-preview-title">',
+            $html
+        );
+        self::assertStringContainsString(
+            'Matrix &amp; &quot;agents&quot;',
+            $html
+        );
+        self::assertStringContainsString(
+            '<p>Primer &amp; principal.</p>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<p>Segundo &quot;final&quot;.</p>',
+            $html
+        );
+        self::assertStringContainsString('/admin/blog/posts/edit', $html);
+        self::assertStringNotContainsString('private-matrix', $html);
+        self::assertStringNotContainsString('SEO title must stay private', $html);
+        self::assertStringNotContainsString(
+            'SEO description must stay private',
+            $html
+        );
+        self::assertStringNotContainsString('rel="canonical"', $html);
+        self::assertStringNotContainsString(
+            '<meta name="description"',
+            $html
+        );
+    }
+
+    public function testReadOnlyIncompleteDraftPreviewHasSafeEmptyState(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $variant = new BlogPostVariant(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'en',
+            new BlogDraft('The Matrix', ''),
+            BlogPostVariant::DRAFT,
+            null,
+            1,
+            '33333333-3333-4333-8333-333333333333',
+            '33333333-3333-4333-8333-333333333333',
+            $now,
+            $now
+        );
+
+        $html = (new BlogAdminHtmlRenderer())->preview(
+            '/admin/blog',
+            $variant,
+            false
+        );
+
+        self::assertStringContainsString('article lang="en"', $html);
+        self::assertStringContainsString('todav&iacute;a no tiene', $html);
+        self::assertStringContainsString('Estado: Borrador', $html);
+        self::assertStringNotContainsString('/posts/edit', $html);
+        self::assertStringContainsString('Volver al Blog', $html);
     }
 
     public function testCreateFormSupportsNewAggregateAndExistingPost(): void
@@ -125,6 +219,7 @@ final class BlogAdminHtmlRendererTest extends TestCase
         );
 
         self::assertStringContainsString('Solo lectura', $html);
+        self::assertStringContainsString('/posts/preview', $html);
         self::assertStringNotContainsString('/posts/edit', $html);
         self::assertStringNotContainsString('/posts/new', $html);
     }

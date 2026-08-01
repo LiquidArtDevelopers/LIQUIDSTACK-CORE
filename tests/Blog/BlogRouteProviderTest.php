@@ -77,10 +77,14 @@ final class BlogRouteProviderTest extends TestCase
             '/admin/blog',
             '/admin/blog/posts/new',
             '/admin/blog/posts/edit',
+            '/admin/blog/posts/preview',
             '/admin/blog/posts/updated',
         ];
         foreach ($gets as $path) {
-            $query = $path === '/admin/blog/posts/edit'
+            $query = in_array($path, [
+                '/admin/blog/posts/edit',
+                '/admin/blog/posts/preview',
+            ], true)
                 ? ['post' => $this->uuid(), 'locale' => 'es']
                 : [];
             $response = $this->routes->dispatch($this->get($path, $query));
@@ -95,6 +99,16 @@ final class BlogRouteProviderTest extends TestCase
         self::assertSame(404, $this->routes->dispatch(
             $this->get('/admin/blog/posts/delete')
         )?->status());
+
+        $previewPost = Request::fromServer([
+            'REQUEST_METHOD' => 'POST',
+            'REQUEST_URI' => '/admin/blog/posts/preview',
+            'HTTPS' => 'on',
+        ]);
+        $previewResponse = $this->routes->dispatch($previewPost);
+        self::assertNotNull($previewResponse);
+        self::assertSame(405, $previewResponse->status());
+        self::assertSame('GET, HEAD', $previewResponse->headers()['Allow']);
         self::assertSame(0, $this->factory->calls);
     }
 
@@ -116,6 +130,34 @@ final class BlogRouteProviderTest extends TestCase
             'no-store, no-cache, must-revalidate, max-age=0',
             $response->headers()['Cache-Control']
         );
+        self::assertSame(0, $this->factory->calls);
+    }
+
+    public function testPreviewHeadIsLazyAndMalformedQueryFailsClosed(): void
+    {
+        $head = $this->routes->dispatch(Request::fromInput([
+            'REQUEST_METHOD' => 'HEAD',
+            'REQUEST_URI' => '/admin/blog/posts/preview',
+            'HTTPS' => 'on',
+        ], query: [
+            'post' => $this->uuid(),
+            'locale' => 'es',
+        ]));
+        self::assertNotNull($head);
+        self::assertSame(200, $head->status());
+        self::assertSame('', $head->body());
+
+        $malformed = $this->routes->dispatch($this->get(
+            '/admin/blog/posts/preview',
+            [
+                'post' => $this->uuid(),
+                'locale' => 'es',
+                'slug' => 'must-not-be-accepted',
+            ],
+            str_repeat('A', 43)
+        ));
+        self::assertNotNull($malformed);
+        self::assertSame(400, $malformed->status());
         self::assertSame(0, $this->factory->calls);
     }
 
@@ -173,6 +215,55 @@ final class BlogRouteProviderTest extends TestCase
         self::assertNotNull($response);
         self::assertSame(405, $response->status());
         self::assertSame('POST', $response->headers()['Allow']);
+        self::assertSame(0, $this->factory->calls);
+    }
+
+    public function testExactLoopbackHttpRedirectsAnonymousUserInDevelopment(): void
+    {
+        $routes = new ModuleRouteCollection();
+        $this->claimWebAdmin($routes, '/admin');
+        $this->provider()->registerRoutes(
+            $routes,
+            new ModuleRuntimeContext($this->projectRoot, [
+                'RAIZ' => 'http://localhost:1309',
+                'DEV_MODE' => '1',
+            ])
+        );
+
+        $response = $routes->dispatch(Request::fromServer([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin/blog',
+            'HTTP_HOST' => 'localhost:1309',
+            'REMOTE_ADDR' => '::1',
+        ]));
+
+        self::assertNotNull($response);
+        self::assertSame(303, $response->status());
+        self::assertSame('/admin/login', $response->headers()['Location']);
+        self::assertSame(0, $this->factory->calls);
+    }
+
+    public function testDevelopmentHttpWithMismatchedHostFailsPreflight(): void
+    {
+        $routes = new ModuleRouteCollection();
+        $this->claimWebAdmin($routes, '/admin');
+        $this->provider()->registerRoutes(
+            $routes,
+            new ModuleRuntimeContext($this->projectRoot, [
+                'RAIZ' => 'http://localhost:1309',
+                'DEV_MODE' => '1',
+            ])
+        );
+
+        $response = $routes->dispatch(Request::fromServer([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin/blog',
+            'HTTP_HOST' => 'localhost:1310',
+            'REMOTE_ADDR' => '127.0.0.1',
+        ]));
+
+        self::assertNotNull($response);
+        self::assertSame(400, $response->status());
         self::assertSame(0, $this->factory->calls);
     }
 

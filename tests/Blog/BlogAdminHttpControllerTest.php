@@ -7,6 +7,7 @@ use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Http\BlogAdminHttpController;
 use App\Core\Blog\Http\BlogAdminHttpRuntime;
 use App\Core\Blog\Persistence\PdoBlogRepository;
+use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Modules\Blog\BlogMigrationProvider;
 use App\Core\Modules\Migrations\MigrationScope;
@@ -43,6 +44,7 @@ final class BlogAdminHttpControllerTest extends TestCase
     private string $projectRoot;
     private Filesystem $filesystem;
     private BlogAdminHttpController $controller;
+    private BlogAdminHttpRuntime $runtime;
     private string $sessionToken;
     private string $csrfToken;
     private string $previousTraceSetting;
@@ -144,7 +146,7 @@ final class BlogAdminHttpControllerTest extends TestCase
             new RandomUuidV4Generator(),
             $clock
         );
-        $runtime = new BlogAdminHttpRuntime(
+        $this->runtime = new BlogAdminHttpRuntime(
             $this->projectRoot,
             ['es'],
             BlogConfig::defaults(['es']),
@@ -163,7 +165,7 @@ final class BlogAdminHttpControllerTest extends TestCase
                 $hasher
             )
         );
-        $this->controller = new BlogAdminHttpController($runtime);
+        $this->controller = new BlogAdminHttpController($this->runtime);
     }
 
     protected function tearDown(): void
@@ -289,6 +291,60 @@ final class BlogAdminHttpControllerTest extends TestCase
         )->fetchColumn());
     }
 
+    public function testPrivatePreviewReadsOnlyTheStoredVariant(): void
+    {
+        $editorial = array_replace($this->editorial('matrix-preview'), [
+            'h1' => 'Matrix & preview',
+            'body_text' => "Primer bloque.\n\nSegundo bloque.",
+        ]);
+        $this->assertPrg($this->controller->create($this->post(
+            '/admin/blog/posts/create',
+            ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
+                + $editorial
+        )));
+        $post = (string) $this->pdo->query(
+            'SELECT public_id FROM ls_blog_posts'
+        )->fetchColumn();
+        $before = $this->pdo->query(
+            'SELECT status, lock_version, body_text FROM '
+            . 'ls_blog_post_localizations'
+        )->fetch(PDO::FETCH_ASSOC);
+        self::assertIsArray($before);
+        $auditBefore = (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_webadmin_audit_log'
+        )->fetchColumn();
+
+        $response = $this->controller->preview($this->get(
+            '/admin/blog/posts/preview',
+            ['post' => $post, 'locale' => 'es']
+        ));
+
+        self::assertSame(200, $response->status());
+        self::assertStringContainsString('Matrix &amp; preview', $response->body());
+        self::assertStringContainsString('<p>Primer bloque.</p>', $response->body());
+        self::assertStringContainsString('<p>Segundo bloque.</p>', $response->body());
+        self::assertStringContainsString('Estado: Borrador', $response->body());
+        self::assertStringNotContainsString('rel="canonical"', $response->body());
+        $this->assertPrivateHeaders($response);
+
+        $after = $this->pdo->query(
+            'SELECT status, lock_version, body_text FROM '
+            . 'ls_blog_post_localizations'
+        )->fetch(PDO::FETCH_ASSOC);
+        self::assertSame($before, $after);
+        self::assertSame($auditBefore, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_webadmin_audit_log'
+        )->fetchColumn());
+
+        self::assertSame(404, $this->controller->preview($this->get(
+            '/admin/blog/posts/preview',
+            [
+                'post' => '99999999-9999-4999-8999-999999999999',
+                'locale' => 'es',
+            ]
+        ))->status());
+    }
+
     public function testMalformedSemanticAndUnauthorizedRequestsFailClosed(): void
     {
         $malformed = $this->post('/admin/blog/posts/create', [
@@ -337,6 +393,16 @@ final class BlogAdminHttpControllerTest extends TestCase
         self::assertSame(403, $this->controller->newPost(
             $this->get('/admin/blog/posts/new')
         )->status());
+
+        $this->pdo->exec(
+            'DELETE FROM ls_webadmin_user_capabilities WHERE capability_id = '
+            . "(SELECT id FROM ls_webadmin_capabilities "
+            . "WHERE code = 'blog.articles.view')"
+        );
+        self::assertSame(403, $this->controller->preview($this->get(
+            '/admin/blog/posts/preview',
+            ['post' => $this->fixtureUuid('4', 1), 'locale' => 'es']
+        ))->status());
     }
 
     public function testAnonymousAndHeadRequestsDoNotExposePrivateContent(): void
@@ -350,6 +416,18 @@ final class BlogAdminHttpControllerTest extends TestCase
         self::assertSame(303, $response->status());
         self::assertSame('/admin/login', $response->headers()['Location']);
 
+        $anonymousPreview = Request::fromInput([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin/blog/posts/preview',
+            'HTTPS' => 'on',
+        ], query: [
+            'post' => $this->fixtureUuid('4', 1),
+            'locale' => 'es',
+        ]);
+        $response = $this->controller->preview($anonymousPreview);
+        self::assertSame(303, $response->status());
+        self::assertSame('/admin/login', $response->headers()['Location']);
+
         $head = Request::fromServer([
             'REQUEST_METHOD' => 'HEAD',
             'REQUEST_URI' => '/admin/blog',
@@ -359,11 +437,55 @@ final class BlogAdminHttpControllerTest extends TestCase
         self::assertSame(200, $response->status());
         self::assertSame('', $response->body());
 
+        $headPreview = Request::fromInput([
+            'REQUEST_METHOD' => 'HEAD',
+            'REQUEST_URI' => '/admin/blog/posts/preview',
+            'HTTPS' => 'on',
+        ], query: [
+            'post' => $this->fixtureUuid('4', 1),
+            'locale' => 'es',
+        ]);
+        $response = $this->controller->preview($headPreview);
+        self::assertSame(200, $response->status());
+        self::assertSame('', $response->body());
+
         $insecure = Request::fromInput([
             'REQUEST_METHOD' => 'GET',
             'REQUEST_URI' => '/admin/blog',
         ], cookies: ['LS_WEBADMIN_SID' => $this->sessionToken]);
         self::assertSame(400, $this->controller->index($insecure)->status());
+    }
+
+    public function testTypedDevelopmentControllerAcceptsOnlyExactLoopbackHttp(): void
+    {
+        $controller = new BlogAdminHttpController(
+            $this->runtime,
+            transportPolicy: new PrivateRouteTransportPolicy(),
+            environment: [
+                'RAIZ' => 'http://localhost:1309',
+                'DEV_MODE' => '1',
+            ]
+        );
+        $request = Request::fromInput([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin/blog',
+            'HTTP_HOST' => 'localhost:1309',
+            'REMOTE_ADDR' => '127.0.0.1',
+        ], cookies: [
+            'LS_WEBADMIN_SID' => $this->sessionToken,
+        ]);
+
+        self::assertSame(200, $controller->index($request)->status());
+
+        $wrongHost = Request::fromInput([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin/blog',
+            'HTTP_HOST' => 'localhost:1310',
+            'REMOTE_ADDR' => '127.0.0.1',
+        ], cookies: [
+            'LS_WEBADMIN_SID' => $this->sessionToken,
+        ]);
+        self::assertSame(400, $controller->index($wrongHost)->status());
     }
 
     public function testIndexUsesBoundedPreviousAndNextPagination(): void

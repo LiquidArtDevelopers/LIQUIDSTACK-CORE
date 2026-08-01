@@ -47,9 +47,49 @@ final class BlogDiagnosticServiceTest extends TestCase
         self::assertTrue($data['readiness']['blog_ready']);
         self::assertSame([], $data['readiness']['blockers']);
         self::assertSame('applied', $data['database']['status']);
+        self::assertSame(
+            BlogPublicOrigin::SOURCE_LEGACY,
+            $data['environment']['public_origin']['source']
+        );
         $encoded = json_encode($data, JSON_THROW_ON_ERROR);
         self::assertStringNotContainsString('https://example.test', $encoded);
         self::assertStringNotContainsString('ls_blog_', $encoded);
+    }
+
+    public function testLegacyOriginMismatchIsAVisibleNonBlockingCompatibilityState(): void
+    {
+        $report = (new BlogDiagnosticService())->inspect(
+            $this->root,
+            ['es', 'en'],
+            [
+                BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                    'https://canonical.example.test',
+                BlogPublicOrigin::ENV =>
+                    'https://legacy.example.test',
+            ],
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        );
+        $data = $report->toArray();
+
+        self::assertTrue($report->isReady());
+        self::assertTrue(
+            $data['environment']['public_origin'][
+                'legacy_compatibility_override'
+            ]
+        );
+        self::assertSame(
+            BlogPublicOrigin::SOURCE_LEGACY_COMPATIBILITY,
+            $data['environment']['public_origin']['source']
+        );
+        $encoded = json_encode($data, JSON_THROW_ON_ERROR);
+        self::assertStringNotContainsString(
+            'canonical.example.test',
+            $encoded
+        );
+        self::assertStringNotContainsString('legacy.example.test', $encoded);
     }
 
     public function testLiquidStackProfileIsReportedWithoutOriginPrefixOrDatabaseSecrets(): void

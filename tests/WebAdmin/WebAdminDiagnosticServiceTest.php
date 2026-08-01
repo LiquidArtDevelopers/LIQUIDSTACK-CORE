@@ -715,6 +715,77 @@ PHP
         self::assertStringNotContainsString('private-smtp-password', $encoded);
     }
 
+    public function testTypedLocalCaptureReportsOnlyItsSafeContract(): void
+    {
+        $environment = $this->databaseEnvironment() + [
+            'LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL'
+                => 'superadmin@example.invalid',
+            'LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL'
+                => 'siteadmin@example.invalid',
+            'RAIZ' => 'http://localhost:1309',
+            'DEV_MODE' => '1',
+            WebAdminMailConfiguration::TRANSPORT_ENV =>
+                WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+            WebAdminMailConfiguration::SMTP_HOST_ENV => '127.0.0.1',
+            WebAdminMailConfiguration::SMTP_PORT_ENV => '1025',
+            WebAdminMailConfiguration::FROM_ADDRESS_ENV =>
+                'webadmin@aiwa.test',
+            WebAdminMailConfiguration::FROM_NAME_ENV => 'AIWA WebAdmin dev',
+        ];
+        $data = $this->inspect(
+            $this->fixtureRoot,
+            $environment
+        )->toArray();
+
+        self::assertTrue($data['environment']['mail']['ready']);
+        self::assertSame(
+            WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+            $data['environment']['mail']['transport']
+        );
+        self::assertSame(
+            WebAdminMailConfiguration::LOCAL_CAPTURE_REQUIRED_ENV,
+            $data['environment']['mail']['required']
+        );
+        self::assertSame([], $data['environment']['mail']['missing']);
+        self::assertSame([], $data['environment']['mail']['invalid']);
+        self::assertTrue($data['readiness']['mail_ready']);
+
+        $encoded = json_encode($data, JSON_THROW_ON_ERROR);
+        self::assertStringNotContainsString('http://localhost:1309', $encoded);
+        self::assertStringNotContainsString('webadmin@aiwa.test', $encoded);
+        self::assertStringNotContainsString('AIWA WebAdmin dev', $encoded);
+    }
+
+    public function testLocalCaptureOutsideDevLoopbackIsInvalid(): void
+    {
+        $environment = $this->databaseEnvironment() + [
+            'RAIZ' => 'https://www.example.test',
+            'DEV_MODE' => '0',
+            WebAdminMailConfiguration::TRANSPORT_ENV =>
+                WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+            WebAdminMailConfiguration::SMTP_HOST_ENV => '127.0.0.1',
+            WebAdminMailConfiguration::SMTP_PORT_ENV => '1025',
+            WebAdminMailConfiguration::FROM_ADDRESS_ENV =>
+                'webadmin@example.test',
+            WebAdminMailConfiguration::FROM_NAME_ENV => 'WebAdmin dev',
+        ];
+        $data = $this->inspect(
+            $this->fixtureRoot,
+            $environment
+        )->toArray();
+
+        self::assertFalse($data['environment']['mail']['ready']);
+        self::assertFalse($data['readiness']['mail_ready']);
+        self::assertContains(
+            WebAdminMailConfiguration::TRANSPORT_ENV,
+            $data['environment']['mail']['invalid']
+        );
+        self::assertSame(
+            ['environment.mail_invalid'],
+            $data['readiness']['mail_blockers']
+        );
+    }
+
     /**
      * @param array<string, mixed> $environment
      * @param list<string> $requiredAssets

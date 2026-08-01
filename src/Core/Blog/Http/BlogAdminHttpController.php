@@ -8,6 +8,7 @@ use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Routing\BlogPublicationRouteGuard;
+use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
@@ -22,18 +23,27 @@ final class BlogAdminHttpController
     private readonly BlogAdminRequestPolicy $requestPolicy;
     private readonly BlogAdminHtmlRenderer $renderer;
     private readonly BlogPublicationRouteGuard $publicationRouteGuard;
+    private readonly PrivateRouteTransportPolicy $transportPolicy;
+
+    /** @var array<string, mixed> */
+    private readonly array $environment;
 
     public function __construct(
         private readonly BlogAdminHttpRuntimeInterface $runtime,
         ?BlogAdminRequestPolicy $requestPolicy = null,
         ?BlogAdminHtmlRenderer $renderer = null,
-        ?BlogPublicationRouteGuard $publicationRouteGuard = null
+        ?BlogPublicationRouteGuard $publicationRouteGuard = null,
+        ?PrivateRouteTransportPolicy $transportPolicy = null,
+        #[\SensitiveParameter] array $environment = []
     ) {
         $this->requestPolicy = $requestPolicy
             ?? new BlogAdminRequestPolicy();
         $this->renderer = $renderer ?? new BlogAdminHtmlRenderer();
         $this->publicationRouteGuard = $publicationRouteGuard
             ?? new BlogPublicationRouteGuard();
+        $this->transportPolicy = $transportPolicy
+            ?? new PrivateRouteTransportPolicy();
+        $this->environment = $environment;
     }
 
     public function index(Request $request): Response
@@ -178,6 +188,42 @@ final class BlogAdminHttpController
                 $this->runtime->authorization()->hasCapability(
                     $context['session'],
                     self::PUBLISH_CAPABILITY
+                )
+            ));
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+    }
+
+    public function preview(Request $request): Response
+    {
+        if (!$this->accepts($request, 'preview')) {
+            return $this->plain(400, 'Bad request');
+        }
+        if ($request->method() === 'HEAD') {
+            return $this->html(200, '');
+        }
+
+        $context = $this->authorizedContext(
+            $request,
+            self::VIEW_CAPABILITY
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        try {
+            $variant = $this->runtime->service()->loadPost(
+                (string) $request->query('post'),
+                (string) $request->query('locale')
+            );
+
+            return $this->html(200, $this->renderer->preview(
+                $this->basePath(),
+                $variant,
+                $this->runtime->authorization()->hasCapability(
+                    $context['session'],
+                    self::EDIT_CAPABILITY
                 )
             ));
         } catch (BlogException $exception) {
@@ -412,7 +458,10 @@ final class BlogAdminHttpController
 
     private function accepts(Request $request, string $operation): bool
     {
-        if (!$request->isSecureTransport()) {
+        if (!$this->transportPolicy->accepts(
+            $request,
+            $this->environment
+        )) {
             return false;
         }
 
@@ -422,6 +471,7 @@ final class BlogAdminHttpController
             'new' => $this->requestPolicy->acceptsNew($request),
             'create' => $this->requestPolicy->acceptsCreate($request),
             'edit' => $this->requestPolicy->acceptsEdit($request),
+            'preview' => $this->requestPolicy->acceptsPreview($request),
             'save' => $this->requestPolicy->acceptsSave($request),
             'transition' => $this->requestPolicy->acceptsTransition($request),
             default => false,

@@ -21,7 +21,7 @@ final class WebAdminCredentialMailMessageFactory implements
         private readonly string $basePath,
         private readonly SecureTokenGenerator $tokenGenerator = new SecureTokenGenerator()
     ) {
-        if (!$this->validPublicOrigin($configuration->publicOrigin())) {
+        if (!$this->validPublicOrigin($configuration)) {
             throw new WebAdminMailMessageFactoryException(
                 'mail.public_origin_invalid'
             );
@@ -162,8 +162,11 @@ final class WebAdminCredentialMailMessageFactory implements
             . '<p>' . $escape($notice) . '</p></main></body></html>';
     }
 
-    private function validPublicOrigin(string $origin): bool
+    private function validPublicOrigin(
+        WebAdminMailConfiguration $configuration
+    ): bool
     {
+        $origin = $configuration->publicOrigin();
         if (
             $origin === ''
             || rtrim($origin, '/') !== $origin
@@ -175,10 +178,41 @@ final class WebAdminCredentialMailMessageFactory implements
 
         $parts = parse_url($origin);
 
-        return is_array($parts)
-            && strtolower((string) ($parts['scheme'] ?? '')) === 'https'
-            && is_string($parts['host'] ?? null)
-            && ($parts['host'] ?? '') !== ''
+        if (!is_array($parts) || !is_string($parts['host'] ?? null)) {
+            return false;
+        }
+
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = strtolower((string) $parts['host']);
+        $comparisonHost = str_starts_with($host, '[')
+            && str_ends_with($host, ']')
+                ? substr($host, 1, -1)
+                : $host;
+        $schemeAndHostAreValid = $configuration->isLocalCaptureSmtp()
+            ? $scheme === 'http'
+                && in_array(
+                    $comparisonHost,
+                    ['localhost', '127.0.0.1', '::1'],
+                    true
+                )
+                && !$configuration->usesSmtpAuthentication()
+                && $configuration->smtpEncryption()
+                    === WebAdminMailConfiguration::ENCRYPTION_NONE
+                && in_array(
+                    $configuration->smtpHost(),
+                    ['127.0.0.1', '[::1]'],
+                    true
+                )
+            : $configuration->isProductionSmtp()
+                && $scheme === 'https'
+                && $configuration->usesSmtpAuthentication()
+                && in_array($configuration->smtpEncryption(), [
+                    WebAdminMailConfiguration::ENCRYPTION_STARTTLS,
+                    WebAdminMailConfiguration::ENCRYPTION_SMTPS,
+                ], true);
+
+        return $schemeAndHostAreValid
+            && $host !== ''
             && !isset($parts['user'])
             && !isset($parts['pass'])
             && !isset($parts['query'])

@@ -89,6 +89,61 @@ final class WebAdminRouteProviderPreflightTest extends TestCase
         self::assertSame([], $this->reporter->issueCodes);
     }
 
+    public function testExactLoopbackHttpRootIsAllowedOnlyInDevelopment(): void
+    {
+        $routes = new ModuleRouteCollection();
+        $factory = new CountingUnavailableWebAdminRuntimeFactory();
+        $reporter = new CapturingWebAdminRuntimeIssueReporter();
+        (new WebAdminRouteProvider(
+            runtimeFactory: $factory,
+            issueReporter: $reporter
+        ))->registerRoutes(
+            $routes,
+            new ModuleRuntimeContext($this->projectRoot, [
+                'RAIZ' => 'http://localhost:1309',
+                'DEV_MODE' => '1',
+            ])
+        );
+
+        $response = $routes->dispatch(Request::fromServer([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin',
+            'HTTP_HOST' => 'localhost:1309',
+            'REMOTE_ADDR' => '127.0.0.1',
+        ]));
+
+        self::assertNotNull($response);
+        self::assertSame(303, $response->status());
+        self::assertSame('/admin/login', $response->headers()['Location']);
+        self::assertSame(0, $factory->calls);
+        self::assertSame([], $reporter->issueCodes);
+    }
+
+    public function testLoopbackHttpCannotUseAnAliasOfConfiguredRaiz(): void
+    {
+        $routes = new ModuleRouteCollection();
+        $factory = new CountingUnavailableWebAdminRuntimeFactory();
+        (new WebAdminRouteProvider(runtimeFactory: $factory))
+            ->registerRoutes(
+                $routes,
+                new ModuleRuntimeContext($this->projectRoot, [
+                    'RAIZ' => 'http://localhost:1309',
+                    'DEV_MODE' => '1',
+                ])
+            );
+
+        $response = $routes->dispatch(Request::fromServer([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin/login',
+            'HTTP_HOST' => '127.0.0.1:1309',
+            'REMOTE_ADDR' => '127.0.0.1',
+        ]));
+
+        self::assertNotNull($response);
+        self::assertSame(400, $response->status());
+        self::assertSame(0, $factory->calls);
+    }
+
     public function testMalformedRequestNeverCreatesRuntime(): void
     {
         $response = $this->routes->dispatch(Request::fromInput(

@@ -53,6 +53,105 @@ final class WebAdminMailConfigurationTest extends TestCase
         self::assertSame('webadmin@example.test', $configuration->fromAddress());
     }
 
+    public function testLoadsTypedLocalCaptureFromTheDevelopmentProfile(): void
+    {
+        $configuration = (new WebAdminMailConfigurationLoader())->load(
+            $this->validLocalCaptureEnvironment()
+        );
+
+        self::assertSame(
+            WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+            $configuration->transport()
+        );
+        self::assertTrue($configuration->isLocalCaptureSmtp());
+        self::assertFalse($configuration->isProductionSmtp());
+        self::assertSame(
+            'http://localhost:1309',
+            $configuration->publicOrigin()
+        );
+        self::assertSame('127.0.0.1', $configuration->smtpHost());
+        self::assertSame(1025, $configuration->smtpPort());
+        self::assertSame(
+            WebAdminMailConfiguration::ENCRYPTION_NONE,
+            $configuration->smtpEncryption()
+        );
+        self::assertFalse($configuration->usesSmtpAuthentication());
+        self::assertSame('', $configuration->smtpUsername());
+        self::assertSame('', $configuration->smtpPassword());
+        self::assertSame([
+            'transport' =>
+                WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+            'public_origin_scheme' => 'http',
+            'encryption' => WebAdminMailConfiguration::ENCRYPTION_NONE,
+            'timeout_seconds' => 15,
+            'required_environment_names' =>
+                WebAdminMailConfiguration::LOCAL_CAPTURE_REQUIRED_ENV,
+        ], $configuration->toSafeArray());
+    }
+
+    public function testLocalCaptureAcceptsCanonicalBracketedIpv6Loopback(): void
+    {
+        $environment = $this->validLocalCaptureEnvironment();
+        $environment['RAIZ'] = 'http://[::1]:1309';
+        $environment[WebAdminMailConfiguration::SMTP_HOST_ENV] = '[::1]';
+
+        $configuration = (new WebAdminMailConfigurationLoader())->load(
+            $environment
+        );
+
+        self::assertSame('http://[::1]:1309', $configuration->publicOrigin());
+        self::assertSame('[::1]', $configuration->smtpHost());
+    }
+
+    #[DataProvider('invalidLocalCaptureEnvironmentProvider')]
+    public function testLocalCaptureFailsClosedWithoutLeakingConfiguration(
+        string $name,
+        string $value
+    ): void {
+        $environment = $this->validLocalCaptureEnvironment();
+        $environment[$name] = $value;
+
+        [$missing, $invalid] = (new WebAdminMailConfigurationLoader())
+            ->inspect($environment);
+        self::assertSame([], $missing);
+        self::assertNotSame([], $invalid);
+
+        try {
+            (new WebAdminMailConfigurationLoader())->load($environment);
+            self::fail('Unsafe local capture configuration must fail closed.');
+        } catch (WebAdminMailConfigurationException $exception) {
+            self::assertSame('mail.environment_invalid', $exception->issueCode());
+            self::assertStringNotContainsString(
+                $value,
+                $exception->getMessage()
+            );
+        }
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function invalidLocalCaptureEnvironmentProvider(): iterable
+    {
+        yield 'production mode' => ['DEV_MODE', '0'];
+        yield 'non-loopback origin' => ['RAIZ', 'http://example.test:1309'];
+        yield 'production origin' => ['RAIZ', 'https://example.test'];
+        yield 'remote SMTP host' => [
+            WebAdminMailConfiguration::SMTP_HOST_ENV,
+            'smtp.example.test',
+        ];
+        yield 'plaintext mode cannot carry credentials' => [
+            WebAdminMailConfiguration::SMTP_PASSWORD_ENV,
+            'must-not-leak-local-password',
+        ];
+        yield 'plaintext mode cannot request TLS' => [
+            WebAdminMailConfiguration::SMTP_ENCRYPTION_ENV,
+            'starttls',
+        ];
+        yield 'legacy origin cannot override RAIZ' => [
+            WebAdminMailConfiguration::PUBLIC_ORIGIN_ENV,
+            'https://must-not-leak.example.test',
+        ];
+    }
+
     public function testMissingVariablesAreReportedByNameOnly(): void
     {
         $environment = $this->validEnvironment();
@@ -200,6 +299,22 @@ final class WebAdminMailConfigurationTest extends TestCase
                 'webadmin@example.test',
             WebAdminMailConfiguration::FROM_NAME_ENV =>
                 'LiquidStack WebAdmin',
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function validLocalCaptureEnvironment(): array
+    {
+        return [
+            'RAIZ' => 'http://localhost:1309',
+            'DEV_MODE' => '1',
+            WebAdminMailConfiguration::TRANSPORT_ENV =>
+                WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+            WebAdminMailConfiguration::SMTP_HOST_ENV => '127.0.0.1',
+            WebAdminMailConfiguration::SMTP_PORT_ENV => '1025',
+            WebAdminMailConfiguration::FROM_ADDRESS_ENV =>
+                'webadmin@aiwa.test',
+            WebAdminMailConfiguration::FROM_NAME_ENV => 'AIWA WebAdmin dev',
         ];
     }
 }

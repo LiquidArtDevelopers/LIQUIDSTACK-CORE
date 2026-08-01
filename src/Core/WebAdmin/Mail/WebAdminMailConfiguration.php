@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Core\WebAdmin\Mail;
 
+use App\Core\Environment\ProjectRuntimeProfile;
 use App\Core\WebAdmin\Security\OpaqueSecret;
 use LogicException;
 
 final class WebAdminMailConfiguration
 {
+    public const TRANSPORT_ENV = 'LIQUIDSTACK_WEBADMIN_MAIL_TRANSPORT';
     public const PUBLIC_ORIGIN_ENV = 'LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN';
     public const SMTP_HOST_ENV = 'LIQUIDSTACK_WEBADMIN_SMTP_HOST';
     public const SMTP_PORT_ENV = 'LIQUIDSTACK_WEBADMIN_SMTP_PORT';
@@ -17,6 +19,9 @@ final class WebAdminMailConfiguration
     public const SMTP_PASSWORD_ENV = 'LIQUIDSTACK_WEBADMIN_SMTP_PASSWORD';
     public const FROM_ADDRESS_ENV = 'LIQUIDSTACK_WEBADMIN_MAIL_FROM_ADDRESS';
     public const FROM_NAME_ENV = 'LIQUIDSTACK_WEBADMIN_MAIL_FROM_NAME';
+
+    public const TRANSPORT_SMTP = 'smtp';
+    public const TRANSPORT_LOCAL_CAPTURE_SMTP = 'local_capture_smtp';
 
     public const REQUIRED_ENV = [
         self::PUBLIC_ORIGIN_ENV,
@@ -29,6 +34,17 @@ final class WebAdminMailConfiguration
         self::FROM_NAME_ENV,
     ];
 
+    public const LOCAL_CAPTURE_REQUIRED_ENV = [
+        ProjectRuntimeProfile::ORIGIN_ENV,
+        ProjectRuntimeProfile::DEVELOPMENT_MODE_ENV,
+        self::TRANSPORT_ENV,
+        self::SMTP_HOST_ENV,
+        self::SMTP_PORT_ENV,
+        self::FROM_ADDRESS_ENV,
+        self::FROM_NAME_ENV,
+    ];
+
+    public const ENCRYPTION_NONE = 'none';
     public const ENCRYPTION_STARTTLS = 'starttls';
     public const ENCRYPTION_SMTPS = 'smtps';
     public const SMTP_TIMEOUT_SECONDS = 15;
@@ -41,8 +57,25 @@ final class WebAdminMailConfiguration
         private readonly OpaqueSecret $smtpUsername,
         private readonly OpaqueSecret $smtpPassword,
         private readonly string $fromAddress,
-        private readonly string $fromName
+        private readonly string $fromName,
+        private readonly string $transport = self::TRANSPORT_SMTP,
+        private readonly bool $smtpAuthentication = true
     ) {
+    }
+
+    public function transport(): string
+    {
+        return $this->transport;
+    }
+
+    public function isProductionSmtp(): bool
+    {
+        return $this->transport === self::TRANSPORT_SMTP;
+    }
+
+    public function isLocalCaptureSmtp(): bool
+    {
+        return $this->transport === self::TRANSPORT_LOCAL_CAPTURE_SMTP;
     }
 
     public function publicOrigin(): string
@@ -75,6 +108,11 @@ final class WebAdminMailConfiguration
         return $this->smtpPassword->reveal();
     }
 
+    public function usesSmtpAuthentication(): bool
+    {
+        return $this->smtpAuthentication;
+    }
+
     public function fromAddress(): string
     {
         return $this->fromAddress;
@@ -89,11 +127,15 @@ final class WebAdminMailConfiguration
     public function toSafeArray(): array
     {
         return [
-            'transport' => 'smtp',
-            'public_origin_scheme' => 'https',
+            'transport' => $this->transport,
+            'public_origin_scheme' => $this->isLocalCaptureSmtp()
+                ? 'http'
+                : 'https',
             'encryption' => $this->smtpEncryption,
             'timeout_seconds' => self::SMTP_TIMEOUT_SECONDS,
-            'required_environment_names' => self::REQUIRED_ENV,
+            'required_environment_names' => $this->isLocalCaptureSmtp()
+                ? self::LOCAL_CAPTURE_REQUIRED_ENV
+                : self::REQUIRED_ENV,
         ];
     }
 

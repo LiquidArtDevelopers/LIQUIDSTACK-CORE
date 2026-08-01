@@ -280,6 +280,15 @@ scheduler. Su contrato de leases, cinco intentos, backoff, entrega al menos una
 vez y redacción de tokens se documenta en
 [correo y outbox de WebAdmin](docs/webadmin-mail-outbox.md).
 
+Para el laboratorio existe el perfil explícito
+`LIQUIDSTACK_WEBADMIN_MAIL_TRANSPORT=local_capture_smtp`. Solo es válido con
+`DEV_MODE=1`, `RAIZ` HTTP loopback y un capturador SMTP en `127.0.0.1` o `[::1]`;
+usa `RAIZ` para los enlaces y no admite TLS, autenticación ni origen legacy.
+Fuera de ese contrato falla antes de PDO y no modifica el SMTP productivo.
+CORE no instala el capturador ni imprime enlaces de credencial; Mailpit puede
+usarse como servicio externo ligado exclusivamente a loopback siguiendo la
+guía de correo.
+
 HTTP y CLI usan el mismo cargador: las variables inyectadas por el proceso
 tienen prioridad sobre `.env`, con independencia de `variables_order`, y las
 referencias `${NOMBRE}` se resuelven contra esa vista inmutable. Si el fichero
@@ -330,6 +339,9 @@ variantes independientes por idioma con slug, H1, title SEO, description,
 extracto, cuerpo de texto plano, estado y versión de concurrencia. La UI vive
 bajo el prefijo WebAdmin efectivo (`/admin/blog` por defecto), no permite
 borrado y exige retirar una variante publicada antes de volver a editarla.
+Cada variante dispone además de una vista previa privada de su última versión
+guardada, protegida por `blog.articles.view`, sin canonical ni exposición en
+las rutas públicas o el sitemap.
 
 La configuración opcional sigue siendo propiedad del proyecto en
 `App/config/modules/blog.php`:
@@ -364,8 +376,13 @@ El ejemplo usa el perfil dedicado y presupone que WebAdmin declara también
 `connection => liquidstack`. Si se omite la configuración de DB en ambos
 ficheros, los dos conservan el default compatible `shared`.
 
-Blog reutiliza `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` como origen HTTPS canónico,
-pero no necesita que SMTP esté configurado. Después de activar el selector se
+Blog usa `RAIZ` como origen canónico: HTTPS en producción y HTTP solo cuando
+`DEV_MODE=1` y el origen es un loopback exacto. El anterior
+`LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` se conserva como alias compatible, pero
+si difiere en producción se mantiene temporalmente para no cambiar URLs durante
+el update y `doctor` avisa hasta que se alinee con `RAIZ`. La `RAIZ` loopback
+prevalece en desarrollo. Blog no necesita que SMTP esté configurado. Después de activar el
+selector se
 deben revisar y aplicar las migraciones explícitas y volver a ejecutar el
 bootstrap idempotente de WebAdmin para garantizar las capacidades protegidas:
 
@@ -382,13 +399,18 @@ Composer no ejecuta esos pasos ni toca la DB durante un update. El contrato de
 rutas, estados, permisos, auditoría y exclusiones del MVP está en
 [Liquid Blog](docs/liquid-blog.md).
 
-La frontera HTTP exige que el servidor local afirme HTTPS; no confía en
-`Forwarded` ni `X-Forwarded-Proto`. Una petición insegura o malformada devuelve
-`400` antes de abrir PDO. Si existe un proxy, el virtual host debe traducir de
-forma verificada el estado TLS y configurar `REMOTE_ADDR` con una capa de
-proxies confiables; WebAdmin usa esa dirección para el bucket agregado de rate
-limit. Los fallos internos solo registran códigos estables y mantienen la
-respuesta pública genérica.
+La frontera HTTP exige HTTPS fuera del laboratorio. `npm run lad` puede usar
+HTTP únicamente con `DEV_MODE=1`, una `RAIZ` loopback, coincidencia exacta de
+`Host` y puerto y un `REMOTE_ADDR` equivalente a loopback; no confía en `Forwarded` ni
+`X-Forwarded-Proto`. Una petición insegura o malformada devuelve `400` antes
+de abrir PDO. El script canónico arranca
+`php -S localhost:1309 -t public App/tools/php-dev-router.php`, necesario para
+que `/blog-sitemap.xml` llegue a CORE. `npm run build` sigue aplicando el perfil
+de producción. Si existe un proxy, el virtual host debe traducir de forma
+verificada el estado TLS y configurar `REMOTE_ADDR` con una capa de proxies
+confiables; WebAdmin usa esa dirección para el bucket agregado de rate limit.
+Los fallos internos solo registran códigos estables y mantienen la respuesta
+pública genérica.
 
 `composer test:module-e2e` crea y retira un consumidor temporal para comprobar
 el alta y baja reales de los selectores, el descubrimiento de los comandos y
@@ -879,6 +901,9 @@ Despues de publicar:
 
 ## Mejoras pendientes
 
+- [Biblioteca de medios de WebAdmin](docs/mejoras-pendientes/webadmin-media-library.md):
+  siguiente corte versionado para uploads privados y AVIF responsive, con una
+  migración que no puede bloquear el núcleo de `/admin` mientras esté pendiente.
 - [Promoción de la DB modular entre local y producción](docs/mejoras-pendientes/promocion-db-modulos-local-produccion.md):
   AIWA trabaja actualmente sobre XAMPP local; queda definido el contrato para
   proyectos que usen DB local o producción y el protocolo para cambiar de

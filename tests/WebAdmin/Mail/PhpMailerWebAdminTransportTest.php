@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Core\WebAdmin\Mail\LocalCaptureSmtpWebAdminTransport;
 use App\Core\WebAdmin\Mail\PhpMailerWebAdminTransport;
 use App\Core\WebAdmin\Mail\WebAdminMailConfiguration;
 use App\Core\WebAdmin\Mail\WebAdminMailMessage;
@@ -92,6 +93,56 @@ final class PhpMailerWebAdminTransportTest extends TestCase
             $mailer->deliveries[0]['secure']
         );
         self::assertSame(465, $mailer->deliveries[0]['port']);
+    }
+
+    public function testTypedLocalCaptureUsesPlainUnauthenticatedLoopbackOnly(): void
+    {
+        $mailer = new MailTransportRecordingPhpMailer();
+        $configuration = $this->localCaptureConfiguration();
+
+        (new LocalCaptureSmtpWebAdminTransport(
+            $configuration,
+            static fn (): PHPMailer => $mailer
+        ))->send($this->message());
+
+        self::assertCount(1, $mailer->deliveries);
+        $delivery = $mailer->deliveries[0];
+        self::assertSame('smtp', $delivery['mailer']);
+        self::assertFalse($delivery['smtp_auth']);
+        self::assertSame('127.0.0.1', $delivery['host']);
+        self::assertSame(1025, $delivery['port']);
+        self::assertSame('', $delivery['username']);
+        self::assertSame('', $delivery['password']);
+        self::assertSame('', $delivery['secure']);
+        self::assertFalse($delivery['auto_tls']);
+        self::assertSame([], $delivery['smtp_options']);
+        self::assertFalse($delivery['keep_alive']);
+        self::assertSame(0, $delivery['debug']);
+        self::assertSame([], $mailer->getToAddresses());
+        self::assertSame('', $mailer->Subject);
+        self::assertSame('', $mailer->Body);
+        self::assertSame('', $mailer->AltBody);
+    }
+
+    public function testProductionAndLocalAdaptersRejectTheOtherProfile(): void
+    {
+        try {
+            new PhpMailerWebAdminTransport($this->localCaptureConfiguration());
+            self::fail('Production SMTP must reject local capture settings.');
+        } catch (WebAdminMailTransportException $exception) {
+            self::assertSame(
+                WebAdminMailTransportException::ISSUE_CODE,
+                $exception->issueCode()
+            );
+        }
+
+        $this->expectException(WebAdminMailTransportException::class);
+        new LocalCaptureSmtpWebAdminTransport(
+            $this->configuration(
+                WebAdminMailConfiguration::ENCRYPTION_STARTTLS,
+                587
+            )
+        );
     }
 
     #[DataProvider('failedDeliveryProvider')]
@@ -187,6 +238,22 @@ final class PhpMailerWebAdminTransportTest extends TestCase
             OpaqueSecret::fromString('smtp-password'),
             'mailer@example.test',
             'LiquidStack'
+        );
+    }
+
+    private function localCaptureConfiguration(): WebAdminMailConfiguration
+    {
+        return new WebAdminMailConfiguration(
+            'http://localhost:1309',
+            '127.0.0.1',
+            1025,
+            WebAdminMailConfiguration::ENCRYPTION_NONE,
+            OpaqueSecret::fromString(''),
+            OpaqueSecret::fromString(''),
+            'webadmin@aiwa.test',
+            'AIWA WebAdmin dev',
+            WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+            false
         );
     }
 }

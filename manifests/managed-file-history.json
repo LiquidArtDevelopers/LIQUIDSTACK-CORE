@@ -1639,6 +1639,9 @@
             "sha256:d7e0780d8dd941992cb95fa781cfdb2fd1c77b3e51a3fca15d573bfda60c2d40",
             "sha256:e1e119dfcb99e7e16ad023f7b70a5898f4c39c412eae037ce0adff3f74b69a85"
         ],
+        "stubs/App/tools/php-dev-router.php": [
+            "sha256:d757f1eeb78e4755a8e99c844b300663ab8f534c3bdc9056959a806230a4ae5c"
+        ],
         "stubs/App/tools/update-languages.php": [
             "sha256:0be58f9e455478c92f918fe89696e4e6ffc3dc1a931be5dcd6b7ef9acce740f3",
             "sha256:37e2aace4a1ad35bdf5197642f554c756880198644e52c8c51cfa23cef76982e",

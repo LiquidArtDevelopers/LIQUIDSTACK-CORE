@@ -9,12 +9,14 @@ use PHPMailer\PHPMailer\PHPMailer;
 use Throwable;
 
 /**
- * Production SMTP adapter.
+ * Plain SMTP adapter reserved for a capture service on the same loopback host.
  *
- * The optional factory is an explicit test seam. Production always creates a
- * fresh exception-enabled PHPMailer instance for every delivery.
+ * The configuration loader is the primary environment gate. This adapter
+ * repeats the invariant so an injected or manually-built configuration cannot
+ * turn the development exception into a plaintext remote SMTP transport.
  */
-final class PhpMailerWebAdminTransport implements WebAdminMailTransportInterface
+final class LocalCaptureSmtpWebAdminTransport implements
+    WebAdminMailTransportInterface
 {
     /** @var Closure(): PHPMailer */
     private readonly Closure $mailerFactory;
@@ -25,12 +27,15 @@ final class PhpMailerWebAdminTransport implements WebAdminMailTransportInterface
         ?Closure $mailerFactory = null
     ) {
         if (
-            !$configuration->isProductionSmtp()
-            || !$configuration->usesSmtpAuthentication()
-            || !in_array($configuration->smtpEncryption(), [
-                WebAdminMailConfiguration::ENCRYPTION_STARTTLS,
-                WebAdminMailConfiguration::ENCRYPTION_SMTPS,
-            ], true)
+            !$configuration->isLocalCaptureSmtp()
+            || $configuration->usesSmtpAuthentication()
+            || $configuration->smtpEncryption()
+                !== WebAdminMailConfiguration::ENCRYPTION_NONE
+            || !in_array(
+                $configuration->smtpHost(),
+                ['127.0.0.1', '[::1]'],
+                true
+            )
         ) {
             throw new WebAdminMailTransportException();
         }
@@ -50,8 +55,6 @@ final class PhpMailerWebAdminTransport implements WebAdminMailTransportInterface
             }
             $mailer = $candidate;
 
-            // Never retain recipients or message material if a factory reuses
-            // an instance. The finally block repeats this after every outcome.
             $this->clearMessageState($mailer);
             $this->configureTransport($mailer);
             $this->configureMessage($mailer, $message);
@@ -60,8 +63,6 @@ final class PhpMailerWebAdminTransport implements WebAdminMailTransportInterface
                 throw new WebAdminMailTransportException();
             }
         } catch (Throwable) {
-            // Do not chain the original exception: SMTP diagnostics can expose
-            // server names, account identifiers, recipients or message data.
             throw new WebAdminMailTransportException();
         } finally {
             if ($mailer instanceof PHPMailer) {
@@ -75,23 +76,14 @@ final class PhpMailerWebAdminTransport implements WebAdminMailTransportInterface
     private function configureTransport(PHPMailer $mailer): void
     {
         $mailer->isSMTP();
-        $mailer->SMTPAuth = true;
+        $mailer->SMTPAuth = false;
         $mailer->Host = $this->configuration->smtpHost();
         $mailer->Port = $this->configuration->smtpPort();
-        $mailer->Username = $this->configuration->smtpUsername();
-        $mailer->Password = $this->configuration->smtpPassword();
-        $mailer->SMTPSecure = $this->configuration->smtpEncryption()
-            === WebAdminMailConfiguration::ENCRYPTION_SMTPS
-                ? PHPMailer::ENCRYPTION_SMTPS
-                : PHPMailer::ENCRYPTION_STARTTLS;
-        $mailer->SMTPAutoTLS = true;
-        $mailer->SMTPOptions = [
-            'ssl' => [
-                'verify_peer' => true,
-                'verify_peer_name' => true,
-                'allow_self_signed' => false,
-            ],
-        ];
+        $mailer->Username = '';
+        $mailer->Password = '';
+        $mailer->SMTPSecure = '';
+        $mailer->SMTPAutoTLS = false;
+        $mailer->SMTPOptions = [];
         $mailer->SMTPKeepAlive = false;
         $mailer->SMTPDebug = 0;
         $mailer->Timeout = WebAdminMailConfiguration::SMTP_TIMEOUT_SECONDS;

@@ -9,7 +9,6 @@ use App\Core\Database\DatabaseConnectionProfile;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Configuration\WebAdminConfigException;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
-use App\Core\WebAdmin\Mail\WebAdminMailConfiguration;
 use App\Core\WebAdmin\Mail\WebAdminMailConfigurationLoader;
 use App\Core\WebAdmin\Security\EmailAddress;
 use App\Core\WebAdmin\Security\ExceptionTraceGuard;
@@ -69,6 +68,10 @@ final class WebAdminDiagnosticService
             = $this->inspectSecurityKey($environment);
         [$missingMailEnv, $invalidMailEnv]
             = $this->mailConfigurationLoader->inspect($environment);
+        $mailTransport = $this->mailConfigurationLoader
+            ->safeTransportName($environment);
+        $requiredMailEnv = $this->mailConfigurationLoader
+            ->requiredEnvironmentNames($environment);
         $exceptionTraceReady = $this->exceptionTraceIsSafe();
         $passwordPolicyReady = PasswordHasher::runtimeSupportsArgon2id();
         $assets = $this->inspectAssets($projectRoot, $requiredAssets);
@@ -164,8 +167,8 @@ final class WebAdminDiagnosticService
                         && $invalidSecurityEnv === [],
                 ],
                 'mail' => [
-                    'transport' => 'smtp',
-                    'required' => WebAdminMailConfiguration::REQUIRED_ENV,
+                    'transport' => $mailTransport,
+                    'required' => $requiredMailEnv,
                     'missing' => $missingMailEnv,
                     'invalid' => $invalidMailEnv,
                     'ready' => $mailReady,

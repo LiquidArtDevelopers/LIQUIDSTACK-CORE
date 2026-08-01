@@ -4,36 +4,116 @@ declare(strict_types=1);
 
 namespace App\Core\Blog\Configuration;
 
+use App\Core\Environment\ProjectRuntimeProfile;
 use App\Core\WebAdmin\Mail\WebAdminMailConfiguration;
+use InvalidArgumentException;
 
 final class BlogPublicOrigin
 {
     public const ENV = WebAdminMailConfiguration::PUBLIC_ORIGIN_ENV;
+    public const PROJECT_ORIGIN_ENV = ProjectRuntimeProfile::ORIGIN_ENV;
+    public const SOURCE_PROJECT = 'raiz';
+    public const SOURCE_LEGACY = 'legacy';
+    public const SOURCE_LEGACY_COMPATIBILITY =
+        'legacy_compatibility_override';
 
-    private function __construct(private readonly string $value)
-    {
+    private function __construct(
+        private readonly string $value,
+        private readonly string $source
+    ) {
     }
 
     /** @param array<string, mixed> $environment */
     public static function fromEnvironment(
         #[\SensitiveParameter] array $environment
     ): self {
-        $value = $environment[self::ENV] ?? null;
-        if (!is_string($value) || !self::isValid($value)) {
+        $legacyValue = $environment[self::ENV] ?? null;
+        $legacyOrigin = null;
+        if ($legacyValue !== null && $legacyValue !== '') {
+            if (!is_string($legacyValue) || !self::isValid($legacyValue)) {
+                throw new BlogConfigException(
+                    'environment.public_origin_invalid',
+                    self::ENV
+                );
+            }
+
+            $legacyOrigin = rtrim($legacyValue, '/');
+        }
+
+        $projectOrigin = null;
+        $projectIsDevelopmentLoopback = false;
+        if (array_key_exists(self::PROJECT_ORIGIN_ENV, $environment)) {
+            try {
+                $profile = ProjectRuntimeProfile::fromEnvironment($environment);
+                $projectOrigin = $profile->origin();
+                $projectIsDevelopmentLoopback =
+                    $profile->isDevelopmentLoopbackHttp();
+            } catch (InvalidArgumentException) {
+                /*
+                 * Mantiene compatibilidad con instalaciones anteriores que
+                 * ya declaraban el origen WebAdmin explícito. RAIZ pasa a ser
+                 * la fuente canónica recomendada, pero una forma legacy válida
+                 * no deja el Blog fuera de servicio durante la transición.
+                 */
+                if ($legacyOrigin === null) {
+                    throw new BlogConfigException(
+                        'environment.public_origin_invalid',
+                        self::PROJECT_ORIGIN_ENV
+                    );
+                }
+            }
+        }
+
+        $origin = $projectOrigin ?? $legacyOrigin;
+        $source = $projectOrigin !== null
+            ? self::SOURCE_PROJECT
+            : self::SOURCE_LEGACY;
+        if (
+            $projectOrigin !== null
+            && $legacyOrigin !== null
+            && !$projectIsDevelopmentLoopback
+            && !hash_equals(
+                self::normalizedProductionOrigin($projectOrigin),
+                self::normalizedProductionOrigin($legacyOrigin)
+            )
+        ) {
+            /*
+             * Hasta esta versión el Blog publicaba exclusivamente con el
+             * alias WebAdmin. Mantenerlo temporalmente evita cambiar URLs
+             * canónicas durante un update; doctor señala la discrepancia para
+             * que el proyecto alinee ambos valores y retire el alias.
+            */
+            $origin = $legacyOrigin;
+            $source = self::SOURCE_LEGACY_COMPATIBILITY;
+        }
+        if ($origin === null) {
             throw new BlogConfigException(
-                $value === null || $value === ''
-                    ? 'environment.public_origin_missing'
-                    : 'environment.public_origin_invalid',
-                self::ENV
+                'environment.public_origin_missing',
+                self::PROJECT_ORIGIN_ENV
             );
         }
 
-        return new self(rtrim($value, '/'));
+        return new self($origin, $source);
     }
 
     public function value(): string
     {
         return $this->value;
+    }
+
+    public function usesLegacyCompatibilityOverride(): bool
+    {
+        return $this->source === self::SOURCE_LEGACY_COMPATIBILITY;
+    }
+
+    public function source(): string
+    {
+        return $this->source;
+    }
+
+    public function usesLegacyOrigin(): bool
+    {
+        return $this->source !== self::SOURCE_PROJECT;
     }
 
     public function absoluteUrl(string $path): string
@@ -96,5 +176,23 @@ final class BlogPublicOrigin
                     FILTER_FLAG_HOSTNAME
                 ) !== false
             );
+    }
+
+    private static function normalizedProductionOrigin(string $origin): string
+    {
+        $parts = parse_url($origin);
+        if (!is_array($parts) || !is_string($parts['host'] ?? null)) {
+            return $origin;
+        }
+
+        $host = strtolower((string) $parts['host']);
+        if (str_contains($host, ':')) {
+            $host = '[' . trim($host, '[]') . ']';
+        }
+        $port = isset($parts['port']) && (int) $parts['port'] !== 443
+            ? ':' . (int) $parts['port']
+            : '';
+
+        return 'https://' . $host . $port;
     }
 }

@@ -4,6 +4,26 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Añadido
+- Vista previa privada y no cacheable de la última versión guardada de cada
+  variante Blog. Usa `blog.articles.view`, admite borradores incompletos y no
+  crea canonical, URL pública, entrada de sitemap, auditoría ni mutaciones.
+- Laboratorio HTTP local tipado para WebAdmin y Blog: solo acepta loopback
+  cuando `DEV_MODE=1`, `RAIZ`, `Host` y puerto coinciden y `REMOTE_ADDR`
+  representa el peer loopback;
+  producción conserva HTTPS obligatorio y las cabeceras `Forwarded` no amplían
+  confianza. Blog usa `RAIZ` como origen canónico, con el origen WebAdmin
+  anterior como alias compatible. CORE distribuye además un router seguro para
+  `php -S`, incluso si un contrato SCSS independiente bloquea los recursos.
+  Migra únicamente el script `lad` canónico cuando el router gestionado está
+  disponible, sin pisar variantes personalizadas, y permite que
+  `/blog-sitemap.xml` llegue al front controller. Si `RAIZ` y el alias legacy
+  difieren en producción, conserva temporalmente la URL anterior y `doctor`
+  avisa en vez de romper el frontend público.
+- Perfil de correo `local_capture_smtp` para recorrer en el laboratorio el
+  outbox y las acciones de credencial reales con un capturador SMTP loopback.
+  Usa `RAIZ` solo bajo `DEV_MODE=1`, no imprime tokens, no admite credenciales,
+  TLS, relay ni hosts remotos y queda bloqueado antes de PDO fuera del perfil;
+  el transporte productivo conserva autenticación y STARTTLS/SMTPS estrictos.
 - Perfil de DB modular dedicado y opt-in `liquidstack`, coexistente con el
   default compatible `shared`. WebAdmin y Blog pueden usar las variables
   `LIQUIDSTACK_DB_HOST`, `LIQUIDSTACK_DB_PORT`, `LIQUIDSTACK_DB_NAME`,

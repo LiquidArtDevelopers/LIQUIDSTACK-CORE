@@ -18,9 +18,116 @@ final class BlogPublicOriginTest extends TestCase
 
         self::assertSame('https://www.example.test', $origin->value());
         self::assertSame(
+            BlogPublicOrigin::SOURCE_LEGACY,
+            $origin->source()
+        );
+        self::assertTrue($origin->usesLegacyOrigin());
+        self::assertSame(
             'https://www.example.test/es/noticias/post',
             $origin->absoluteUrl('/es/noticias/post')
         );
+    }
+
+    public function testProjectRaizIsTheCanonicalProductionOrigin(): void
+    {
+        $origin = BlogPublicOrigin::fromEnvironment([
+            BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                'https://www.example.test',
+            'DEV_MODE' => '0',
+            'HTTP_HOST' => 'attacker.invalid',
+            'HTTP_X_FORWARDED_HOST' => 'attacker.invalid',
+        ]);
+
+        self::assertSame('https://www.example.test', $origin->value());
+        self::assertSame(
+            BlogPublicOrigin::SOURCE_PROJECT,
+            $origin->source()
+        );
+        self::assertFalse($origin->usesLegacyOrigin());
+    }
+
+    public function testProjectRaizAllowsOnlyTheTypedDevelopmentLoopbackOrigin(): void
+    {
+        $origin = BlogPublicOrigin::fromEnvironment([
+            BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                'http://localhost:1309',
+            'DEV_MODE' => '1',
+        ]);
+
+        self::assertSame('http://localhost:1309', $origin->value());
+        self::assertSame(
+            'http://localhost:1309/es/noticias/post',
+            $origin->absoluteUrl('/es/noticias/post')
+        );
+    }
+
+    public function testEmptyLegacyPlaceholderDoesNotOverrideProjectRaiz(): void
+    {
+        $origin = BlogPublicOrigin::fromEnvironment([
+            BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                'https://example.test',
+            BlogPublicOrigin::ENV => '',
+        ]);
+
+        self::assertSame('https://example.test', $origin->value());
+    }
+
+    public function testDevelopmentRaizOverridesTheProductionMailAlias(): void
+    {
+        $origin = BlogPublicOrigin::fromEnvironment([
+            BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                'http://localhost:1309',
+            'DEV_MODE' => '1',
+            BlogPublicOrigin::ENV => 'https://www.example.test',
+        ]);
+
+        self::assertSame('http://localhost:1309', $origin->value());
+    }
+
+    public function testDifferentValidOriginsPreserveTheLegacyCanonicalUrl(): void
+    {
+        $origin = BlogPublicOrigin::fromEnvironment([
+            BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                'https://canonical.example.test',
+            BlogPublicOrigin::ENV =>
+                'https://legacy.example.test',
+        ]);
+
+        self::assertSame('https://legacy.example.test', $origin->value());
+        self::assertTrue($origin->usesLegacyCompatibilityOverride());
+        self::assertTrue($origin->usesLegacyOrigin());
+        self::assertSame(
+            BlogPublicOrigin::SOURCE_LEGACY_COMPATIBILITY,
+            $origin->source()
+        );
+    }
+
+    public function testSemanticallyEquivalentProductionOriginsDoNotConflict(): void
+    {
+        $origin = BlogPublicOrigin::fromEnvironment([
+            BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                'https://example.test',
+            BlogPublicOrigin::ENV =>
+                'https://EXAMPLE.test:443/',
+        ]);
+
+        self::assertSame('https://example.test', $origin->value());
+        self::assertFalse($origin->usesLegacyCompatibilityOverride());
+        self::assertSame(
+            BlogPublicOrigin::SOURCE_PROJECT,
+            $origin->source()
+        );
+    }
+
+    public function testLegacyOriginRemainsCompatibleWithANonCanonicalRaiz(): void
+    {
+        $origin = BlogPublicOrigin::fromEnvironment([
+            BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                'https://example.test/legacy-path',
+            BlogPublicOrigin::ENV => 'https://example.test',
+        ]);
+
+        self::assertSame('https://example.test', $origin->value());
     }
 
     /** @dataProvider invalidOriginProvider */
@@ -38,7 +145,12 @@ final class BlogPublicOriginTest extends TestCase
                 'environment.public_origin_missing',
                 'environment.public_origin_invalid',
             ]);
-            self::assertSame(BlogPublicOrigin::ENV, $exception->configKey());
+            self::assertSame(
+                $value === null
+                    ? BlogPublicOrigin::PROJECT_ORIGIN_ENV
+                    : BlogPublicOrigin::ENV,
+                $exception->configKey()
+            );
             self::assertStringNotContainsString(
                 'attacker',
                 $exception->getMessage()

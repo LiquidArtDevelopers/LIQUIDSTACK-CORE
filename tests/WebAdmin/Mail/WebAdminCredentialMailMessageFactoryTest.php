@@ -97,6 +97,33 @@ final class WebAdminCredentialMailMessageFactoryTest extends TestCase
         );
     }
 
+    public function testTypedLocalCaptureBuildsTheActionUrlFromRaiz(): void
+    {
+        $token = (new SecureTokenGenerator())->generate();
+        $message = $this->localCaptureFactory()->create(
+            WebAdminCredentialMailMessageFactory::KIND_INVITE,
+            'editor@example.test',
+            'es',
+            $token
+        );
+
+        self::assertStringContainsString(
+            'http://localhost:1309/admin/activate?token='
+                . rawurlencode($token),
+            $message->textBody()
+        );
+    }
+
+    public function testLocalCaptureProfileCannotAuthorizeRemoteHttpLinks(): void
+    {
+        $this->expectException(WebAdminMailMessageFactoryException::class);
+        $this->expectExceptionMessage(
+            'WebAdmin mail message cannot be created.'
+        );
+
+        $this->localCaptureFactory('http://must-not-leak.example.test');
+    }
+
     #[DataProvider('invalidInputProvider')]
     public function testInvalidInputsFailWithStableCodesAndNoSecretLeak(
         string $kind,
@@ -202,6 +229,26 @@ final class WebAdminCredentialMailMessageFactoryTest extends TestCase
                 'LiquidStack'
             ),
             $basePath
+        );
+    }
+
+    private function localCaptureFactory(
+        string $publicOrigin = 'http://localhost:1309'
+    ): WebAdminCredentialMailMessageFactory {
+        return new WebAdminCredentialMailMessageFactory(
+            new WebAdminMailConfiguration(
+                $publicOrigin,
+                '127.0.0.1',
+                1025,
+                WebAdminMailConfiguration::ENCRYPTION_NONE,
+                OpaqueSecret::fromString(''),
+                OpaqueSecret::fromString(''),
+                'webadmin@aiwa.test',
+                'AIWA WebAdmin dev',
+                WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+                false
+            ),
+            '/admin'
         );
     }
 }

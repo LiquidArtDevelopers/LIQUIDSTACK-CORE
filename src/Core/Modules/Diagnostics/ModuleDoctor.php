@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Modules\Diagnostics;
 
+use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Diagnostics\BlogDiagnosticService;
 use App\Core\Composer\MigrationCommandRuntimeFactory;
 use App\Core\Composer\MigrationCommandRuntimeFactoryInterface;
@@ -782,14 +783,31 @@ final class ModuleDoctor
         $originReady = (
             $payload['environment']['public_origin']['ready'] ?? false
         ) === true;
+        $originUsesLegacyCompatibilityOverride = (
+            $payload['environment']['public_origin'][
+                'legacy_compatibility_override'
+            ] ?? false
+        ) === true;
+        $originSource = $payload['environment']['public_origin']['source']
+            ?? null;
         $checks[] = $originReady
-            ? DiagnosticCheck::ok(
-                'blog.environment.public_origin',
-                'Origen publico HTTPS disponible; su valor permanece oculto.'
-            )
+            ? ($originUsesLegacyCompatibilityOverride
+                ? DiagnosticCheck::warning(
+                    'blog.environment.public_origin',
+                    'Blog conserva temporalmente el origen legacy para no cambiar URLs durante el update; alinea RAIZ y LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN.'
+                )
+                : ($originSource === BlogPublicOrigin::SOURCE_LEGACY
+                    ? DiagnosticCheck::warning(
+                        'blog.environment.public_origin',
+                        'Blog conserva el origen legacy; declara una RAIZ canonica antes de retirar LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN.'
+                    )
+                    : DiagnosticCheck::ok(
+                        'blog.environment.public_origin',
+                        'Origen canonico de proyecto disponible; su valor permanece oculto.'
+                    )))
             : DiagnosticCheck::error(
                 'blog.environment.public_origin',
-                'Falta un origen publico HTTPS valido para Blog.'
+                'Falta una RAIZ HTTPS valida o un loopback de desarrollo tipado para Blog.'
             );
 
         $dependencyStatus = is_string(

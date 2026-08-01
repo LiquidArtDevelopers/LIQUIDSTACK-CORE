@@ -16,6 +16,7 @@ class Installer
     private const AGENT_SKILLS_MANIFEST = '.liquidstack-core-skills.json';
     private const SCSS_CONFIG_CONTRACT_PATH = 'manifests/scss-config-contract-v2.json';
     private const SCSS_CONFIG_TARGET_PATH = 'src/scss/_config.scss';
+    private const PHP_DEV_ROUTER_PATH = 'App/tools/php-dev-router.php';
     private const VITE_LANGUAGE_PLUGIN_PATH = 'tools/liquidstack/vite/update-languages-plugin.mjs';
     private const VITE_LANGUAGE_PLUGIN_IMPORT = 'import { createUpdateLanguagesPlugin } from "./tools/liquidstack/vite/update-languages-plugin.mjs";';
     private const VITE_LANGUAGE_PLUGIN_CALL = 'createUpdateLanguagesPlugin(env)';
@@ -44,6 +45,12 @@ class Installer
         }
 
         $synchronizer = self::createManagedFileSynchronizer($event);
+
+        // The local router is runtime infrastructure, not an SCSS resource.
+        // Queue it even when the visual-resource contract cannot be extended;
+        // package.json must never point at a file withheld by an unrelated
+        // config failure.
+        self::queueDevelopmentRuntimeAssets($event, $synchronizer);
 
         if ($scssContractReady) {
             self::syncProjectAssets($event, $synchronizer);
@@ -289,6 +296,9 @@ class Installer
 
         $sections = ['dependencies', 'devDependencies'];
         $added    = [];
+        $updatedScripts = [];
+        $preservedScripts = [];
+        $deferredScripts = [];
 
         foreach ($sections as $section) {
             $required = $coreManifest[$section] ?? null;
@@ -320,8 +330,82 @@ class Installer
             }
         }
 
-        if ($added === []) {
-            $io->write('<info>Frontend dependencies already up to date in package.json</info>');
+        $scriptMigrations = $coreManifest['scriptMigrations'] ?? [];
+        if (is_array($scriptMigrations)) {
+            foreach ($scriptMigrations as $name => $migration) {
+                if (
+                    !is_string($name)
+                    || $name === ''
+                    || !is_array($migration)
+                    || !is_string($migration['to'] ?? null)
+                    || $migration['to'] === ''
+                    || !is_array($migration['from'] ?? null)
+                ) {
+                    continue;
+                }
+
+                $scripts = $projectPackage['scripts'] ?? null;
+                if (!is_array($scripts) || !array_key_exists($name, $scripts)) {
+                    continue;
+                }
+
+                $current = $scripts[$name];
+                if (!is_string($current)) {
+                    $preservedScripts[] = $name;
+                    continue;
+                }
+                if (hash_equals($migration['to'], $current)) {
+                    if (!self::scriptMigrationPrerequisitesAreReady(
+                        $migration,
+                        $packageRoot,
+                        $projectRoot
+                    )) {
+                        $deferredScripts[] = $name;
+                    }
+                    continue;
+                }
+
+                $legacyValues = array_values(array_filter(
+                    $migration['from'],
+                    static fn (mixed $value): bool =>
+                        is_string($value) && $value !== ''
+                ));
+                if (!in_array($current, $legacyValues, true)) {
+                    $preservedScripts[] = $name;
+                    continue;
+                }
+
+                if (!self::scriptMigrationPrerequisitesAreReady(
+                    $migration,
+                    $packageRoot,
+                    $projectRoot
+                )) {
+                    $deferredScripts[] = $name;
+                    continue;
+                }
+
+                $projectPackage['scripts'][$name] = $migration['to'];
+                $updatedScripts[] = $name;
+            }
+        }
+
+        foreach (array_values(array_unique($preservedScripts)) as $name) {
+            $io->write(sprintf(
+                '<comment>Preserved customized frontend script in package.json: %s</comment>',
+                $name
+            ));
+        }
+        foreach (array_values(array_unique($deferredScripts)) as $name) {
+            $io->write(sprintf(
+                '<comment>Deferred canonical frontend script migration until its managed files are available: %s</comment>',
+                $name
+            ));
+        }
+
+        if ($added === [] && $updatedScripts === []) {
+            if ($deferredScripts === []) {
+                $io->write('<info>Frontend dependencies already up to date in package.json</info>');
+            }
             return;
         }
 
@@ -337,8 +421,111 @@ class Installer
             return;
         }
 
-        $io->write(sprintf('<info>Added frontend dependencies to package.json: %s</info>', implode(', ', $added)));
-        $io->write('<comment>Run npm install/yarn install/pnpm install to fetch new packages.</comment>');
+        if ($updatedScripts !== []) {
+            $io->write(sprintf(
+                '<info>Updated canonical frontend scripts in package.json: %s</info>',
+                implode(', ', array_values(array_unique($updatedScripts)))
+            ));
+        }
+        if ($added !== []) {
+            $io->write(sprintf('<info>Added frontend dependencies to package.json: %s</info>', implode(', ', $added)));
+            $io->write('<comment>Run npm install/yarn install/pnpm install to fetch new packages.</comment>');
+        }
+    }
+
+    /** @param array<string, mixed> $migration */
+    private static function scriptMigrationPrerequisitesAreReady(
+        array $migration,
+        string $packageRoot,
+        string $projectRoot
+    ): bool {
+        $requirements = $migration['requiresManagedFiles'] ?? [];
+        if (!is_array($requirements)) {
+            return false;
+        }
+
+        foreach ($requirements as $requirement) {
+            if (
+                !is_array($requirement)
+                || !is_string($requirement['source'] ?? null)
+                || !is_string($requirement['target'] ?? null)
+            ) {
+                return false;
+            }
+
+            $source = self::safeChildPath(
+                $packageRoot,
+                $requirement['source']
+            );
+            $target = self::safeChildPath(
+                $projectRoot,
+                $requirement['target']
+            );
+            if (
+                $source === null
+                || $target === null
+                || !is_file($source)
+                || is_link($source)
+                || !is_file($target)
+                || is_link($target)
+            ) {
+                return false;
+            }
+
+            try {
+                $sourceFingerprints = ManagedFileRegistry::fingerprintFile(
+                    $source
+                );
+                $targetFingerprints = ManagedFileRegistry::fingerprintFile(
+                    $target
+                );
+            } catch (\Throwable) {
+                return false;
+            }
+
+            if (array_intersect(
+                $sourceFingerprints,
+                $targetFingerprints
+            ) === []) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function safeChildPath(
+        string $root,
+        string $relativePath
+    ): ?string {
+        $relativePath = str_replace('\\', '/', $relativePath);
+        if (
+            $relativePath === ''
+            || Path::isAbsolute($relativePath)
+            || preg_match('#(?:\A|/)\.\.?(?:/|\z)#', $relativePath) === 1
+        ) {
+            return null;
+        }
+
+        $canonicalRoot = rtrim(
+            Path::canonicalize(str_replace('\\', '/', $root)),
+            '/'
+        );
+        $candidate = Path::canonicalize(
+            $canonicalRoot . '/' . $relativePath
+        );
+        $compareRoot = PHP_OS_FAMILY === 'Windows'
+            ? strtolower($canonicalRoot)
+            : $canonicalRoot;
+        $compareCandidate = PHP_OS_FAMILY === 'Windows'
+            ? strtolower($candidate)
+            : $candidate;
+
+        if (!str_starts_with($compareCandidate, $compareRoot . '/')) {
+            return null;
+        }
+
+        return str_replace('/', DIRECTORY_SEPARATOR, $candidate);
     }
 
     public static function syncResources(Event $event): void
@@ -549,6 +736,32 @@ class Installer
             );
         }
 
+    }
+
+    private static function queueDevelopmentRuntimeAssets(
+        Event $event,
+        ManagedFileSynchronizer $synchronizer
+    ): void {
+        $projectRoot = self::resolveProjectRoot($event);
+        $packageRoot = dirname(__DIR__, 3);
+        $source = $packageRoot
+            . '/stubs/'
+            . self::PHP_DEV_ROUTER_PATH;
+
+        if (!is_file($source)) {
+            $event->getIO()->writeError(sprintf(
+                '<warning>Skipping missing development router: %s</warning>',
+                $source
+            ));
+            return;
+        }
+
+        $synchronizer->queueFile(
+            $source,
+            $projectRoot . '/' . self::PHP_DEV_ROUTER_PATH,
+            'stubs/' . self::PHP_DEV_ROUTER_PATH,
+            self::PHP_DEV_ROUTER_PATH
+        );
     }
 
     private static function queueInternalModules(

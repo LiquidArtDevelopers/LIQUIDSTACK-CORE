@@ -553,6 +553,40 @@ final class InstallerResourceSyncTest extends TestCase
         );
     }
 
+    public function testComposerUpdateInstallsTheDevRouterEvenWhenScssContractFails(): void
+    {
+        $this->filesystem->remove(
+            $this->projectRoot . '/src/scss/_config.scss'
+        );
+        $this->writeFile(
+            $this->projectRoot . '/package.json',
+            json_encode([
+                'scripts' => [
+                    'lad' => 'node scripts/swap-env.mjs development '
+                        . '&& concurrently "php -S localhost:1309 -t public '
+                        . 'App/tools/php-dev-router.php" "npm run dev"',
+                ],
+            ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)
+                . PHP_EOL
+        );
+
+        Installer::postUpdate($this->createEvent());
+
+        self::assertFileEquals(
+            dirname(__DIR__, 2)
+                . '/stubs/App/tools/php-dev-router.php',
+            $this->projectRoot . '/App/tools/php-dev-router.php'
+        );
+        self::assertStringContainsString(
+            'Se omiten los recursos base cuyo contrato SCSS',
+            $this->io->getOutput()
+        );
+        self::assertStringNotContainsString(
+            'Deferred canonical frontend script migration',
+            $this->io->getOutput()
+        );
+    }
+
     public function testResourceSyncAddsOnlyMissingScssColorVariables(): void
     {
         $configPath = $this->projectRoot . '/src/scss/_config.scss';

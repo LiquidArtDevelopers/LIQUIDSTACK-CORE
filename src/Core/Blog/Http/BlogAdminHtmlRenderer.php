@@ -37,14 +37,26 @@ final class BlogAdminHtmlRenderer
                     'Invalid Blog summary presentation.'
                 );
             }
-            $action = 'Solo lectura';
+            $preview = $this->pathWithQuery(
+                $basePath,
+                '/posts/preview',
+                [
+                    'post' => $summary->postPublicId(),
+                    'locale' => $summary->locale(),
+                ]
+            );
+            $action = '<a href="' . $preview
+                . '" target="_blank" rel="noopener">Vista previa '
+                . 'guardada</a>';
             if ($canEdit) {
                 $edit = $this->pathWithQuery($basePath, '/posts/edit', [
                     'post' => $summary->postPublicId(),
                     'locale' => $summary->locale(),
                 ]);
-                $action = '<a href="' . $edit
+                $action .= ' <a href="' . $edit
                     . '">Editar variante</a>';
+            } else {
+                $action .= ' <span>Solo lectura</span>';
             }
             $rows .= '<tr><th scope="row">'
                 . $this->escape($summary->h1()) . '</th><td>'
@@ -162,6 +174,16 @@ final class BlogAdminHtmlRenderer
             : '<p role="status">Retira la variante antes de editar su '
                 . 'contenido.</p><div aria-label="Contenido publicado">'
                 . $this->editorialFields($variant, true) . '</div>';
+        $preview = '<p><a href="' . $this->pathWithQuery(
+            $basePath,
+            '/posts/preview',
+            [
+                'post' => $variant->postPublicId(),
+                'locale' => $variant->locale(),
+            ]
+        ) . '" target="_blank" rel="noopener">Abrir vista previa de la '
+            . 'versi&oacute;n guardada</a>. Guarda primero cualquier cambio '
+            . 'pendiente.</p>';
 
         return $this->document(
             'Editar art&iacute;culo',
@@ -170,6 +192,7 @@ final class BlogAdminHtmlRenderer
             . '<p>Idioma: <strong>' . $this->escape($variant->locale())
             . '</strong>. Estado: ' . $this->statusLabel($variant->status())
             . '.</p>' . $this->formError($failed)
+            . $preview
             . $editor
             . $publish
             . '<p><a href="' . $this->pathWithQuery(
@@ -179,6 +202,51 @@ final class BlogAdminHtmlRenderer
             ) . '">A&ntilde;adir otro idioma</a></p>'
             . $this->backToBlog($basePath)
             . '</article></main>'
+        );
+    }
+
+    public function preview(
+        string $basePath,
+        BlogPostVariant $variant,
+        bool $canEdit
+    ): string {
+        $draft = $variant->draft();
+        $excerpt = $draft->excerpt() === null
+            ? ''
+            : '<p>' . $this->escape($draft->excerpt()) . '</p>';
+        $body = $this->previewBody($draft->bodyText());
+        if ($body === '') {
+            $body = '<p role="status">Este borrador todav&iacute;a no tiene '
+                . 'contenido guardado.</p>';
+        }
+        $edit = $canEdit
+            ? '<li><a href="' . $this->pathWithQuery(
+                $basePath,
+                '/posts/edit',
+                [
+                    'post' => $variant->postPublicId(),
+                    'locale' => $variant->locale(),
+                ]
+            ) . '">Volver a editar</a></li>'
+            : '';
+
+        return $this->document(
+            'Vista previa privada',
+            '<main><p role="status"><strong>Vista previa privada de la '
+            . 'versi&oacute;n guardada.</strong> No crea una URL p&uacute;blica '
+            . 'ni modifica el art&iacute;culo. Idioma: '
+            . $this->escape($variant->locale()) . '. Estado: '
+            . $this->statusLabel($variant->status()) . '.</p>'
+            . '<article lang="' . $this->escape($variant->locale())
+            . '" aria-labelledby="blog-preview-title">'
+            . '<h1 id="blog-preview-title">'
+            . $this->escape($draft->h1()) . '</h1>'
+            . $excerpt
+            . '<div aria-label="Contenido del art&iacute;culo">'
+            . $body . '</div></article>'
+            . '<nav aria-label="Acciones de la vista previa"><ul>'
+            . $edit . '<li><a href="' . $this->path($basePath, '')
+            . '">Volver al Blog</a></li></ul></nav></main>'
         );
     }
 
@@ -242,6 +310,30 @@ final class BlogAdminHtmlRenderer
             . $this->escape($variant->locale()) . '">'
             . '<input type="hidden" name="lock_version" value="'
             . $variant->lockVersion() . '">';
+    }
+
+    private function previewBody(string $bodyText): string
+    {
+        $paragraphs = preg_split(
+            '/\n[\t ]*\n+/u',
+            trim($bodyText)
+        );
+        if (!is_array($paragraphs)) {
+            throw new InvalidArgumentException(
+                'Invalid Blog preview body presentation.'
+            );
+        }
+
+        $body = '';
+        foreach ($paragraphs as $paragraph) {
+            $paragraph = trim($paragraph);
+            if ($paragraph === '') {
+                continue;
+            }
+            $body .= '<p>' . $this->escape($paragraph) . '</p>';
+        }
+
+        return $body;
     }
 
     private function document(string $title, string $body): string

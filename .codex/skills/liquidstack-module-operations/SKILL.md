@@ -76,9 +76,17 @@ return [
   habilitar autenticación.
 - Exigir soporte Argon2id para la política productiva fija `argon2id-v1`; no
   sustituirla automáticamente por bcrypt según el host.
-- Servir WebAdmin solo por HTTPS. El request no confía en cabeceras
-  `Forwarded`; detrás de un proxy, configurar el servidor para afirmar el TLS
-  ya verificado y reescribir `REMOTE_ADDR` solo desde proxies autorizados.
+- Servir WebAdmin por HTTPS fuera del laboratorio. La única excepción HTTP
+  exige simultáneamente `DEV_MODE=1`, `RAIZ` con origen loopback canónico y
+  coincidencia exacta de `Host` y puerto; `REMOTE_ADDR` debe representar el
+  mismo peer loopback, incluida su forma IPv6 válida. El request no confía
+  en cabeceras `Forwarded`; detrás de un proxy, configurar el servidor para
+  afirmar el TLS ya verificado y reescribir `REMOTE_ADDR` solo desde proxies
+  autorizados.
+- En el servidor integrado usar `php -S localhost:1309 -t public
+  App/tools/php-dev-router.php`; sin el router, rutas dinámicas con extensión
+  como `/blog-sitemap.xml` pueden no llegar a CORE. No alterar por ello el
+  perfil ni el flujo de `npm run build`.
 - Reservar `LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL` y `LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL` para el bootstrap explícito. No mostrar sus valores.
 - Configurar el correo solo mediante
   `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, `LIQUIDSTACK_WEBADMIN_SMTP_HOST`,
@@ -89,6 +97,14 @@ return [
   `LIQUIDSTACK_WEBADMIN_MAIL_FROM_ADDRESS` y
   `LIQUIDSTACK_WEBADMIN_MAIL_FROM_NAME`. El origen debe ser HTTPS explícito y
   nunca derivarse de `Host` o cabeceras `Forwarded`.
+- Para pruebas locales, usar únicamente el perfil tipado
+  `LIQUIDSTACK_WEBADMIN_MAIL_TRANSPORT=local_capture_smtp`: exige
+  `DEV_MODE=1`, `RAIZ` HTTP loopback y SMTP en `127.0.0.1` o `[::1]`, toma el
+  origen del enlace de `RAIZ` y prohíbe origen legacy, TLS, usuario y
+  contraseña SMTP. Arrancar el capturador externo ligado solo a loopback y sin
+  relay/forwarding. No instalarlo desde CORE ni sustituirlo por un comando que
+  revele tokens en consola. Fuera de ese perfil el dispatcher debe fallar
+  antes de PDO/transporte y el SMTP productivo conserva STARTTLS/SMTPS y auth.
 - Mantener el prefijo fuera de los idiomas activos y de rutas GET/POST existentes. `/admin` es el default neutral.
 - Determinar las colisiones con el catálogo estructurado de `doctor` o con el inspector estático de rutas. Una mención textual en la configuración, comentarios, documentación o código de negocio no convierte por sí sola el prefijo en una ruta ocupada; una búsqueda general solo aporta pistas. Las claves de ruta calculadas, concatenadas o añadidas mediante índices son deliberadamente no analizables: bloquean WebAdmin con `route_file.dynamic_key` hasta convertirlas en un catálogo literal o estático.
 - No escribir valores en `.env`; como máximo documentar nombres vacíos en `.env.example` cuando la tarea lo autorice.
@@ -114,7 +130,9 @@ composer liquidstack:migrate --dry-run
   HTTP).
 - Entender `mail_ready` y `mail_blockers` como un eje adicional: una
   configuración SMTP ausente bloquea el dispatcher, no el login ni el
-  bootstrap que solo encola trabajo.
+  bootstrap que solo encola trabajo. `mail_ready` valida configuración, no
+  conectividad; comprobar que el capturador local escucha antes del dispatch
+  para no consumir un intento del outbox.
 - Usar `--plan` para revisar el catálogo sin conexión y `--dry-run` para
   comprobar el estado real de la DB sin escribir.
 - Tratar `--plan` como un preflight exclusivamente de metadatos modulares y de
@@ -205,9 +223,14 @@ composer liquidstack:migrate --dry-run
   `App/config/langs.php`, que sus rutas sean absolutas y únicas y que no
   colisionen con rutas o ficheros del proyecto. El path base puede pertenecer a
   un índice estático; las URLs de artículo viven en `{public_path}/{slug}`.
-- Reutilizar `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` como origen canónico HTTPS
-  del sitemap y de los artículos. No derivarlo de `Host`, `Forwarded` ni del
-  request. Blog no debe depender de que el transporte SMTP esté listo.
+- Usar `RAIZ` como origen canónico del sitemap y de los artículos: HTTPS fuera
+  del laboratorio y HTTP solo con el perfil loopback tipado de desarrollo.
+  Mantener `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` como alias de transición y
+  conservarlo temporalmente si difiere en producción para no cambiar URLs
+  durante un update; `doctor` debe avisar hasta alinear ambos valores. En local
+  debe prevalecer la `RAIZ` loopback. No derivar el origen de `Host`,
+  `Forwarded` ni del request. Blog no debe depender de que el transporte SMTP
+  esté listo.
 - Aplicar en orden `doctor`, `migrate --plan`, `migrate --dry-run`,
   `migrate --apply`, `webadmin:bootstrap` y un segundo `doctor`. Repetir el
   bootstrap es obligatorio al añadir Blog a un WebAdmin ya inicializado para
@@ -216,6 +239,10 @@ composer liquidstack:migrate --dry-run
   `blog.articles.publish`. Ocultar botones no sustituye el gate transaccional:
   SID, CSRF, lifecycle, `auth_version` y capability deben revalidarse con el
   mismo PDO y dentro de la transacción Blog.
+- Servir la vista previa guardada solo dentro del prefijo privado de WebAdmin y
+  con `blog.articles.view`. No convertirla en una URL compartible ni emitir
+  canonical, metadatos SEO públicos o entradas de sitemap; debe usar
+  `no-store`, `noindex` y no realizar mutaciones ni auditoría editorial.
 - Conservar el agregado y cada variante por idioma como unidades estables. En
   el MVP solo existen `draft` y `published`; una variante publicada se retira
   antes de editarla, cada escritura usa `lock_version` y no existe borrado HTTP.

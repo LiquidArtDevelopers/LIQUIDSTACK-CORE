@@ -109,6 +109,35 @@ final class ApplicationModuleRouteTest extends TestCase
 
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
+    public function testWebAdminAcceptsTheDeclaredLocalDevelopmentOrigin(): void
+    {
+        $this->writeComposerRequirements([
+            'liquidstack/core' => '^1.9',
+            'liquidstack/webadmin' => '*',
+        ]);
+        $_ENV['RAIZ'] = 'http://localhost:1309';
+        $_ENV['DEV_MODE'] = '1';
+        $_SERVER = [
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin/login',
+            'QUERY_STRING' => '',
+            'HTTP_HOST' => 'localhost:1309',
+            'REMOTE_ADDR' => '127.0.0.1',
+        ];
+
+        ob_start();
+        (new Application($this->fixtureRoot))->run();
+        $body = (string) ob_get_clean();
+
+        self::assertSame(503, http_response_code());
+        self::assertSame('Service unavailable', $body);
+        self::assertFileDoesNotExist($this->configMarker);
+        self::assertFileDoesNotExist($this->rolesMarker);
+        self::assertSame(PHP_SESSION_NONE, session_status());
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
     public function testWebAdminReceivesEnvironmentInjectedOnlyInProcess(): void
     {
         $this->writeComposerRequirements([

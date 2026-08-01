@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Core\WebAdmin\Mail;
 
+use App\Core\Environment\ProjectRuntimeProfile;
 use App\Core\WebAdmin\Security\EmailAddress;
 use App\Core\WebAdmin\Security\InvalidEmailAddress;
 use App\Core\WebAdmin\Security\OpaqueSecret;
+use InvalidArgumentException;
 
 final class WebAdminMailConfigurationLoader
 {
@@ -33,9 +35,19 @@ final class WebAdminMailConfigurationLoader
             );
         }
 
-        $origin = rtrim((string) $environment[
-            WebAdminMailConfiguration::PUBLIC_ORIGIN_ENV
-        ], '/');
+        if (
+            $this->safeTransportName($environment)
+                === WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP
+        ) {
+            return $this->loadLocalCapture($environment);
+        }
+
+        $origin = rtrim(
+            (string) $environment[
+                WebAdminMailConfiguration::PUBLIC_ORIGIN_ENV
+            ],
+            '/'
+        );
 
         return new WebAdminMailConfiguration(
             $origin,
@@ -59,7 +71,9 @@ final class WebAdminMailConfigurationLoader
             ])->value(),
             trim((string) $environment[
                 WebAdminMailConfiguration::FROM_NAME_ENV
-            ])
+            ]),
+            WebAdminMailConfiguration::TRANSPORT_SMTP,
+            true
         );
     }
 
@@ -70,6 +84,18 @@ final class WebAdminMailConfigurationLoader
     public function inspect(
         #[\SensitiveParameter] array $environment
     ): array {
+        $transport = $this->safeTransportName($environment);
+        if ($transport === 'invalid') {
+            return [[], [WebAdminMailConfiguration::TRANSPORT_ENV]];
+        }
+
+        if (
+            $transport
+                === WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP
+        ) {
+            return $this->inspectLocalCapture($environment);
+        }
+
         $missing = [];
         $invalid = [];
         foreach (WebAdminMailConfiguration::REQUIRED_ENV as $name) {
@@ -135,6 +161,157 @@ final class WebAdminMailConfigurationLoader
         }
 
         return [[], $invalid];
+    }
+
+    /** @param array<string, mixed> $environment */
+    public function safeTransportName(
+        #[\SensitiveParameter] array $environment
+    ): string {
+        $transport = $environment[
+            WebAdminMailConfiguration::TRANSPORT_ENV
+        ] ?? null;
+        if ($transport === null || $transport === '') {
+            return WebAdminMailConfiguration::TRANSPORT_SMTP;
+        }
+        if (!is_string($transport)) {
+            return 'invalid';
+        }
+
+        return in_array($transport, [
+            WebAdminMailConfiguration::TRANSPORT_SMTP,
+            WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+        ], true) ? $transport : 'invalid';
+    }
+
+    /**
+     * @param array<string, mixed> $environment
+     * @return list<string>
+     */
+    public function requiredEnvironmentNames(
+        #[\SensitiveParameter] array $environment
+    ): array {
+        return $this->safeTransportName($environment)
+            === WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP
+                ? WebAdminMailConfiguration::LOCAL_CAPTURE_REQUIRED_ENV
+                : WebAdminMailConfiguration::REQUIRED_ENV;
+    }
+
+    /** @param array<string, mixed> $environment */
+    private function loadLocalCapture(
+        #[\SensitiveParameter] array $environment
+    ): WebAdminMailConfiguration {
+        try {
+            $profile = ProjectRuntimeProfile::fromEnvironment($environment);
+        } catch (InvalidArgumentException) {
+            throw new WebAdminMailConfigurationException(
+                'mail.environment_invalid',
+                ProjectRuntimeProfile::ORIGIN_ENV
+            );
+        }
+
+        if (!$profile->isDevelopmentLoopbackHttp()) {
+            throw new WebAdminMailConfigurationException(
+                'mail.environment_invalid',
+                WebAdminMailConfiguration::TRANSPORT_ENV
+            );
+        }
+
+        return new WebAdminMailConfiguration(
+            $profile->origin(),
+            (string) $environment[WebAdminMailConfiguration::SMTP_HOST_ENV],
+            (int) (string) $environment[
+                WebAdminMailConfiguration::SMTP_PORT_ENV
+            ],
+            WebAdminMailConfiguration::ENCRYPTION_NONE,
+            OpaqueSecret::fromString(''),
+            OpaqueSecret::fromString(''),
+            EmailAddress::fromString((string) $environment[
+                WebAdminMailConfiguration::FROM_ADDRESS_ENV
+            ])->value(),
+            trim((string) $environment[
+                WebAdminMailConfiguration::FROM_NAME_ENV
+            ]),
+            WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+            false
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $environment
+     * @return array{0: list<string>, 1: list<string>}
+     */
+    private function inspectLocalCapture(
+        #[\SensitiveParameter] array $environment
+    ): array {
+        $missing = [];
+        $invalid = [];
+        foreach (
+            WebAdminMailConfiguration::LOCAL_CAPTURE_REQUIRED_ENV as $name
+        ) {
+            if (
+                !array_key_exists($name, $environment)
+                || $environment[$name] === null
+                || $environment[$name] === ''
+            ) {
+                $missing[] = $name;
+                continue;
+            }
+            if (!is_string($environment[$name])) {
+                $invalid[] = $name;
+            }
+        }
+
+        if ($missing !== [] || $invalid !== []) {
+            return [$missing, $invalid];
+        }
+
+        try {
+            $profile = ProjectRuntimeProfile::fromEnvironment($environment);
+            if (!$profile->isDevelopmentLoopbackHttp()) {
+                $invalid[] = WebAdminMailConfiguration::TRANSPORT_ENV;
+            }
+        } catch (InvalidArgumentException) {
+            $invalid[] = ProjectRuntimeProfile::ORIGIN_ENV;
+            $invalid[] = ProjectRuntimeProfile::DEVELOPMENT_MODE_ENV;
+        }
+
+        if (!in_array($environment[
+            WebAdminMailConfiguration::SMTP_HOST_ENV
+        ], ['127.0.0.1', '[::1]'], true)) {
+            $invalid[] = WebAdminMailConfiguration::SMTP_HOST_ENV;
+        }
+        if (!$this->validPort((string) $environment[
+            WebAdminMailConfiguration::SMTP_PORT_ENV
+        ])) {
+            $invalid[] = WebAdminMailConfiguration::SMTP_PORT_ENV;
+        }
+        if (!$this->validEmail((string) $environment[
+            WebAdminMailConfiguration::FROM_ADDRESS_ENV
+        ])) {
+            $invalid[] = WebAdminMailConfiguration::FROM_ADDRESS_ENV;
+        }
+        if (!$this->validDisplayName((string) $environment[
+            WebAdminMailConfiguration::FROM_NAME_ENV
+        ])) {
+            $invalid[] = WebAdminMailConfiguration::FROM_NAME_ENV;
+        }
+
+        foreach ([
+            WebAdminMailConfiguration::PUBLIC_ORIGIN_ENV,
+            WebAdminMailConfiguration::SMTP_ENCRYPTION_ENV,
+            WebAdminMailConfiguration::SMTP_USERNAME_ENV,
+            WebAdminMailConfiguration::SMTP_PASSWORD_ENV,
+        ] as $incompatibleName) {
+            if (
+                array_key_exists($incompatibleName, $environment)
+                && $environment[$incompatibleName] !== null
+                && $environment[$incompatibleName] !== ''
+            ) {
+                $invalid[] = $incompatibleName;
+            }
+        }
+
+        return [[], array_values(array_unique($invalid))];
     }
 
     private function validPublicOrigin(string $value): bool

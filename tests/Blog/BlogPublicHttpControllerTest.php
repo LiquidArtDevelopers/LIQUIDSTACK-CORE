@@ -144,6 +144,45 @@ final class BlogPublicHttpControllerTest extends TestCase
         );
     }
 
+    public function testPublishedArticleUsesTypedLocalOriginInDevelopment(): void
+    {
+        $created = $this->service->createPost(
+            $this->actorGate(),
+            'es',
+            $this->draft()
+        );
+        $this->service->publish(
+            $this->actorGate(),
+            $created->postPublicId(),
+            'es',
+            $created->lockVersion()
+        );
+        $controller = new BlogPublicHttpController(
+            new BlogPublicHttpRuntime(
+                new BlogConfig(
+                    ['es' => '/noticias'],
+                    '/blog-sitemap.xml',
+                    'ls_blog_',
+                    'fixture'
+                ),
+                BlogPublicOrigin::fromEnvironment([
+                    BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                        'http://localhost:1309',
+                    'DEV_MODE' => '1',
+                ]),
+                $this->service
+            )
+        );
+
+        $article = $controller->article('es', 'matrix');
+        self::assertNotNull($article);
+        self::assertSame(200, $article->status());
+        self::assertStringContainsString(
+            'href="http://localhost:1309/noticias/matrix"',
+            $article->body()
+        );
+    }
+
     private function draft(): BlogDraft
     {
         return new BlogDraft(

@@ -6,6 +6,7 @@ namespace App\Core\Blog\Http;
 
 use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogPostVariant;
+use App\Core\Blog\Configuration\BlogPublicOrigin;
 
 final class BlogPublicHtmlRenderer
 {
@@ -14,10 +15,34 @@ final class BlogPublicHtmlRenderer
         string $canonicalUrl
     ): string {
         if (
+            filter_var($canonicalUrl, FILTER_VALIDATE_URL) === false
+            || !str_starts_with($canonicalUrl, 'https://')
+        ) {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+
+        return $this->renderDocument($variant, $canonicalUrl);
+    }
+
+    public function renderFromOrigin(
+        BlogPostVariant $variant,
+        BlogPublicOrigin $origin,
+        string $canonicalPath
+    ): string {
+        return $this->renderDocument(
+            $variant,
+            $origin->absoluteUrl($canonicalPath)
+        );
+    }
+
+    private function renderDocument(
+        BlogPostVariant $variant,
+        string $canonicalUrl
+    ): string {
+        if (
             $variant->status() !== BlogPostVariant::PUBLISHED
             || !$variant->draft()->isPublishable()
             || filter_var($canonicalUrl, FILTER_VALIDATE_URL) === false
-            || !str_starts_with($canonicalUrl, 'https://')
         ) {
             throw new BlogException(BlogException::INVALID_STATE);
         }

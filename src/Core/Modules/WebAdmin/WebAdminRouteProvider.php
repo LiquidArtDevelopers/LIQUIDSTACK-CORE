@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Modules\WebAdmin;
 
 use App\Core\Http\Request;
+use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Response;
 use App\Core\Modules\ModuleRouteProviderInterface;
 use App\Core\Modules\ModuleRuntimeContext;
@@ -28,6 +29,7 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
     private readonly WebAdminHttpRuntimeFactoryInterface $runtimeFactory;
     private readonly WebAdminHttpRequestPolicy $requestPolicy;
     private readonly WebAdminRuntimeIssueReporterInterface $issueReporter;
+    private readonly PrivateRouteTransportPolicy $transportPolicy;
     private ?ModuleRuntimeContext $runtimeContext = null;
     private ?WebAdminConfig $configuration = null;
     private ?WebAdminHttpController $controller = null;
@@ -37,7 +39,8 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
         ?WebAdminRoutePolicy $routePolicy = null,
         ?WebAdminHttpRuntimeFactoryInterface $runtimeFactory = null,
         ?WebAdminHttpRequestPolicy $requestPolicy = null,
-        ?WebAdminRuntimeIssueReporterInterface $issueReporter = null
+        ?WebAdminRuntimeIssueReporterInterface $issueReporter = null,
+        ?PrivateRouteTransportPolicy $transportPolicy = null
     ) {
         $this->routePolicy = $routePolicy ?? new WebAdminRoutePolicy();
         $this->runtimeFactory = $runtimeFactory
@@ -46,6 +49,8 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
             ?? new WebAdminHttpRequestPolicy();
         $this->issueReporter = $issueReporter
             ?? new PhpErrorLogWebAdminRuntimeIssueReporter();
+        $this->transportPolicy = $transportPolicy
+            ?? new PrivateRouteTransportPolicy();
     }
 
     public static function moduleId(): string
@@ -396,7 +401,10 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
         if (!$this->requestIsAllowed($method, $request)) {
             return $this->response(400, 'Bad request');
         }
-        if (!$request->isSecureTransport()) {
+        if (!$this->transportPolicy->accepts(
+            $request,
+            $this->runtimeContext->environment()
+        )) {
             return $this->response(400, 'Bad request');
         }
         $sessionToken = $request->cookie(

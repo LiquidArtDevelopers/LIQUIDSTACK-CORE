@@ -14,6 +14,7 @@ use App\Core\Modules\ConfiguredModuleDatabaseConnectionResolver;
 use App\Core\Modules\WebAdmin\WebAdminHttpSchemaGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfigException;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
+use App\Core\WebAdmin\Mail\LocalCaptureSmtpWebAdminTransport;
 use App\Core\WebAdmin\Mail\PhpMailerWebAdminTransport;
 use App\Core\WebAdmin\Mail\WebAdminCredentialMailMessageFactory;
 use App\Core\WebAdmin\Mail\WebAdminMailConfiguration;
@@ -63,7 +64,9 @@ final class WebAdminMailDispatchCommandRuntimeFactory implements
             : Closure::fromCallable($connectionFactoryResolver);
         $this->transportResolver = $transportResolver === null
             ? static fn (WebAdminMailConfiguration $configuration): WebAdminMailTransportInterface =>
-                new PhpMailerWebAdminTransport($configuration)
+                $configuration->isLocalCaptureSmtp()
+                    ? new LocalCaptureSmtpWebAdminTransport($configuration)
+                    : new PhpMailerWebAdminTransport($configuration)
             : Closure::fromCallable($transportResolver);
         $this->databaseConnectionResolver = $databaseConnectionResolver
             ?? new ConfiguredModuleDatabaseConnectionResolver(

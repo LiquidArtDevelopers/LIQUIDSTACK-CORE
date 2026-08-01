@@ -12,6 +12,7 @@ use App\Core\Blog\Http\BlogAdminRequestPolicy;
 use App\Core\Blog\Http\BlogAdminRuntimeIssueReporterInterface;
 use App\Core\Blog\Http\PhpErrorLogBlogAdminRuntimeIssueReporter;
 use App\Core\Http\Request;
+use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Response;
 use App\Core\Modules\ModuleRouteProviderInterface;
 use App\Core\Modules\ModuleRuntimeContext;
@@ -31,6 +32,7 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
     private readonly BlogAdminRuntimeIssueReporterInterface $issueReporter;
     private readonly WebAdminConfigLoader $webAdminConfigLoader;
     private readonly WebAdminRoutePolicy $webAdminRoutePolicy;
+    private readonly PrivateRouteTransportPolicy $transportPolicy;
     private ?ModuleRuntimeContext $runtimeContext = null;
     private ?WebAdminConfig $webAdminConfig = null;
     private ?BlogAdminHttpController $controller = null;
@@ -42,7 +44,8 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
         ?BlogAdminRequestPolicy $requestPolicy = null,
         ?BlogAdminRuntimeIssueReporterInterface $issueReporter = null,
         ?WebAdminConfigLoader $webAdminConfigLoader = null,
-        ?WebAdminRoutePolicy $webAdminRoutePolicy = null
+        ?WebAdminRoutePolicy $webAdminRoutePolicy = null,
+        ?PrivateRouteTransportPolicy $transportPolicy = null
     ) {
         $this->runtimeFactory = $runtimeFactory
             ?? new BlogAdminHttpRuntimeFactory();
@@ -54,6 +57,8 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
             ?? new WebAdminConfigLoader();
         $this->webAdminRoutePolicy = $webAdminRoutePolicy
             ?? new WebAdminRoutePolicy();
+        $this->transportPolicy = $transportPolicy
+            ?? new PrivateRouteTransportPolicy();
     }
 
     public static function moduleId(): string
@@ -130,6 +135,7 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
             ['GET', $prefix . '/posts/new', 'newPost'],
             ['POST', $prefix . '/posts/create', 'create'],
             ['GET', $prefix . '/posts/edit', 'edit'],
+            ['GET', $prefix . '/posts/preview', 'preview'],
             ['POST', $prefix . '/posts/save', 'save'],
             ['POST', $prefix . '/posts/publish', 'publish'],
             ['POST', $prefix . '/posts/unpublish', 'unpublish'],
@@ -168,6 +174,11 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
         return $this->handle('edit', $request);
     }
 
+    public function preview(Request $request): Response
+    {
+        return $this->handle('preview', $request);
+    }
+
     public function save(Request $request): Response
     {
         return $this->handle('save', $request);
@@ -201,7 +212,10 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
         if (!$this->requestIsAllowed($operation, $request)) {
             return $this->response(400, 'Bad request');
         }
-        if (!$request->isSecureTransport()) {
+        if (!$this->transportPolicy->accepts(
+            $request,
+            $this->runtimeContext->environment()
+        )) {
             return $this->response(400, 'Bad request');
         }
         if ($request->method() === 'HEAD') {
@@ -228,7 +242,9 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
                 $this->runtimeFactory->create(
                     $this->runtimeContext,
                     $this->webAdminConfig
-                )
+                ),
+                transportPolicy: $this->transportPolicy,
+                environment: $this->runtimeContext->environment()
             );
 
             return $this->controller->{$operation}($request);
@@ -253,6 +269,7 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
             'newPost' => $this->requestPolicy->acceptsNew($request),
             'create' => $this->requestPolicy->acceptsCreate($request),
             'edit' => $this->requestPolicy->acceptsEdit($request),
+            'preview' => $this->requestPolicy->acceptsPreview($request),
             'save' => $this->requestPolicy->acceptsSave($request),
             'publish', 'unpublish' =>
                 $this->requestPolicy->acceptsTransition($request),

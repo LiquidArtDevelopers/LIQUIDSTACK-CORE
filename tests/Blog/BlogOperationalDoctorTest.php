@@ -147,6 +147,14 @@ final class BlogOperationalDoctorTest extends TestCase
         self::assertTrue($blog['readiness']['blog_ready']);
         self::assertSame([], $blog['readiness']['blockers']);
         self::assertSame($before, $this->databaseSnapshot());
+        $originChecks = array_values(array_filter(
+            $payload['checks'],
+            static fn (array $check): bool =>
+                ($check['id'] ?? null)
+                    === 'blog.environment.public_origin'
+        ));
+        self::assertCount(1, $originChecks);
+        self::assertSame('warning', $originChecks[0]['status'] ?? null);
 
         $encoded = json_encode($payload, JSON_THROW_ON_ERROR);
         self::assertStringNotContainsString(
