@@ -6,25 +6,24 @@ namespace App\Core\Database;
 
 use PDO;
 
-final class SharedPdoConnectionFactory implements PdoConnectionFactoryInterface
+final class LiquidStackPdoConnectionFactory implements
+    PdoConnectionFactoryInterface
 {
     private readonly StrictPdoConnectionFactory $delegate;
 
     /**
-     * The environment must already be loaded. This class never opens .env and
-     * never includes credential values in an exception.
-     *
      * @param array<string, mixed> $environment
      * @param null|callable(string, string, string, array<int, mixed>): PDO $connector
      */
     public function __construct(
         #[\SensitiveParameter] array $environment,
         ?callable $connector = null,
-        ?SharedDatabaseEnvironmentValidator $environmentValidator = null
+        ?LiquidStackDatabaseEnvironmentValidator $environmentValidator = null
     ) {
         $this->delegate = new StrictPdoConnectionFactory(
             $environment,
-            $environmentValidator ?? new SharedDatabaseEnvironmentValidator(),
+            $environmentValidator
+                ?? new LiquidStackDatabaseEnvironmentValidator(),
             $connector
         );
     }

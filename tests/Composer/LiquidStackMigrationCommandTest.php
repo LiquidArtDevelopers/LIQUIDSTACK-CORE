@@ -482,6 +482,71 @@ final class LiquidStackMigrationCommandTest extends TestCase
         );
     }
 
+    public function testRuntimeFactoryPropagatesLiquidStackAsSecondResolverArgument(): void
+    {
+        $this->writeDatabaseConnections('liquidstack', 'liquidstack');
+        $pdo = new PDO('sqlite::memory:');
+        $receivedConnection = null;
+        $resolverCalls = 0;
+        $factory = new MigrationCommandRuntimeFactory(
+            connectionFactoryResolver: static function (
+                array $_environment,
+                string $connection
+            ) use (
+                &$receivedConnection,
+                &$resolverCalls,
+                $pdo
+            ): PdoConnectionFactoryInterface {
+                ++$resolverCalls;
+                $receivedConnection = $connection;
+
+                return new class($pdo) implements
+                    PdoConnectionFactoryInterface {
+                    public function __construct(private readonly PDO $pdo)
+                    {
+                    }
+
+                    public function connect(): PDO
+                    {
+                        return $this->pdo;
+                    }
+                };
+            }
+        );
+
+        self::assertInstanceOf(
+            MigrationCommandRuntime::class,
+            $factory->create($this->projectRoot, $this->root)
+        );
+        self::assertSame(1, $resolverCalls);
+        self::assertSame('liquidstack', $receivedConnection);
+    }
+
+    public function testRuntimeFactoryRejectsModuleConnectionMismatchBeforeResolver(): void
+    {
+        $this->writeDatabaseConnections('liquidstack', 'shared');
+        $resolverCalls = 0;
+        $factory = new MigrationCommandRuntimeFactory(
+            connectionFactoryResolver: static function () use (
+                &$resolverCalls
+            ): PdoConnectionFactoryInterface {
+                ++$resolverCalls;
+                throw new RuntimeException('Resolver must not be invoked.');
+            }
+        );
+
+        try {
+            $factory->create($this->projectRoot, $this->root);
+            self::fail('El mismatch modular debía fallar antes de PDO.');
+        } catch (\App\Core\Composer\MigrationCommandRuntimeException $exception) {
+            self::assertSame(
+                'migrate.runtime_unavailable',
+                $exception->issueCode()
+            );
+        }
+        self::assertSame(0, $resolverCalls);
+    }
+
     private function tester(
         ?MigrationCommandRuntimeFactoryInterface $factory = null
     ): CommandTester {
@@ -528,6 +593,24 @@ final class LiquidStackMigrationCommandTest extends TestCase
                         return $pdo;
                     }
                 }
+        );
+    }
+
+    private function writeDatabaseConnections(
+        string $webAdminConnection,
+        string $blogConnection
+    ): void {
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/config/modules/webadmin.php',
+            "<?php\nreturn ['database' => ["
+                . "'connection' => '" . $webAdminConnection . "', "
+                . "'table_prefix' => 'custom_webadmin_']];\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/config/modules/blog.php',
+            "<?php\nreturn ['database' => ["
+                . "'connection' => '" . $blogConnection . "', "
+                . "'table_prefix' => 'custom_blog_']];\n"
         );
     }
 

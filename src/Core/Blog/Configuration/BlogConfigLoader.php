@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Blog\Configuration;
 
+use App\Core\Database\DatabaseConnectionProfile;
 use Throwable;
 
 final class BlogConfigLoader
@@ -14,6 +15,49 @@ final class BlogConfigLoader
         'database',
     ];
     private const DATABASE_KEYS = ['connection', 'table_prefix'];
+
+    public function databaseConnection(string $projectRoot): string
+    {
+        $root = rtrim($projectRoot, '/\\');
+        if ($root === '' || !is_dir($root)) {
+            throw new BlogConfigException('project.root_missing');
+        }
+
+        $path = $root . '/' . BlogConfig::PROJECT_CONFIG_PATH;
+        if (!file_exists($path) && !is_link($path)) {
+            return DatabaseConnectionProfile::SHARED;
+        }
+        if (!is_file($path) || is_link($path) || !is_readable($path)) {
+            throw new BlogConfigException(
+                'config.project_file_not_regular',
+                BlogConfig::PROJECT_CONFIG_PATH
+            );
+        }
+
+        $raw = $this->requireArray($path);
+        $this->assertOnlyKeys($raw, self::ROOT_KEYS, 'config');
+        $database = $raw['database'] ?? [];
+        if (
+            !is_array($database)
+            || ($database !== [] && array_is_list($database))
+        ) {
+            throw new BlogConfigException(
+                'config.expected_object',
+                'database'
+            );
+        }
+        $this->assertOnlyKeys($database, self::DATABASE_KEYS, 'database');
+        $connection = $database['connection']
+            ?? DatabaseConnectionProfile::SHARED;
+        if (!DatabaseConnectionProfile::isSupported($connection)) {
+            throw new BlogConfigException(
+                'config.unsupported_database_connection',
+                'database.connection'
+            );
+        }
+
+        return $connection;
+    }
 
     /** @param list<string> $languages */
     public function load(string $projectRoot, array $languages): BlogConfig
@@ -71,8 +115,9 @@ final class BlogConfigLoader
         }
         $this->assertOnlyKeys($database, self::DATABASE_KEYS, 'database');
 
-        $connection = $database['connection'] ?? 'shared';
-        if ($connection !== 'shared') {
+        $connection = $database['connection']
+            ?? DatabaseConnectionProfile::SHARED;
+        if (!DatabaseConnectionProfile::isSupported($connection)) {
             throw new BlogConfigException(
                 'config.unsupported_database_connection',
                 'database.connection'
@@ -106,7 +151,8 @@ final class BlogConfigLoader
             $normalizedPaths,
             $sitemapPath,
             $tablePrefix,
-            'project'
+            'project',
+            $connection
         );
     }
 

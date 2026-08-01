@@ -122,6 +122,41 @@ PHP);
         self::assertSame(14400, $config->absoluteTtlSeconds());
     }
 
+    public function testProjectCanSelectDedicatedLiquidStackConnectionSafely(): void
+    {
+        $this->writeConfig(<<<'PHP'
+<?php
+
+return [
+    'database' => [
+        'connection' => 'liquidstack',
+        'table_prefix' => 'client_webadmin_',
+    ],
+];
+PHP);
+
+        $config = (new WebAdminConfigLoader())->load($this->fixtureRoot);
+        $safe = $config->toSafeArray();
+
+        self::assertSame('liquidstack', $config->databaseConnection());
+        self::assertSame('liquidstack', $safe['database']['connection']);
+        self::assertSame(
+            [
+                'LIQUIDSTACK_DB_HOST',
+                'LIQUIDSTACK_DB_PORT',
+                'LIQUIDSTACK_DB_NAME',
+                'LIQUIDSTACK_DB_USER',
+                'LIQUIDSTACK_DB_PASSWORD',
+                'LIQUIDSTACK_DB_CHARSET',
+            ],
+            $safe['database']['environment_names']
+        );
+
+        $encoded = json_encode($safe, JSON_THROW_ON_ERROR);
+        self::assertStringNotContainsString('database-password', $encoded);
+        self::assertStringNotContainsString('mysql:', $encoded);
+    }
+
     public function testEachOptionalProjectBlockCanBeOmitted(): void
     {
         $this->writeConfig(<<<'PHP'

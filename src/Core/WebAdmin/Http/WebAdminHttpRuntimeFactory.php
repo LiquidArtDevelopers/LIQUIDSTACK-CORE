@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Core\WebAdmin\Http;
 
 use App\Core\Database\PdoConnectionFactoryInterface;
-use App\Core\Database\SharedPdoConnectionFactory;
+use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Modules\Migrations\MigrationScope;
+use App\Core\Modules\ConfiguredModuleDatabaseConnectionResolver;
 use App\Core\Modules\ModuleWebAdminNavigationProviderInterface;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
@@ -36,20 +37,30 @@ final class WebAdminHttpRuntimeFactory implements
 {
     public const SECURITY_KEY_ENV = WebAdminConfig::SECURITY_KEY_ENV;
 
-    /** @var Closure(array<string, mixed>): PdoConnectionFactoryInterface */
+    /** @var Closure(array<string, mixed>, string): PdoConnectionFactoryInterface */
     private readonly Closure $connectionFactoryResolver;
+    private readonly ConfiguredModuleDatabaseConnectionResolver $databaseConnectionResolver;
 
     /**
-     * @param null|callable(array<string, mixed>): PdoConnectionFactoryInterface $connectionFactoryResolver
+     * @param null|callable(array<string, mixed>, string): PdoConnectionFactoryInterface $connectionFactoryResolver
      */
     public function __construct(
         private readonly ?string $coreRoot = null,
-        ?callable $connectionFactoryResolver = null
+        ?callable $connectionFactoryResolver = null,
+        ?ConfiguredModuleDatabaseConnectionResolver $databaseConnectionResolver = null
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
-            ? static fn (array $environment): PdoConnectionFactoryInterface =>
-                new SharedPdoConnectionFactory($environment)
+            ? static fn (
+                array $environment,
+                string $connection
+            ): PdoConnectionFactoryInterface =>
+                (new ConfiguredPdoConnectionFactoryResolver())->resolve(
+                    $connection,
+                    $environment
+                )
             : Closure::fromCallable($connectionFactoryResolver);
+        $this->databaseConnectionResolver = $databaseConnectionResolver
+            ?? new ConfiguredModuleDatabaseConnectionResolver();
     }
 
     public function create(
@@ -77,15 +88,6 @@ final class WebAdminHttpRuntimeFactory implements
                     'webadmin.security_key_invalid'
                 );
             }
-            $connectionFactory = ($this->connectionFactoryResolver)(
-                $environment
-            );
-            if (!$connectionFactory instanceof PdoConnectionFactoryInterface) {
-                throw new WebAdminHttpRuntimeException(
-                    'webadmin.connection_factory_invalid'
-                );
-            }
-            $pdo = $connectionFactory->connect();
             $registry = ModuleRegistry::forProject(
                 $context->projectRoot(),
                 $this->coreRoot ?? dirname(__DIR__, 4)
@@ -95,6 +97,25 @@ final class WebAdminHttpRuntimeFactory implements
                     'webadmin.module_not_enabled'
                 );
             }
+            $databaseConnection = $this->databaseConnectionResolver->resolve(
+                $registry,
+                $context->projectRoot()
+            );
+            if ($databaseConnection !== $config->databaseConnection()) {
+                throw new WebAdminHttpRuntimeException(
+                    'webadmin.database_connection_mismatch'
+                );
+            }
+            $connectionFactory = ($this->connectionFactoryResolver)(
+                $environment,
+                $databaseConnection
+            );
+            if (!$connectionFactory instanceof PdoConnectionFactoryInterface) {
+                throw new WebAdminHttpRuntimeException(
+                    'webadmin.connection_factory_invalid'
+                );
+            }
+            $pdo = $connectionFactory->connect();
 
             $scope = MigrationScope::forTablePrefix(
                 'webadmin',

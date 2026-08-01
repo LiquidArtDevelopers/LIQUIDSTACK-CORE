@@ -113,6 +113,12 @@ final class WebAdminMailDispatchCommandTest extends TestCase
         'BBDD_USER',
         'BBDD_PASS',
         'BBDD_NAME',
+        'LIQUIDSTACK_DB_HOST',
+        'LIQUIDSTACK_DB_PORT',
+        'LIQUIDSTACK_DB_NAME',
+        'LIQUIDSTACK_DB_USER',
+        'LIQUIDSTACK_DB_PASSWORD',
+        'LIQUIDSTACK_DB_CHARSET',
         WebAdminMailConfiguration::PUBLIC_ORIGIN_ENV,
         WebAdminMailConfiguration::SMTP_HOST_ENV,
         WebAdminMailConfiguration::SMTP_PORT_ENV,
@@ -447,6 +453,127 @@ final class WebAdminMailDispatchCommandTest extends TestCase
         self::assertSame(0, $databaseCalls);
         self::assertSame(0, $transportCalls);
         self::assertStringNotContainsString($project, $display);
+    }
+
+    public function testRealFactoryPropagatesLiquidStackAsSecondResolverArgument(): void
+    {
+        $project = $this->createProject(
+            'dedicated-connection',
+            true,
+            $this->environment([
+                'LIQUIDSTACK_DB_HOST' => 'dedicated.invalid',
+                'LIQUIDSTACK_DB_PORT' => '3306',
+                'LIQUIDSTACK_DB_NAME' => 'dedicated_database',
+                'LIQUIDSTACK_DB_USER' => 'dedicated_user',
+                'LIQUIDSTACK_DB_PASSWORD' => 'dedicated_secret',
+                'LIQUIDSTACK_DB_CHARSET' => 'utf8mb4',
+            ]),
+            'dedicated_dispatch_'
+        );
+        $this->filesystem->dumpFile(
+            $project . '/App/config/modules/webadmin.php',
+            "<?php\nreturn ['database' => ["
+                . "'connection' => 'liquidstack', "
+                . "'table_prefix' => 'dedicated_dispatch_']];\n"
+        );
+        $pdoFactory = new MailDispatchCliPdoFactoryFixture($this->sqlite());
+        $receivedConnection = null;
+        $resolverCalls = 0;
+        $transportCalls = 0;
+        $factory = new WebAdminMailDispatchCommandRuntimeFactory(
+            connectionFactoryResolver: static function (
+                array $_environment,
+                string $connection
+            ) use (
+                &$receivedConnection,
+                &$resolverCalls,
+                $pdoFactory
+            ): PdoConnectionFactoryInterface {
+                ++$resolverCalls;
+                $receivedConnection = $connection;
+
+                return $pdoFactory;
+            },
+            transportResolver: static function () use (
+                &$transportCalls
+            ): WebAdminMailTransportInterface {
+                ++$transportCalls;
+
+                return new MailDispatchCliTransportFixture();
+            }
+        );
+
+        try {
+            $factory->create($project, dirname(__DIR__, 2));
+            self::fail('El esquema pendiente debía impedir el dispatcher.');
+        } catch (WebAdminMailDispatchCommandRuntimeException $exception) {
+            self::assertSame(
+                'webadmin.mail.schema_not_ready',
+                $exception->issueCode()
+            );
+        }
+        self::assertSame(1, $resolverCalls);
+        self::assertSame(1, $pdoFactory->connectCalls);
+        self::assertSame(0, $transportCalls);
+        self::assertSame('liquidstack', $receivedConnection);
+    }
+
+    public function testRealFactoryRejectsModuleConnectionMismatchBeforeResolver(): void
+    {
+        $project = $this->createProject(
+            'mismatched-blog',
+            true,
+            $this->environment()
+        );
+        $this->filesystem->dumpFile(
+            $project . '/composer.json',
+            json_encode(['require' => [
+                'liquidstack/core' => '^1.9',
+                'liquidstack/blog' => '*',
+            ]], JSON_THROW_ON_ERROR)
+        );
+        $this->filesystem->dumpFile(
+            $project . '/App/config/langs.php',
+            "<?php\nreturn ['es'];\n"
+        );
+        $this->filesystem->dumpFile(
+            $project . '/App/config/modules/webadmin.php',
+            "<?php\nreturn ['database' => ["
+                . "'connection' => 'liquidstack']];\n"
+        );
+        $this->filesystem->dumpFile(
+            $project . '/App/config/modules/blog.php',
+            "<?php\nreturn ['database' => ["
+                . "'connection' => 'shared']];\n"
+        );
+        $resolverCalls = 0;
+        $transportCalls = 0;
+        $factory = new WebAdminMailDispatchCommandRuntimeFactory(
+            connectionFactoryResolver: static function () use (
+                &$resolverCalls
+            ): PdoConnectionFactoryInterface {
+                ++$resolverCalls;
+                throw new RuntimeException('Must not resolve or connect.');
+            },
+            transportResolver: static function () use (
+                &$transportCalls
+            ): WebAdminMailTransportInterface {
+                ++$transportCalls;
+                throw new RuntimeException('Must not build transport.');
+            }
+        );
+
+        try {
+            $factory->create($project, dirname(__DIR__, 2));
+            self::fail('El mismatch debía fallar antes del resolver PDO.');
+        } catch (WebAdminMailDispatchCommandRuntimeException $exception) {
+            self::assertSame(
+                'webadmin.mail.runtime_unavailable',
+                $exception->issueCode()
+            );
+        }
+        self::assertSame(0, $resolverCalls);
+        self::assertSame(0, $transportCalls);
     }
 
     public function testRealFactoryValidatesMailConfigurationBeforeDatabase(): void

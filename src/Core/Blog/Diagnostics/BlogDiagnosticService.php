@@ -9,6 +9,8 @@ use App\Core\Blog\Configuration\BlogConfigLoader;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Routing\BlogRoutePolicy;
 use App\Core\Modules\Migrations\MigrationDatabasePlan;
+use App\Core\WebAdmin\Configuration\WebAdminConfigException;
+use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
 use Throwable;
 
 final class BlogDiagnosticService
@@ -22,7 +24,9 @@ final class BlogDiagnosticService
         private readonly BlogConfigLoader $configLoader =
             new BlogConfigLoader(),
         private readonly BlogRoutePolicy $routePolicy =
-            new BlogRoutePolicy()
+            new BlogRoutePolicy(),
+        private readonly WebAdminConfigLoader $webAdminConfigLoader =
+            new WebAdminConfigLoader()
     ) {
     }
 
@@ -58,13 +62,34 @@ final class BlogDiagnosticService
                 'source' => $config->source(),
                 'public_paths' => $config->publicPaths(),
                 'sitemap_path' => $config->sitemapPath(),
-                'database' => ['connection' => 'shared'],
+                'database' => [
+                    'connection' => $config->databaseConnection(),
+                ],
             ];
             $routing = $this->routePolicy->resolve(
                 $projectRoot,
                 $config,
                 $webAdminPrefix
             )->toArray();
+
+            try {
+                $webAdminConfig = $this->webAdminConfigLoader->load(
+                    $projectRoot
+                );
+                if (
+                    $webAdminConfig->databaseConnection()
+                        !== $config->databaseConnection()
+                ) {
+                    $configurationReady = false;
+                    $configurationIssues[] = [
+                        'code' => 'database.connection_mismatch',
+                        'key' => 'database.connection',
+                    ];
+                }
+            } catch (WebAdminConfigException) {
+                // WebAdmin reports its own configuration error. Blog keeps
+                // that state represented through dependency readiness.
+            }
         } catch (BlogConfigException $exception) {
             $configurationIssues[] = [
                 'code' => $exception->issueCode(),

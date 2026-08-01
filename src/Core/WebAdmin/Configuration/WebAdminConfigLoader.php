@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\WebAdmin\Configuration;
 
+use App\Core\Database\DatabaseConnectionProfile;
 use Throwable;
 
 final class WebAdminConfigLoader
@@ -65,8 +66,9 @@ final class WebAdminConfigLoader
         $this->assertOnlyKeys($database, self::DATABASE_KEYS, 'database');
         $this->assertOnlyKeys($session, self::SESSION_KEYS, 'session');
 
-        $connection = $database['connection'] ?? 'shared';
-        if ($connection !== 'shared') {
+        $connection = $database['connection']
+            ?? DatabaseConnectionProfile::SHARED;
+        if (!DatabaseConnectionProfile::isSupported($connection)) {
             throw new WebAdminConfigException(
                 'config.unsupported_database_connection',
                 'database.connection'
@@ -93,7 +95,8 @@ final class WebAdminConfigLoader
             $cookieName,
             $idleTtl,
             $absoluteTtl,
-            'project'
+            'project',
+            $connection
         );
     }
 

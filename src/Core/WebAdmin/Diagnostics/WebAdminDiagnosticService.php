@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core\WebAdmin\Diagnostics;
 
-use App\Core\Database\SharedDatabaseEnvironmentValidator;
+use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
+use App\Core\Database\DatabaseConnectionProfile;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Configuration\WebAdminConfigException;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
@@ -21,8 +22,8 @@ final class WebAdminDiagnosticService
 {
     public function __construct(
         private readonly WebAdminConfigLoader $configLoader = new WebAdminConfigLoader(),
-        private readonly SharedDatabaseEnvironmentValidator $databaseEnvironmentValidator =
-            new SharedDatabaseEnvironmentValidator(),
+        private readonly ConfiguredPdoConnectionFactoryResolver $databaseResolver =
+            new ConfiguredPdoConnectionFactoryResolver(),
         private readonly WebAdminMailConfigurationLoader $mailConfigurationLoader =
             new WebAdminMailConfigurationLoader()
     ) {
@@ -55,9 +56,11 @@ final class WebAdminDiagnosticService
             ];
         }
 
-        $databaseEnvironment = $this->databaseEnvironmentValidator->inspect(
-            $environment
-        );
+        $databaseConnection = $config?->databaseConnection()
+            ?? DatabaseConnectionProfile::SHARED;
+        $databaseEnvironment = $this->databaseResolver
+            ->environmentValidator($databaseConnection)
+            ->inspect($environment);
         $missingDatabaseEnv = $databaseEnvironment['missing'];
         $invalidDatabaseEnv = $databaseEnvironment['invalid'];
         [$missingBootstrapEnv, $invalidBootstrapEnv]
@@ -136,8 +139,10 @@ final class WebAdminDiagnosticService
             ],
             'environment' => [
                 'database' => [
-                    'connection' => 'shared',
-                    'required' => WebAdminConfig::SHARED_DATABASE_ENV,
+                    'connection' => $databaseConnection,
+                    'required' => DatabaseConnectionProfile::environmentNames(
+                        $databaseConnection
+                    ),
                     'missing' => $missingDatabaseEnv,
                     'invalid' => $invalidDatabaseEnv,
                     'ready' => $databaseEnvironment['ready'],

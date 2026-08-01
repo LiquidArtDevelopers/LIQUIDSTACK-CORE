@@ -10,7 +10,7 @@ use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogConfigLoader;
 use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Database\PdoConnectionFactoryInterface;
-use App\Core\Database\SharedPdoConnectionFactory;
+use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Modules\Blog\BlogHttpSchemaGate;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
@@ -42,7 +42,7 @@ final class BlogAdminHttpRuntimeFactory implements
 {
     public const SECURITY_KEY_ENV = WebAdminConfig::SECURITY_KEY_ENV;
 
-    /** @var Closure(array<string, mixed>): PdoConnectionFactoryInterface */
+    /** @var Closure(array<string, mixed>, string): PdoConnectionFactoryInterface */
     private readonly Closure $connectionFactoryResolver;
     private readonly BlogConfigLoader $blogConfigLoader;
     private readonly WebAdminConfigLoader $webAdminConfigLoader;
@@ -54,7 +54,7 @@ final class BlogAdminHttpRuntimeFactory implements
     private readonly SecureTokenGenerator $tokenGenerator;
 
     /**
-     * @param null|callable(array<string, mixed>): PdoConnectionFactoryInterface $connectionFactoryResolver
+     * @param null|callable(array<string, mixed>, string): PdoConnectionFactoryInterface $connectionFactoryResolver
      */
     public function __construct(
         private readonly ?string $coreRoot = null,
@@ -69,8 +69,14 @@ final class BlogAdminHttpRuntimeFactory implements
         ?SecureTokenGenerator $tokenGenerator = null
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
-            ? static fn (array $environment): PdoConnectionFactoryInterface =>
-                new SharedPdoConnectionFactory($environment)
+            ? static fn (
+                array $environment,
+                string $connection
+            ): PdoConnectionFactoryInterface =>
+                (new ConfiguredPdoConnectionFactoryResolver())->resolve(
+                    $connection,
+                    $environment
+                )
             : Closure::fromCallable($connectionFactoryResolver);
         $this->blogConfigLoader = $blogConfigLoader
             ?? new BlogConfigLoader();
@@ -138,6 +144,14 @@ final class BlogAdminHttpRuntimeFactory implements
                     'blog.webadmin_config_mismatch'
                 );
             }
+            if (
+                $blogConfig->databaseConnection()
+                    !== $canonicalWebAdminConfig->databaseConnection()
+            ) {
+                throw new BlogAdminHttpRuntimeException(
+                    'blog.database_connection_mismatch'
+                );
+            }
 
             $scopes = $this->configuredScopes($registry, $projectRoot);
             $blogScope = $scopes->get('blog');
@@ -157,7 +171,10 @@ final class BlogAdminHttpRuntimeFactory implements
 
             $environment = $context->environment();
             $securityKey = $this->securityKey($environment);
-            $connectionFactory = $this->connectionFactory($environment);
+            $connectionFactory = $this->connectionFactory(
+                $environment,
+                $blogConfig->databaseConnection()
+            );
             try {
                 $pdo = $connectionFactory->connect();
             } catch (Throwable) {
@@ -334,10 +351,14 @@ final class BlogAdminHttpRuntimeFactory implements
      * @param array<string, mixed> $environment
      */
     private function connectionFactory(
-        #[\SensitiveParameter] array $environment
+        #[\SensitiveParameter] array $environment,
+        string $connection
     ): PdoConnectionFactoryInterface {
         try {
-            $factory = ($this->connectionFactoryResolver)($environment);
+            $factory = ($this->connectionFactoryResolver)(
+                $environment,
+                $connection
+            );
         } catch (Throwable) {
             throw new BlogAdminHttpRuntimeException(
                 'blog.connection_unavailable'
@@ -360,6 +381,8 @@ final class BlogAdminHttpRuntimeFactory implements
         // path after collision checks. Persistence and session invariants
         // must still match the canonical project configuration.
         return $first->tablePrefix() === $second->tablePrefix()
+            && $first->databaseConnection()
+                === $second->databaseConnection()
             && $first->cookieName() === $second->cookieName()
             && $first->idleTtlSeconds() === $second->idleTtlSeconds()
             && $first->absoluteTtlSeconds()

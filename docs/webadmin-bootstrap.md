@@ -44,17 +44,20 @@ Desde la raíz del consumidor:
 
 ```console
 composer liquidstack:doctor
+composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
 composer liquidstack:migrate --apply
 composer liquidstack:webadmin:bootstrap
 composer liquidstack:webadmin:mail:dispatch
 ```
 
-`migrate --apply` y bootstrap son mutaciones distintas, cada una con su propia
-confirmación. El bootstrap nunca aplica migraciones. Antes de preguntar y antes
-de escribir, el comando vuelve a inspeccionar el esquema, exige todas las
-migraciones WebAdmin `applied` y compara el hash del plan para impedir que una
-espera interactiva autorice otro estado.
+`migrate --plan` permanece offline y `migrate --dry-run` abre la conexión solo
+para leer. `migrate --apply` y bootstrap son mutaciones distintas, cada una con
+su propia confirmación; `--apply` solo se ejecuta después de revisar el dry-run
+y confirmar un backup recuperable. El bootstrap nunca aplica migraciones.
+Antes de preguntar y antes de escribir, el comando vuelve a inspeccionar el
+esquema, exige todas las migraciones WebAdmin `applied` y compara el hash del
+plan para impedir que una espera interactiva autorice otro estado.
 
 La pregunta interactiva tiene respuesta negativa por defecto. En una
 automatización previamente autorizada:
@@ -119,9 +122,23 @@ agotaron sus cinco intentos.
 ## Integración interna
 
 La frontera que invoque el servicio directamente debe cargar el entorno con
-`ProjectEnvironmentLoader`, abrir la conexión compartida mediante
-`SharedPdoConnectionFactory` y cargar `WebAdminConfig`. Cualquier comando que
-habilite esta mutación debe conservar la confirmación explícita y el doble
-preflight del plan. `WebAdminBootstrapCommandRuntimeFactory` implementa esa
-composición sin ejecutar trabajo durante la construcción de capabilities de
-Composer.
+`ProjectEnvironmentLoader`, cargar `WebAdminConfig`, resolver su perfil y abrir
+la factoría PDO correspondiente. `shared` sigue siendo el default compatible y
+usa `BBDD_*`; el opt-in `liquidstack` exige
+`LIQUIDSTACK_DB_HOST`, `LIQUIDSTACK_DB_PORT`, `LIQUIDSTACK_DB_NAME`,
+`LIQUIDSTACK_DB_USER`, `LIQUIDSTACK_DB_PASSWORD` y
+`LIQUIDSTACK_DB_CHARSET=utf8mb4`. Si Blog está activo debe seleccionar el mismo
+perfil que WebAdmin; una discrepancia o un entorno incompleto falla antes de
+conectar y nunca cae silenciosamente a `shared`.
+
+`.env` y `App/config/modules/*.php` pertenecen al proyecto y Composer no los
+modifica. Cambiar de perfil después del bootstrap tampoco mueve identidades,
+roles, outbox o el registro de migraciones: exige backup y migración manual
+verificada antes de alterar la configuración. La conexión dedicada inicial se
+limita a `localhost` o redes confiables mientras no exista un contrato TLS con
+CA y verificación del servidor.
+
+Cualquier comando que habilite esta mutación debe conservar la confirmación
+explícita y el doble preflight del plan.
+`WebAdminBootstrapCommandRuntimeFactory` implementa esa composición sin
+ejecutar trabajo durante la construcción de capabilities de Composer.

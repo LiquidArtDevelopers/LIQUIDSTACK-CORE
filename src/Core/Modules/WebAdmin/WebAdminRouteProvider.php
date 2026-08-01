@@ -107,7 +107,8 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
                 $configured->cookieName(),
                 $configured->idleTtlSeconds(),
                 $configured->absoluteTtlSeconds(),
-                $configured->source()
+                $configured->source(),
+                $configured->databaseConnection()
             );
         }
 

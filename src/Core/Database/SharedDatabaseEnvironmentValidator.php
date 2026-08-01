@@ -11,20 +11,17 @@ namespace App\Core\Database;
  * variable names. Credential values remain caller-owned and are returned only
  * by connectionParameters(), which is consumed by the PDO boundary.
  */
-final class SharedDatabaseEnvironmentValidator
+final class SharedDatabaseEnvironmentValidator implements
+    DatabaseEnvironmentValidatorInterface
 {
-    public const REQUIRED_NAMES = [
-        'BBDD_SERVER',
-        'BBDD_USER',
-        'BBDD_PASS',
-        'BBDD_NAME',
-    ];
+    public const REQUIRED_NAMES =
+        DatabaseConnectionProfile::SHARED_ENVIRONMENT_NAMES;
 
     /**
      * @param array<string, mixed> $environment
      * @return array{missing: list<string>, invalid: list<string>, ready: bool}
      */
-    public function inspect(array $environment): array
+    public function inspect(#[\SensitiveParameter] array $environment): array
     {
         $missing = [];
         $invalid = [];
@@ -72,7 +69,9 @@ final class SharedDatabaseEnvironmentValidator
      * @param array<string, mixed> $environment
      * @return array{0: string, 1: string, 2: string}
      */
-    public function connectionParameters(array $environment): array
+    public function connectionParameters(
+        #[\SensitiveParameter] array $environment
+    ): array
     {
         $inspection = $this->inspect($environment);
         if ($inspection['missing'] !== []) {

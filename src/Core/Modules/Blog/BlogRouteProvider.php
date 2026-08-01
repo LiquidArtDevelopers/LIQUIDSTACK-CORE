@@ -105,7 +105,8 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
                 $configuration->cookieName(),
                 $configuration->idleTtlSeconds(),
                 $configuration->absoluteTtlSeconds(),
-                $configuration->source()
+                $configuration->source(),
+                $configuration->databaseConnection()
             );
         }
         $prefix = $webAdminPrefix . '/blog';

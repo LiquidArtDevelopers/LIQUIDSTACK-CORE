@@ -204,6 +204,86 @@ final class WebAdminHttpRuntimeFactoryTest extends TestCase
         self::assertSame(0, $calls);
     }
 
+    public function testRuntimePropagatesLiquidStackAsSecondResolverArgument(): void
+    {
+        $this->writeModuleDatabaseConfig('webadmin', 'liquidstack');
+        $receivedConnection = null;
+        $resolverCalls = 0;
+        $factory = new WebAdminHttpRuntimeFactory(
+            dirname(__DIR__, 3),
+            function (
+                array $_environment,
+                string $connection
+            ) use (
+                &$receivedConnection,
+                &$resolverCalls
+            ): PdoConnectionFactoryInterface {
+                ++$resolverCalls;
+                $receivedConnection = $connection;
+
+                return new HttpRuntimePdoFactory($this->pdo);
+            }
+        );
+
+        try {
+            $factory->create(
+                new ModuleRuntimeContext(
+                    $this->projectRoot,
+                    $this->environment()
+                ),
+                $this->liquidStackWebAdminConfig()
+            );
+            self::fail('El esquema pendiente debía bloquear el runtime.');
+        } catch (WebAdminHttpRuntimeException $exception) {
+            self::assertSame(
+                'webadmin.schema_not_ready',
+                $exception->issueCode()
+            );
+        }
+        self::assertSame(1, $resolverCalls);
+        self::assertSame('liquidstack', $receivedConnection);
+    }
+
+    public function testModuleConnectionMismatchFailsBeforeResolverAndConnector(): void
+    {
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/composer.json',
+            json_encode(['require' => [
+                'liquidstack/core' => '^1.9',
+                'liquidstack/blog' => '*',
+            ]], JSON_THROW_ON_ERROR)
+        );
+        $this->writeModuleDatabaseConfig('webadmin', 'liquidstack');
+        $this->writeModuleDatabaseConfig('blog', 'shared');
+        $resolverCalls = 0;
+        $factory = new WebAdminHttpRuntimeFactory(
+            dirname(__DIR__, 3),
+            static function () use (
+                &$resolverCalls
+            ): PdoConnectionFactoryInterface {
+                ++$resolverCalls;
+                throw new RuntimeException('Must not resolve or connect.');
+            }
+        );
+
+        try {
+            $factory->create(
+                new ModuleRuntimeContext(
+                    $this->projectRoot,
+                    $this->environment()
+                ),
+                $this->liquidStackWebAdminConfig()
+            );
+            self::fail('El mismatch debía fallar antes del resolver PDO.');
+        } catch (WebAdminHttpRuntimeException $exception) {
+            self::assertSame(
+                'webadmin.runtime_unavailable',
+                $exception->issueCode()
+            );
+        }
+        self::assertSame(0, $resolverCalls);
+    }
+
     public function testRuntimeRejectsRegisteredSchemaWhosePostconditionDrifted(): void
     {
         $this->applyMigrations();
@@ -248,6 +328,30 @@ final class WebAdminHttpRuntimeFactoryTest extends TestCase
         ), '=');
 
         return [WebAdminHttpRuntimeFactory::SECURITY_KEY_ENV => $key];
+    }
+
+    private function liquidStackWebAdminConfig(): WebAdminConfig
+    {
+        return new WebAdminConfig(
+            WebAdminConfig::DEFAULT_BASE_PATH,
+            WebAdminConfig::DEFAULT_TABLE_PREFIX,
+            WebAdminConfig::DEFAULT_COOKIE_NAME,
+            WebAdminConfig::DEFAULT_IDLE_TTL_SECONDS,
+            WebAdminConfig::DEFAULT_ABSOLUTE_TTL_SECONDS,
+            'test',
+            'liquidstack'
+        );
+    }
+
+    private function writeModuleDatabaseConfig(
+        string $module,
+        string $connection
+    ): void {
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/config/modules/' . $module . '.php',
+            "<?php\nreturn ['database' => ["
+                . "'connection' => '" . $connection . "']];\n"
+        );
     }
 
     /** @return array{MigrationCatalog, MigrationScopeCollection} */

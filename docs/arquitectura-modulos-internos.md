@@ -97,6 +97,42 @@ Siguen siendo siempre propiedad del proyecto:
 - `robots.txt` y cualquier sitemap existente;
 - copy, vistas publicadas, medios y datos del cliente.
 
+### Perfiles de conexión modular
+
+Todos los módulos activos utilizan una única conexión física. El contrato
+admite dos nombres lógicos:
+
+- `shared`, default compatible con las instalaciones existentes, obtiene sus
+  parámetros de `BBDD_SERVER`, `BBDD_USER`, `BBDD_PASS` y `BBDD_NAME`;
+- `liquidstack`, opt-in explícito para una DB modular por proyecto y entorno,
+  exige `LIQUIDSTACK_DB_HOST`, `LIQUIDSTACK_DB_PORT`,
+  `LIQUIDSTACK_DB_NAME`, `LIQUIDSTACK_DB_USER`,
+  `LIQUIDSTACK_DB_PASSWORD` y `LIQUIDSTACK_DB_CHARSET`.
+
+El perfil dedicado valida por separado host, puerto, nombre, usuario,
+contraseña y charset antes de construir internamente el DSN. El puerto debe
+estar entre 1 y 65535, la contraseña no puede estar vacía y el charset solo
+puede ser `utf8mb4`. No se admiten un DSN completo ni opciones PDO procedentes
+del entorno. Los diagnósticos muestran únicamente el nombre lógico y los
+nombres de variables, nunca sus valores.
+
+La selección se declara en `database.connection` dentro de los ficheros
+project-owned `App/config/modules/webadmin.php` y
+`App/config/modules/blog.php`. Si Blog está activo, ambos deben usar el mismo
+perfil: las migraciones cross-scope, las capabilities, la autorización y la
+auditoría requieren el mismo PDO. Una discrepancia o un perfil dedicado
+incompleto falla cerrado antes de abrir PDO y nunca cae de vuelta a `shared`.
+
+Composer no crea, fusiona ni sobrescribe `.env` o esos ficheros de
+configuración. Tampoco copia datos al cambiar de perfil. Un proyecto que ya
+tenga tablas o contenido en `shared` debe preparar y verificar manualmente un
+backup y una migración de datos antes de seleccionar `liquidstack`; mientras
+tanto conserva `shared` sin cambios.
+
+El primer contrato dedicado está limitado a `localhost` o redes confiables.
+No debe utilizarse a través de un transporte no confiable hasta que CORE
+incorpore un perfil TLS probado con CA y verificación del servidor.
+
 ### Diagnóstico y plan de migraciones
 
 El plugin registra comandos únicamente en los proyectos consumidores donde
@@ -114,7 +150,7 @@ composer liquidstack:webadmin:mail:dispatch
 
 `doctor` valida el catálogo, el cierre de dependencias, los providers activos,
 los ficheros base de configuración y los requisitos de WebAdmin. Si WebAdmin
-declara migraciones, abre la conexión compartida y ejecuta un probe
+declara migraciones, abre la conexión modular seleccionada y ejecuta un probe
 estrictamente de solo lectura: valida el contrato PDO, compara el registro de
 migraciones con el catálogo y verifica las postcondiciones del esquema. La
 salida estructurada contiene nombres de variables y códigos estables, nunca
@@ -125,8 +161,9 @@ El comando exige exactamente uno de estos modos:
 - `--plan` es `catalog-only`: valida y enumera metadatos (`module`, `id`,
   descripción, checksum y carácter destructivo), marca la DB como
   `not_evaluated` y no abre conexión.
-- `--dry-run` carga el entorno y la configuración de scopes, conecta a la DB
-  compartida y compara el catálogo con `ls_module_migrations` en solo lectura.
+- `--dry-run` carga el entorno y la configuración de scopes, conecta al perfil
+  seleccionado y compara el catálogo con `ls_module_migrations` en solo
+  lectura.
 - `--apply` parte de ese preview, enlaza su hash como `expectedPlanHash` y el
   runner vuelve a calcular el plan antes y después de adquirir el lock. Es la
   única vía que puede crear el registro o ejecutar SQL.
@@ -134,9 +171,9 @@ El comando exige exactamente uno de estos modos:
 `--apply` exige `--yes` o confirmación interactiva. En formato JSON exige
 siempre `--yes`. Las migraciones destructivas requieren simultáneamente
 `--allow-destructive` y `--backup-confirmed`; `--lock-timeout` admite entre 0
-y 300 segundos. El runtime utiliza la conexión compartida del stack, el scope
-configurable de WebAdmin y `ls_blog_` para Blog, pero nunca imprime secretos,
-sentencias SQL ni mensajes internos de PDO.
+y 300 segundos. El runtime utiliza la única conexión modular resuelta, el
+scope configurable de WebAdmin y `ls_blog_` para Blog, pero nunca imprime
+secretos, sentencias SQL ni mensajes internos de PDO.
 
 Una migración puede declarar como destino el scope de una dependencia directa
 o transitiva —Blog usa esta capacidad para registrar sus capabilities en las
@@ -186,7 +223,7 @@ El contrato SQL ejecutable es deliberadamente limitado en este corte:
 WebAdmin usa defaults seguros y puede recibir ajustes no secretos desde el
 fichero opcional y project-owned `App/config/modules/webadmin.php`. Composer no
 crea, fusiona ni sobrescribe ese fichero. El contrato inicial admite solo el
-prefijo neutro, el prefijo de tablas y los tiempos/nombre de su sesión:
+prefijo neutro, el perfil y prefijo de DB y los tiempos/nombre de su sesión:
 
 ```php
 <?php
@@ -205,10 +242,11 @@ return [
 ];
 ```
 
-Credenciales, hosts y correos no se admiten en ese array. La conexión
-`shared` reutiliza los nombres de entorno
-`BBDD_SERVER`, `BBDD_USER`, `BBDD_PASS` y `BBDD_NAME`. El bootstrap explícito
-usa `LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL` y
+Credenciales, hosts y correos no se admiten en ese array. `shared` reutiliza
+los nombres de entorno legacy; para optar por la conexión dedicada se cambia
+solo `connection` a `liquidstack` y se declaran fuera de Git las seis variables
+`LIQUIDSTACK_DB_*` descritas antes. Blog debe hacer la misma selección. El
+bootstrap explícito usa `LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL` y
 `LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL`; sus valores nunca forman parte del
 diagnóstico. Tras el bootstrap la base de datos será la fuente de verdad.
 
@@ -221,7 +259,7 @@ repositorio y no se rota mediante Composer.
 
 El informe distingue readiness independientes:
 
-- `runtime_ready` exige selección, configuración, ruta, assets, DB compartida,
+- `runtime_ready` exige selección, configuración, ruta, assets, DB modular,
   esquema aplicado, clave operativa, Argon2id y protección de argumentos en
   trazas;
 - `bootstrap_ready` exige la misma base, DB y esquema, además de los dos

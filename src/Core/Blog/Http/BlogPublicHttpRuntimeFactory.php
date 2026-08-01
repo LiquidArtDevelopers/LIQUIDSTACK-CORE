@@ -9,22 +9,24 @@ use App\Core\Blog\Configuration\BlogConfigLoader;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Database\PdoConnectionFactoryInterface;
-use App\Core\Database\SharedPdoConnectionFactory;
+use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Modules\Blog\BlogHttpSchemaGate;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
+use App\Core\Modules\ConfiguredModuleDatabaseConnectionResolver;
 use Closure;
 use Throwable;
 
 final class BlogPublicHttpRuntimeFactory implements
     BlogPublicHttpRuntimeFactoryInterface
 {
-    /** @var Closure(array<string, mixed>): PdoConnectionFactoryInterface */
+    /** @var Closure(array<string, mixed>, string): PdoConnectionFactoryInterface */
     private readonly Closure $connectionFactoryResolver;
+    private readonly ConfiguredModuleDatabaseConnectionResolver $databaseConnectionResolver;
 
     /**
-     * @param null|callable(array<string, mixed>): PdoConnectionFactoryInterface $connectionFactoryResolver
+     * @param null|callable(array<string, mixed>, string): PdoConnectionFactoryInterface $connectionFactoryResolver
      */
     public function __construct(
         private readonly ?string $coreRoot = null,
@@ -34,12 +36,21 @@ final class BlogPublicHttpRuntimeFactory implements
         private readonly ConfiguredMigrationScopeFactory $scopeFactory =
             new ConfiguredMigrationScopeFactory(),
         private readonly BlogHttpSchemaGate $schemaGate =
-            new BlogHttpSchemaGate()
+            new BlogHttpSchemaGate(),
+        ?ConfiguredModuleDatabaseConnectionResolver $databaseConnectionResolver = null
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
-            ? static fn (array $environment): PdoConnectionFactoryInterface =>
-                new SharedPdoConnectionFactory($environment)
+            ? static fn (
+                array $environment,
+                string $connection
+            ): PdoConnectionFactoryInterface =>
+                (new ConfiguredPdoConnectionFactoryResolver())->resolve(
+                    $connection,
+                    $environment
+                )
             : Closure::fromCallable($connectionFactoryResolver);
+        $this->databaseConnectionResolver = $databaseConnectionResolver
+            ?? new ConfiguredModuleDatabaseConnectionResolver();
     }
 
     public function create(
@@ -85,7 +96,11 @@ final class BlogPublicHttpRuntimeFactory implements
             }
 
             $connectionFactory = ($this->connectionFactoryResolver)(
-                $context->environment()
+                $context->environment(),
+                $this->databaseConnectionResolver->resolve(
+                    $registry,
+                    $context->projectRoot()
+                )
             );
             if (!$connectionFactory instanceof PdoConnectionFactoryInterface) {
                 throw new BlogPublicHttpRuntimeException(

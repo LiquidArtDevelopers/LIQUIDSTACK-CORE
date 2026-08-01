@@ -452,6 +452,60 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
         self::assertSame(0, $this->connectionCount);
     }
 
+    public function testFactoryPropagatesLiquidStackAsSecondResolverArgument(): void
+    {
+        $this->writeModuleDatabaseConfig('webadmin', 'liquidstack');
+        $this->writeModuleDatabaseConfig('blog', 'liquidstack');
+        $receivedConnection = null;
+        $factory = new BlogAdminHttpRuntimeFactory(
+            coreRoot: dirname(__DIR__, 2),
+            connectionFactoryResolver: function (
+                array $_environment,
+                string $connection
+            ) use (&$receivedConnection): BlogAdminRuntimePdoFactory {
+                ++$this->connectionCount;
+                $receivedConnection = $connection;
+
+                return new BlogAdminRuntimePdoFactory($this->pdo);
+            }
+        );
+
+        try {
+            $factory->create(
+                $this->context(),
+                $this->liquidStackWebAdminConfig()
+            );
+            self::fail('El esquema pendiente debía bloquear Blog admin.');
+        } catch (BlogAdminHttpRuntimeException $exception) {
+            self::assertSame(
+                'blog.webadmin_schema_not_ready',
+                $exception->issueCode()
+            );
+        }
+        self::assertSame(1, $this->connectionCount);
+        self::assertSame('liquidstack', $receivedConnection);
+    }
+
+    public function testDatabaseConnectionMismatchFailsBeforeResolverAndConnector(): void
+    {
+        $this->writeModuleDatabaseConfig('webadmin', 'liquidstack');
+        $this->writeModuleDatabaseConfig('blog', 'shared');
+
+        try {
+            $this->factory()->create(
+                $this->context(),
+                $this->liquidStackWebAdminConfig()
+            );
+            self::fail('El mismatch debía fallar antes del resolver PDO.');
+        } catch (BlogAdminHttpRuntimeException $exception) {
+            self::assertSame(
+                'blog.database_connection_mismatch',
+                $exception->issueCode()
+            );
+        }
+        self::assertSame(0, $this->connectionCount);
+    }
+
     public function testRegistryAndWebAdminConfigMismatchFailBeforeConnect(): void
     {
         $this->writeComposer(['liquidstack/core' => '^1.9']);
@@ -573,6 +627,30 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             strtr(base64_encode(str_repeat('R', 32)), '+/', '-_'),
             '='
         )];
+    }
+
+    private function liquidStackWebAdminConfig(): WebAdminConfig
+    {
+        return new WebAdminConfig(
+            WebAdminConfig::DEFAULT_BASE_PATH,
+            WebAdminConfig::DEFAULT_TABLE_PREFIX,
+            WebAdminConfig::DEFAULT_COOKIE_NAME,
+            WebAdminConfig::DEFAULT_IDLE_TTL_SECONDS,
+            WebAdminConfig::DEFAULT_ABSOLUTE_TTL_SECONDS,
+            'test',
+            'liquidstack'
+        );
+    }
+
+    private function writeModuleDatabaseConfig(
+        string $module,
+        string $connection
+    ): void {
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/config/modules/' . $module . '.php',
+            "<?php\nreturn ['database' => ["
+                . "'connection' => '" . $connection . "']];\n"
+        );
     }
 
     private function applyMigrations(): void

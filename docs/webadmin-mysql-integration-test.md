@@ -54,9 +54,10 @@ Solo se habilita cuando
 
 - La prueba no carga ni inspecciona `.env`.
 - Solo lee variables con el prefijo `LIQUIDSTACK_TEST_MYSQL_`.
-- La conexión pasa por `SharedPdoConnectionFactory`, de modo que valida el
-  mismo contrato PDO y activa las mismas invariantes UTC, strict mode, claves
-  foráneas, unicidad y checks que el runtime real.
+- La conexión de esta fixture pasa por el wrapper legacy
+  `SharedPdoConnectionFactory`, que delega en la misma factoría PDO estricta
+  usada por ambos perfiles y activa las mismas invariantes UTC, strict mode,
+  claves foráneas, unicidad y checks que el runtime real.
 - El nombre de la base debe cumplir
   `liquidstack_core_test_[a-z0-9_]{1,32}`; cualquier otro se rechaza antes de
   construir PDO.

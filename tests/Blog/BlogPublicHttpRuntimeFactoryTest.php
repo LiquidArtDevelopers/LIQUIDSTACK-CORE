@@ -106,6 +106,8 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
                 ],
             ], JSON_THROW_ON_ERROR) . PHP_EOL
         );
+        $this->writeModuleDatabaseConfig('webadmin', 'liquidstack');
+        $this->writeModuleDatabaseConfig('blog', 'liquidstack');
         $pdo = new PDO('sqlite::memory:');
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
@@ -132,10 +134,20 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
                 return $this->pdo;
             }
         };
+        $receivedConnection = null;
         $factory = new BlogPublicHttpRuntimeFactory(
             coreRoot: $coreRoot,
-            connectionFactoryResolver: static fn (): PdoConnectionFactoryInterface =>
-                $connection
+            connectionFactoryResolver: static function (
+                array $_environment,
+                string $connectionProfile
+            ) use (
+                $connection,
+                &$receivedConnection
+            ): PdoConnectionFactoryInterface {
+                $receivedConnection = $connectionProfile;
+
+                return $connection;
+            }
         );
 
         $runtime = $factory->create(new ModuleRuntimeContext($this->root, [
@@ -145,5 +157,53 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
         self::assertSame('/blog', $runtime->config()->publicPath('es'));
         self::assertSame('https://example.test', $runtime->origin()->value());
         self::assertSame([], $runtime->service()->listPosts());
+        self::assertSame('liquidstack', $receivedConnection);
+    }
+
+    public function testDatabaseConnectionMismatchFailsBeforeResolverAndConnector(): void
+    {
+        $this->filesystem->dumpFile(
+            $this->root . '/composer.json',
+            json_encode(['require' => [
+                'liquidstack/core' => '*',
+                'liquidstack/blog' => '*',
+            ]], JSON_THROW_ON_ERROR) . PHP_EOL
+        );
+        $this->writeModuleDatabaseConfig('webadmin', 'liquidstack');
+        $this->writeModuleDatabaseConfig('blog', 'shared');
+        $resolverCalls = 0;
+        $factory = new BlogPublicHttpRuntimeFactory(
+            coreRoot: dirname(__DIR__, 2),
+            connectionFactoryResolver: static function () use (
+                &$resolverCalls
+            ): PdoConnectionFactoryInterface {
+                ++$resolverCalls;
+                throw new RuntimeException('Must not resolve or connect.');
+            }
+        );
+
+        try {
+            $factory->create(new ModuleRuntimeContext($this->root, [
+                BlogPublicOrigin::ENV => 'https://example.test',
+            ]));
+            self::fail('El mismatch debía fallar antes del resolver PDO.');
+        } catch (BlogPublicHttpRuntimeException $exception) {
+            self::assertSame(
+                'blog.public_runtime_unavailable',
+                $exception->issueCode()
+            );
+        }
+        self::assertSame(0, $resolverCalls);
+    }
+
+    private function writeModuleDatabaseConfig(
+        string $module,
+        string $connection
+    ): void {
+        $this->filesystem->dumpFile(
+            $this->root . '/App/config/modules/' . $module . '.php',
+            "<?php\nreturn ['database' => ["
+                . "'connection' => '" . $connection . "']];\n"
+        );
     }
 }

@@ -91,6 +91,53 @@ PHP);
         ]);
     }
 
+    public function testProjectCanSelectDedicatedLiquidStackConnection(): void
+    {
+        $this->writeConfig(<<<'PHP'
+<?php
+
+return [
+    'public_paths' => [
+        'es' => '/noticias',
+        'en' => '/en/news',
+    ],
+    'database' => [
+        'connection' => 'liquidstack',
+        'table_prefix' => 'client_blog_',
+    ],
+];
+PHP);
+
+        $config = $this->load(['es', 'en']);
+
+        self::assertSame('liquidstack', $config->databaseConnection());
+        self::assertSame('liquidstack', $config->toSafeArray()[
+            'database'
+        ]['connection']);
+        self::assertSame('client_blog_', $config->tablePrefix());
+    }
+
+    public function testDatabaseConnectionCanBeResolvedWithoutLanguageCatalog(): void
+    {
+        $this->writeConfig(<<<'PHP'
+<?php
+
+return [
+    'database' => [
+        'connection' => 'liquidstack',
+    ],
+];
+PHP);
+
+        self::assertFileDoesNotExist(
+            $this->fixtureRoot . '/App/config/langs.php'
+        );
+        self::assertSame(
+            'liquidstack',
+            (new BlogConfigLoader())->databaseConnection($this->fixtureRoot)
+        );
+    }
+
     public function testOmittedBlocksKeepDefaults(): void
     {
         $this->writeConfig("<?php\n\nreturn [];\n");

@@ -52,6 +52,124 @@ final class BlogDiagnosticServiceTest extends TestCase
         self::assertStringNotContainsString('ls_blog_', $encoded);
     }
 
+    public function testLiquidStackProfileIsReportedWithoutOriginPrefixOrDatabaseSecrets(): void
+    {
+        $this->writeModuleDatabaseConfig(
+            'blog',
+            'liquidstack',
+            'private_blog_'
+        );
+        $this->writeModuleDatabaseConfig(
+            'webadmin',
+            'liquidstack',
+            'private_webadmin_'
+        );
+        $environment = [
+            BlogPublicOrigin::ENV => 'https://private-origin.example.test',
+            'LIQUIDSTACK_DB_PASSWORD' => 'private-database-password',
+            'BBDD_PASS' => 'unused-legacy-password',
+        ];
+
+        $report = (new BlogDiagnosticService())->inspect(
+            $this->root,
+            ['es', 'en'],
+            $environment,
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        );
+        $data = $report->toArray();
+        $encoded = json_encode($data, JSON_THROW_ON_ERROR);
+
+        self::assertTrue($report->isReady());
+        self::assertTrue($data['configuration']['ready']);
+        self::assertSame(
+            'liquidstack',
+            $data['configuration']['effective']['database']['connection']
+        );
+        self::assertSame([], $data['configuration']['issues']);
+        foreach ([
+            'https://private-origin.example.test',
+            'private_blog_',
+            'private_webadmin_',
+            'private-database-password',
+            'unused-legacy-password',
+        ] as $privateValue) {
+            self::assertStringNotContainsString($privateValue, $encoded);
+        }
+    }
+
+    /** @dataProvider databaseConnectionMismatchProvider */
+    public function testDatabaseConnectionMismatchFailsClosedWithStableSafeIssue(
+        string $blogConnection,
+        string $webAdminConnection
+    ): void {
+        $this->writeModuleDatabaseConfig(
+            'blog',
+            $blogConnection,
+            'mismatch_private_blog_'
+        );
+        $this->writeModuleDatabaseConfig(
+            'webadmin',
+            $webAdminConnection,
+            'mismatch_private_webadmin_'
+        );
+        $environment = [
+            BlogPublicOrigin::ENV => 'https://mismatch-private.example.test',
+            'LIQUIDSTACK_DB_PASSWORD' => 'mismatch-dedicated-secret',
+            'BBDD_PASS' => 'mismatch-shared-secret',
+        ];
+
+        $report = (new BlogDiagnosticService())->inspect(
+            $this->root,
+            ['es', 'en'],
+            $environment,
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        );
+        $data = $report->toArray();
+        $encoded = json_encode($data, JSON_THROW_ON_ERROR);
+
+        self::assertFalse($report->isReady());
+        self::assertFalse($data['configuration']['ready']);
+        self::assertSame(
+            $blogConnection,
+            $data['configuration']['effective']['database']['connection']
+        );
+        self::assertSame([[
+            'code' => 'database.connection_mismatch',
+            'key' => 'database.connection',
+        ]], $data['configuration']['issues']);
+        self::assertSame(
+            ['configuration.invalid'],
+            $data['readiness']['blockers']
+        );
+        foreach ([
+            'mismatch_private_blog_',
+            'mismatch_private_webadmin_',
+            'https://mismatch-private.example.test',
+            'mismatch-dedicated-secret',
+            'mismatch-shared-secret',
+        ] as $privateValue) {
+            self::assertStringNotContainsString($privateValue, $encoded);
+        }
+    }
+
+    public static function databaseConnectionMismatchProvider(): iterable
+    {
+        yield 'Blog dedicated and WebAdmin shared' => [
+            'liquidstack',
+            'shared',
+        ];
+        yield 'Blog shared and WebAdmin dedicated' => [
+            'shared',
+            'liquidstack',
+        ];
+    }
+
     public function testPendingCrossScopeCapabilityMigrationBlocksReadiness(): void
     {
         $plan = $this->plan('applied', 'pending');
@@ -170,5 +288,21 @@ final class BlogDiagnosticServiceTest extends TestCase
             'destructive' => false,
             'status' => $status,
         ];
+    }
+
+    private function writeModuleDatabaseConfig(
+        string $module,
+        string $connection,
+        string $tablePrefix
+    ): void {
+        $this->filesystem->dumpFile(
+            $this->root . '/App/config/modules/' . $module . '.php',
+            "<?php\n\nreturn " . var_export([
+                'database' => [
+                    'connection' => $connection,
+                    'table_prefix' => $tablePrefix,
+                ],
+            ], true) . ";\n"
+        );
     }
 }

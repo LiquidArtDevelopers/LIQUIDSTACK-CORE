@@ -2,9 +2,9 @@
 
 WebAdmin dispone de un dominio de autenticación propio bajo su prefijo neutro
 configurable (`/admin` por defecto). No reutiliza `PHPSESSID`, la sesión de la
-zona privada legacy ni sus tablas. El runtime desplegable usa la conexión
-MySQL/MariaDB compartida del stack; SQLite se conserva para pruebas e inyección
-explícita.
+zona privada legacy ni sus tablas. El runtime desplegable usa el perfil
+MySQL/MariaDB configurado (`shared` o `liquidstack`); SQLite se conserva para
+pruebas e inyección explícita.
 
 Este corte incluye login, panel mínimo, logout, solicitud no enumerable de
 recuperación, activación inicial mediante invitación y restablecimiento de

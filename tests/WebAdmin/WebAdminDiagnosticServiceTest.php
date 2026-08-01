@@ -93,6 +93,90 @@ final class WebAdminDiagnosticServiceTest extends TestCase
         );
     }
 
+    public function testLiquidStackProfileRequiresOnlyItsDedicatedNamesEvenWhenSharedIsComplete(): void
+    {
+        $this->writeLiquidStackDatabaseConfig();
+        $legacyEnvironment = [
+            'BBDD_SERVER' => 'legacy-db.private.invalid',
+            'BBDD_USER' => 'legacy-private-user',
+            'BBDD_PASS' => 'legacy-private-password',
+            'BBDD_NAME' => 'legacy_private_database',
+        ];
+
+        $report = $this->inspect(
+            $this->fixtureRoot,
+            $legacyEnvironment
+        );
+        $data = $report->toArray();
+        $database = $data['environment']['database'];
+        $encoded = json_encode($data, JSON_THROW_ON_ERROR);
+
+        self::assertFalse($report->isReady());
+        self::assertSame('liquidstack', $database['connection']);
+        self::assertSame(
+            WebAdminConfig::LIQUIDSTACK_DATABASE_ENV,
+            $database['required']
+        );
+        self::assertSame(
+            WebAdminConfig::LIQUIDSTACK_DATABASE_ENV,
+            $database['missing']
+        );
+        self::assertSame([], $database['invalid']);
+        self::assertFalse($database['ready']);
+        self::assertSame(
+            'liquidstack',
+            $data['configuration']['effective']['database']['connection']
+        );
+        self::assertSame(
+            WebAdminConfig::LIQUIDSTACK_DATABASE_ENV,
+            $data['configuration']['effective']['database']['environment_names']
+        );
+        self::assertContains(
+            'environment.database_missing',
+            $data['readiness']['blockers']
+        );
+        self::assertStringContainsString('LIQUIDSTACK_DB_PASSWORD', $encoded);
+        self::assertStringNotContainsString('BBDD_PASS', $encoded);
+        foreach ($legacyEnvironment as $value) {
+            self::assertStringNotContainsString($value, $encoded);
+        }
+    }
+
+    public function testLiquidStackProfileReportsNamesAndNeverEitherProfilesValues(): void
+    {
+        $this->writeLiquidStackDatabaseConfig();
+        $dedicatedEnvironment = $this->liquidStackDatabaseEnvironment();
+        $unusedLegacyEnvironment = [
+            'BBDD_SERVER' => 'unused-legacy.private.invalid',
+            'BBDD_USER' => 'unused-legacy-user',
+            'BBDD_PASS' => 'unused-legacy-password',
+            'BBDD_NAME' => 'unused_legacy_database',
+        ];
+        $environment = $dedicatedEnvironment + $unusedLegacyEnvironment;
+
+        $report = $this->inspect($this->fixtureRoot, $environment);
+        $data = $report->toArray();
+        $database = $data['environment']['database'];
+        $encoded = json_encode($data, JSON_THROW_ON_ERROR);
+
+        self::assertTrue($report->isReady());
+        self::assertSame('liquidstack', $database['connection']);
+        self::assertSame(
+            WebAdminConfig::LIQUIDSTACK_DATABASE_ENV,
+            $database['required']
+        );
+        self::assertSame([], $database['missing']);
+        self::assertSame([], $database['invalid']);
+        self::assertTrue($database['ready']);
+        self::assertStringContainsString('LIQUIDSTACK_DB_HOST', $encoded);
+        self::assertStringContainsString('LIQUIDSTACK_DB_PASSWORD', $encoded);
+        self::assertStringNotContainsString('BBDD_SERVER', $encoded);
+        self::assertStringNotContainsString('BBDD_PASS', $encoded);
+        foreach ($environment as $value) {
+            self::assertStringNotContainsString($value, $encoded);
+        }
+    }
+
     public function testDiagnosticDoesNotLoadOrRewriteDotenvFiles(): void
     {
         $dotenvPath = $this->fixtureRoot . '/.env';
@@ -691,6 +775,36 @@ PHP
             'BBDD_USER' => 'user',
             'BBDD_PASS' => '',
             'BBDD_NAME' => 'database',
+        ];
+    }
+
+    private function writeLiquidStackDatabaseConfig(): void
+    {
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/' . WebAdminConfig::PROJECT_CONFIG_PATH,
+            <<<'PHP'
+<?php
+
+return [
+    'database' => [
+        'connection' => 'liquidstack',
+        'table_prefix' => 'private_webadmin_',
+    ],
+];
+PHP
+        );
+    }
+
+    /** @return array<string, string> */
+    private function liquidStackDatabaseEnvironment(): array
+    {
+        return [
+            'LIQUIDSTACK_DB_HOST' => 'dedicated-db.private.invalid',
+            'LIQUIDSTACK_DB_PORT' => '47117',
+            'LIQUIDSTACK_DB_NAME' => 'dedicated_private_database',
+            'LIQUIDSTACK_DB_USER' => 'dedicated-private-user',
+            'LIQUIDSTACK_DB_PASSWORD' => 'dedicated-private-password',
+            'LIQUIDSTACK_DB_CHARSET' => 'utf8mb4',
         ];
     }
 }

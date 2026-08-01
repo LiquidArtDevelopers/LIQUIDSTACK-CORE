@@ -881,6 +881,110 @@ final class WebAdminBootstrapCommandTest extends TestCase
         self::assertSame(0, $calls);
     }
 
+    public function testFactoryPropagatesLiquidStackAsSecondResolverArgument(): void
+    {
+        if (!in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+            self::markTestSkipped('pdo_sqlite es necesario para probar el CLI.');
+        }
+
+        $project = $this->temporaryRoot . '/dedicated-webadmin';
+        $this->filesystem->mkdir($project . '/App/config/modules');
+        $this->filesystem->dumpFile(
+            $project . '/composer.json',
+            json_encode(['require' => [
+                'liquidstack/core' => '^1.9',
+                'liquidstack/webadmin' => '*',
+            ]], JSON_THROW_ON_ERROR)
+        );
+        $this->filesystem->dumpFile(
+            $project . '/.env',
+            "LIQUIDSTACK_DB_HOST=dedicated.invalid\n"
+                . "LIQUIDSTACK_DB_PORT=3306\n"
+                . "LIQUIDSTACK_DB_NAME=dedicated_database\n"
+                . "LIQUIDSTACK_DB_USER=dedicated_user\n"
+                . "LIQUIDSTACK_DB_PASSWORD=dedicated_secret\n"
+                . "LIQUIDSTACK_DB_CHARSET=utf8mb4\n"
+        );
+        $this->filesystem->dumpFile(
+            $project . '/App/config/modules/webadmin.php',
+            "<?php\nreturn ['database' => ["
+                . "'connection' => 'liquidstack', "
+                . "'table_prefix' => 'dedicated_webadmin_']];\n"
+        );
+        $pdo = new PDO('sqlite::memory:');
+        $receivedConnection = null;
+        $resolverCalls = 0;
+        $factory = new WebAdminBootstrapCommandRuntimeFactory(
+            connectionFactoryResolver: static function (
+                array $_environment,
+                string $connection
+            ) use (
+                &$receivedConnection,
+                &$resolverCalls,
+                $pdo
+            ): PdoConnectionFactoryInterface {
+                ++$resolverCalls;
+                $receivedConnection = $connection;
+
+                return new BootstrapCliPdoFactoryFixture($pdo);
+            }
+        );
+
+        self::assertInstanceOf(
+            WebAdminBootstrapCommandRuntimeInterface::class,
+            $factory->create($project, dirname(__DIR__, 2))
+        );
+        self::assertSame(1, $resolverCalls);
+        self::assertSame('liquidstack', $receivedConnection);
+    }
+
+    public function testFactoryRejectsModuleConnectionMismatchBeforeResolver(): void
+    {
+        $project = $this->temporaryRoot . '/mismatched-blog';
+        $this->filesystem->mkdir($project . '/App/config/modules');
+        $this->filesystem->dumpFile(
+            $project . '/composer.json',
+            json_encode(['require' => [
+                'liquidstack/core' => '^1.9',
+                'liquidstack/blog' => '*',
+            ]], JSON_THROW_ON_ERROR)
+        );
+        $this->filesystem->dumpFile(
+            $project . '/App/config/langs.php',
+            "<?php\nreturn ['es'];\n"
+        );
+        $this->filesystem->dumpFile(
+            $project . '/App/config/modules/webadmin.php',
+            "<?php\nreturn ['database' => ["
+                . "'connection' => 'liquidstack']];\n"
+        );
+        $this->filesystem->dumpFile(
+            $project . '/App/config/modules/blog.php',
+            "<?php\nreturn ['database' => ["
+                . "'connection' => 'shared']];\n"
+        );
+        $resolverCalls = 0;
+        $factory = new WebAdminBootstrapCommandRuntimeFactory(
+            connectionFactoryResolver: static function () use (
+                &$resolverCalls
+            ): PdoConnectionFactoryInterface {
+                ++$resolverCalls;
+                throw new RuntimeException('Must not resolve or connect.');
+            }
+        );
+
+        try {
+            $factory->create($project, dirname(__DIR__, 2));
+            self::fail('El mismatch debía fallar antes del resolver PDO.');
+        } catch (WebAdminBootstrapCommandRuntimeException $exception) {
+            self::assertSame(
+                'webadmin.bootstrap.runtime_unavailable',
+                $exception->issueCode()
+            );
+        }
+        self::assertSame(0, $resolverCalls);
+    }
+
     public function testRealRuntimeRequiresAppliedSchemaAndBootstrapsIdempotently(): void
     {
         if (!in_array('sqlite', PDO::getAvailableDrivers(), true)) {

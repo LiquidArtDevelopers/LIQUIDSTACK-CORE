@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Core\WebAdmin\Configuration;
 
+use App\Core\Database\DatabaseConnectionProfile;
+
 final class WebAdminConfig
 {
     public const PROJECT_CONFIG_PATH = 'App/config/modules/webadmin.php';
 
-    public const SHARED_DATABASE_ENV = [
-        'BBDD_SERVER',
-        'BBDD_USER',
-        'BBDD_PASS',
-        'BBDD_NAME',
-    ];
+    public const SHARED_DATABASE_ENV =
+        DatabaseConnectionProfile::SHARED_ENVIRONMENT_NAMES;
+    public const LIQUIDSTACK_DATABASE_ENV =
+        DatabaseConnectionProfile::LIQUIDSTACK_ENVIRONMENT_NAMES;
 
     public const BOOTSTRAP_EMAIL_ENV = [
         'system_superadmin' => 'LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL',
@@ -54,7 +54,9 @@ final class WebAdminConfig
         private readonly string $cookieName,
         private readonly int $idleTtlSeconds,
         private readonly int $absoluteTtlSeconds,
-        private readonly string $source
+        private readonly string $source,
+        private readonly string $databaseConnection =
+            DatabaseConnectionProfile::SHARED
     ) {
     }
 
@@ -82,7 +84,7 @@ final class WebAdminConfig
 
     public function databaseConnection(): string
     {
-        return 'shared';
+        return $this->databaseConnection;
     }
 
     public function cookieName(): string
@@ -141,7 +143,9 @@ final class WebAdminConfig
             'database' => [
                 'connection' => $this->databaseConnection(),
                 'table_prefix' => $this->tablePrefix,
-                'environment_names' => self::SHARED_DATABASE_ENV,
+                'environment_names' => DatabaseConnectionProfile::environmentNames(
+                    $this->databaseConnection()
+                ),
             ],
             'session' => [
                 'cookie_name' => $this->cookieName,

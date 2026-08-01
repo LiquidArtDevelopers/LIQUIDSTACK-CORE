@@ -52,7 +52,23 @@ return [
 ```
 
 - Mantener secretos fuera de este fichero. Composer no debe crearlo, fusionarlo ni sobrescribirlo.
-- Reutilizar la conexión física del stack mediante `BBDD_SERVER`, `BBDD_USER`, `BBDD_PASS` y `BBDD_NAME` hasta que el contrato admita otra conexión.
+- Conservar `shared` como default compatible: reutiliza `BBDD_SERVER`,
+  `BBDD_USER`, `BBDD_PASS` y `BBDD_NAME`.
+- Usar `liquidstack` solo como opt-in explícito para una DB modular por proyecto
+  y entorno. Requiere `LIQUIDSTACK_DB_HOST`, `LIQUIDSTACK_DB_PORT`,
+  `LIQUIDSTACK_DB_NAME`, `LIQUIDSTACK_DB_USER`,
+  `LIQUIDSTACK_DB_PASSWORD` y `LIQUIDSTACK_DB_CHARSET=utf8mb4`.
+- No aceptar DSN ni opciones PDO libres. Una variable dedicada ausente o
+  inválida debe fallar cerrada, nunca volver silenciosamente a `shared`.
+- Cuando Blog esté activo, exigir que Blog y WebAdmin declaren la misma
+  conexión. Comparten un único PDO y operaciones cross-scope; una discrepancia
+  bloquea diagnóstico, migraciones y runtime antes de conectar.
+- Tratar `.env` y `App/config/modules/*.php` como project-owned. Cambiar el
+  perfil con tablas o datos existentes requiere backup, migración y
+  verificación manual; Composer no traslada ni adopta datos.
+- Limitar por ahora `liquidstack` a `localhost` o redes confiables. No usarlo
+  contra un host no confiable hasta disponer de TLS con CA y verificación del
+  servidor.
 - Guardar `LIQUIDSTACK_WEBADMIN_SECURITY_KEY` únicamente en el entorno o gestor
   de secretos: debe contener 32 bytes aleatorios como base64url canónico de 43
   caracteres. No reutilizar una contraseña ni registrar su valor.
@@ -89,7 +105,8 @@ composer liquidstack:migrate --dry-run
 ```
 
 - Tratar `doctor` como preflight operativo: catálogo, selectores, providers,
-  config, nombres de entorno, assets, conexión compartida y esquema aplicado.
+  config, nombres de entorno, assets, conexión modular seleccionada y esquema
+  aplicado.
   El probe DB es estrictamente de solo lectura.
 - No copiar valores de entorno a logs, respuestas o informes. Los errores de parseo deben ser genéricos.
 - Entender `runtime_ready` (incluye clave, Argon2id y protección de trazas) por
@@ -177,8 +194,9 @@ composer liquidstack:migrate --dry-run
   migraciones ni diagnósticos Blog en un proyecto core-only o WebAdmin-only.
 - Tratar `App/config/modules/blog.php` como configuración project-owned. Puede
   declarar `public_paths` por cada idioma activo, `sitemap_path` y el prefijo
-  de tablas sobre la conexión `shared`; Composer no debe crearlo, fusionarlo ni
-  sobrescribirlo.
+  de tablas. `shared` permanece como default; si se declara `liquidstack`,
+  WebAdmin debe declararlo también. Composer no debe crear, fusionar ni
+  sobrescribir este fichero.
 - Exigir que las claves de `public_paths` coincidan exactamente con
   `App/config/langs.php`, que sus rutas sean absolutas y únicas y que no
   colisionen con rutas o ficheros del proyecto. El path base puede pertenecer a
@@ -241,5 +259,13 @@ composer liquidstack:migrate --dry-run
 
 - Comparar primero el estado local con la versión canónica y preservar personalizaciones reales.
 - Probar el update en un stack controlado antes de recomendarlo a proyectos publicados.
+- Para una instalación nueva con DB dedicada, crear primero una DB vacía y un
+  usuario acotado, declarar las seis variables `LIQUIDSTACK_DB_*` fuera de Git
+  y seleccionar `connection => liquidstack` en los dos configs project-owned.
+- Ejecutar `doctor`, `migrate --plan` y `migrate --dry-run` antes de pedir
+  autorización. No presentar `--apply` como parte automática de la adopción.
+- Si el proyecto ya tiene datos bajo `shared`, no cambiar la selección hasta
+  disponer de backup y un traslado manual verificado del esquema, contenido y
+  registro de migraciones.
 - Verificar selectores activos, salida de `doctor`, rutas públicas, `/admin`, ausencia de `Set-Cookie` legacy en la ruta neutral y suite/build propios del consumidor.
 - No publicar una etiqueta ni ejecutar deploy sin autorización expresa.

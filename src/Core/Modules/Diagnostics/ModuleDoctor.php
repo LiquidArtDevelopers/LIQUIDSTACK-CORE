@@ -435,7 +435,7 @@ final class ModuleDoctor
         $checks[] = $databaseReady
             ? DiagnosticCheck::ok(
                 'webadmin.environment.database',
-                'El entorno de la DB compartida tiene formato válido; no se prueba la conexión.'
+                'El entorno de la DB configurada tiene formato válido; no se prueba la conexión.'
             )
             : DiagnosticCheck::error(
                 'webadmin.environment.database',
@@ -455,16 +455,16 @@ final class ModuleDoctor
         $checks[] = $connectionReady
             ? DiagnosticCheck::ok(
                 'webadmin.database.connection',
-                'La conexión compartida responde con el contrato PDO esperado; no se muestran DSN ni credenciales.'
+                'La conexión configurada responde con el contrato PDO esperado; no se muestran DSN ni credenciales.'
             )
             : ($connectionStatus === 'not_checked'
                 ? DiagnosticCheck::warning(
                     'webadmin.database.connection',
-                    'La conexión compartida no se evaluó en este preflight offline.'
+                    'La conexión configurada no se evaluó en este preflight offline.'
                 )
                 : DiagnosticCheck::error(
                     'webadmin.database.connection',
-                    'La conexión compartida no está disponible o no cumple el contrato; no se muestran detalles internos.'
+                    'La conexión configurada no está disponible o no cumple el contrato; no se muestran detalles internos.'
                 ));
 
         $migrations = $payload['database']['migrations'] ?? [];

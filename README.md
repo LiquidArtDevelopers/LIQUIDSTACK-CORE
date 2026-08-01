@@ -151,7 +151,7 @@ composer liquidstack:webadmin:mail:dispatch --limit=20 --format=json
 
 `doctor` valida el catálogo, la selección, los providers tipados, la
 configuración conocida, el entorno de seguridad y, con WebAdmin activo, abre
-la conexión compartida para comprobar en solo lectura el registro de
+la conexión modular configurada para comprobar en solo lectura el registro de
 migraciones, el esquema y sus postcondiciones. Su salida separa
 `runtime_ready`, `bootstrap_ready` y `mail_ready`: el runtime exige además una
 clave
@@ -169,11 +169,78 @@ hash. Una migración destructiva requiere además
 mensajes PDO.
 
 El orden de una instalación nueva es: activar el selector, actualizar CORE,
-configurar entorno, ejecutar `doctor`, revisar y aplicar migraciones, ejecutar
-el bootstrap y, por último, despachar su outbox. El bootstrap solo encola las
+configurar entorno, ejecutar `doctor`, revisar migraciones y, tras autorización
+explícita, aplicarlas; después se ejecuta el bootstrap y se despacha su outbox.
+El bootstrap solo encola las
 dos invitaciones iniciales. `--resend-invites` es una recuperación confirmada
 para invitaciones bootstrap ya enviadas o fallidas de forma terminal; no
 duplica filas `pending`/`processing` y tampoco envía el correo directamente.
+
+### Base de datos de los módulos
+
+WebAdmin y Blog admiten dos perfiles lógicos de conexión:
+
+- `shared` es el valor predeterminado compatible con proyectos existentes y
+  reutiliza `BBDD_SERVER`, `BBDD_USER`, `BBDD_PASS` y `BBDD_NAME`;
+- `liquidstack` es un opt-in explícito para una DB modular propia del proyecto
+  y del entorno. Usa exclusivamente:
+
+  ```dotenv
+  LIQUIDSTACK_DB_HOST=<host>
+  LIQUIDSTACK_DB_PORT=3306
+  LIQUIDSTACK_DB_NAME=<database>
+  LIQUIDSTACK_DB_USER=<user>
+  LIQUIDSTACK_DB_PASSWORD="<secret>"
+  LIQUIDSTACK_DB_CHARSET=utf8mb4
+  ```
+
+Los seis nombres son obligatorios al seleccionar `liquidstack`; la contraseña
+no puede estar vacía y el único charset admitido es `utf8mb4`. Las credenciales
+permanecen en el entorno o gestor de secretos y nunca en los ficheros PHP. Si
+falta o es inválida una variable, CORE falla cerrado: no vuelve silenciosamente
+a `shared`.
+
+La selección vive en los ficheros project-owned de ambos módulos:
+
+```php
+// App/config/modules/webadmin.php
+'database' => [
+    'connection' => 'liquidstack',
+    'table_prefix' => 'ls_webadmin_',
+],
+
+// App/config/modules/blog.php
+'database' => [
+    'connection' => 'liquidstack',
+    'table_prefix' => 'ls_blog_',
+],
+```
+
+Blog y WebAdmin deben declarar el mismo perfil porque comparten un único PDO,
+el registro de migraciones y operaciones cross-scope. Una discrepancia bloquea
+el diagnóstico, las migraciones y el runtime antes de escribir. Composer no
+crea ni fusiona `.env` o `App/config/modules/*.php`.
+
+Adopción segura en un consumidor nuevo:
+
+```bash
+composer require liquidstack/blog
+composer update liquidstack/core
+composer liquidstack:doctor
+composer liquidstack:migrate --plan
+composer liquidstack:migrate --dry-run
+```
+
+Solo después de revisar el dry-run, disponer de un backup recuperable y
+autorizar la mutación se ejecuta `composer liquidstack:migrate --apply`; a
+continuación se hace el bootstrap. Cambiar de `shared` a `liquidstack` cuando
+ya existen tablas o datos no los copia ni los adopta: exige un plan manual de
+backup, traslado y verificación antes de cambiar la configuración.
+
+El perfil dedicado inicial no configura TLS para MySQL/MariaDB. Es apto para
+`localhost` o una red confiable; no debe conectarse a un host no confiable
+hasta incorporar y validar CA y verificación del servidor. Nunca se deben
+introducir DSN u opciones PDO libres en el entorno.
 
 La precondición de la migración inicial se comprueba en `--dry-run` y otra vez
 bajo lock antes de escribir. WebAdmin solo parte de un namespace totalmente
@@ -278,7 +345,7 @@ return [
     ],
     'sitemap_path' => '/blog-sitemap.xml',
     'database' => [
-        'connection' => 'shared',
+        'connection' => 'liquidstack',
         'table_prefix' => 'ls_blog_',
     ],
 ];
@@ -292,6 +359,10 @@ mientras los descendientes publicados se sirven como
 `/noticias/{slug}`. El endpoint de sitemap consulta producción en cada
 petición, admite hasta 50.000 URLs y nunca modifica `public/sitemap.xml` ni
 requiere un deploy al publicar.
+
+El ejemplo usa el perfil dedicado y presupone que WebAdmin declara también
+`connection => liquidstack`. Si se omite la configuración de DB en ambos
+ficheros, los dos conservan el default compatible `shared`.
 
 Blog reutiliza `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` como origen HTTPS canónico,
 pero no necesita que SMTP esté configurado. Después de activar el selector se

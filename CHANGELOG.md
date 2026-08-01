@@ -4,6 +4,14 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Añadido
+- Perfil de DB modular dedicado y opt-in `liquidstack`, coexistente con el
+  default compatible `shared`. WebAdmin y Blog pueden usar las variables
+  `LIQUIDSTACK_DB_HOST`, `LIQUIDSTACK_DB_PORT`, `LIQUIDSTACK_DB_NAME`,
+  `LIQUIDSTACK_DB_USER`, `LIQUIDSTACK_DB_PASSWORD` y
+  `LIQUIDSTACK_DB_CHARSET=utf8mb4`, con validación cerrada, DSN construido
+  internamente y sin fallback a `BBDD_*`. Ambos módulos deben seleccionar el
+  mismo perfil; `.env`, configuración y datos siguen siendo project-owned y
+  ningún update o cambio de perfil migra contenido automáticamente.
 - Infraestructura de módulos internos para WebAdmin y Blog dentro del único
   paquete físico `liquidstack/core`: manifiestos validados, cierre de la
   dependencia Blog → WebAdmin, selección exclusiva desde `require` directo y
@@ -23,7 +31,7 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   estáticamente colisiones con rutas project-owned sin ejecutar sus PHP.
 - Configuración WebAdmin opcional en `App/config/modules/webadmin.php`, con
   defaults seguros y diagnóstico operativo de configuración, ruta, assets,
-  DB compartida, esquema, clave de seguridad y protección de argumentos en
+  DB modular seleccionada, esquema, clave de seguridad y protección de argumentos en
   trazas. El informe no revela valores y distingue `runtime_ready` de
   `bootstrap_ready`.
 - Esquema inicial versionado de identidad, roles, capacidades, tokens,
@@ -31,7 +39,7 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   idempotente de `system_superadmin`/`site_admin`; y primer flujo HTTP aislado
   de login, autorización, panel mínimo y logout. Las migraciones y el bootstrap
   nunca se ejecutan durante `composer update`.
-- Contrato PDO compartido estricto para MySQL/MariaDB y SQLite, registro de
+- Contrato PDO estricto para MySQL/MariaDB y SQLite, registro de
   migraciones con checksum/scope, postcondiciones auditables de esquema,
   constraints, semillas y datos, precondición versionada de namespace vacío
   antes de cualquier escritura y gate HTTP acotado que evita repetir la

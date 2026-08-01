@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Core\Composer;
 
 use App\Core\Database\PdoConnectionFactoryInterface;
-use App\Core\Database\SharedPdoConnectionFactory;
+use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Environment\ProjectEnvironmentLoader;
 use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
+use App\Core\Modules\ConfiguredModuleDatabaseConnectionResolver;
 use App\Core\Modules\WebAdmin\WebAdminHttpSchemaGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfigException;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
@@ -31,14 +32,15 @@ use Throwable;
 final class WebAdminMailDispatchCommandRuntimeFactory implements
     WebAdminMailDispatchCommandRuntimeFactoryInterface
 {
-    /** @var Closure(array<string, mixed>): PdoConnectionFactoryInterface */
+    /** @var Closure(array<string, mixed>, string): PdoConnectionFactoryInterface */
     private readonly Closure $connectionFactoryResolver;
 
     /** @var Closure(WebAdminMailConfiguration): WebAdminMailTransportInterface */
     private readonly Closure $transportResolver;
+    private readonly ConfiguredModuleDatabaseConnectionResolver $databaseConnectionResolver;
 
     /**
-     * @param null|callable(array<string, mixed>): PdoConnectionFactoryInterface $connectionFactoryResolver
+     * @param null|callable(array<string, mixed>, string): PdoConnectionFactoryInterface $connectionFactoryResolver
      * @param null|callable(WebAdminMailConfiguration): WebAdminMailTransportInterface $transportResolver
      */
     public function __construct(
@@ -46,16 +48,27 @@ final class WebAdminMailDispatchCommandRuntimeFactory implements
         private readonly WebAdminConfigLoader $webAdminConfigLoader = new WebAdminConfigLoader(),
         private readonly WebAdminMailConfigurationLoader $mailConfigurationLoader = new WebAdminMailConfigurationLoader(),
         ?callable $connectionFactoryResolver = null,
-        ?callable $transportResolver = null
+        ?callable $transportResolver = null,
+        ?ConfiguredModuleDatabaseConnectionResolver $databaseConnectionResolver = null
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
-            ? static fn (array $environment): PdoConnectionFactoryInterface =>
-                new SharedPdoConnectionFactory($environment)
+            ? static fn (
+                array $environment,
+                string $connection
+            ): PdoConnectionFactoryInterface =>
+                (new ConfiguredPdoConnectionFactoryResolver())->resolve(
+                    $connection,
+                    $environment
+                )
             : Closure::fromCallable($connectionFactoryResolver);
         $this->transportResolver = $transportResolver === null
             ? static fn (WebAdminMailConfiguration $configuration): WebAdminMailTransportInterface =>
                 new PhpMailerWebAdminTransport($configuration)
             : Closure::fromCallable($transportResolver);
+        $this->databaseConnectionResolver = $databaseConnectionResolver
+            ?? new ConfiguredModuleDatabaseConnectionResolver(
+                $webAdminConfigLoader
+            );
     }
 
     public function create(
@@ -121,7 +134,11 @@ final class WebAdminMailDispatchCommandRuntimeFactory implements
             }
 
             $connectionFactory = ($this->connectionFactoryResolver)(
-                $environment->values()
+                $environment->values(),
+                $this->databaseConnectionResolver->resolve(
+                    $registry,
+                    $projectRoot
+                )
             );
             if (!$connectionFactory instanceof PdoConnectionFactoryInterface) {
                 throw new WebAdminMailDispatchCommandRuntimeException(

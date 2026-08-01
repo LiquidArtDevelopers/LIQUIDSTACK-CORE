@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core\Blog\Configuration;
 
+use App\Core\Database\DatabaseConnectionProfile;
+
 final class BlogConfig
 {
     public const PROJECT_CONFIG_PATH = 'App/config/modules/blog.php';
@@ -24,7 +26,9 @@ final class BlogConfig
         private readonly array $publicPaths,
         private readonly string $sitemapPath,
         private readonly string $tablePrefix,
-        private readonly string $source
+        private readonly string $source,
+        private readonly string $databaseConnection =
+            DatabaseConnectionProfile::SHARED
     ) {
     }
 
@@ -64,7 +68,7 @@ final class BlogConfig
 
     public function databaseConnection(): string
     {
-        return 'shared';
+        return $this->databaseConnection;
     }
 
     public function tablePrefix(): string

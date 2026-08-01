@@ -33,7 +33,7 @@ return [
     ],
     'sitemap_path' => '/blog-sitemap.xml',
     'database' => [
-        'connection' => 'shared',
+        'connection' => 'liquidstack',
         'table_prefix' => 'ls_blog_',
     ],
 ];
@@ -41,11 +41,24 @@ return [
 
 Las rutas deben ser absolutas, únicas, sin query, fragmento, barras duplicadas
 ni segmentos relativos. Solo se aceptan idiomas declarados en
-`App/config/langs.php`. La conexión `shared` reutiliza la DB del stack; el
-prefijo puede personalizarse, pero no se infiere ni se copia desde WebAdmin.
-Las URLs absolutas reutilizan `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, que debe
-ser un origen HTTPS sin path, query ni credenciales. Blog necesita ese origen
-aunque el transporte SMTP de WebAdmin no se haya configurado.
+`App/config/langs.php`. El ejemplo opta por `liquidstack`; WebAdmin debe
+declarar exactamente el mismo perfil en
+`App/config/modules/webadmin.php`. Si ambos omiten `database.connection`, el
+default compatible sigue siendo `shared`, que reutiliza `BBDD_*`.
+
+La conexión dedicada requiere en el entorno
+`LIQUIDSTACK_DB_HOST`, `LIQUIDSTACK_DB_PORT`, `LIQUIDSTACK_DB_NAME`,
+`LIQUIDSTACK_DB_USER`, `LIQUIDSTACK_DB_PASSWORD` y
+`LIQUIDSTACK_DB_CHARSET=utf8mb4`. No existe fallback entre perfiles: una
+configuración divergente o incompleta bloquea Blog antes de abrir PDO. `.env`,
+los dos ficheros de módulo y sus prefijos son project-owned; Composer no los
+crea, fusiona ni sobrescribe.
+
+El prefijo puede personalizarse, pero no se infiere ni se copia desde
+WebAdmin. Las URLs absolutas reutilizan
+`LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, que debe ser un origen HTTPS sin path,
+query ni credenciales. Blog necesita ese origen aunque el transporte SMTP de
+WebAdmin no se haya configurado.
 
 ## Modelo editorial
 
@@ -97,7 +110,8 @@ módulo propietario, el checksum y el hash del scope realmente utilizado.
 
 Blog reclama un prefijo hijo del WebAdmin efectivo, `/admin/blog` con los
 defaults. Si WebAdmin no pudo reclamar su prefijo, Blog no puede apropiarse del
-hijo. Ambos comparten cookie, sesión, CSRF, política de credencial y conexión.
+hijo. Ambos comparten cookie, sesión, CSRF, política de credencial, perfil de
+conexión y el mismo PDO.
 
 Rutas del MVP:
 
@@ -176,10 +190,21 @@ composer liquidstack:webadmin:bootstrap
 composer liquidstack:doctor
 ```
 
+`--plan` permanece offline y `--dry-run` solo lee. `--apply` no forma parte del
+flujo por defecto: se ejecuta únicamente después de revisar el plan, confirmar
+un backup recuperable y autorizar expresamente la mutación.
+
 El bootstrap es idempotente y debe repetirse después de añadir Blog a una
 instalación WebAdmin existente: así las cuentas protegidas reciben las nuevas
 capacidades sin reactivar, duplicar ni sustituir usuarios. Ninguno de estos
 pasos se ejecuta desde `composer update`.
+
+Cambiar un proyecto con artículos o identidades existentes desde `shared` a
+`liquidstack` no traslada ni adopta datos. Requiere una migración y verificación
+manual de ambos namespaces y del registro `ls_module_migrations`, además de un
+backup previo. El perfil dedicado inicial solo debe usarse en `localhost` o
+una red confiable; el acceso a hosts no confiables queda pendiente de un
+contrato TLS con CA y verificación del servidor.
 
 `blog_ready` exige selector, configuración, idiomas, esquema y capacidades
 aplicados, WebAdmin operativo, rutas públicas válidas y sitemap libre. El
