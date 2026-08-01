@@ -12,12 +12,14 @@ use App\Core\Blog\Http\BlogPublicHttpRuntimeFactoryInterface;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\Modules\ModulePublicRouteProviderInterface;
+use App\Core\Modules\ModulePreBootstrapPublicRouteProviderInterface;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Routing\ModulePublicRouteCollection;
 use Throwable;
 
 final class BlogPublicRouteProvider implements
-    ModulePublicRouteProviderInterface
+    ModulePublicRouteProviderInterface,
+    ModulePreBootstrapPublicRouteProviderInterface
 {
     private ?BlogPublicHttpController $controller = null;
     private ?ModuleRuntimeContext $context = null;
@@ -49,6 +51,22 @@ final class BlogPublicRouteProvider implements
                 array_values($config->publicPaths()),
                 [$config->sitemapPath()]
             )));
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /** @return list<string> */
+    public static function preBootstrapPublicRoutePaths(
+        ModuleRuntimeContext $context
+    ): array {
+        try {
+            $config = (new BlogConfigLoader())->load(
+                $context->projectRoot(),
+                $context->languages()
+            );
+
+            return [$config->sitemapPath()];
         } catch (Throwable) {
             return [];
         }

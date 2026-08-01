@@ -11,7 +11,9 @@ use InvalidArgumentException;
 use RuntimeException;
 
 /**
- * Routes one public module after the project's static router has missed.
+ * Routes one public module. Normal public routes run after the project's
+ * static router has missed; selected exact infrastructure endpoints may also
+ * use the guarded pre-bootstrap phase.
  *
  * A GET handler owns its declared prefix and descendants, may return null to
  * continue to the project's existing 404, and is reused for HEAD with the

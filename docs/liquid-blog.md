@@ -157,8 +157,8 @@ publica, audita ni modifica la variante.
 ## Resolución pública y prioridad
 
 Las rutas privadas se despachan antes del stack legacy para conservar el
-aislamiento de WebAdmin. Las rutas públicas Blog se evalúan en una segunda fase
-solo después de agotar:
+aislamiento de WebAdmin. Las URLs públicas de artículo Blog se evalúan en una
+segunda fase solo después de agotar:
 
 1. la ruta estática GET o POST exacta del proyecto;
 2. las rutas con query compatibles;
@@ -185,6 +185,12 @@ y HTTP solo bajo el perfil loopback tipado de desarrollo. Nunca usa `Host`,
 `Forwarded` o cabeceras del cliente como origen. No modifica
 `public/sitemap.xml`, el repositorio ni el deploy. Publicar o retirar cambia su
 respuesta inmediatamente porque la DB de producción es la fuente de verdad.
+Como endpoint público exacto de infraestructura, se despacha antes del resolver
+multidioma y de la sesión legacy, por lo que una respuesta modular no crea
+`PHPSESSID`. Antes de reclamarlo, CORE descarta una ruta GET exacta, un fichero
+o symlink público y una subruta showroom pertenecientes al proyecto. Si el
+catálogo GET no puede inspeccionarse de forma completa, conserva el flujo
+legacy. Esta excepción no adelanta las URLs de artículo.
 El documento admite como máximo 50.000 URLs: la consulta obtiene hasta 50.001
 candidatas para detectar el desbordamiento y responder con un fallo genérico,
 sin cargar un conjunto ilimitado ni truncarlo silenciosamente.

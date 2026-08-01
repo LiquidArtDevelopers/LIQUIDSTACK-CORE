@@ -6,6 +6,7 @@ use App\Core\Application;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\Modules\ModulePublicRouteProviderInterface;
+use App\Core\Modules\ModulePreBootstrapPublicRouteProviderInterface;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Routing\ModulePublicRouteCollection;
 use App\Core\Support\Paths;
@@ -14,7 +15,9 @@ use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
-final class ApplicationPublicRouteProviderFixture implements ModulePublicRouteProviderInterface
+final class ApplicationPublicRouteProviderFixture implements
+    ModulePublicRouteProviderInterface,
+    ModulePreBootstrapPublicRouteProviderInterface
 {
     public static int $prefixReads = 0;
     public static int $constructions = 0;
@@ -36,7 +39,17 @@ final class ApplicationPublicRouteProviderFixture implements ModulePublicRoutePr
     ): array {
         self::$prefixReads++;
 
-        return ['/noticias', '/showroom'];
+        return ['/noticias', '/showroom', '/neutral-sitemap.xml'];
+    }
+
+    public static function preBootstrapPublicRoutePaths(
+        ModuleRuntimeContext $context
+    ): array {
+        return [
+            '/neutral-sitemap.xml',
+            '/showroom/media',
+            '/orphan-sitemap.xml',
+        ];
     }
 
     public function registerPublicRoutes(
@@ -58,7 +71,9 @@ final class ApplicationPublicRouteProviderFixture implements ModulePublicRoutePr
 
                     return new Response(
                         200,
-                        'late-public',
+                        $request->path() === '/neutral-sitemap.xml'
+                            ? 'pre-bootstrap-public'
+                            : 'late-public',
                         ['X-Late-Public' => 'yes']
                     );
                 }
@@ -77,7 +92,7 @@ final class ApplicationPublicRouteProviderFixture implements ModulePublicRoutePr
     /** @return list<string> */
     private static function publicPrefixesWithoutProbe(): array
     {
-        return ['/noticias', '/showroom'];
+        return ['/noticias', '/showroom', '/neutral-sitemap.xml'];
     }
 }
 
@@ -103,6 +118,7 @@ final class ApplicationPublicModuleRouteTest extends TestCase
             $this->fixtureRoot . '/App/config/languages/404',
             $this->fixtureRoot . '/App/config/routes',
             $this->fixtureRoot . '/App/views',
+            $this->fixtureRoot . '/public',
             $this->fixtureRoot . '/sessions',
             $this->coreRoot . '/modules/blog',
         ]);
@@ -198,6 +214,131 @@ final class ApplicationPublicModuleRouteTest extends TestCase
 
         self::assertSame('static-get', $this->runApplication('GET', '/noticias/fija'));
         self::assertSame(0, ApplicationPublicRouteProviderFixture::$prefixReads);
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testExactStaticGetWinsOverPreBootstrapPublicRoute(): void
+    {
+        $view = $this->fixtureRoot . '/App/views/static-sitemap.php';
+        $this->filesystem->dumpFile($view, "<?php echo 'static-sitemap';\n");
+        $this->writeGetRoutes([
+            '/neutral-sitemap.xml' => ['view' => $view],
+        ]);
+
+        self::assertSame(
+            'static-sitemap',
+            $this->runApplication('GET', '/neutral-sitemap.xml')
+        );
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$prefixReads);
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testPublicGetBeatsMultilangRedirectAndSession(): void
+    {
+        $configMarker = $this->fixtureRoot . '/legacy-config.marker';
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/config.php',
+            "<?php file_put_contents("
+                . var_export($configMarker, true)
+                . ", 'loaded');\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/langs.php',
+            "<?php\nreturn ['es', 'en'];\n"
+        );
+        $_ENV['MULTILANG'] = '1';
+        $_ENV['ES_SIMPLIFICADO'] = '1';
+
+        self::assertSame(
+            'pre-bootstrap-public',
+            $this->runApplication('GET', '/neutral-sitemap.xml')
+        );
+        self::assertSame(200, http_response_code());
+        self::assertFileDoesNotExist($configMarker);
+        self::assertSame(PHP_SESSION_NONE, session_status());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testPreBootstrapHeadKeepsStatusWithoutBodyOrSession(): void
+    {
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/langs.php',
+            "<?php\nreturn ['es', 'en'];\n"
+        );
+        $_ENV['MULTILANG'] = '1';
+        $_ENV['ES_SIMPLIFICADO'] = '1';
+
+        self::assertSame(
+            '',
+            $this->runApplication('HEAD', '/neutral-sitemap.xml')
+        );
+        self::assertSame(200, http_response_code());
+        self::assertSame(PHP_SESSION_NONE, session_status());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testPublicFileBlocksThePreBootstrapClaim(): void
+    {
+        $configMarker = $this->fixtureRoot . '/legacy-config.marker';
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/config.php',
+            "<?php file_put_contents("
+                . var_export($configMarker, true)
+                . ", 'loaded');\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/public/neutral-sitemap.xml',
+            '<project-sitemap/>'
+        );
+
+        self::assertSame(
+            'legacy-404',
+            $this->runApplication('GET', '/neutral-sitemap.xml')
+        );
+        self::assertFileExists($configMarker);
+        self::assertSame(PHP_SESSION_ACTIVE, session_status());
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testIncompleteGetCatalogueFallsBackToLatePublicRouting(): void
+    {
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/routes/get.php',
+            <<<'PHP'
+<?php
+$dynamic = '/project-owned';
+return ['es' => [$dynamic => ['view' => 'dynamic.php']]];
+PHP
+        );
+
+        self::assertSame(
+            'pre-bootstrap-public',
+            $this->runApplication('GET', '/neutral-sitemap.xml')
+        );
+        self::assertSame(PHP_SESSION_ACTIVE, session_status());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testPreBootstrapClaimMustAlsoBelongToPublicPrefixes(): void
+    {
+        self::assertSame(
+            'Service unavailable',
+            $this->runApplication('GET', '/orphan-sitemap.xml')
+        );
+        self::assertSame(503, http_response_code());
+        self::assertSame(PHP_SESSION_NONE, session_status());
         self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
     }
 

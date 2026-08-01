@@ -76,6 +76,10 @@ PHP
             '/en/news',
             '/news-sitemap.xml',
         ], BlogPublicRouteProvider::publicRoutePrefixes($context));
+        self::assertSame(
+            ['/news-sitemap.xml'],
+            BlogPublicRouteProvider::preBootstrapPublicRoutePaths($context)
+        );
     }
 
     public function testBaseAndMalformedDescendantsFallThroughWithoutPdo(): void
@@ -109,6 +113,9 @@ PHP
         );
 
         self::assertSame([], BlogPublicRouteProvider::publicRoutePrefixes(
+            new ModuleRuntimeContext($this->root)
+        ));
+        self::assertSame([], BlogPublicRouteProvider::preBootstrapPublicRoutePaths(
             new ModuleRuntimeContext($this->root)
         ));
     }

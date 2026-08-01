@@ -249,10 +249,14 @@ composer liquidstack:migrate --dry-run
 - Mantener el cuerpo como texto plano validado. No introducir HTML libre,
   uploads, bloques, categorías, traducción IA o programación dentro del MVP
   0001 por conveniencia local.
-- Resolver Blog público únicamente después de que fallen las rutas estáticas
-  del proyecto. Un borrador o slug desconocido continúa al 404 legacy; un
-  runtime reconocido pero no operativo responde `503`, y un método de escritura
-  reconocido responde `405` sin abrir PDO.
+- Resolver las URLs de artículo Blog únicamente después de que fallen las rutas
+  estáticas del proyecto. Un borrador o slug desconocido continúa al 404 legacy;
+  un runtime reconocido pero no operativo responde `503`, y un método de
+  escritura reconocido responde `405` sin abrir PDO.
+- Declarar el sitemap como endpoint público exacto pre-bootstrap para que no lo
+  intercepte el resolver multidioma ni cree `PHPSESSID`. Antes de despacharlo,
+  preservar una ruta GET exacta, un fichero o symlink público y una subruta de
+  showroom project-owned; ante un catálogo GET incompleto, continuar por legacy.
 - Servir el sitemap desde la DB de producción. Nunca reescribir
   `public/sitemap.xml`, `robots.txt`, Git o el deploy al publicar. Consultar como
   máximo 50.001 filas para admitir 50.000 y fallar cerrado ante overflow, sin

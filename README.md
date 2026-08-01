@@ -364,13 +364,16 @@ return [
 ```
 
 Los idiomas deben coincidir exactamente con `App/config/langs.php`. Las rutas
-estáticas del proyecto conservan prioridad; Blog resuelve sus URLs DB-backed
-solo después de que el router existente falle. El path base —por ejemplo
-`/noticias`— puede seguir perteneciendo a una vista estática del proyecto,
-mientras los descendientes publicados se sirven como
-`/noticias/{slug}`. El endpoint de sitemap consulta producción en cada
-petición, admite hasta 50.000 URLs y nunca modifica `public/sitemap.xml` ni
-requiere un deploy al publicar.
+estáticas del proyecto conservan prioridad; Blog resuelve las URLs de artículo
+DB-backed solo después de que el router existente falle. El path base —por
+ejemplo `/noticias`— puede seguir perteneciendo a una vista estática del
+proyecto, mientras los descendientes publicados se sirven como
+`/noticias/{slug}`. El endpoint exacto de sitemap es la excepción de
+infraestructura: se resuelve antes del router multidioma y de la sesión legacy,
+una vez descartadas rutas, ficheros y subrutas de showroom project-owned. Así
+consulta producción en cada petición, admite hasta 50.000 URLs, no crea
+`PHPSESSID` y nunca modifica `public/sitemap.xml` ni requiere un deploy al
+publicar.
 
 El ejemplo usa el perfil dedicado y presupone que WebAdmin declara también
 `connection => liquidstack`. Si se omite la configuración de DB en ambos

@@ -3,6 +3,13 @@
 Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://semver.org/lang/es/) a partir de la 1.0.0. Documenta cada release en esta cronología y añade instrucciones de actualización visibles para los proyectos cliente.
 
 ## [Unreleased]
+### Corregido
+- El sitemap dinámico de Blog se declara ahora como endpoint público exacto
+  pre-bootstrap: llega al módulo antes de la redirección multidioma y no crea
+  `PHPSESSID`. Las rutas GET, los ficheros y las subrutas de showroom propiedad
+  del proyecto conservan prioridad; catálogos incompletos caen al flujo legacy
+  y los artículos continúan usando la resolución pública tardía.
+
 ### Añadido
 - Vista previa privada y no cacheable de la última versión guardada de cada
   variante Blog. Usa `blog.articles.view`, admite borradores incompletos y no

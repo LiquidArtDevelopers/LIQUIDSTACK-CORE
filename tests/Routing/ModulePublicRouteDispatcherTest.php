@@ -5,13 +5,16 @@ declare(strict_types=1);
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\Modules\ModulePublicRouteProviderInterface;
+use App\Core\Modules\ModulePreBootstrapPublicRouteProviderInterface;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Routing\ModulePublicRouteCollection;
 use App\Core\Routing\ModulePublicRouteDispatcher;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
-final class LatePublicRouteProviderFixture implements ModulePublicRouteProviderInterface
+final class LatePublicRouteProviderFixture implements
+    ModulePublicRouteProviderInterface,
+    ModulePreBootstrapPublicRouteProviderInterface
 {
     public static int $prefixReads = 0;
     public static int $constructions = 0;
@@ -33,7 +36,13 @@ final class LatePublicRouteProviderFixture implements ModulePublicRouteProviderI
     ): array {
         self::$prefixReads++;
 
-        return ['/noticias'];
+        return ['/noticias', '/neutral-sitemap.xml'];
+    }
+
+    public static function preBootstrapPublicRoutePaths(
+        ModuleRuntimeContext $context
+    ): array {
+        return ['/neutral-sitemap.xml'];
     }
 
     public function registerPublicRoutes(
@@ -61,6 +70,14 @@ final class LatePublicRouteProviderFixture implements ModulePublicRouteProviderI
                 );
             }
         );
+        $routes->addGet(
+            self::moduleId(),
+            '/neutral-sitemap.xml',
+            static fn (Request $request): Response => new Response(
+                200,
+                'public-sitemap'
+            )
+        );
     }
 
     public static function reset(): void
@@ -69,6 +86,34 @@ final class LatePublicRouteProviderFixture implements ModulePublicRouteProviderI
         self::$constructions = 0;
         self::$registrations = 0;
         self::$handlerCalls = 0;
+    }
+}
+
+final class DuplicatePublicRouteProviderFixture implements
+    ModulePublicRouteProviderInterface,
+    ModulePreBootstrapPublicRouteProviderInterface
+{
+    public static function moduleId(): string
+    {
+        return 'blog';
+    }
+
+    public static function publicRoutePrefixes(
+        ModuleRuntimeContext $context
+    ): array {
+        return ['/noticias', '/neutral-sitemap.xml'];
+    }
+
+    public static function preBootstrapPublicRoutePaths(
+        ModuleRuntimeContext $context
+    ): array {
+        return ['/neutral-sitemap.xml'];
+    }
+
+    public function registerPublicRoutes(
+        ModulePublicRouteCollection $routes,
+        ModuleRuntimeContext $context
+    ): void {
     }
 }
 
@@ -209,16 +254,91 @@ final class ModulePublicRouteDispatcherTest extends TestCase
         );
     }
 
+    public function testDuplicateClaimsOnlyFailInsideTheirAffectedPaths(): void
+    {
+        $this->writeProviderManifest([
+            LatePublicRouteProviderFixture::class,
+            DuplicatePublicRouteProviderFixture::class,
+        ]);
+
+        $unrelated = $this->dispatcher()->dispatchBeforeLegacy(
+            $this->request('GET', '/contacto')
+        );
+        self::assertNull($unrelated);
+        self::assertNull($this->dispatch('GET', '/contacto'));
+
+        $earlyConflict = $this->dispatcher()->dispatchBeforeLegacy(
+            $this->request('GET', '/neutral-sitemap.xml')
+        );
+        self::assertInstanceOf(Response::class, $earlyConflict);
+        self::assertSame(503, $earlyConflict->status());
+
+        $lateConflict = $this->dispatch('GET', '/noticias/conflicto');
+        self::assertInstanceOf(Response::class, $lateConflict);
+        self::assertSame(503, $lateConflict->status());
+    }
+
+    public function testProjectRouteWinsOverDuplicatePreBootstrapClaims(): void
+    {
+        $this->writeProviderManifest([
+            LatePublicRouteProviderFixture::class,
+            DuplicatePublicRouteProviderFixture::class,
+        ]);
+        $this->filesystem->mkdir(
+            $this->projectRoot . '/App/config/routes'
+        );
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/config/routes/get.php',
+            "<?php\nreturn ['es' => ["
+                . "'/neutral-sitemap.xml' => ['view' => 'static.php']"
+                . "]];\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/config/routes/post.php',
+            "<?php\nreturn [];\n"
+        );
+
+        self::assertNull($this->dispatcher()->dispatchBeforeLegacy(
+            $this->request('GET', '/neutral-sitemap.xml')
+        ));
+    }
+
     private function dispatch(string $method, string $path): ?Response
+    {
+        return $this->dispatcher()->dispatch($this->request($method, $path));
+    }
+
+    private function dispatcher(): ModulePublicRouteDispatcher
     {
         return ModulePublicRouteDispatcher::forProject(
             $this->projectRoot,
             [],
             $this->fixtureRoot
-        )->dispatch(Request::fromServer([
+        );
+    }
+
+    private function request(string $method, string $path): Request
+    {
+        return Request::fromServer([
             'REQUEST_METHOD' => $method,
             'REQUEST_URI' => $path,
             'HTTPS' => 'on',
-        ]));
+        ]);
+    }
+
+    /** @param list<class-string<ModulePublicRouteProviderInterface>> $providers */
+    private function writeProviderManifest(array $providers): void
+    {
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/modules/blog/module.json',
+            json_encode([
+                'schema' => 1,
+                'id' => 'blog',
+                'package' => 'liquidstack/blog',
+                'requires' => [],
+                'providers' => ['routes' => $providers],
+                'project_files' => [],
+            ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . PHP_EOL
+        );
     }
 }

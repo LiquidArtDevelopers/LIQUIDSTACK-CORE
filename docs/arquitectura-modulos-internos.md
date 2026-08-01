@@ -341,10 +341,12 @@ autorización dentro de cada transacción.
 
 Las rutas públicas estáticas del proyecto tienen prioridad sobre los slugs
 dinámicos del Blog. El dispatcher público modular solo se consulta después de
-que el router legacy haya agotado su ruta exacta. El sitemap de Blog es un
-endpoint PHP alimentado por la DB de producción; publicar o retirar un artículo
-actualiza su respuesta sin modificar el repositorio ni requerir deploy. El
-contrato completo del primer corte está en [Liquid Blog](liquid-blog.md).
+que el router legacy haya agotado su ruta exacta. El sitemap de Blog es una
+excepción declarativa y acotada: su endpoint exacto se puede resolver antes del
+router multidioma y de la sesión, tras comprobar que no pertenece al proyecto.
+Se alimenta de la DB de producción; publicar o retirar un artículo actualiza su
+respuesta sin modificar el repositorio ni requerir deploy. El contrato completo
+del primer corte está en [Liquid Blog](liquid-blog.md).
 
 ## Estado de implementación
 
@@ -358,6 +360,7 @@ WebAdmin.
 Blog 0001 está implementado sobre esa base: migraciones propias y cross-scope,
 capacidades delegables, artículos con variantes localizadas independientes,
 borrador/publicación, bloqueo optimista, UI privada, auditoría atómica,
-resolución pública tardía y sitemap DB-backed. Siguen fuera de este corte la
+artículos con resolución pública tardía y sitemap DB-backed pre-bootstrap.
+Siguen fuera de este corte la
 biblioteca de medios, el editor enriquecido o por bloques, categorías,
 búsqueda, traducción IA, plantillas múltiples y el editor de páginas.

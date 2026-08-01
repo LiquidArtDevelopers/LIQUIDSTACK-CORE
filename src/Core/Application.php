@@ -51,6 +51,20 @@ class Application
             return;
         }
 
+        $publicRouteDispatcher = ModulePublicRouteDispatcher::forProject(
+            $this->projectRoot,
+            $environment,
+            $this->coreRoot,
+            $environmentResult->isUsable()
+        );
+        $moduleResponse = $publicRouteDispatcher->dispatchBeforeLegacy(
+            $request
+        );
+        if ($moduleResponse !== null) {
+            $moduleResponse->emit();
+            return;
+        }
+
         /*
          * Los módulos operativos tienen un bootstrap propio. Resolverlos antes
          * de incluir configuración legacy evita heredar sesiones, cookies,
@@ -62,16 +76,14 @@ class Application
         if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $this->handlePost(
                 $request,
-                $environment,
-                $environmentResult->isUsable()
+                $publicRouteDispatcher
             );
             return;
         }
 
         $this->handleGet(
             $request,
-            $environment,
-            $environmentResult->isUsable()
+            $publicRouteDispatcher
         );
     }
 
@@ -106,13 +118,9 @@ class Application
         }
     }
 
-    /**
-     * @param array<string, mixed> $environment
-     */
     private function handlePost(
         Request $request,
-        array $environment,
-        bool $environmentUsable
+        ModulePublicRouteDispatcher $publicRouteDispatcher
     ): void
     {
         $url            = urldecode($_SERVER['REQUEST_URI'] ?? '/');
@@ -124,12 +132,7 @@ class Application
             return;
         }
 
-        $moduleResponse = ModulePublicRouteDispatcher::forProject(
-            $this->projectRoot,
-            $environment,
-            $this->coreRoot,
-            $environmentUsable
-        )->dispatch($request);
+        $moduleResponse = $publicRouteDispatcher->dispatch($request);
         if ($moduleResponse !== null) {
             $moduleResponse->emit();
             return;
@@ -144,13 +147,9 @@ class Application
         echo $message_not_found;
     }
 
-    /**
-     * @param array<string, mixed> $environment
-     */
     private function handleGet(
         Request $request,
-        array $environment,
-        bool $environmentUsable
+        ModulePublicRouteDispatcher $publicRouteDispatcher
     ): void
     {
         $context = UrlResolver::resolve($_SERVER, $_COOKIE, $_ENV);
@@ -192,12 +191,7 @@ class Application
             return;
         }
 
-        $moduleResponse = ModulePublicRouteDispatcher::forProject(
-            $this->projectRoot,
-            $environment,
-            $this->coreRoot,
-            $environmentUsable
-        )->dispatch($request);
+        $moduleResponse = $publicRouteDispatcher->dispatch($request);
         if ($moduleResponse !== null) {
             $moduleResponse->emit();
             return;
