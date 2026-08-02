@@ -4,8 +4,6 @@ namespace App\Core\Support {
 
 use App\Core\Routing\ShowroomCategoryRoute;
 use DateTime;
-use DateTimeImmutable;
-use DateTimeZone;
 use Exception;
 use Fiber;
 use Imagick;
@@ -672,9 +670,6 @@ function generarSitemapMultilingue(array $rutas, string $outputDir): void
         return;
     }
 
-    $hoy = (new DateTimeImmutable('now', new DateTimeZone('UTC')))
-        ->format('Y-m-d\TH:i:sP'); // 2025-07-17T09:42:00+00:00
-
     $xml   = [];
     $xml[] = '<?xml version="1.0" encoding="UTF-8"?>';
     $xml[] = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
@@ -734,7 +729,6 @@ function generarSitemapMultilingue(array $rutas, string $outputDir): void
 
             $xml[] = '  <url>';
             $xml[] = '    <loc>' . htmlspecialchars($canonicalHref, ENT_QUOTES | ENT_XML1) . '</loc>';
-            $xml[] = '    <lastmod>' . $hoy . '</lastmod>';
             $xml[] = '    <changefreq>monthly</changefreq>';
             $xml[] = '    <priority>' . $priority . '</priority>';
 

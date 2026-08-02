@@ -4,6 +4,10 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Corregido
+- El sitemap estático deja de asignar la hora de cada build como `lastmod` a
+  todas las rutas. Como el stack no conoce una fecha de modificación real para
+  ese contenido project-owned, omite el elemento opcional y produce XML
+  idempotente; el sitemap dinámico del Blog mantiene las fechas reales de DB.
 - Las respuestas `GET`/`HEAD` de namespaces públicos modulares ya no abren la
   sesión PHP legacy ni heredan `PHPSESSID`/cabeceras de caché de sesión. El
   dispatcher realiza primero un claim de prefijo barato, sin construir el

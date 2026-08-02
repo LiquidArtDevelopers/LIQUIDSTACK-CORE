@@ -6,6 +6,7 @@ use App\Core\Support\Paths;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 use function App\Core\Support\getMatchRouteByLang;
+use function App\Core\Support\generarSitemapMultilingue;
 use function App\Core\Support\homePath;
 use function App\Core\Support\resolve_localized_href;
 use function App\Core\Support\schemaWebPageAccessibility;
@@ -74,6 +75,50 @@ final class HelpersTest extends TestCase
                 'sitemap' => true,
             ]
         ));
+    }
+
+    public function testStaticSitemapIsIdempotentAndDoesNotInventLastmod(): void
+    {
+        $filesystem = new Filesystem();
+        $fixtureRoot = sys_get_temp_dir()
+            . DIRECTORY_SEPARATOR
+            . 'liquidstack-static-sitemap-'
+            . bin2hex(random_bytes(8));
+        $_ENV['RAIZ'] = 'https://example.test';
+        $_ENV['LANG_DEFAULT'] = 'es';
+        $routes = [
+            'es' => [
+                '/es/noticias' => ['content' => 'noticias'],
+            ],
+            'en' => [
+                '/en/news' => ['content' => 'noticias'],
+            ],
+        ];
+
+        try {
+            $filesystem->mkdir($fixtureRoot);
+            generarSitemapMultilingue($routes, $fixtureRoot);
+            $first = (string) file_get_contents(
+                $fixtureRoot . '/sitemap.xml'
+            );
+            generarSitemapMultilingue($routes, $fixtureRoot);
+            $second = (string) file_get_contents(
+                $fixtureRoot . '/sitemap.xml'
+            );
+
+            self::assertSame($first, $second);
+            self::assertStringNotContainsString('<lastmod>', $first);
+            self::assertStringContainsString(
+                '<loc>https://example.test/es/noticias</loc>',
+                $first
+            );
+            self::assertStringContainsString(
+                'hreflang="en" href="https://example.test/en/news"',
+                $first
+            );
+        } finally {
+            $filesystem->remove($fixtureRoot);
+        }
     }
 
     public function testWebPageSchemaDoesNotClaimUnauditedAccessibility(): void
