@@ -462,6 +462,26 @@ JS;
         );
     }
 
+    public function testTranslationRuntimeCanLocalizeAriaLabelsWithoutReplacingContent(): void
+    {
+        $source = (string) file_get_contents(
+            dirname(__DIR__, 2) . '/resources/js/_traducciones.js'
+        );
+
+        self::assertSame(4, substr_count(
+            $source,
+            'objGroupJson[dataLangValue]["ariaLabel"]'
+        ));
+        self::assertStringContainsString(
+            'datalang.setAttribute("aria-label", entry.ariaLabel);',
+            $source
+        );
+        self::assertStringNotContainsString(
+            'datalang.innerHTML = entry.ariaLabel',
+            $source
+        );
+    }
+
     public function testTranslationRuntimePreservesSegmentedShowroomRoute(): void
     {
         $root = dirname(__DIR__, 2);

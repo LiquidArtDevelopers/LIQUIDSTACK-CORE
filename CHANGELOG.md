@@ -66,6 +66,9 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   y los artículos continúan usando la resolución pública tardía.
 
 ### Añadido
+- El runtime de traducción reconoce el atributo de catálogo `ariaLabel` y lo
+  aplica como `aria-label` sin reemplazar el contenido interior del elemento;
+  permite localizar controles iconográficos conservando su estructura.
 - Punto de extensión opcional `public_article_view` para integrar el detalle
   público Blog con un shell project-owned confinado a `App/views`. La vista
   recibe un `BlogPublicArticleViewModel` tipado con SEO, alternates publicados,

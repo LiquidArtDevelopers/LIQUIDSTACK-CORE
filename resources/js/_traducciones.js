@@ -236,6 +236,12 @@ export default class traduccionClass {
           if (objGroupJson[dataLangValue]["title"]) {
             datalang.title = objGroupJson[dataLangValue]["title"];
           }
+          if (objGroupJson[dataLangValue]["ariaLabel"]) {
+            datalang.setAttribute(
+              "aria-label",
+              objGroupJson[dataLangValue]["ariaLabel"]
+            );
+          }
           if (objGroupJson[dataLangValue]["text"]) {
             datalang.innerHTML = objGroupJson[dataLangValue]["text"];
           }
@@ -296,6 +302,12 @@ export default class traduccionClass {
           if (objGroupJson[dataLangValue]["title"]) {
             datalang.title = objGroupJson[dataLangValue]["title"];
           }
+          if (objGroupJson[dataLangValue]["ariaLabel"]) {
+            datalang.setAttribute(
+              "aria-label",
+              objGroupJson[dataLangValue]["ariaLabel"]
+            );
+          }
           if (objGroupJson[dataLangValue]["text"]) {
             datalang.innerHTML = objGroupJson[dataLangValue]["text"];
           }
@@ -336,6 +348,9 @@ export default class traduccionClass {
       if (entry) {
         if (entry.alt) datalang.alt = entry.alt;
         if (entry.title) datalang.title = entry.title;
+        if (entry.ariaLabel) {
+          datalang.setAttribute("aria-label", entry.ariaLabel);
+        }
         if (entry.text) datalang.innerHTML = entry.text;
         if (Object.keys(entry).includes("href")) {
           datalang.href = this.resolveLocalizedHref(
