@@ -253,6 +253,13 @@ permitida, no una recuperación integral después de un DDL MySQL parcialmente
 confirmado; ese estado requiere inspección, copia recuperable y resolución
 manual antes de reintentar.
 
+Un `migration.postcondition_failed` en una ampliación posterior requiere la
+misma cautela aunque el siguiente dry-run la siga mostrando como `pending`:
+MySQL/MariaDB puede haber confirmado su DDL. Solo se repite después de comparar
+el estado real con el contrato y determinar que la corrección pertenece al
+verificador o al runtime; si el esquema no es exacto, se restaura o se prepara
+una recuperación explícita.
+
 El entorno operativo de WebAdmin necesita una clave base64url canónica de 32
 bytes bajo `LIQUIDSTACK_WEBADMIN_SECURITY_KEY`. Puede generarse una vez con:
 

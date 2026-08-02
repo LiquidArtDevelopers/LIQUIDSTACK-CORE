@@ -14,6 +14,45 @@ use App\Core\Modules\WebAdmin\WebAdminMediaMigrationPostconditionVerifier;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
+final class WebAdminMediaForeignKeyStatement extends PDOStatement
+{
+    /** @param list<array<string, mixed>> $rows */
+    public function __construct(private readonly array $rows)
+    {
+    }
+
+    public function execute(?array $params = null): bool
+    {
+        return true;
+    }
+
+    public function fetchAll(
+        int $mode = PDO::FETCH_DEFAULT,
+        mixed ...$args
+    ): array {
+        return $this->rows;
+    }
+}
+
+final class WebAdminMediaForeignKeyPdo extends PDO
+{
+    public ?string $preparedSql = null;
+
+    /** @param list<array<string, mixed>> $rows */
+    public function __construct(private readonly array $rows)
+    {
+    }
+
+    public function prepare(
+        string $query,
+        array $options = []
+    ): PDOStatement|false {
+        $this->preparedSql = $query;
+
+        return new WebAdminMediaForeignKeyStatement($this->rows);
+    }
+}
+
 final class WebAdminMediaMigrationTest extends TestCase
 {
     private string $projectRoot;
@@ -67,6 +106,139 @@ final class WebAdminMediaMigrationTest extends TestCase
         self::assertContains(
             'webadmin.media.seeds_invalid',
             $verifier->issueCodes($pdo, $this->scope())
+        );
+    }
+
+    public function testMySqlAndMariaDbCheckClauseCanonicalizationIsAccepted(): void
+    {
+        $scope = $this->scope();
+        $rows = [
+            [$scope->tableName('c_ma_bytes'), '`source_bytes` between 1 and 12582912'],
+            [$scope->tableName('c_ma_dims'), '`source_width` between 1 and 12000 and `source_height` between 1 and 12000 and `source_width` * `source_height` <= 40000000'],
+            [$scope->tableName('c_ma_hash'), 'char_length(`source_sha256`) = 64'],
+            [$scope->tableName('c_ma_label'), 'char_length(`label`) between 1 and 120'],
+            [$scope->tableName('c_ma_mime'), "`source_mime` in ('image/jpeg','image/png','image/webp')"],
+            [$scope->tableName('c_ma_public'), 'char_length(`public_id`) = 36'],
+            [$scope->tableName('c_mv_bytes'), '`bytes` > 0'],
+            [$scope->tableName('c_mv_dims'), '`width` between 1 and 2560 and `height` between 1 and 2560'],
+            [$scope->tableName('c_mv_hash'), 'char_length(`sha256`) = 64'],
+            [$scope->tableName('c_mv_mime'), "`mime` = 'image/avif'"],
+            [$scope->tableName('c_mv_storage'), 'char_length(`storage_key`) between 1 and 255'],
+        ];
+        $metadata = array_map(
+            static fn (array $row): array => [
+                'CONSTRAINT_NAME' => $row[0],
+                'CHECK_CLAUSE' => $row[1],
+            ],
+            $rows
+        );
+        $method = new ReflectionMethod(
+            WebAdminMediaMigrationPostconditionVerifier::class,
+            'validateMySqlCheckRows'
+        );
+
+        self::assertTrue($method->invoke(
+            $this->mediaVerifier(),
+            $scope,
+            $metadata
+        ));
+
+        $mySqlMetadata = $metadata;
+        $mySqlMetadata[4]['CHECK_CLAUSE'] = str_replace(
+            "'image/",
+            "_utf8mb4'image/",
+            (string) $mySqlMetadata[4]['CHECK_CLAUSE']
+        );
+        $mySqlMetadata[9]['CHECK_CLAUSE'] = str_replace(
+            "'image/",
+            "_utf8mb4'image/",
+            (string) $mySqlMetadata[9]['CHECK_CLAUSE']
+        );
+        self::assertTrue($method->invoke(
+            $this->mediaVerifier(),
+            $scope,
+            $mySqlMetadata
+        ));
+
+        $metadata[1]['CHECK_CLAUSE'] = str_replace(
+            '40000000',
+            '40000001',
+            (string) $metadata[1]['CHECK_CLAUSE']
+        );
+        self::assertFalse($method->invoke(
+            $this->mediaVerifier(),
+            $scope,
+            $metadata
+        ));
+    }
+
+    public function testMySqlDefaultGeneratedExtraIsTimestampOnly(): void
+    {
+        $method = new ReflectionMethod(
+            WebAdminMediaMigrationPostconditionVerifier::class,
+            'validMySqlExtra'
+        );
+        $verifier = $this->mediaVerifier();
+
+        self::assertTrue($method->invoke(
+            $verifier,
+            'created_at',
+            'DEFAULT_GENERATED',
+            ''
+        ));
+        self::assertTrue($method->invoke(
+            $verifier,
+            'id',
+            'auto_increment',
+            'auto_increment'
+        ));
+        self::assertFalse($method->invoke(
+            $verifier,
+            'label',
+            'DEFAULT_GENERATED',
+            ''
+        ));
+        self::assertFalse($method->invoke(
+            $verifier,
+            'created_at',
+            'DEFAULT_GENERATED on update CURRENT_TIMESTAMP',
+            ''
+        ));
+    }
+
+    public function testMySqlForeignKeyMetadataQueryQualifiesJoinedColumns(): void
+    {
+        $scope = $this->scope();
+        $pdo = new WebAdminMediaForeignKeyPdo([
+            [
+                'TABLE_NAME' => $scope->tableName('media_assets'),
+                'COLUMN_NAME' => 'created_by_user_id',
+                'REFERENCED_TABLE_NAME' => $scope->tableName('users'),
+                'DELETE_RULE' => 'RESTRICT',
+            ],
+            [
+                'TABLE_NAME' => $scope->tableName('media_variants'),
+                'COLUMN_NAME' => 'asset_id',
+                'REFERENCED_TABLE_NAME' => $scope->tableName('media_assets'),
+                'DELETE_RULE' => 'CASCADE',
+            ],
+        ]);
+        $method = new ReflectionMethod(
+            WebAdminMediaMigrationPostconditionVerifier::class,
+            'foreignKeysAreValid'
+        );
+
+        self::assertTrue($method->invoke(
+            $this->mediaVerifier(),
+            $pdo,
+            $scope,
+            'mysql'
+        ));
+        self::assertNotNull($pdo->preparedSql);
+        self::assertStringContainsString(
+            'SELECT k.TABLE_NAME, k.COLUMN_NAME, '
+            . 'k.REFERENCED_TABLE_NAME, r.DELETE_RULE',
+            $pdo->preparedSql
         );
     }
 

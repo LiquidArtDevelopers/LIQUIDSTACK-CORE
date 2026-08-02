@@ -223,8 +223,14 @@ El contrato SQL ejecutable es deliberadamente limitado en este corte:
   manualmente antes de repetir `--dry-run` y `--apply`.
 - `retrySafe` limita cada sentencia MySQL a una forma sintácticamente
   idempotente; no promete rollback ni reanudación integral después de que un
-  DDL no transaccional haya quedado confirmado. Precisamente por eso cualquier
-  resto dentro del namespace vuelve a bloquear hasta su recuperación manual.
+  DDL no transaccional haya quedado confirmado. La precondición de una
+  migración inicial sí bloqueará restos dentro de su namespace, pero una
+  migración posterior sin precondición puede continuar apareciendo como
+  pendiente. Tras `migration.postcondition_failed` no se reintenta solo porque
+  el plan diga `pending`: se inspeccionan esquema, semillas y datos. Únicamente
+  si coinciden exactamente con el contrato y el fallo está en el verificador o
+  el runtime se publica su corrección y se repite el lote; en cualquier otro
+  estado hace falta restaurar o definir una recuperación explícita.
 
 ### Configuración y readiness de WebAdmin
 

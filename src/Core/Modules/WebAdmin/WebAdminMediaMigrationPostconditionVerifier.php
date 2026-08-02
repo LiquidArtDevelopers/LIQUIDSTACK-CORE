@@ -225,8 +225,9 @@ final class WebAdminMediaMigrationPostconditionVerifier implements
         }
 
         $query = $pdo->prepare(
-            'SELECT TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, '
-            . 'DELETE_RULE FROM information_schema.KEY_COLUMN_USAGE k '
+            'SELECT k.TABLE_NAME, k.COLUMN_NAME, '
+            . 'k.REFERENCED_TABLE_NAME, r.DELETE_RULE '
+            . 'FROM information_schema.KEY_COLUMN_USAGE k '
             . 'JOIN information_schema.REFERENTIAL_CONSTRAINTS r '
             . 'ON r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA '
             . 'AND r.TABLE_NAME = k.TABLE_NAME '
@@ -432,7 +433,11 @@ final class WebAdminMediaMigrationPostconditionVerifier implements
                     : strtolower((string) ($row['collation_name'] ?? '')) !== $collation)
                 || ($name === 'id'
                     && strtoupper((string) ($row['column_key'] ?? '')) !== 'PRI')
-                || strtolower((string) ($row['extra'] ?? '')) !== $extra
+                || !$this->validMySqlExtra(
+                    $name,
+                    (string) ($row['extra'] ?? ''),
+                    $extra
+                )
             ) {
                 return false;
             }
@@ -444,6 +449,35 @@ final class WebAdminMediaMigrationPostconditionVerifier implements
                     return false;
                 }
             } elseif ($default !== null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function validMySqlExtra(
+        string $column,
+        string $actual,
+        string $expected
+    ): bool {
+        $normalized = strtolower(trim($actual));
+        $tokens = $normalized === ''
+            ? []
+            : (preg_split('/\s+/', $normalized) ?: []);
+        $expectsAutoIncrement = $expected === 'auto_increment';
+        if (
+            in_array('auto_increment', $tokens, true)
+                !== $expectsAutoIncrement
+        ) {
+            return false;
+        }
+        $allowed = $expectsAutoIncrement ? ['auto_increment'] : [];
+        if ($column === 'created_at') {
+            $allowed[] = 'default_generated';
+        }
+        foreach ($tokens as $token) {
+            if (!in_array($token, $allowed, true)) {
                 return false;
             }
         }
@@ -466,31 +500,68 @@ final class WebAdminMediaMigrationPostconditionVerifier implements
             'assets' => $scope->tableName('media_assets'),
             'variants' => $scope->tableName('media_variants'),
         ]);
+        return $this->validateMySqlCheckRows(
+            $scope,
+            $query->fetchAll(PDO::FETCH_ASSOC)
+        );
+    }
+
+    /** @param list<array<string, mixed>> $rows */
+    private function validateMySqlCheckRows(
+        MigrationScope $scope,
+        array $rows
+    ): bool {
         $actual = [];
-        foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        foreach ($rows as $row) {
             $actual[(string) ($row['CONSTRAINT_NAME'] ?? '')] =
                 $this->normalizeSql((string) ($row['CHECK_CLAUSE'] ?? ''));
         }
         $expected = [
-            $scope->tableName('c_ma_public') => 'char_length(public_id)=36',
-            $scope->tableName('c_ma_label') => 'char_length(label)between1and120',
-            $scope->tableName('c_ma_mime') => "source_mimein('image/jpeg','image/png','image/webp')",
-            $scope->tableName('c_ma_dims') => 'source_widthbetween1and12000andsource_heightbetween1and12000and(source_width*source_height)<=40000000',
-            $scope->tableName('c_ma_bytes') => 'source_bytesbetween1and12582912',
-            $scope->tableName('c_ma_hash') => 'char_length(source_sha256)=64',
-            $scope->tableName('c_mv_dims') => 'widthbetween1and2560andheightbetween1and2560',
-            $scope->tableName('c_mv_bytes') => 'bytes>0',
-            $scope->tableName('c_mv_hash') => 'char_length(sha256)=64',
-            $scope->tableName('c_mv_mime') => "mime='image/avif'",
-            $scope->tableName('c_mv_storage') => 'char_length(storage_key)between1and255',
+            $scope->tableName('c_ma_public') => [
+                'char_length(public_id)=36',
+            ],
+            $scope->tableName('c_ma_label') => [
+                'char_length(label)between1and120',
+            ],
+            $scope->tableName('c_ma_mime') => [
+                "source_mimein('image/jpeg','image/png','image/webp')",
+            ],
+            $scope->tableName('c_ma_dims') => [
+                'source_widthbetween1and12000andsource_heightbetween1and12000and(source_width*source_height)<=40000000',
+                'source_widthbetween1and12000andsource_heightbetween1and12000andsource_width*source_height<=40000000',
+            ],
+            $scope->tableName('c_ma_bytes') => [
+                'source_bytesbetween1and12582912',
+            ],
+            $scope->tableName('c_ma_hash') => [
+                'char_length(source_sha256)=64',
+            ],
+            $scope->tableName('c_mv_dims') => [
+                'widthbetween1and2560andheightbetween1and2560',
+            ],
+            $scope->tableName('c_mv_bytes') => ['bytes>0'],
+            $scope->tableName('c_mv_hash') => [
+                'char_length(sha256)=64',
+            ],
+            $scope->tableName('c_mv_mime') => ["mime='image/avif'"],
+            $scope->tableName('c_mv_storage') => [
+                'char_length(storage_key)between1and255',
+            ],
         ];
         if (count($actual) !== count($expected)) {
             return false;
         }
-        foreach ($expected as $name => $clause) {
-            if (!isset($actual[$name]) || !str_contains($actual[$name], $clause)) {
+        foreach ($expected as $name => $acceptedClauses) {
+            if (!isset($actual[$name])) {
                 return false;
             }
+            foreach ($acceptedClauses as $clause) {
+                if (str_contains($actual[$name], $clause)) {
+                    continue 2;
+                }
+            }
+
+            return false;
         }
 
         return true;
@@ -499,6 +570,11 @@ final class WebAdminMediaMigrationPostconditionVerifier implements
     private function normalizeSql(string $sql): string
     {
         $sql = strtolower($sql);
+        $sql = (string) preg_replace(
+            "/(?<![a-z0-9_])_[a-z0-9]+\s*(?=')/i",
+            '',
+            $sql
+        );
         $sql = str_replace(['`', '"', '[', ']'], '', $sql);
         return (string) preg_replace('/\s+/', '', $sql);
     }

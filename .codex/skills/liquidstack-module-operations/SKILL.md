@@ -152,6 +152,12 @@ composer liquidstack:migrate --dry-run
   recuperable y resolver manualmente la colisión o el DDL parcial. `retrySafe`
   solo cubre la forma idempotente de cada sentencia MySQL, no un rollback
   integral de DDL no transaccional.
+- Si aparece `migration.postcondition_failed`, no repetir `--apply` solo porque
+  el dry-run conserve la migración como `pending`. En MySQL/MariaDB el DDL puede
+  haberse confirmado antes del fallo. Comparar de forma read-only el esquema,
+  índices, claves, semillas y datos con el contrato. Solo es seguro reintentar
+  tras corregir y publicar el verificador/runtime cuando el estado real es
+  exacto; si no lo es, restaurar la copia o diseñar una recuperación explícita.
 - No copiar a informes credenciales, SQL ni mensajes internos de PDO.
 - Una petición insegura o malformada debe fallar con `400` antes de abrir PDO.
   Cuando el runtime, la conexión o el esquema no están listos, un `503`
