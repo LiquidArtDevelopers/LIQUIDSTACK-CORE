@@ -6,6 +6,7 @@ use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\Modules\ModulePublicRouteProviderInterface;
 use App\Core\Modules\ModulePreBootstrapPublicRouteProviderInterface;
+use App\Core\Modules\ModulePreBootstrapPublicRoutePrefixProviderInterface;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Routing\ModulePublicRouteCollection;
 use App\Core\Routing\ModulePublicRouteDispatcher;
@@ -14,7 +15,8 @@ use Symfony\Component\Filesystem\Filesystem;
 
 final class LatePublicRouteProviderFixture implements
     ModulePublicRouteProviderInterface,
-    ModulePreBootstrapPublicRouteProviderInterface
+    ModulePreBootstrapPublicRouteProviderInterface,
+    ModulePreBootstrapPublicRoutePrefixProviderInterface
 {
     public static int $prefixReads = 0;
     public static int $constructions = 0;
@@ -36,13 +38,23 @@ final class LatePublicRouteProviderFixture implements
     ): array {
         self::$prefixReads++;
 
-        return ['/noticias', '/neutral-sitemap.xml'];
+        return [
+            '/noticias',
+            '/neutral-sitemap.xml',
+            '/module-media',
+        ];
     }
 
     public static function preBootstrapPublicRoutePaths(
         ModuleRuntimeContext $context
     ): array {
         return ['/neutral-sitemap.xml'];
+    }
+
+    public static function preBootstrapPublicRoutePrefixes(
+        ModuleRuntimeContext $context
+    ): array {
+        return ['/module-media', '/orphan-media'];
     }
 
     public function registerPublicRoutes(
@@ -78,6 +90,14 @@ final class LatePublicRouteProviderFixture implements
                 'public-sitemap'
             )
         );
+        $routes->addGet(
+            self::moduleId(),
+            '/module-media',
+            static fn (Request $request): Response => new Response(
+                200,
+                'public-media'
+            )
+        );
     }
 
     public static function reset(): void
@@ -91,7 +111,8 @@ final class LatePublicRouteProviderFixture implements
 
 final class DuplicatePublicRouteProviderFixture implements
     ModulePublicRouteProviderInterface,
-    ModulePreBootstrapPublicRouteProviderInterface
+    ModulePreBootstrapPublicRouteProviderInterface,
+    ModulePreBootstrapPublicRoutePrefixProviderInterface
 {
     public static function moduleId(): string
     {
@@ -101,13 +122,23 @@ final class DuplicatePublicRouteProviderFixture implements
     public static function publicRoutePrefixes(
         ModuleRuntimeContext $context
     ): array {
-        return ['/noticias', '/neutral-sitemap.xml'];
+        return [
+            '/noticias',
+            '/neutral-sitemap.xml',
+            '/module-media',
+        ];
     }
 
     public static function preBootstrapPublicRoutePaths(
         ModuleRuntimeContext $context
     ): array {
         return ['/neutral-sitemap.xml'];
+    }
+
+    public static function preBootstrapPublicRoutePrefixes(
+        ModuleRuntimeContext $context
+    ): array {
+        return ['/module-media'];
     }
 
     public function registerPublicRoutes(
@@ -191,6 +222,58 @@ final class ModulePublicRouteDispatcherTest extends TestCase
         self::assertSame(1, LatePublicRouteProviderFixture::$constructions);
         self::assertSame(1, LatePublicRouteProviderFixture::$registrations);
         self::assertSame(1, LatePublicRouteProviderFixture::$handlerCalls);
+    }
+
+    public function testCheapClaimNeverConstructsOrRegistersProvider(): void
+    {
+        $dispatcher = $this->dispatcher();
+
+        self::assertTrue($dispatcher->claimsPublicRead(
+            $this->request('GET', '/noticias/un-articulo')
+        ));
+        self::assertSame(1, LatePublicRouteProviderFixture::$prefixReads);
+        self::assertSame(0, LatePublicRouteProviderFixture::$constructions);
+        self::assertSame(0, LatePublicRouteProviderFixture::$registrations);
+        self::assertSame(0, LatePublicRouteProviderFixture::$handlerCalls);
+
+        LatePublicRouteProviderFixture::reset();
+        self::assertFalse($dispatcher->claimsPublicRead(
+            $this->request('GET', '/contacto')
+        ));
+        self::assertSame(0, LatePublicRouteProviderFixture::$constructions);
+        self::assertFalse($dispatcher->claimsPublicRead(
+            $this->request('POST', '/noticias/un-articulo')
+        ));
+        self::assertSame(0, LatePublicRouteProviderFixture::$constructions);
+    }
+
+    public function testPreBootstrapPrefixDispatchesDescendantsForGetAndHead(): void
+    {
+        $get = $this->dispatcher()->dispatchBeforeLegacy(
+            $this->request('GET', '/module-media/image.avif')
+        );
+        $head = $this->dispatcher()->dispatchBeforeLegacy(
+            $this->request('HEAD', '/module-media/image.avif')
+        );
+
+        self::assertInstanceOf(Response::class, $get);
+        self::assertInstanceOf(Response::class, $head);
+        self::assertSame(200, $get->status());
+        self::assertSame('public-media', $get->body());
+        self::assertSame(200, $head->status());
+        self::assertSame('', $head->body());
+    }
+
+    public function testPreBootstrapPrefixMustAlsoBelongToPublicPrefixes(): void
+    {
+        $response = $this->dispatcher()->dispatchBeforeLegacy(
+            $this->request('GET', '/orphan-media/image.avif')
+        );
+
+        self::assertInstanceOf(Response::class, $response);
+        self::assertSame(503, $response->status());
+        self::assertSame('Service unavailable', $response->body());
+        self::assertSame(0, LatePublicRouteProviderFixture::$constructions);
     }
 
     public function testHeadUsesGetStatusAndHeadersWithoutBody(): void
@@ -301,6 +384,28 @@ final class ModulePublicRouteDispatcherTest extends TestCase
         self::assertNull($this->dispatcher()->dispatchBeforeLegacy(
             $this->request('GET', '/neutral-sitemap.xml')
         ));
+    }
+
+    public function testProjectRouteWinsOverPreBootstrapPrefixClaim(): void
+    {
+        $this->filesystem->mkdir(
+            $this->projectRoot . '/App/config/routes'
+        );
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/config/routes/get.php',
+            "<?php\nreturn ['es' => ["
+                . "'/module-media/image.avif' => ['view' => 'static.php']"
+                . "]];\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/config/routes/post.php',
+            "<?php\nreturn [];\n"
+        );
+
+        self::assertNull($this->dispatcher()->dispatchBeforeLegacy(
+            $this->request('GET', '/module-media/image.avif')
+        ));
+        self::assertSame(0, LatePublicRouteProviderFixture::$constructions);
     }
 
     private function dispatch(string $method, string $path): ?Response

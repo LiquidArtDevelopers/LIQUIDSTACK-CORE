@@ -7,6 +7,7 @@ use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\Modules\ModulePublicRouteProviderInterface;
 use App\Core\Modules\ModulePreBootstrapPublicRouteProviderInterface;
+use App\Core\Modules\ModulePreBootstrapPublicRoutePrefixProviderInterface;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Routing\ModulePublicRouteCollection;
 use App\Core\Support\Paths;
@@ -17,7 +18,8 @@ use Symfony\Component\Filesystem\Filesystem;
 
 final class ApplicationPublicRouteProviderFixture implements
     ModulePublicRouteProviderInterface,
-    ModulePreBootstrapPublicRouteProviderInterface
+    ModulePreBootstrapPublicRouteProviderInterface,
+    ModulePreBootstrapPublicRoutePrefixProviderInterface
 {
     public static int $prefixReads = 0;
     public static int $constructions = 0;
@@ -39,7 +41,12 @@ final class ApplicationPublicRouteProviderFixture implements
     ): array {
         self::$prefixReads++;
 
-        return ['/noticias', '/showroom', '/neutral-sitemap.xml'];
+        return [
+            '/noticias',
+            '/showroom',
+            '/neutral-sitemap.xml',
+            '/module-media',
+        ];
     }
 
     public static function preBootstrapPublicRoutePaths(
@@ -50,6 +57,12 @@ final class ApplicationPublicRouteProviderFixture implements
             '/showroom/media',
             '/orphan-sitemap.xml',
         ];
+    }
+
+    public static function preBootstrapPublicRoutePrefixes(
+        ModuleRuntimeContext $context
+    ): array {
+        return ['/module-media'];
     }
 
     public function registerPublicRoutes(
@@ -68,12 +81,26 @@ final class ApplicationPublicRouteProviderFixture implements
                     if ($request->path() === '/noticias/missing') {
                         return null;
                     }
+                    if ($request->path() === '/noticias/failure') {
+                        throw new RuntimeException('fixture failure detail');
+                    }
 
                     return new Response(
-                        200,
-                        $request->path() === '/neutral-sitemap.xml'
-                            ? 'pre-bootstrap-public'
-                            : 'late-public',
+                        $request->path() === '/module-media/malformed'
+                            ? 404
+                            : 200,
+                        match (true) {
+                            $request->path() === '/neutral-sitemap.xml' =>
+                                'pre-bootstrap-public',
+                            str_starts_with(
+                                $request->path(),
+                                '/module-media/'
+                            ) => $request->path() ===
+                                '/module-media/malformed'
+                                    ? 'Not found'
+                                    : 'pre-bootstrap-media',
+                            default => 'late-public',
+                        },
                         ['X-Late-Public' => 'yes']
                     );
                 }
@@ -92,7 +119,12 @@ final class ApplicationPublicRouteProviderFixture implements
     /** @return list<string> */
     private static function publicPrefixesWithoutProbe(): array
     {
-        return ['/noticias', '/showroom', '/neutral-sitemap.xml'];
+        return [
+            '/noticias',
+            '/showroom',
+            '/neutral-sitemap.xml',
+            '/module-media',
+        ];
     }
 }
 
@@ -204,7 +236,7 @@ final class ApplicationPublicModuleRouteTest extends TestCase
 
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
-    public function testStaticGetWinsWithoutEvenReadingPublicPrefixes(): void
+    public function testStaticGetWinsAfterCheapPublicPrefixClaim(): void
     {
         $view = $this->fixtureRoot . '/App/views/static.php';
         $this->filesystem->dumpFile($view, "<?php echo 'static-get';\n");
@@ -213,7 +245,111 @@ final class ApplicationPublicModuleRouteTest extends TestCase
         ]);
 
         self::assertSame('static-get', $this->runApplication('GET', '/noticias/fija'));
-        self::assertSame(0, ApplicationPublicRouteProviderFixture::$prefixReads);
+        self::assertSame(PHP_SESSION_ACTIVE, session_status());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$prefixReads);
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testStaticGetCanStrictlyOptOutOfLegacySession(): void
+    {
+        $view = $this->fixtureRoot . '/App/views/sessionless.php';
+        $this->filesystem->dumpFile(
+            $view,
+            "<?php echo session_status() === PHP_SESSION_NONE "
+                . "? 'sessionless' : 'session-active';\n"
+        );
+        $this->writeGetRoutes([
+            '/noticias/sessionless' => [
+                'view' => $view,
+                'session' => false,
+            ],
+        ]);
+
+        self::assertSame(
+            'sessionless',
+            $this->runApplication('GET', '/noticias/sessionless')
+        );
+        self::assertSame(PHP_SESSION_NONE, session_status());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$prefixReads);
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testUnclaimedStaticRouteKeepsLegacySessionBootstrap(): void
+    {
+        $view = $this->fixtureRoot . '/App/views/legacy-session.php';
+        $this->filesystem->dumpFile(
+            $view,
+            "<?php echo session_status() === PHP_SESSION_ACTIVE "
+                . "? 'session-active' : 'sessionless';\n"
+        );
+        $this->writeGetRoutes([
+            '/contacto' => [
+                'view' => $view,
+                'session' => false,
+            ],
+        ]);
+
+        self::assertSame(
+            'session-active',
+            $this->runApplication('GET', '/contacto')
+        );
+        self::assertSame(PHP_SESSION_ACTIVE, session_status());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$prefixReads);
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testUnclaimedRouteCatalogueStillLoadsAfterSessionStart(): void
+    {
+        $marker = $this->fixtureRoot . '/route-session.marker';
+        $view = $this->fixtureRoot . '/App/views/contacto.php';
+        $this->filesystem->dumpFile($view, "<?php echo 'contacto';\n");
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/routes/get.php',
+            "<?php\nfile_put_contents("
+                . var_export($marker, true)
+                . ", session_status() === PHP_SESSION_ACTIVE "
+                . "? 'active' : 'none');\nreturn ['es' => ["
+                . "'/contacto' => ['view' => "
+                . var_export($view, true)
+                . "]]];\n"
+        );
+
+        self::assertSame(
+            'contacto',
+            $this->runApplication('GET', '/contacto')
+        );
+        self::assertSame('active', file_get_contents($marker));
+        self::assertSame(PHP_SESSION_ACTIVE, session_status());
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testOnlyLiteralFalseDisablesStaticRouteSession(): void
+    {
+        $view = $this->fixtureRoot . '/App/views/session-default.php';
+        $this->filesystem->dumpFile(
+            $view,
+            "<?php echo session_status() === PHP_SESSION_ACTIVE "
+                . "? 'session-active' : 'sessionless';\n"
+        );
+        $this->writeGetRoutes([
+            '/noticias/fija' => [
+                'view' => $view,
+                'session' => 0,
+            ],
+        ]);
+
+        self::assertSame(
+            'session-active',
+            $this->runApplication('GET', '/noticias/fija')
+        );
+        self::assertSame(PHP_SESSION_ACTIVE, session_status());
         self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
     }
 
@@ -231,7 +367,7 @@ final class ApplicationPublicModuleRouteTest extends TestCase
             'static-sitemap',
             $this->runApplication('GET', '/neutral-sitemap.xml')
         );
-        self::assertSame(0, ApplicationPublicRouteProviderFixture::$prefixReads);
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$prefixReads);
         self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
     }
 
@@ -285,6 +421,67 @@ final class ApplicationPublicModuleRouteTest extends TestCase
 
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
+    public function testPreBootstrapMediaPrefixAvoidsLanguageRedirectAndSession(): void
+    {
+        $configMarker = $this->fixtureRoot . '/legacy-config.marker';
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/config.php',
+            "<?php file_put_contents("
+                . var_export($configMarker, true)
+                . ", 'loaded');\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/langs.php',
+            "<?php\nreturn ['es', 'en'];\n"
+        );
+        $_ENV['MULTILANG'] = '1';
+        $_ENV['ES_SIMPLIFICADO'] = '1';
+
+        self::assertSame(
+            'pre-bootstrap-media',
+            $this->runApplication('GET', '/module-media/image.avif')
+        );
+        self::assertSame(200, http_response_code());
+        self::assertFileDoesNotExist($configMarker);
+        self::assertSame(PHP_SESSION_NONE, session_status());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testPreBootstrapMediaHeadKeepsStatusWithoutBodyOrSession(): void
+    {
+        self::assertSame(
+            '',
+            $this->runApplication('HEAD', '/module-media/image.avif')
+        );
+        self::assertSame(200, http_response_code());
+        self::assertSame(PHP_SESSION_NONE, session_status());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testMalformedPreBootstrapMediaAvoidsRedirectAndSession(): void
+    {
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/config/langs.php',
+            "<?php\nreturn ['es', 'en'];\n"
+        );
+        $_ENV['MULTILANG'] = '1';
+        $_ENV['ES_SIMPLIFICADO'] = '1';
+
+        self::assertSame(
+            'Not found',
+            $this->runApplication('GET', '/module-media/malformed')
+        );
+        self::assertSame(404, http_response_code());
+        self::assertSame(PHP_SESSION_NONE, session_status());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
     public function testPublicFileBlocksThePreBootstrapClaim(): void
     {
         $configMarker = $this->fixtureRoot . '/legacy-config.marker';
@@ -310,6 +507,27 @@ final class ApplicationPublicModuleRouteTest extends TestCase
 
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
+    public function testPublicMediaFileBlocksThePreBootstrapPrefixClaim(): void
+    {
+        $this->filesystem->mkdir(
+            $this->fixtureRoot . '/public/module-media'
+        );
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/public/module-media/image.avif',
+            'project-media'
+        );
+
+        self::assertSame(
+            'legacy-404',
+            $this->runApplication('GET', '/module-media/image.avif')
+        );
+        self::assertSame(404, http_response_code());
+        self::assertSame(PHP_SESSION_ACTIVE, session_status());
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
     public function testIncompleteGetCatalogueFallsBackToLatePublicRouting(): void
     {
         $this->filesystem->dumpFile(
@@ -325,7 +543,7 @@ PHP
             'pre-bootstrap-public',
             $this->runApplication('GET', '/neutral-sitemap.xml')
         );
-        self::assertSame(PHP_SESSION_ACTIVE, session_status());
+        self::assertSame(PHP_SESSION_NONE, session_status());
         self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
     }
 
@@ -356,7 +574,8 @@ PHP
         ]);
 
         self::assertSame('showroom-media', $this->runApplication('GET', '/showroom/media'));
-        self::assertSame(0, ApplicationPublicRouteProviderFixture::$prefixReads);
+        self::assertSame(PHP_SESSION_ACTIVE, session_status());
+        self::assertSame(1, ApplicationPublicRouteProviderFixture::$prefixReads);
         self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
     }
 
@@ -386,6 +605,7 @@ PHP
             $this->runApplication('GET', '/noticias/dinamica')
         );
         self::assertSame(200, http_response_code());
+        self::assertSame(PHP_SESSION_NONE, session_status());
         self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
     }
 
@@ -395,7 +615,31 @@ PHP
     {
         self::assertSame('', $this->runApplication('HEAD', '/noticias/dinamica'));
         self::assertSame(200, http_response_code());
+        self::assertSame(PHP_SESSION_NONE, session_status());
         self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testLatePublicFailureStaysClosedWithoutLegacySession(): void
+    {
+        self::assertNotFalse(ini_set(
+            'error_log',
+            $this->fixtureRoot . '/public-failure.log'
+        ));
+
+        self::assertSame(
+            'Service unavailable',
+            $this->runApplication('GET', '/noticias/failure')
+        );
+        self::assertSame(503, http_response_code());
+        self::assertSame(PHP_SESSION_NONE, session_status());
+        self::assertStringNotContainsString(
+            'fixture failure detail',
+            (string) file_get_contents(
+                $this->fixtureRoot . '/public-failure.log'
+            )
+        );
     }
 
     #[RunInSeparateProcess]
@@ -418,6 +662,7 @@ PHP
     {
         self::assertSame('legacy-404', $this->runApplication('GET', '/contacto'));
         self::assertSame(404, http_response_code());
+        self::assertSame(PHP_SESSION_ACTIVE, session_status());
         self::assertSame(0, ApplicationPublicRouteProviderFixture::$constructions);
         self::assertSame(0, ApplicationPublicRouteProviderFixture::$handlerCalls);
     }
@@ -431,6 +676,7 @@ PHP
             $this->runApplication('GET', '/noticias/missing')
         );
         self::assertSame(404, http_response_code());
+        self::assertSame(PHP_SESSION_ACTIVE, session_status());
         self::assertSame(1, ApplicationPublicRouteProviderFixture::$handlerCalls);
     }
 

@@ -56,6 +56,31 @@ final class BlogDiagnosticServiceTest extends TestCase
         self::assertStringNotContainsString('ls_blog_', $encoded);
     }
 
+    public function testEffectiveConfigurationReportsProjectOwnedArticleView(): void
+    {
+        $this->filesystem->mkdir([
+            $this->root . '/App/config/modules',
+            $this->root . '/App/views',
+        ]);
+        $this->filesystem->dumpFile(
+            $this->root . '/App/views/blog-article.php',
+            "<?php declare(strict_types=1);\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->root . '/App/config/modules/blog.php',
+            "<?php\nreturn ['public_article_view' => "
+                . "'App/views/blog-article.php'];\n"
+        );
+
+        $data = $this->inspect($this->appliedPlan())->toArray();
+
+        self::assertTrue($data['configuration']['ready']);
+        self::assertSame(
+            'App/views/blog-article.php',
+            $data['configuration']['effective']['public_article_view']
+        );
+    }
+
     public function testLegacyOriginMismatchIsAVisibleNonBlockingCompatibilityState(): void
     {
         $report = (new BlogDiagnosticService())->inspect(

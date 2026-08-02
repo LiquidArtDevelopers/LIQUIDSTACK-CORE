@@ -377,6 +377,12 @@ composer liquidstack:migrate --dry-run
   estáticas del proyecto. Un borrador o slug desconocido continúa al 404 legacy;
   un runtime reconocido pero no operativo responde `503`, y un método de
   escritura reconocido responde `405` sin abrir PDO.
+- Tratar `publicRoutePrefixes()` únicamente como metadatos baratos: el claim de
+  un `GET`/`HEAD` no puede construir el provider, abrir PDO ni crear el runtime.
+  Solo un namespace modular reclamado difiere la sesión legacy. Una ruta
+  estática ganadora la recupera antes de renderizar salvo que declare
+  literalmente `session => false`; un miss modular la inicia antes del 404. Las
+  rutas no reclamadas y los métodos de escritura conservan el bootstrap previo.
 - Renderizar el documento estructurado actual cuando exista y conservar el
   renderer legacy de `body_text` mientras la variante no se haya adoptado. Una
   actualización de Composer nunca debe reescribir contenido para forzar la
@@ -386,11 +392,14 @@ composer liquidstack:migrate --dry-run
   referenciado por el documento actual de un artículo publicado. Una referencia
   presente únicamente en borrador o revisión no autoriza la entrega. Verificar
   storage, bytes y hash; responder `404` uniforme ante ausencia, corrupción o
-  falta de referencia publicable.
+  falta de referencia publicable. Declarar este namespace como prefijo
+  pre-bootstrap para que tanto medios válidos como rutas malformadas y `HEAD`
+  eviten la redirección multidioma y `PHPSESSID`.
 - Declarar el sitemap como endpoint público exacto pre-bootstrap para que no lo
   intercepte el resolver multidioma ni cree `PHPSESSID`. Antes de despacharlo,
   preservar una ruta GET exacta, un fichero o symlink público y una subruta de
-  showroom project-owned; ante un catálogo GET incompleto, continuar por legacy.
+  showroom project-owned; ante un catálogo GET incompleto, declinar la fase
+  temprana y conservar la prioridad normal del router del proyecto.
 - Servir el sitemap desde la DB de producción. Nunca reescribir
   `public/sitemap.xml`, `robots.txt`, Git o el deploy al publicar. Consultar como
   máximo 50.001 filas para admitir 50.000 y fallar cerrado ante overflow, sin
@@ -427,7 +436,11 @@ composer liquidstack:migrate --dry-run
    - Core-only: no reserva `/admin` ni registra diagnósticos opcionales.
    - WebAdmin: reclama solo su prefijo y no inicia la sesión legacy.
    - Blog: activa primero WebAdmin.
-   - GET y POST públicos: conservan el comportamiento legacy con módulos activos.
+   - GET/HEAD modulares: no abren la sesión legacy; un miss sí la recupera antes
+     del 404.
+   - GET estáticos, showroom, ficheros y POST: conservan prioridad y bootstrap;
+     solo una ruta estática dentro del namespace reclamado puede usar
+     `session => false`.
    - Config inválida, prefijo localizado o colisión: la web pública permanece operativa.
 
 8. Ejecutar `composer validate --strict --no-check-publish`, `composer test` y `composer test:module-e2e`. El E2E debe usar un consumidor temporal y demostrar que `doctor` y `migrate --plan` no modifican configuración, lock, `.env` ni datos. Los tests SQLite deben demostrar además que `--dry-run` no muta y que solo `--apply` confirmado escribe. Ante cambios de DDL o persistencia, ejecutar también `composer test:mysql-integration` con sus variables TEST contra versiones soportadas reales; debe cubrir el ciclo outbox/acciones, gestión de editores, carrera de identidad única y los órdenes concurrentes de locks, y nunca apuntar a la DB de un proyecto.

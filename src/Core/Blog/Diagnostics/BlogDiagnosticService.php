@@ -68,6 +68,10 @@ final class BlogDiagnosticService
                     'connection' => $config->databaseConnection(),
                 ],
             ];
+            if ($config->publicArticleView() !== null) {
+                $effective['public_article_view'] =
+                    $config->publicArticleView();
+            }
             $routing = $this->routePolicy->resolve(
                 $projectRoot,
                 $config,

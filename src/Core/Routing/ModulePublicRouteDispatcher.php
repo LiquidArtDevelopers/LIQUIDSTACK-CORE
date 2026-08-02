@@ -8,6 +8,7 @@ use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\Modules\ModulePublicRouteProviderInterface;
 use App\Core\Modules\ModulePreBootstrapPublicRouteProviderInterface;
+use App\Core\Modules\ModulePreBootstrapPublicRoutePrefixProviderInterface;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
 use RuntimeException;
@@ -68,9 +69,38 @@ final class ModulePublicRouteDispatcher
     }
 
     /**
-     * Dispatches exact public infrastructure endpoints before the legacy
-     * language resolver and session. Project-owned routes and files keep
-     * priority; incomplete route metadata fails closed to legacy.
+     * Cheap metadata-only probe used to decide whether the legacy PHP session
+     * may be deferred while project-owned GET/HEAD routes are resolved. It
+     * never constructs a route provider or its operational runtime.
+     *
+     * A metadata failure inside an otherwise affected namespace is treated as
+     * claimed so dispatch() can return its closed 503 without first creating
+     * PHPSESSID. A claim never grants dispatch priority: callers must still
+     * resolve project-owned routes before invoking dispatch().
+     */
+    public function claimsPublicRead(Request $request): bool
+    {
+        if (
+            !$request->hasValidMethod()
+            || !$request->hasValidPath()
+            || !in_array($request->method(), ['GET', 'HEAD'], true)
+            || $this->projectPublicPathExists($request->path())
+        ) {
+            return false;
+        }
+
+        try {
+            return $this->matchingProvider($request->path()) !== null;
+        } catch (Throwable) {
+            return true;
+        }
+    }
+
+    /**
+     * Dispatches exact public infrastructure endpoints and selected public
+     * namespaces before the legacy language resolver and session.
+     * Project-owned routes and files keep priority; incomplete route metadata
+     * falls back to legacy.
      */
     public function dispatchBeforeLegacy(Request $request): ?Response
     {
@@ -158,7 +188,7 @@ final class ModulePublicRouteDispatcher
     /**
      * @return array{
      *     module: string,
-     *     class: class-string<ModulePreBootstrapPublicRouteProviderInterface>
+     *     class: class-string<ModulePublicRouteProviderInterface>
      * }|null
      */
     private function matchingPreBootstrapClaim(string $path): ?array
@@ -167,24 +197,53 @@ final class ModulePublicRouteDispatcher
 
         foreach ($this->providers as $registered) {
             $className = $registered['class'];
-            if (!is_a(
+            $declaresExactPaths = is_a(
                 $className,
                 ModulePreBootstrapPublicRouteProviderInterface::class,
                 true
-            )) {
+            );
+            $declaresPrefixes = is_a(
+                $className,
+                ModulePreBootstrapPublicRoutePrefixProviderInterface::class,
+                true
+            );
+            if (!$declaresExactPaths && !$declaresPrefixes) {
                 continue;
             }
 
             try {
-                $routes = new ModulePublicRouteCollection(
-                    $registered['module'],
-                    $className::preBootstrapPublicRoutePaths($this->context)
-                );
+                $matches = false;
+                if ($declaresExactPaths) {
+                    $exactRoutes = new ModulePublicRouteCollection(
+                        $registered['module'],
+                        $className::preBootstrapPublicRoutePaths($this->context)
+                    );
+                    $matches = in_array(
+                        $path,
+                        $exactRoutes->prefixes(),
+                        true
+                    );
+                }
+                if ($declaresPrefixes) {
+                    $prefixRoutes = new ModulePublicRouteCollection(
+                        $registered['module'],
+                        $className::preBootstrapPublicRoutePrefixes($this->context)
+                    );
+                    foreach ($prefixRoutes->prefixes() as $prefix) {
+                        if (
+                            $path === $prefix
+                            || str_starts_with($path, $prefix . '/')
+                        ) {
+                            $matches = true;
+                            break;
+                        }
+                    }
+                }
             } catch (Throwable) {
                 continue;
             }
 
-            if (!in_array($path, $routes->prefixes(), true)) {
+            if (!$matches) {
                 continue;
             }
             if ($matched !== null) {

@@ -71,7 +71,18 @@ class Application
          * cabeceras o efectos laterales de proyectos ya existentes.
          */
         $this->loadProjectConfig();
-        $this->ensureSession();
+
+        $deferPublicSession = in_array(
+            $request->method(),
+            ['GET', 'HEAD'],
+            true
+        ) && $publicRouteDispatcher->claimsPublicRead($request);
+
+        if (!$deferPublicSession) {
+            // Preserve the exact legacy bootstrap order outside a namespace
+            // that a public module may actually handle.
+            $this->ensureSession();
+        }
 
         if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $this->handlePost(
@@ -83,7 +94,8 @@ class Application
 
         $this->handleGet(
             $request,
-            $publicRouteDispatcher
+            $publicRouteDispatcher,
+            $deferPublicSession
         );
     }
 
@@ -149,7 +161,8 @@ class Application
 
     private function handleGet(
         Request $request,
-        ModulePublicRouteDispatcher $publicRouteDispatcher
+        ModulePublicRouteDispatcher $publicRouteDispatcher,
+        bool $deferPublicSession
     ): void
     {
         $context = UrlResolver::resolve($_SERVER, $_COOKIE, $_ENV);
@@ -181,12 +194,24 @@ class Application
         }
 
         if ($matched) {
-            $this->renderMatchedRoute($lang, $requestedUrl, $rutasPorIdioma[$requestedUrl]);
+            $this->ensureRouteSession(
+                $rutasPorIdioma[$requestedUrl],
+                $deferPublicSession
+            );
+            $this->renderMatchedRoute(
+                $lang,
+                $requestedUrl,
+                $rutasPorIdioma[$requestedUrl]
+            );
             return;
         }
 
         $showroomRoute = ShowroomCategoryRoute::resolve($url, $rutasPorIdioma);
         if ($showroomRoute !== null) {
+            $this->ensureRouteSession(
+                $showroomRoute,
+                $deferPublicSession
+            );
             $this->renderMatchedRoute($lang, $url, $showroomRoute);
             return;
         }
@@ -197,10 +222,33 @@ class Application
             return;
         }
 
+        // A modular miss returns to the established project 404 with all the
+        // legacy guarantees, including an active PHP session.
+        $this->ensureSession();
         $this->renderNotFound($lang);
     }
 
-    private function renderMatchedRoute(string $lang, string $requestedUrl, array $rutaConfig): void
+    /** @param array<string, mixed> $route */
+    private function ensureRouteSession(
+        array $route,
+        bool $deferPublicSession
+    ): void
+    {
+        if (
+            $deferPublicSession
+            && ($route['session'] ?? null) === false
+        ) {
+            return;
+        }
+
+        $this->ensureSession();
+    }
+
+    private function renderMatchedRoute(
+        string $lang,
+        string $requestedUrl,
+        array $rutaConfig
+    ): void
     {
         $url       = $requestedUrl;
         $view      = $rutaConfig['view'];

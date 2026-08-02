@@ -13,6 +13,9 @@ use App\Core\Routing\ModulePublicRouteCollection;
  * cheap and must not create a database connection or an operational runtime.
  * The provider itself is instantiated and registerPublicRoutes() is invoked
  * only after the request path matches one of those declared prefixes.
+ * A GET/HEAD response owned by the provider must not start the project's
+ * legacy PHP session; returning null delegates to Application, which restores
+ * that session before the legacy 404.
  */
 interface ModulePublicRouteProviderInterface extends ModuleProviderInterface
 {

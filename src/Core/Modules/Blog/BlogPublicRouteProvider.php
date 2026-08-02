@@ -15,13 +15,15 @@ use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\Modules\ModulePublicRouteProviderInterface;
 use App\Core\Modules\ModulePreBootstrapPublicRouteProviderInterface;
+use App\Core\Modules\ModulePreBootstrapPublicRoutePrefixProviderInterface;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Routing\ModulePublicRouteCollection;
 use Throwable;
 
 final class BlogPublicRouteProvider implements
     ModulePublicRouteProviderInterface,
-    ModulePreBootstrapPublicRouteProviderInterface
+    ModulePreBootstrapPublicRouteProviderInterface,
+    ModulePreBootstrapPublicRoutePrefixProviderInterface
 {
     private ?BlogPublicHttpController $controller = null;
     private ?ModuleRuntimeContext $context = null;
@@ -77,6 +79,13 @@ final class BlogPublicRouteProvider implements
         } catch (Throwable) {
             return [];
         }
+    }
+
+    /** @return list<string> */
+    public static function preBootstrapPublicRoutePrefixes(
+        ModuleRuntimeContext $context
+    ): array {
+        return [BlogPublicMediaRoute::PREFIX];
     }
 
     public function registerPublicRoutes(

@@ -95,7 +95,11 @@ HTML, clases o estilos arbitrarios del usuario.
 El renderer público ya permite que el proyecto aporte de forma tipada su shell,
 head, navegación, footer, recursos de tema y CSP mediante una vista confinada a
 `App/views`. El fallback autónomo conserva SSR, metadatos, cabeceras cerradas y
-un CSS neutral responsive gestionado por el módulo. Los siguientes pasos son:
+un CSS neutral responsive gestionado por el módulo. La frontera pública ya
+difiere la sesión legacy únicamente para `GET`/`HEAD` reclamados: artículos,
+sitemap y medios no crean `PHPSESSID`; el índice project-owned puede usar
+`session => false`, mientras rutas ajenas y misses conservan el bootstrap
+legacy. Los siguientes pasos son:
 
 - convertir `article-basic-01` y `article-cover-01` en composiciones visuales
   reales sobre recursos LiquidStack, conservando el documento v1 y el fallback
@@ -105,9 +109,6 @@ un CSS neutral responsive gestionado por el módulo. Los siguientes pasos son:
 - mantener el enlace externo accesible de YouTube como fallback y añadir, si
   se activa reproducción inline, un runtime Lite YouTube que solo cree el
   iframe después de consentimiento social válido de CookieLAD;
-- impedir que cualquier ruta HTML pública Blog —índice project-owned o detalle
-  modular— abra la sesión legacy, cree `PHPSESSID` o fuerce `no-store` sin una
-  necesidad funcional;
 - reunir, cuando sea posible, cards y categorías en una proyección pública
   acotada para evitar runtimes PDO duplicados por petición.
 

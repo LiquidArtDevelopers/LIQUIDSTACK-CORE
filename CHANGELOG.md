@@ -4,6 +4,14 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Corregido
+- Las respuestas `GET`/`HEAD` de namespaces públicos modulares ya no abren la
+  sesión PHP legacy ni heredan `PHPSESSID`/cabeceras de caché de sesión. El
+  dispatcher realiza primero un claim de prefijo barato, sin construir el
+  provider ni abrir PDO; una ruta estática con prioridad conserva la sesión,
+  salvo opt-out literal `session => false`, y un miss modular la inicia antes
+  del 404 legacy. Los medios públicos Blog se declaran además como prefijo
+  pre-bootstrap para no caer en redirecciones multidioma; el sitemap exacto,
+  POST, showroom, ficheros públicos y rutas ajenas conservan sus prioridades.
 - El selector público de idioma ya no depende de que CookieLAD esté cargado o
   responda correctamente para traducir o navegar. La preferencia
   `cookie_custom_lang` solo se persiste cuando `cookie_custom` vale exactamente
@@ -35,10 +43,10 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   arbitraria ni exponen medios de borrador.
 - El helper histórico `schemaWebPageAccessibility()` deja de publicar
   afirmaciones WCAG, contraste, descripciones largas o control total por
-  teclado que el runtime no puede auditar; conserva su firma y el esquema
-  `WebPage` para no romper consumidores. Su JSON-LD neutraliza cierres de
-  `script`, caracteres HTML y bytes UTF-8 inválidos antes de insertarse en el
-  documento.
+  teclado que el runtime no puede auditar; conserva una firma compatible y el
+  esquema `WebPage` para no romper consumidores. Su JSON-LD neutraliza cierres
+  de `script`, caracteres HTML y bytes UTF-8 inválidos antes de insertarse en
+  el documento, y acepta un nonce CSP opcional estrictamente validado.
 - Los verificadores compuestos de WebAdmin y Blog reconocen ahora las formas
   equivalentes con las que MySQL 8 y MariaDB publican `CHECK`, `LCASE`,
   `REGEXP_LIKE`, `IS NULL`, índices y defaults en `INFORMATION_SCHEMA`, sin

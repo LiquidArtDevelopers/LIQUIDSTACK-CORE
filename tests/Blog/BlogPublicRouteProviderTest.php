@@ -90,6 +90,10 @@ PHP
             ['/news-sitemap.xml'],
             BlogPublicRouteProvider::preBootstrapPublicRoutePaths($context)
         );
+        self::assertSame(
+            ['/_liquidstack/blog-media'],
+            BlogPublicRouteProvider::preBootstrapPublicRoutePrefixes($context)
+        );
     }
 
     public function testBaseAndMalformedDescendantsFallThroughWithoutPdo(): void
@@ -145,6 +149,12 @@ PHP
         self::assertSame([], BlogPublicRouteProvider::preBootstrapPublicRoutePaths(
             new ModuleRuntimeContext($this->root)
         ));
+        self::assertSame(
+            ['/_liquidstack/blog-media'],
+            BlogPublicRouteProvider::preBootstrapPublicRoutePrefixes(
+                new ModuleRuntimeContext($this->root)
+            )
+        );
     }
 
     public function testProviderBuildsRendererWithConfiguredProjectView(): void

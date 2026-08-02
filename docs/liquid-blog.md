@@ -261,7 +261,11 @@ Por ello una URL estática del proyecto siempre gana frente a un slug Blog. La
 publicación también comprueba el catálogo para impedir que el usuario publique
 una variante que quedaría oculta. El path base puede ser una vista estática del
 proyecto —por ejemplo `/noticias`—; el provider solo reclama descendientes con
-slug válido y deja el índice al router existente.
+slug válido y deja el índice al router existente. El claim previo de ese
+prefijo solo lee metadatos y configuración: no construye el provider ni abre
+PDO. Si la ruta del índice debe ser cacheable y no usa `$_SESSION`, puede
+declarar exactamente `'session' => false`; cualquier otro valor mantiene el
+bootstrap legacy antes de renderizar la vista.
 
 Una variante `published` responde HTML en
 `{public_path}/{slug}`. Un borrador o slug desconocido continúa hacia el 404
@@ -269,6 +273,13 @@ normal del proyecto. Una ruta reconocida cuyo runtime o esquema no esté listo
 responde `503` genérico; una URL ajena no abre PDO. `HEAD` conserva status y
 cabeceras sin cuerpo ni escrituras. Un `POST` no estático sobre una URL pública
 Blog devuelve `405` con `Allow: GET, HEAD`.
+
+Un `GET`/`HEAD` que termina en una respuesta pública Blog no inicia la sesión
+PHP legacy ni crea `PHPSESSID`, por lo que tampoco sustituye las cabeceras de
+caché explícitas del controlador. Si el handler no encuentra una variante y
+devuelve `null`, CORE inicia la sesión antes de entrar en el 404 legacy. Las
+rutas no reclamadas, POST y otros métodos conservan el orden de bootstrap
+anterior.
 
 Si la variante tiene un documento estructurado actual, la URL pública lo
 renderiza con la misma semántica validada del preview. Si todavía no ha sido
@@ -304,7 +315,10 @@ fijo `/_liquidstack/blog-media/{uuid}/{width}.avif`. La frontera pública solo
 sirve una variante si el asset está referenciado por el documento actual de un
 artículo publicado; referencias de borradores o revisiones no bastan. Los bytes
 y hashes se verifican contra el storage privado y cualquier ausencia,
-corrupción o referencia no publicable responde como `404` sin revelar la causa.
+corrupción, petición malformada o referencia no publicable responde como `404`
+sin revelar la causa. Este namespace se declara como prefijo pre-bootstrap: sus
+respuestas válidas y sus 404 uniformes evitan tanto la redirección multidioma
+legacy como la creación de sesión, también en `HEAD`.
 
 Las vistas project-owned obtienen filtros y cards por categoría mediante
 `BlogCategoryPublicFeedFactory`. La frontera valida `0001+0003` sin depender
@@ -347,8 +361,10 @@ Como endpoint público exacto de infraestructura, se despacha antes del resolver
 multidioma y de la sesión legacy, por lo que una respuesta modular no crea
 `PHPSESSID`. Antes de reclamarlo, CORE descarta una ruta GET exacta, un fichero
 o symlink público y una subruta showroom pertenecientes al proyecto. Si el
-catálogo GET no puede inspeccionarse de forma completa, conserva el flujo
-legacy. Esta excepción no adelanta las URLs de artículo.
+catálogo GET no puede inspeccionarse de forma completa, declina la fase
+pre-bootstrap y recupera la resolución normal con prioridad project-owned. Esta
+excepción no adelanta las URLs de artículo, aunque una respuesta pública tardía
+también permanece sin sesión.
 El documento admite como máximo 50.000 URLs: la consulta obtiene hasta 50.001
 candidatas para detectar el desbordamiento y responder con un fallo genérico,
 sin cargar un conjunto ilimitado ni truncarlo silenciosamente.
@@ -427,9 +443,8 @@ Quedan expresamente para cortes posteriores:
   consentimiento ni JavaScript;
 - recursos visuales Blog `module-owned`, sincronizados únicamente cuando el
   selector `liquidstack/blog` esté activo;
-- retirada de la sesión legacy y de `no-store` innecesario en todas las rutas
-  HTML públicas Blog, junto a una proyección compartida que evite conexiones
-  PDO redundantes en índices;
+- proyección pública compartida que evite conexiones PDO redundantes en índices
+  que combinan filtros, categorías y cards;
 - crop, focal point, vídeo local, audio, reemplazo y garbage collection de
   medios;
 - nuevas plantillas editoriales y el maquetador libre de secciones, filas y

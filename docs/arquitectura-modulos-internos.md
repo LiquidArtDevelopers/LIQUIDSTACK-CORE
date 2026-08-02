@@ -379,12 +379,22 @@ autorización dentro de cada transacción.
 
 Las rutas públicas estáticas del proyecto tienen prioridad sobre los slugs
 dinámicos del Blog. El dispatcher público modular solo se consulta después de
-que el router legacy haya agotado su ruta exacta. El sitemap de Blog es una
-excepción declarativa y acotada: su endpoint exacto se puede resolver antes del
-router multidioma y de la sesión, tras comprobar que no pertenece al proyecto.
-Se alimenta de la DB de producción; publicar o retirar un artículo actualiza su
-respuesta sin modificar el repositorio ni requerir deploy. El contrato completo
-del primer corte está en [Liquid Blog](liquid-blog.md).
+que el router legacy haya agotado su ruta exacta. Antes de iniciar la sesión,
+un claim estático de prefijo identifica si un `GET`/`HEAD` puede pertenecer a un
+módulo; no construye el provider ni su runtime y no abre PDO. Solo en ese
+namespace se difiere `session_start()`: una ruta estática ganadora recupera el
+bootstrap legacy antes de renderizar, excepto si declara exactamente
+`session => false`; una respuesta modular permanece sin `PHPSESSID`, y un miss
+abre la sesión antes del 404 existente. Las rutas ajenas, POST y otros métodos
+conservan el orden de bootstrap anterior.
+
+El sitemap de Blog es una excepción declarativa exacta y los medios AVIF usan
+el prefijo pre-bootstrap fijo `/_liquidstack/blog-media/`. Ambos se resuelven
+antes del router multidioma y de la sesión tras comprobar que la ruta o fichero
+no pertenece al proyecto. El sitemap se alimenta de la DB de producción;
+publicar o retirar un artículo actualiza su respuesta sin modificar el
+repositorio ni requerir deploy. El contrato completo del primer corte está en
+[Liquid Blog](liquid-blog.md).
 Las URLs del sitemap y el HTML público comparten el mismo origen tipado,
 canonical y conjunto de variantes publicadas. Los alternates `hreflang` y
 `x-default` se derivan del agregado multidioma y nunca incluyen borradores;
@@ -403,7 +413,8 @@ Blog 0001 a 0005 están implementados sobre esa base: migraciones propias y
 cross-scope, capacidades delegables, artículos con variantes localizadas,
 categorías, documentos estructurados y revisiones, borrador/publicación,
 bloqueo optimista, UI privada, auditoría atómica, consumo de Media, resolución
-pública tardía y sitemap DB-backed pre-bootstrap.
+pública tardía sin sesión legacy, medios por prefijo pre-bootstrap y sitemap
+DB-backed pre-bootstrap exacto.
 
 El detalle público conserva un renderer standalone compatible, semántico y
 seguro, con CSS responsive publicado únicamente al activar Blog. Como punto de
@@ -418,10 +429,12 @@ composiciones visuales mediante recursos LiquidStack permanecen aditivas.
 
 El bloque YouTube conserva por ahora un enlace externo accesible y no crea un
 iframe. Un futuro runtime Lite YouTube inline deberá mantener ese fallback y
-consultar CookieLAD antes de cargar contenido social. Del mismo modo, todas las
-rutas HTML públicas Blog deberán dejar de heredar la sesión legacy,
-`PHPSESSID` y `no-store` cuando no los necesiten; esta optimización afecta tanto
-al índice project-owned como al detalle modular.
+consultar CookieLAD antes de cargar contenido social. La frontera de sesión
+pública ya está implementada: el detalle modular no hereda la sesión legacy y
+el índice project-owned puede declarar `session => false` en su ruta estática
+dentro del prefijo Blog. Sigue pendiente compartir una única proyección pública
+para evitar conexiones PDO redundantes cuando el índice compone filtros y
+cards.
 
 `sectionBlogGrid01` es la primera frontera visual y su showroom ya se oculta
 cuando Blog no está activo, pero sus ficheros de recurso todavía viajan dentro

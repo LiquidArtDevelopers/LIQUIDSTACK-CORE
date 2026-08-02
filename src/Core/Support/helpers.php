@@ -542,7 +542,13 @@ function hreflangAlternates(string $lang, string $url): string
  * WebPage de la página actual. El nombre histórico se conserva por BC;
  * no declara prestaciones de accesibilidad que el helper no puede auditar.
  * ------------------------------------------------------------------ */
-function schemaWebPageAccessibility( string $lang, string $url, string $title, string $description ): string
+function schemaWebPageAccessibility(
+    string $lang,
+    string $url,
+    string $title,
+    string $description,
+    ?string $nonce = null
+): string
 {
     $raiz = rtrim( $_ENV['RAIZ'] ?? '', '/' );            // dominio
     $fullUrl = $raiz . $url;                               // URL canónica
@@ -578,8 +584,26 @@ function schemaWebPageAccessibility( string $lang, string $url, string $title, s
         $schema['hasPart'] = $alternates;   // vincula las variantes lingüísticas
     }
 
+    $nonceAttribute = '';
+    if ($nonce !== null) {
+        if (
+            $nonce === ''
+            || preg_match('/\A[A-Za-z0-9+\/_=-]+\z/D', $nonce) !== 1
+        ) {
+            throw new \InvalidArgumentException(
+                'The schema script nonce is invalid.'
+            );
+        }
+        $nonceAttribute = ' nonce="' . htmlspecialchars(
+            $nonce,
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8'
+        ) . '"';
+    }
+
     /* ==== Devolvemos el bloque listo para el <head> ================= */
-    return '<script type="application/ld+json">' . PHP_EOL
+    return '<script' . $nonceAttribute . ' type="application/ld+json">'
+         . PHP_EOL
          . json_encode(
              $schema,
              JSON_UNESCAPED_UNICODE
@@ -854,9 +878,21 @@ namespace {
         return core_hreflangAlternates($lang, $url);
     }
 
-    function schemaWebPageAccessibility(string $lang, string $url, string $title, string $description): string
+    function schemaWebPageAccessibility(
+        string $lang,
+        string $url,
+        string $title,
+        string $description,
+        ?string $nonce = null
+    ): string
     {
-        return core_schemaWebPageAccessibility($lang, $url, $title, $description);
+        return core_schemaWebPageAccessibility(
+            $lang,
+            $url,
+            $title,
+            $description,
+            $nonce
+        );
     }
 
     function generarSitemapMultilingue(array $rutas, string $outputDir): void

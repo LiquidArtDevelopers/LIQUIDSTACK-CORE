@@ -182,6 +182,45 @@ final class HelpersTest extends TestCase
         self::assertSame("SEO\u{FFFD}", $schema['name']);
     }
 
+    public function testWebPageSchemaSupportsAnOptionalValidatedCspNonce(): void
+    {
+        $_ENV['RAIZ'] = 'https://example.test';
+        $GLOBALS['arrayRutasGet'] = [
+            'es' => ['/es/noticias' => []],
+        ];
+
+        $html = schemaWebPageAccessibility(
+            'es',
+            '/es/noticias',
+            'Noticias',
+            'Actualidad',
+            'valid+nonce/2026=='
+        );
+
+        self::assertStringStartsWith(
+            '<script nonce="valid+nonce/2026==" '
+                . 'type="application/ld+json">',
+            $html
+        );
+    }
+
+    public function testWebPageSchemaRejectsAnInvalidCspNonce(): void
+    {
+        $_ENV['RAIZ'] = 'https://example.test';
+        $GLOBALS['arrayRutasGet'] = [
+            'es' => ['/es/noticias' => []],
+        ];
+
+        $this->expectException(InvalidArgumentException::class);
+        schemaWebPageAccessibility(
+            'es',
+            '/es/noticias',
+            'Noticias',
+            'Actualidad',
+            '" onload="alert(1)'
+        );
+    }
+
     public function testShowroomCategoryHasServerRenderedLanguageLinks(): void
     {
         $filesystem = new Filesystem();

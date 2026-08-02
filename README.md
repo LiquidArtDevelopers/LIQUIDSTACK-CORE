@@ -450,12 +450,21 @@ estáticas del proyecto conservan prioridad; Blog resuelve las URLs de artículo
 DB-backed solo después de que el router existente falle. El path base —por
 ejemplo `/noticias`— puede seguir perteneciendo a una vista estática del
 proyecto, mientras los descendientes publicados se sirven como
-`/noticias/{slug}`. El endpoint exacto de sitemap es la excepción de
-infraestructura: se resuelve antes del router multidioma y de la sesión legacy,
-una vez descartadas rutas, ficheros y subrutas de showroom project-owned. Así
-consulta producción en cada petición, admite hasta 50.000 URLs, no crea
-`PHPSESSID` y nunca modifica `public/sitemap.xml` ni requiere un deploy al
-publicar.
+`/noticias/{slug}`. Un claim de prefijo puramente declarativo permite diferir
+la sesión legacy sin construir el provider ni abrir PDO: si gana una ruta
+estática, la sesión se inicia antes de renderizarla; solo el valor literal
+`'session' => false` permite que una ruta estática situada dentro de ese
+namespace permanezca sin sesión. Si el módulo no encuentra contenido, CORE
+inicia la sesión antes del 404 legacy.
+
+El endpoint exacto de sitemap y el prefijo fijo
+`/_liquidstack/blog-media/` son fronteras pre-bootstrap: se resuelven antes del
+router multidioma y de la sesión legacy, una vez descartadas rutas, ficheros y
+subrutas de showroom project-owned. Así el sitemap consulta producción en cada
+petición, admite hasta 50.000 URLs, no crea `PHPSESSID` y nunca modifica
+`public/sitemap.xml` ni requiere un deploy al publicar. Los artículos públicos
+resueltos en la fase tardía tampoco crean la sesión PHP ni degradan sus
+cabeceras de caché.
 
 El ejemplo usa el perfil dedicado y presupone que WebAdmin declara también
 `connection => liquidstack`. Si se omite la configuración de DB en ambos
