@@ -1,10 +1,10 @@
 # Biblioteca de medios de WebAdmin
 
 > Estado (2026-08-02): biblioteca y vinculación con el editor estructurado Blog
-> implementadas en CORE. El comando operativo de inicialización, la gestión del
-> ciclo de vida y otros formatos siguen pendientes. La adopción en consumidores
-> exige migración y preparación de storage explícitas; Composer no realiza
-> ninguna de las dos.
+> implementadas en CORE, incluido el comando operativo e idempotente de
+> inicialización. La gestión del ciclo de vida y otros formatos siguen
+> pendientes. La adopción en consumidores exige migración e inicialización de
+> storage explícitas; los eventos automáticos de Composer no realizan ninguna.
 
 ## Contrato implementado
 
@@ -17,8 +17,9 @@ cross-scope; la biblioteca sigue perteneciendo a WebAdmin.
 
 - El código vive en `liquidstack/core` y el ownership lógico es `webadmin`.
 - Blog la recibe transitivamente al depender de WebAdmin.
-- Composer solo distribuye código y la definición de migración. Nunca crea
-  tablas, inicializa storage, procesa imágenes ni borra medios.
+- `composer install` y `composer update` solo distribuyen código y la definición
+  de migración. Nunca crean tablas, inicializan storage, procesan imágenes ni
+  borran medios; la inicialización requiere el comando operativo explícito.
 - La DB y los ficheros generados son datos de cada proyecto y entorno; no se
   versionan ni se trasladan mediante `npm run build`.
 - Actualizar CORE con la migración pendiente debe mantener operativo el núcleo
@@ -51,16 +52,75 @@ La raíz es privada y queda fuera de `public`, `vendor`, `.git` y cualquier
 directorio reemplazable por deploy. El layout canónico es:
 
 ```text
+storage/liquidstack/webadmin/media/.liquidstack-webadmin-media
+storage/liquidstack/webadmin/media/.liquidstack-webadmin-media.lock
+storage/liquidstack/webadmin/media/.gitignore
+storage/liquidstack/webadmin/media/.staging/
 storage/liquidstack/webadmin/media/{shard}/{uuid}/480.avif
 storage/liquidstack/webadmin/media/{shard}/{uuid}/900.avif
 storage/liquidstack/webadmin/media/{shard}/{uuid}/1800.avif
 storage/liquidstack/webadmin/media/{shard}/{uuid}/{master-width}.avif
 ```
 
-Un comando explícito futuro `composer liquidstack:media:init` validará la raíz,
-rechazará symlinks o targets peligrosos y creará un marcador. Producción deberá
-declarar el storage persistente de forma explícita; el laboratorio podrá usar
-el directorio privado por defecto del proyecto.
+La raíz se prepara únicamente con una operación autorizada:
+
+```bash
+composer liquidstack:media:init
+# Automatización controlada, sin prompt:
+composer liquidstack:media:init --yes --format=json
+```
+
+El modo texto confirma la mutación si no recibe `--yes`; JSON exige siempre
+`--yes`. El comando carga el entorno, comprueba que WebAdmin está activo,
+valida la raíz y crea el marcador versionado `.liquidstack-webadmin-media`, el
+lock interno, `.staging/` y un `.gitignore` interno que excluye todo el storage.
+En este modo normal no abre PDO, no procesa imágenes y no comprueba SMTP. Es
+idempotente sobre una raíz ya inicializada y puede reparar sus auxiliares
+internos, pero no adopta una raíz no vacía sin el marcador válido.
+
+Producción debe declarar una ruta absoluta y persistente mediante
+`LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT`, siempre fuera del árbol del
+proyecto/deploy. El default `storage/liquidstack/webadmin/media` solo es válido
+en el laboratorio cuando `DEV_MODE=1` y `RAIZ` es un loopback canónico. Se
+rechazan traversal, raíces de disco, `public`, `vendor`, `.git`, la raíz del
+proyecto y cualquier symlink o junction del recorrido.
+
+### Adopción excepcional de storage legacy
+
+Un proyecto actualizado puede tener variantes creadas por una versión anterior
+al marker. Esa raíz no se renombra, mueve ni marca con el inicializador normal.
+Tras verificar un backup conjunto y recuperable de DB y storage, el operador
+puede solicitar expresamente:
+
+```bash
+composer liquidstack:media:init --adopt-existing --backup-confirmed --yes
+# La misma operación con salida estructurada:
+composer liquidstack:media:init --adopt-existing --backup-confirmed --yes --format=json
+```
+
+`--adopt-existing` nunca abre una pregunta interactiva: exige `--yes` y
+`--backup-confirmed`; usar la confirmación de backup sin adopción también es
+inválido. La operación requiere WebAdmin activo, entorno utilizable y el gate
+completo de `0002_webadmin_media_library`. Bajo una transacción y el lock
+`media.quota_lock=v1`, compara bidireccionalmente las filas de assets/variantes
+con la raíz privada. Cada clave debe ser canónica y única; MIME, bytes y
+SHA-256 deben coincidir; no puede faltar ni sobrar un fichero, existir enlaces
+o quedar contenido en staging.
+
+Solo después de verificar todo el conjunto crea lock, staging, `.gitignore` y
+marker. No modifica filas ni reescribe variantes. Ante cualquier diferencia
+revierte la transacción y no altera el layout legacy. Una raíz ausente o vacía
+usa el inicializador normal, nunca esta vía de adopción.
+
+En JSON, una adopción correcta devuelve `result.status=adopted_existing`. Los
+blockers estables distinguen flags incompletas
+(`webadmin.media.init.adoption_requires_yes`,
+`webadmin.media.init.adoption_requires_backup_confirmation` y
+`webadmin.media.init.backup_confirmation_without_adoption`), schema pendiente
+(`webadmin.media.init.schema_not_ready`), mismatch DB↔FS
+(`webadmin.media.storage_adoption_mismatch`), raíz que debe pasar por el flujo
+normal (`webadmin.media.storage_adoption_not_required`) y fallo cerrado de
+conexión/transacción/lock (`webadmin.media.storage_adoption_database_failed`).
 
 DB y storage se respaldan y restauran como una unidad. Cambiar credenciales o
 la raíz no mueve datos. Una promoción selectiva local → producción mediante
@@ -140,6 +200,16 @@ referenciado por el documento actual de una variante publicada; un borrador o
 una revisión aislada no lo hacen público. La lectura verifica bytes y hash en el
 storage privado y responde `404` uniforme ante cualquier fallo.
 
+## Orden de adopción
+
+1. Ejecutar `doctor`, `migrate --plan` y `migrate --dry-run`.
+2. Crear y verificar un backup recuperable y coordinado de DB y storage.
+3. Aplicar las migraciones con autorización expresa.
+4. Ejecutar `composer liquidstack:media:init`.
+5. Ejecutar o repetir `composer liquidstack:webadmin:bootstrap`.
+6. Repetir `doctor` y completar el QA HTTP de `/admin`, `/admin/media` y, si
+   está activo, Blog; después se puede despachar el outbox.
+
 ## Pendientes reales
 
 - Borrado, reemplazo y garbage collection con protección de referencias.
@@ -147,19 +217,18 @@ storage privado y responde `404` uniforme ante cualquier fallo.
 - Carpetas, etiquetas, buscador, deduplicación y promoción automática entre
   entornos.
 
-Hasta que exista ese comando, el operador debe crear la raíz persistente con
-permisos exclusivos del proceso PHP y declarar su ruta absoluta mediante
-`LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT`. En desarrollo local tipado
-(`DEV_MODE=1` y `RAIZ` loopback) puede utilizarse el default privado
-`storage/liquidstack/webadmin/media`; producción no admite ese fallback.
-
 ## Pruebas de aceptación
 
 - Multipart válido y corrupto sin regresión en formularios normales.
 - Migración vacía, pendiente, aplicada, drift, checksum y supersesión en SQLite
   y MySQL opt-in.
 - Un consumidor con solo 0001 conserva `/admin`; `/admin/media` exige 0002.
-- Storage seguro frente a traversal, symlinks y raíces peligrosas.
+- Inicialización explícita e idempotente, confirmación/`--yes`, contrato JSON,
+  marcador, `.gitignore`, staging y rechazo de adopción implícita.
+- Adopción legacy con doble confirmación, schema 0002 y lock de cuota;
+  coincidencia bidireccional DB↔FS y ausencia total de mutaciones ante mismatch.
+- Storage seguro frente a traversal, symlinks, junctions y raíces peligrosas;
+  default exclusivamente local y ruta persistente obligatoria en producción.
 - Procesado con fakes y suite Imagick opt-in: MIME, límites, multiframe,
   dimensiones, no-upscale, AVIF reabierto y metadatos eliminados.
 - Rollback coordinado de DB, ficheros y auditoría.

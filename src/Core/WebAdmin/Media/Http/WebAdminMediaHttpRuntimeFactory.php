@@ -140,6 +140,12 @@ final class WebAdminMediaHttpRuntimeFactory implements
                     'webadmin.media.storage_invalid'
                 );
             }
+            $storageStatus = $storage->diagnostic();
+            if (($storageStatus['ready'] ?? false) !== true) {
+                throw new WebAdminMediaHttpRuntimeException(
+                    'webadmin.media.storage_not_ready'
+                );
+            }
             $tables = WebAdminTableNames::fromPdo($pdo, $config->tablePrefix());
             $clock = new SystemClock();
             $uuid = new RandomUuidV4Generator();

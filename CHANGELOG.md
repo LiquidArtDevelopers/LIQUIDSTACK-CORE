@@ -23,6 +23,18 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   y los artículos continúan usando la resolución pública tardía.
 
 ### Añadido
+- Comando explícito e idempotente `composer liquidstack:media:init` para
+  preparar el storage privado de WebAdmin después de sus migraciones. Valida
+  el perfil local o la ruta persistente de producción, rechaza symlinks,
+  junctions, raíces peligrosas y la adopción implícita de directorios no vacíos
+  sin ownership; crea el marcador `.liquidstack-webadmin-media`, el lock,
+  staging y un `.gitignore` interno. Admite confirmación interactiva o `--yes`,
+  exige `--yes` en JSON y, en modo normal, no abre DB, procesa imágenes ni
+  configura correo. Una vía excepcional
+  `--adopt-existing --backup-confirmed --yes` permite marcar un
+  storage legacy únicamente tras verificar bajo lock una correspondencia
+  bidireccional completa DB↔FS; cualquier mismatch falla sin mutar el layout.
+  Los eventos automáticos de Composer continúan sin mutar DB o storage.
 - Vista previa privada y no cacheable de la última versión guardada de cada
   variante Blog. Usa `blog.articles.view`, admite borradores incompletos y no
   crea canonical, URL pública, entrada de sitemap, auditoría ni mutaciones.
@@ -124,7 +136,8 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 - Biblioteca privada WebAdmin `0002`: subida validada de JPEG, PNG y WebP,
   variantes responsive AVIF sin metadatos, cuota y rate limit, storage fuera
   de `public`, entrega autenticada y assets administrativos distribuidos por
-  el manifiesto modular. Composer nunca crea ni modifica la DB o el storage.
+  el manifiesto modular. `composer install` y `composer update` nunca crean ni
+  modifican la DB o el storage.
 - Liquid Blog `0003` a `0005`: categorías localizadas y asignables, capacidades
   independientes, documentos JSON canónicos con ocho bloques controlados,
   adopción compatible del contenido legacy, revisiones inmutables y

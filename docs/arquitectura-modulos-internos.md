@@ -152,6 +152,7 @@ composer liquidstack:doctor --format=json
 composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
 composer liquidstack:migrate --apply
+composer liquidstack:media:init
 composer liquidstack:webadmin:bootstrap
 composer liquidstack:webadmin:mail:dispatch
 ```
@@ -292,6 +293,30 @@ mostrar valores. Que el transporte no esté listo bloquea el dispatcher del
 outbox, pero no convierte por sí solo en no disponible el login ni el
 bootstrap que únicamente encola invitaciones.
 
+La readiness de medios es otro eje independiente y no bloquea el runtime base
+de WebAdmin. Tras aplicar `0002_webadmin_media_library`, el operador ejecuta
+`composer liquidstack:media:init`: su modo normal es una mutación exclusiva de
+filesystem, confirmada de forma interactiva o con `--yes` (`--format=json`
+también exige `--yes`), que no abre PDO, procesa imágenes ni configura SMTP.
+En desarrollo solo admite el default privado
+`storage/liquidstack/webadmin/media` cuando
+`DEV_MODE=1` y `RAIZ` es loopback canónica; producción exige
+`LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT` absoluto, persistente y fuera del
+árbol del proyecto/deploy. La raíz queda identificada por
+`.liquidstack-webadmin-media`, contiene un `.gitignore` interno y un área de
+staging; repetir el comando es idempotente y el modo normal no adopta una raíz
+no vacía sin marcador. Symlinks, junctions y destinos peligrosos se rechazan.
+
+La única transición admitida para un storage legacy anterior al marker es
+`composer liquidstack:media:init --adopt-existing --backup-confirmed --yes`.
+No es el flujo de una instalación nueva: exige WebAdmin y 0002 listos, abre la
+DB, adquiere el lock transaccional de cuota y compara de forma bidireccional
+todas las variantes registradas con el filesystem. Solo una coincidencia
+completa de claves canónicas, bytes, hashes, MIME AVIF, staging vacío y ausencia
+de enlaces o entradas extra permite crear scaffold y marker sin reescribir los
+medios. Cualquier mismatch falla sin mutar el layout; la bandera de backup
+declara una copia recuperable ya comprobada y nunca la crea.
+
 `WebAdminDiagnosticService` recibe un array de entorno ya cargado y la
 proyección sin secretos del probe: nunca abre `.env`, conecta por sí mismo ni
 escribe. `composer liquidstack:doctor` es la frontera que carga el entorno y
@@ -367,13 +392,13 @@ El catálogo, los selectores, el cierre de dependencias, la publicación
 selectiva, el provider neutral, el esquema inicial de identidad y capacidades,
 el bootstrap explícito, la autenticación/sesión aislada, las acciones de
 activación y recuperación, el outbox SMTP, el diagnóstico operativo, el motor
-de migraciones y la gestión delegada de editores constituyen el corte actual de
-WebAdmin.
+de migraciones, la gestión delegada de editores, la biblioteca de medios y su
+inicialización explícita constituyen el corte actual de WebAdmin.
 
-Blog 0001 está implementado sobre esa base: migraciones propias y cross-scope,
-capacidades delegables, artículos con variantes localizadas independientes,
-borrador/publicación, bloqueo optimista, UI privada, auditoría atómica,
-artículos con resolución pública tardía y sitemap DB-backed pre-bootstrap.
-Siguen fuera de este corte la
-biblioteca de medios, el editor enriquecido o por bloques, categorías,
-búsqueda, traducción IA, plantillas múltiples y el editor de páginas.
+Blog 0001 a 0005 están implementados sobre esa base: migraciones propias y
+cross-scope, capacidades delegables, artículos con variantes localizadas,
+categorías, documentos estructurados y revisiones, borrador/publicación,
+bloqueo optimista, UI privada, auditoría atómica, consumo de Media, resolución
+pública tardía y sitemap DB-backed pre-bootstrap. Siguen fuera de este corte la
+búsqueda avanzada, la traducción IA, las plantillas múltiples, los formatos de
+medios aún no admitidos y el editor de páginas.

@@ -109,6 +109,7 @@ final class BlogPublicStructuredDeliveryTest extends TestCase
             $this->projectRoot,
             $this->projectRoot . '/storage/liquidstack/webadmin/media'
         );
+        $this->storage->initialize();
         $this->storeVariant(self::ASSET_CURRENT, 480, 'avif-current-480');
         $this->storeVariant(self::ASSET_CURRENT, 960, 'avif-current-960');
         $this->storeVariant(self::ASSET_DRAFT, 480, 'avif-draft-480');

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Composer;
 
 use App\Core\Composer\Command\DoctorCommand;
+use App\Core\Composer\Command\MediaInitCommand;
 use App\Core\Composer\Command\MigrateCommand;
 use App\Core\Composer\Command\WebAdminBootstrapCommand;
 use App\Core\Composer\Command\WebAdminMailDispatchCommand;
@@ -31,6 +32,7 @@ final class LiquidStackCommandProvider implements CommandProvider
         return [
             new DoctorCommand(),
             new MigrateCommand(),
+            new MediaInitCommand(),
             new WebAdminBootstrapCommand(),
             new WebAdminMailDispatchCommand(),
         ];

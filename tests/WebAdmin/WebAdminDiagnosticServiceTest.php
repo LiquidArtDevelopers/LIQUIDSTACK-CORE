@@ -7,6 +7,7 @@ use App\Core\Modules\Migrations\MigrationDatabasePlan;
 use App\Core\WebAdmin\Diagnostics\WebAdminDatabaseDiagnostic;
 use App\Core\WebAdmin\Diagnostics\WebAdminDiagnosticService;
 use App\Core\WebAdmin\Mail\WebAdminMailConfiguration;
+use App\Core\WebAdmin\Media\PrivateMediaStorage;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -791,6 +792,10 @@ PHP
         $mediaRoot = $this->fixtureRoot
             . '/storage/liquidstack/webadmin/media';
         $orphan = 'aa/aa345678-1234-4234-8234-123456789abc';
+        (new PrivateMediaStorage(
+            $this->fixtureRoot,
+            $mediaRoot
+        ))->initialize();
         $this->filesystem->mkdir($mediaRoot . '/' . $orphan);
         $environment = $this->databaseEnvironment() + [
             WebAdminConfig::SECURITY_KEY_ENV => $this->securityKey(),
@@ -841,6 +846,42 @@ PHP
             $applied['media']['runtime']['ready']
                 && $applied['media']['uploads']['ready'],
             $applied['readiness']['media_ready']
+        );
+    }
+
+    public function testUninitializedMediaStorageNeverBlocksBaseWebAdmin(): void
+    {
+        $mediaRoot = $this->fixtureRoot
+            . '/storage/liquidstack/webadmin/media';
+        $this->filesystem->mkdir($mediaRoot);
+        $environment = $this->databaseEnvironment() + [
+            WebAdminConfig::SECURITY_KEY_ENV => $this->securityKey(),
+            'DEV_MODE' => '1',
+            'RAIZ' => 'http://localhost:1309',
+        ];
+
+        $report = (new WebAdminDiagnosticService())->inspect(
+            $this->fixtureRoot,
+            $environment,
+            [],
+            $this->readyDatabaseDiagnostic(),
+            []
+        );
+        $data = $report->toArray();
+
+        self::assertTrue($report->isRuntimeReady());
+        self::assertFalse($data['readiness']['media_ready']);
+        self::assertSame(
+            'not_initialized',
+            $data['media']['storage']['status']
+        );
+        self::assertContains(
+            'storage.media_not_ready',
+            $data['media']['blockers']
+        );
+        self::assertArrayNotHasKey(
+            'storage.media_not_ready',
+            array_flip($data['readiness']['blockers'])
         );
     }
 

@@ -134,8 +134,8 @@ se sigue usando `composer update liquidstack/core`.
 
 El plugin expone los comandos operativos en los proyectos consumidores.
 `doctor`, `migrate --plan` y `migrate --dry-run` son de solo lectura;
-bootstrap y `migrate --apply` requieren confirmación explícita. El dispatcher
-de correo procesa un lote finito ya encolado:
+bootstrap, `migrate --apply` y `media:init` requieren confirmación explícita.
+El dispatcher de correo procesa un lote finito ya encolado:
 
 ```bash
 composer liquidstack:doctor
@@ -143,6 +143,8 @@ composer liquidstack:doctor --format=json
 composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
 composer liquidstack:migrate --apply
+composer liquidstack:media:init
+composer liquidstack:media:init --yes --format=json
 composer liquidstack:webadmin:bootstrap
 composer liquidstack:webadmin:bootstrap --resend-invites
 composer liquidstack:webadmin:mail:dispatch
@@ -168,11 +170,23 @@ hash. Una migración destructiva requiere además
 `--yes`. Ninguna salida incluye credenciales, claves, correos, DSN, SQL ni
 mensajes PDO.
 
+`liquidstack:media:init`, en su modo normal, no consulta ni modifica la DB, no
+procesa imágenes y no cambia `.env`. Con WebAdmin activo, carga el entorno del
+proyecto, valida la raíz privada y la inicializa de forma idempotente con su
+marcador de ownership, su `.gitignore` interno y el área de staging. En texto
+solicita confirmación si no se pasa `--yes`; la salida JSON exige siempre
+`--yes`. Una raíz no vacía que
+no tenga el marcador válido no se adopta automáticamente. La única excepción
+es el procedimiento de upgrade legacy, expresamente solicitado con
+`--adopt-existing --backup-confirmed --yes` y condicionado a una coincidencia
+completa entre DB y filesystem.
+
 El orden de una instalación nueva es: activar el selector, actualizar CORE,
 configurar entorno, ejecutar `doctor`, revisar `migrate --plan` y
 `migrate --dry-run`, crear y comprobar un backup recuperable de DB y storage y,
-tras autorización explícita, aplicar las migraciones; después se ejecuta el
-bootstrap y se despacha su outbox.
+tras autorización explícita, aplicar las migraciones; después se inicializa el
+storage con `liquidstack:media:init`, se ejecuta el bootstrap, se repiten
+`doctor` y el QA HTTP y, cuando corresponda, se despacha el outbox.
 El bootstrap solo encola las
 dos invitaciones iniciales. `--resend-invites` es una recuperación confirmada
 para invitaciones bootstrap ya enviadas o fallidas de forma terminal; no
@@ -351,9 +365,29 @@ separadas; ALT, title y caption pertenecen a cada uso editorial, no al asset.
 Producción debe declarar una ruta absoluta y persistente mediante
 `LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT`. El único default interno,
 `storage/liquidstack/webadmin/media`, requiere `DEV_MODE=1` y `RAIZ` loopback.
-DB y storage se respaldan como una unidad. Composer distribuye el código, la
-migración y los assets module-managed, pero nunca crea tablas o directorios,
-procesa imágenes, cambia `.env` ni mueve medios. El contrato completo está en
+La preparación se autoriza expresamente con
+`composer liquidstack:media:init`; para automatización controlada se usa
+`composer liquidstack:media:init --yes --format=json`. El comando crea el
+marcador `.liquidstack-webadmin-media`, un `.gitignore` interno y el área
+privada de staging. Repetirlo sobre esa misma raíz es seguro; no adopta una raíz
+no vacía sin marcador en el flujo normal ni acepta symlinks, junctions o
+destinos peligrosos.
+
+Una instalación anterior que ya contenga medios pero todavía no tenga marker
+se adopta solo mediante el procedimiento excepcional y no interactivo
+`composer liquidstack:media:init --adopt-existing --backup-confirmed --yes`.
+Requiere WebAdmin y el esquema Media listos, adquiere el lock de cuota y exige
+correspondencia bidireccional exacta entre DB y ficheros: claves canónicas,
+bytes, SHA-256, MIME AVIF, staging vacío y ausencia de enlaces o entradas
+extra. Solo después escribe el scaffold y el marker; cualquier diferencia
+falla sin adoptar ni modificar el layout legacy. No se usa para una raíz nueva
+o vacía y `--backup-confirmed` confirma un backup ya verificado, no lo crea.
+
+DB y storage se respaldan como una unidad. Los eventos automáticos de
+`composer install`/`composer update` distribuyen el código, la migración y los
+assets module-managed, pero no ejecutan el comando, no crean tablas o
+directorios, no procesan imágenes, no cambian `.env` ni mueven medios. El
+contrato completo está en
 [biblioteca de medios WebAdmin](docs/mejoras-pendientes/webadmin-media-library.md).
 
 ### Liquid Blog: categorías y editor estructurado
@@ -434,11 +468,14 @@ composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
 # Crear y verificar aquí un backup recuperable de DB y storage.
 composer liquidstack:migrate --apply
+composer liquidstack:media:init
 composer liquidstack:webadmin:bootstrap
 composer liquidstack:doctor
 ```
 
-Composer no ejecuta esos pasos ni toca la DB durante un update. El contrato de
+Después se realiza el QA HTTP de `/admin`, `/admin/media` y Blog antes de
+despachar correo. Composer no ejecuta esos pasos ni toca la DB o el storage
+durante un update. El contrato de
 rutas, categorías, editor, revisiones, medios, estados y permisos está en
 [Liquid Blog](docs/liquid-blog.md).
 

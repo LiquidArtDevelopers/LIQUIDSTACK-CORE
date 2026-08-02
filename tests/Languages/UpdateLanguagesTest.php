@@ -311,6 +311,117 @@ PHP
         self::assertArrayNotHasKey('art17_00_classVar', $catalog);
     }
 
+    public function testProjectedItemsDoNotHydrateCatalogItemFixtures(): void
+    {
+        $this->writeFile(
+            $this->fixtureRoot . '/App/views/home.php',
+            <<<'PHP'
+<?php
+$projectedItems = [];
+
+echo controller('dynamicGrid', 0, [
+    'items_data' => $projectedItems,
+    'items' => 8,
+]);
+echo controller('dynamicGrid', 1, [
+    'items_data' => $projectedItems,
+]);
+echo controller('dynamicGrid', 2, [
+    'items_data' => $projectedItems,
+    'items' => 8,
+]);
+echo controller('dynamicGrid', 2, [
+    'items' => 2,
+]);
+PHP
+        );
+        $this->writeFile(
+            $this->fixtureRoot . '/App/controllers/dynamicGrid.php',
+            "<?php\n"
+        );
+
+        foreach (['es', 'en'] as $language) {
+            $templatePath = $this->fixtureRoot
+                . "/App/config/languages/templates/{$language}.json";
+            $template = $this->readJson($templatePath);
+            $template['dynamicGrid_00_headerPrimary'] = [
+                'text' => "Template header {$language}",
+            ];
+            foreach (['a', 'b', 'c'] as $letter) {
+                $template["dynamicGrid_00_{$letter}_link"] = [
+                    'text' => "Template {$language} {$letter}",
+                    'href' => "/{$language}/{$letter}",
+                    'title' => "Template title {$language} {$letter}",
+                ];
+            }
+            $this->writeJson($templatePath, $template);
+
+            $catalogPath = $this->fixtureRoot
+                . "/App/config/languages/home/{$language}.json";
+            $catalog = $this->readJson($catalogPath);
+            $catalog['dynamicGrid_00_a_link'] = [
+                'text' => "Customer {$language}",
+                'href' => "/{$language}/customer",
+                'title' => "Customer title {$language}",
+                'custom' => 'preserve-me',
+            ];
+            $this->writeJson($catalogPath, $catalog);
+        }
+
+        $this->runUpdater('home');
+
+        foreach (['es', 'en'] as $language) {
+            $catalog = $this->readJson(
+                $this->fixtureRoot
+                    . "/App/config/languages/home/{$language}.json"
+            );
+
+            foreach (['00', '01', '02'] as $pad) {
+                self::assertSame(
+                    "Template header {$language}",
+                    $catalog["dynamicGrid_{$pad}_headerPrimary"]['text']
+                );
+            }
+
+            self::assertSame(
+                [
+                    'text' => "Customer {$language}",
+                    'href' => "/{$language}/customer",
+                    'title' => "Customer title {$language}",
+                    'custom' => 'preserve-me',
+                ],
+                $catalog['dynamicGrid_00_a_link']
+            );
+
+            foreach (['a', 'b'] as $letter) {
+                self::assertSame(
+                    "Template {$language} {$letter}",
+                    $catalog["dynamicGrid_02_{$letter}_link"]['text']
+                );
+            }
+
+            foreach ([
+                '00' => ['dynamicGrid_00_a_link'],
+                '01' => [],
+                '02' => [
+                    'dynamicGrid_02_a_link',
+                    'dynamicGrid_02_b_link',
+                ],
+            ] as $pad => $expectedKeys) {
+                $actualKeys = array_values(array_filter(
+                    array_keys($catalog),
+                    static fn (string $key): bool => preg_match(
+                        "/^dynamicGrid_{$pad}_[a-z]_link$/",
+                        $key
+                    ) === 1
+                ));
+                sort($actualKeys, SORT_STRING);
+
+                self::assertSame($expectedKeys, $actualKeys);
+            }
+        }
+    }
+
     public function testInvalidCatalogAbortsBeforeAnyCatalogIsWritten(): void
     {
         $spanishPath = $this->fixtureRoot

@@ -23,7 +23,10 @@ class UrlResolver
         $esSimplificado = trim((string) ($env['ES_SIMPLIFICADO'] ?? '0'));
 
         $lang = null;
-        if (!empty($cookies['cookie_custom_lang'])) {
+        if (
+            ($cookies['cookie_custom'] ?? null) === 'true'
+            && !empty($cookies['cookie_custom_lang'])
+        ) {
             $candidate = strtolower(trim((string) $cookies['cookie_custom_lang']));
             if (in_array($candidate, $langs, true)) {
                 $lang = $candidate;

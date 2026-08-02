@@ -170,11 +170,12 @@ composer liquidstack:migrate --dry-run
 
 ## Operar bootstrap y correo
 
-1. Ejecutar en orden `doctor`, `migrate --dry-run`, `migrate --apply`,
-   `liquidstack:webadmin:bootstrap` y
-   `liquidstack:webadmin:mail:dispatch`. `--apply` y bootstrap exigen sus
-   propias confirmaciones; el dispatch es una invocación explícita con efecto
-   SMTP y bootstrap únicamente encola invitaciones.
+1. Ejecutar en orden `doctor`, `migrate --dry-run`, `migrate --apply`, y, cuando
+   Media esté activo, `liquidstack:media:init`; continuar con
+   `liquidstack:webadmin:bootstrap`, un segundo `doctor`/QA HTTP y
+   `liquidstack:webadmin:mail:dispatch`. `--apply`, `media:init` y bootstrap
+   exigen sus propias confirmaciones; el dispatch es una invocación explícita
+   con efecto SMTP y bootstrap únicamente encola invitaciones.
 2. Programar `liquidstack:webadmin:mail:dispatch` como tarea one-shot
    recurrente, con `--limit` entre 1 y 100. No convertirlo en daemon ni
    registrar destinatarios, tokens o diagnósticos SMTP.
@@ -229,9 +230,14 @@ composer liquidstack:migrate --dry-run
   `/admin/media` exige además `0002_webadmin_media_library`. Una 0002 pendiente
   no puede bloquear el panel base.
 - Aplicar 0002 solo mediante el flujo explícito `doctor` → `migrate --plan` →
-  `migrate --dry-run` → `migrate --apply`. Composer distribuye el contrato,
-  pero nunca crea tablas, inicializa directorios, procesa imágenes o borra
-  datos.
+  `migrate --dry-run` → backup verificado → `migrate --apply` →
+  `liquidstack:media:init` → bootstrap → segundo `doctor` y QA HTTP. Los eventos
+  automáticos de Composer distribuyen el contrato, pero nunca crean tablas,
+  inicializan directorios, procesan imágenes o borran datos.
+- Ejecutar `composer liquidstack:media:init` con autorización interactiva o
+  `--yes`; `--format=json` exige `--yes`. En modo normal es una mutación
+  idempotente de filesystem: no abre PDO, no procesa imágenes y no comprueba
+  SMTP. No llamarlo automáticamente desde `composer install`/`update`.
 - Configurar producción con
   `LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT` apuntando a una ruta absoluta,
   persistente y fuera del árbol del proyecto/deploy. El único default interno
@@ -240,6 +246,29 @@ composer liquidstack:migrate --dry-run
 - No usar `public`, `vendor`, `.git`, la raíz del proyecto, una raíz de disco,
   traversal, symlinks o junctions como storage. DB y storage se respaldan y
   restauran como una unidad; cambiar la variable no mueve ni adopta medios.
+- Exigir el marcador versionado `.liquidstack-webadmin-media` como contrato de
+  ownership. El inicializador crea además el lock, `.staging/` y un `.gitignore`
+  interno; puede reparar auxiliares de una raíz marcada, pero nunca adoptar de
+  forma implícita una raíz no vacía sin marcador válido.
+- Reservar
+  `composer liquidstack:media:init --adopt-existing --backup-confirmed --yes`
+  exclusivamente para upgrades con medios legacy anteriores al marker. No
+  usarlo en instalaciones nuevas o raíces vacías. Exigir WebAdmin/0002 listos y
+  un backup conjunto ya verificado; `--backup-confirmed` no lo crea y no es
+  válido sin `--adopt-existing`, mientras que la adopción exige también
+  `--yes` incluso en texto.
+- Durante la adopción, mantener el lock transaccional `media.quota_lock=v1` y
+  verificar la correspondencia bidireccional completa DB↔FS: storage keys
+  canónicas, MIME AVIF, bytes/hash, ninguna variante ausente o extra, staging
+  vacío y ningún symlink/junction. Crear scaffold y marker solo después de la
+  verificación completa; ante mismatch, no tocar filas ni layout legacy.
+- Interpretar `result.status=adopted_existing` como éxito de adopción. Distinguir
+  los errores de flags `webadmin.media.init.adoption_requires_*`, schema
+  `webadmin.media.init.schema_not_ready`, mismatch
+  `webadmin.media.storage_adoption_mismatch`, raíz vacía/no aplicable
+  `webadmin.media.storage_adoption_not_required` y fallo DB/lock
+  `webadmin.media.storage_adoption_database_failed`; no intentar reparar ni
+  marcar a mano ante ninguno de ellos.
 - Antes de habilitar uploads, comprobar en `doctor` por separado:
   `media.schema`, `file_uploads`, `upload_max_filesize` (12 MiB mínimo),
   `post_max_size` (límite multipart completo), fileinfo, Imagick, round-trip
@@ -287,7 +316,7 @@ composer liquidstack:migrate --dry-run
   esté listo.
 - Aplicar en orden `doctor`, `migrate --plan`, `migrate --dry-run`, backup
   recuperable de DB y storage, autorización expresa, `migrate --apply`,
-  `webadmin:bootstrap` y un segundo `doctor`. No confundir
+  `media:init`, `webadmin:bootstrap`, un segundo `doctor` y QA HTTP. No confundir
   `--backup-confirmed` con la creación del backup. Repetir el bootstrap es
   obligatorio al añadir Blog a un WebAdmin ya inicializado para completar de
   forma idempotente las capacidades de las cuentas protegidas.

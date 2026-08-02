@@ -28,6 +28,7 @@ final class LiquidStackCommandProviderTest extends TestCase
         self::assertSame([
             'liquidstack:doctor',
             'liquidstack:migrate',
+            'liquidstack:media:init',
             'liquidstack:webadmin:bootstrap',
             'liquidstack:webadmin:mail:dispatch',
         ], array_map(

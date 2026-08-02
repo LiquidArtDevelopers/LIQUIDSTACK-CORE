@@ -604,6 +604,12 @@ function parse_static_controller_params(string $call): array {
         }
     }
 
+    // Runtime-projected items do not consume the catalog-backed item keys.
+    // Keep the zero count in this static model so non-item keys still hydrate.
+    if (preg_match('/[\'"]items_data[\'"]\s*=>/', $call) === 1) {
+        $params['items'] = 0;
+    }
+
     return $params;
 }
 

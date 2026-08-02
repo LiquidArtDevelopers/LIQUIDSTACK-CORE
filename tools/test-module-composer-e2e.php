@@ -85,6 +85,8 @@ $filesystem->dumpFile(
         . "BBDD_USER=e2e\n"
         . "BBDD_PASS=module-e2e-secret\n"
         . "BBDD_NAME=liquidstack_e2e\n"
+        . "RAIZ=http://localhost:1309\n"
+        . "DEV_MODE=1\n"
         . "LIQUIDSTACK_WEBADMIN_SECURITY_KEY={$e2eSecurityKey}\n"
         . "LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN=https://module-e2e.example.test\n"
 );
@@ -257,6 +259,11 @@ try {
             'El consumidor no recibió el comando de bootstrap WebAdmin.'
         );
     }
+    if (!in_array('liquidstack:media:init', $commandNames, true)) {
+        throw new RuntimeException(
+            'El consumidor no recibió el comando de inicialización Media.'
+        );
+    }
 
     $snapshotProject = static function (string $root): array {
         $hashes = [];
@@ -396,10 +403,78 @@ try {
         );
     }
 
+    $mediaWithoutConfirmationOutput = trim(
+        $runComposerExpectingFailure([
+            'liquidstack:media:init',
+            '--format=json',
+            '--no-interaction',
+        ])
+    );
+    $mediaWithoutConfirmation = json_decode(
+        $mediaWithoutConfirmationOutput,
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    if (
+        ($mediaWithoutConfirmation['ok'] ?? null) !== false
+        || ($mediaWithoutConfirmation['error']['code'] ?? null)
+            !== 'webadmin.media.init.json_requires_yes'
+        || is_dir($temporaryRoot . '/storage/liquidstack/webadmin/media')
+    ) {
+        throw new RuntimeException(
+            'Media init no respetó su gate sin efectos laterales.'
+        );
+    }
+
     if ($beforeReadOnlyCommands !== $snapshotProject($temporaryRoot)) {
         throw new RuntimeException(
             'Los comandos de diagnóstico o sus gates modificaron el consumidor.'
         );
+    }
+
+    $mediaRoot = $temporaryRoot . '/storage/liquidstack/webadmin/media';
+    $mediaInitOutput = trim($runComposer([
+        'liquidstack:media:init',
+        '--yes',
+        '--format=json',
+        '--no-interaction',
+    ]));
+    $mediaInit = json_decode(
+        $mediaInitOutput,
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    if (
+        ($mediaInit['ok'] ?? null) !== true
+        || ($mediaInit['result']['status'] ?? null) !== 'initialized'
+        || ($mediaInit['result']['changed'] ?? null) !== true
+        || !is_file($mediaRoot . '/.liquidstack-webadmin-media')
+        || file_get_contents($mediaRoot . '/.gitignore') !== "*\n"
+    ) {
+        throw new RuntimeException(
+            'Media init no creó el almacenamiento privado canónico.'
+        );
+    }
+    $mediaSecondOutput = trim($runComposer([
+        'liquidstack:media:init',
+        '--yes',
+        '--format=json',
+        '--no-interaction',
+    ]));
+    $mediaSecond = json_decode(
+        $mediaSecondOutput,
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    if (
+        ($mediaSecond['result']['status'] ?? null)
+            !== 'already_initialized'
+        || ($mediaSecond['result']['changed'] ?? null) !== false
+    ) {
+        throw new RuntimeException('Media init no fue idempotente.');
     }
 
     $runComposer([
@@ -418,6 +493,7 @@ try {
     if (
         isset($composer['require']['liquidstack/blog'])
         || !isset($composer['require']['liquidstack/core'])
+        || !is_file($mediaRoot . '/.liquidstack-webadmin-media')
     ) {
         throw new RuntimeException(
             'Retirar Blog no conservó el contrato de CORE.'

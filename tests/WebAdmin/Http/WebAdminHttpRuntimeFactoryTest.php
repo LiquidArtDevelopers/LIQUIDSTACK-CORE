@@ -14,6 +14,10 @@ use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Http\WebAdminHttpRuntime;
 use App\Core\WebAdmin\Http\WebAdminHttpRuntimeException;
 use App\Core\WebAdmin\Http\WebAdminHttpRuntimeFactory;
+use App\Core\WebAdmin\Media\Http\WebAdminMediaHttpRuntime;
+use App\Core\WebAdmin\Media\Http\WebAdminMediaHttpRuntimeException;
+use App\Core\WebAdmin\Media\Http\WebAdminMediaHttpRuntimeFactory;
+use App\Core\WebAdmin\Media\PrivateMediaStorage;
 use App\Core\WebAdmin\UserManagement\ActiveModuleSet;
 use App\Core\WebAdmin\UserManagement\UserManagementService;
 use PHPUnit\Framework\TestCase;
@@ -307,6 +311,41 @@ final class WebAdminHttpRuntimeFactoryTest extends TestCase
                 $exception->issueCode()
             );
         }
+    }
+
+    public function testMediaRuntimeRequiresExplicitlyInitializedStorage(): void
+    {
+        $this->applyMigrations();
+        $storage = new PrivateMediaStorage(
+            $this->projectRoot,
+            $this->projectRoot . '/storage/liquidstack/webadmin/media'
+        );
+        $factory = new WebAdminMediaHttpRuntimeFactory(
+            coreRoot: dirname(__DIR__, 3),
+            connectionFactoryResolver: fn (): PdoConnectionFactoryInterface =>
+                new HttpRuntimePdoFactory($this->pdo),
+            storageResolver: static fn (): PrivateMediaStorage => $storage
+        );
+        $context = new ModuleRuntimeContext(
+            $this->projectRoot,
+            $this->environment()
+        );
+
+        try {
+            $factory->create($context, WebAdminConfig::defaults());
+            self::fail('Uninitialized Media storage must fail closed.');
+        } catch (WebAdminMediaHttpRuntimeException $exception) {
+            self::assertSame(
+                'webadmin.media.storage_not_ready',
+                $exception->issueCode()
+            );
+        }
+
+        $storage->initialize();
+        self::assertInstanceOf(
+            WebAdminMediaHttpRuntime::class,
+            $factory->create($context, WebAdminConfig::defaults())
+        );
     }
 
     private function factory(): WebAdminHttpRuntimeFactory

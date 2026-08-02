@@ -168,16 +168,23 @@ final class BlogPublicHttpRuntimeFactory implements
                     )
                 ) {
                     try {
+                        $storage = PrivateMediaStorage::forProject(
+                            $context->projectRoot(),
+                            $context->environment()
+                        );
+                        if (($storage->diagnostic()['ready'] ?? false)
+                            !== true) {
+                            throw new \RuntimeException(
+                                'Private media storage is not initialized.'
+                            );
+                        }
                         $mediaDelivery = new BlogPublicMediaDelivery(
                             new PdoBlogPublicMediaRepository(
                                 $pdo,
                                 $blogScope,
                                 $webAdminScope
                             ),
-                            PrivateMediaStorage::forProject(
-                                $context->projectRoot(),
-                                $context->environment()
-                            )
+                            $storage
                         );
                     } catch (Throwable) {
                         // Text-only structured documents remain usable. Any

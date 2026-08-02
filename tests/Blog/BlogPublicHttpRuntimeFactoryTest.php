@@ -11,6 +11,7 @@ use App\Core\Modules\Migrations\MigrationCatalog;
 use App\Core\Modules\Migrations\MigrationRunner;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
+use App\Core\WebAdmin\Media\PrivateMediaStorage;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -158,6 +159,22 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
         self::assertSame('https://example.test', $runtime->origin()->value());
         self::assertSame([], $runtime->service()->listPosts());
         self::assertSame('liquidstack', $receivedConnection);
+        self::assertFalse($runtime->__debugInfo()['public_media']);
+
+        $localEnvironment = [
+            BlogPublicOrigin::ENV => 'https://example.test',
+            'DEV_MODE' => '1',
+            'RAIZ' => 'http://localhost:1309',
+        ];
+        PrivateMediaStorage::forProject(
+            $this->root,
+            $localEnvironment
+        )->initialize();
+        $mediaReadyRuntime = $factory->create(new ModuleRuntimeContext(
+            $this->root,
+            $localEnvironment
+        ));
+        self::assertTrue($mediaReadyRuntime->__debugInfo()['public_media']);
 
         $pdo->exec(
             'CREATE TRIGGER ls_blog_corrupt_structured_gate '
