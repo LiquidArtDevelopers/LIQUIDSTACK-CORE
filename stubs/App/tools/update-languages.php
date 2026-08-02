@@ -392,27 +392,18 @@ function extract_inline_lang_keys(string $content): array {
             }
 
             $key = $var;
-            if (!isset($keys[$key])) {
-                $prop = strtolower($match[2]);
-                $isAria = strncmp($prop, 'aria', 4) === 0;
-                $looksTranslatable = $isAria
-                    || isset($translatableProps[$prop])
-                    || str_contains($prop, 'title')
-                    || str_contains($prop, 'text')
-                    || str_contains($prop, 'label');
-
-                if (!$looksTranslatable) {
-                    continue;
-                }
-
-                if (!preg_match('/^[A-Za-z0-9_]+$/', $key)) {
-                    continue;
-                }
-
-                $keys[$key] = [];
-            }
-
-            if (!isset($keys[$key])) {
+            // A local object such as $entry->text is not evidence of a
+            // catalog key. Only enrich keys already declared explicitly by
+            // data-lang; controller-backed globals are discovered separately
+            // by extract_keys().
+            $prop = strtolower($match[2]);
+            $isAria = strncmp($prop, 'aria', 4) === 0;
+            $looksTranslatable = $isAria
+                || isset($translatableProps[$prop])
+                || str_contains($prop, 'title')
+                || str_contains($prop, 'text')
+                || str_contains($prop, 'label');
+            if (!isset($keys[$key]) || !$looksTranslatable) {
                 continue;
             }
 
@@ -1203,9 +1194,12 @@ function extract_keys(string $name, int $index): array {
         }
     }
 
-    // quoted token containing {$pad}
+    // Quoted catalog token containing the canonical _{$pad}_ separator.
+    // HTML ids commonly use resource-{$pad}; treating those as translation
+    // keys pollutes catalogs with entries such as sectionBlogGrid01-00.
     if (preg_match_all('/["\']([A-Za-z0-9_-]*\{\$pad\}[A-Za-z0-9_-]*)["\']/', $content, $m)) {
         foreach ($m[1] as $raw) {
+            if (strpos($raw, '_{$pad}_') === false) continue;
             $key = $expand($raw);
             if (strpos($key, '{') !== false || strpos($key, '}') !== false) continue;
             if ($key === 'lang') continue;

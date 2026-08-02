@@ -56,6 +56,7 @@
             margin: 0;
             font-size: clamp(1.25rem, 4vw, 1.75rem);
             line-height: 1.2;
+            overflow-wrap: anywhere;
 
             a {
                 color: c.$color02;
@@ -63,13 +64,13 @@
                 text-underline-offset: 0.18em;
 
                 &:hover {
-                    color: c.$color03;
+                    color: c.$color01;
                     text-decoration: underline;
                 }
 
                 &:focus-visible {
                     border-radius: 0.15rem;
-                    outline: 0.18rem solid c.$color02bis3;
+                    outline: 0.18rem solid c.$color02;
                     outline-offset: 0.2rem;
                 }
             }
@@ -87,6 +88,7 @@
 
     .sectionBlogGrid01-excerpt {
         color: c.$color01bis;
+        overflow-wrap: anywhere;
     }
 
     @media (prefers-reduced-motion: reduce) {

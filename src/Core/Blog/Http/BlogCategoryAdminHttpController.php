@@ -78,10 +78,33 @@ final class BlogCategoryAdminHttpController
         }
         $category = $request->query('category');
 
+        try {
+            $languages = $this->activeLanguages();
+            if (is_string($category)) {
+                $languages = $this->missingActiveLanguages(
+                    $this->service()->localesForCategory(
+                        $category,
+                        $languages
+                    )
+                );
+                if ($languages === []) {
+                    return $this->htmlForRequest(
+                        $request,
+                        200,
+                        $this->renderer->localizationsComplete(
+                            $this->basePath()
+                        )
+                    );
+                }
+            }
+        } catch (BlogCategoryException $exception) {
+            return $this->domainFailure($exception);
+        }
+
         return $this->htmlForRequest($request, 200, $this->renderer->createForm(
             $this->basePath(),
             $context['csrf'],
-            $this->activeLanguages(),
+            $languages,
             is_string($category) ? $category : null
         ));
     }
@@ -147,11 +170,18 @@ final class BlogCategoryAdminHttpController
                 (string) $request->query('category'),
                 (string) $request->query('locale')
             );
+            $missingLanguages = $this->missingActiveLanguages(
+                $service->localesForCategory(
+                    $category->categoryPublicId(),
+                    $this->activeLanguages()
+                )
+            );
 
             return $this->htmlForRequest($request, 200, $this->renderer->editForm(
                 $this->basePath(),
                 $context['csrf'],
-                $category
+                $category,
+                $missingLanguages !== []
             ));
         } catch (BlogCategoryException $exception) {
             return $this->domainFailure($exception);
@@ -350,6 +380,20 @@ final class BlogCategoryAdminHttpController
         return array_values(array_filter(
             $this->runtime->languages(),
             fn (string $locale): bool => $this->isActiveLocale($locale)
+        ));
+    }
+
+    /**
+     * @param list<string> $associatedLanguages
+     * @return list<string>
+     */
+    private function missingActiveLanguages(array $associatedLanguages): array
+    {
+        $associated = array_fill_keys($associatedLanguages, true);
+
+        return array_values(array_filter(
+            $this->activeLanguages(),
+            static fn (string $locale): bool => !isset($associated[$locale])
         ));
     }
 

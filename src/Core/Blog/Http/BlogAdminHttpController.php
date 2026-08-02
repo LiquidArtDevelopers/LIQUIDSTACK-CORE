@@ -6,13 +6,18 @@ namespace App\Core\Blog\Http;
 
 use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogException;
+use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Routing\BlogPublicationRouteGuard;
 use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
+use App\Core\WebAdmin\Media\MediaService;
 use App\Core\WebAdmin\Security\ConstantTime;
+use Closure;
+use PDO;
+use Throwable;
 
 final class BlogAdminHttpController
 {
@@ -68,16 +73,29 @@ final class BlogAdminHttpController
         $hasNext = count($summaries) > BlogService::DEFAULT_LIST_LIMIT
             && $offset <= BlogService::MAX_LIST_OFFSET
                 - BlogService::DEFAULT_LIST_LIMIT;
+        $authorization = $this->runtime->authorization();
 
         return $this->htmlForRequest($request, 200, $this->renderer->index(
-            $this->basePath(),
-            array_slice($summaries, 0, BlogService::DEFAULT_LIST_LIMIT),
-            $this->runtime->authorization()->hasCapability(
+            basePath: $this->basePath(),
+            summaries: array_slice(
+                $summaries,
+                0,
+                BlogService::DEFAULT_LIST_LIMIT
+            ),
+            canEdit: $authorization->hasCapability(
                 $context['session'],
                 self::EDIT_CAPABILITY
             ),
-            $offset,
-            $hasNext
+            offset: $offset,
+            hasNext: $hasNext,
+            canPublish: $authorization->hasCapability(
+                $context['session'],
+                self::PUBLISH_CAPABILITY
+            ),
+            canViewMedia: $authorization->hasCapability(
+                $context['session'],
+                MediaService::VIEW_CAPABILITY
+            )
         ));
     }
 
@@ -86,9 +104,9 @@ final class BlogAdminHttpController
         if (!$this->accepts($request, 'new')) {
             return $this->plain(400, 'Bad request');
         }
-        $context = $this->authorizedContext(
+        $context = $this->authorizedEditorCreationContext(
             $request,
-            self::EDIT_CAPABILITY
+            false
         );
         if ($context instanceof Response) {
             return $context;
@@ -108,9 +126,8 @@ final class BlogAdminHttpController
         if (!$this->accepts($request, 'create')) {
             return $this->plain(400, 'Bad request');
         }
-        $context = $this->authorizedContext(
+        $context = $this->authorizedEditorCreationContext(
             $request,
-            self::EDIT_CAPABILITY,
             true
         );
         if ($context instanceof Response) {
@@ -122,10 +139,9 @@ final class BlogAdminHttpController
         }
 
         try {
-            $gate = $this->runtime->mutationGate(
+            $gate = $this->editorCreationMutationGate(
                 $context['session'],
-                (string) $request->form('csrf'),
-                self::EDIT_CAPABILITY
+                (string) $request->form('csrf')
             );
             $draft = $this->draft($request);
             $post = (string) $request->form('post');
@@ -207,14 +223,26 @@ final class BlogAdminHttpController
                 (string) $request->query('post'),
                 (string) $request->query('locale')
             );
+            $authorization = $this->runtime->authorization();
+            $canPublish = $authorization->hasCapability(
+                $context['session'],
+                self::PUBLISH_CAPABILITY
+            );
+            $canOpenEditor = $authorization->hasCapability(
+                $context['session'],
+                self::EDIT_CAPABILITY
+            ) && $authorization->hasCapability(
+                $context['session'],
+                MediaService::VIEW_CAPABILITY
+            ) && (
+                $variant->status() === BlogPostVariant::DRAFT
+                || $canPublish
+            );
 
             return $this->htmlForRequest($request, 200, $this->renderer->preview(
                 $this->basePath(),
                 $variant,
-                $this->runtime->authorization()->hasCapability(
-                    $context['session'],
-                    self::EDIT_CAPABILITY
-                )
+                $canOpenEditor
             ));
         } catch (BlogException $exception) {
             return $this->domainFailure($exception);
@@ -407,6 +435,82 @@ final class BlogAdminHttpController
             'session' => $sessionToken,
             'csrf' => $csrfToken,
         ];
+    }
+
+    /**
+     * @return array{session: string, csrf: string}|Response
+     */
+    private function authorizedEditorCreationContext(
+        Request $request,
+        bool $validateSubmittedCsrf
+    ): array|Response {
+        $context = $this->authorizedContext(
+            $request,
+            self::EDIT_CAPABILITY,
+            $validateSubmittedCsrf
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+        if (!$this->runtime->authorization()->hasCapability(
+            $context['session'],
+            MediaService::VIEW_CAPABILITY
+        )) {
+            return $this->plain(403, 'Forbidden');
+        }
+
+        return $context;
+    }
+
+    /** @return Closure(PDO): string */
+    private function editorCreationMutationGate(
+        #[\SensitiveParameter] string $sessionToken,
+        #[\SensitiveParameter] string $csrfToken
+    ): Closure {
+        $capabilities = [
+            self::EDIT_CAPABILITY,
+            MediaService::VIEW_CAPABILITY,
+        ];
+        if ($this->runtime instanceof BlogStructuredEditorHttpRuntimeInterface) {
+            return $this->runtime->mutationGateAll(
+                $sessionToken,
+                $csrfToken,
+                $capabilities
+            );
+        }
+
+        // Compatibilidad con adapters que implementan solo el contrato base:
+        // ambas puertas se ejecutan dentro de la misma transacción Blog y
+        // deben resolver exactamente la misma identidad.
+        $editGate = $this->runtime->mutationGate(
+            $sessionToken,
+            $csrfToken,
+            self::EDIT_CAPABILITY
+        );
+        $mediaGate = $this->runtime->mutationGate(
+            $sessionToken,
+            $csrfToken,
+            MediaService::VIEW_CAPABILITY
+        );
+
+        return static function (PDO $pdo) use (
+            $editGate,
+            $mediaGate
+        ): string {
+            try {
+                $editActor = $editGate($pdo);
+                $mediaActor = $mediaGate($pdo);
+                if (!hash_equals($editActor, $mediaActor)) {
+                    throw new BlogException(
+                        BlogException::ACTOR_GATE_FAILED
+                    );
+                }
+
+                return $editActor;
+            } catch (Throwable) {
+                throw new BlogException(BlogException::ACTOR_GATE_FAILED);
+            }
+        };
     }
 
     private function draft(Request $request): BlogDraft

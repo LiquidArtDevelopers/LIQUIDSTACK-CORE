@@ -633,14 +633,35 @@ final class BlogServicePersistenceTest extends TestCase
             $eu->lockVersion()
         );
 
+        $sitemapEntries = $service->sitemapEntries();
         self::assertSame([
             'es:zeta',
             'eu:alpha',
         ], array_map(
             static fn ($entry): string =>
                 $entry->locale() . ':' . $entry->slug(),
-            $service->sitemapEntries()
+            $sitemapEntries
         ));
+        self::assertSame(
+            [self::POST_A, self::POST_A],
+            array_map(
+                static fn (BlogSitemapEntry $entry): ?string =>
+                    $entry->postPublicId(),
+                $sitemapEntries
+            )
+        );
+        self::assertSame(
+            ['es:zeta', 'eu:alpha'],
+            array_map(
+                static fn (BlogSitemapEntry $entry): string =>
+                    $entry->locale() . ':' . $entry->slug(),
+                $service->publishedSitemapEntriesForPost(self::POST_A)
+            )
+        );
+        self::assertSame(
+            [],
+            $service->publishedSitemapEntriesForPost(self::POST_B)
+        );
         self::assertNull($service->resolvePublished('es', 'draft-only'));
     }
 
@@ -670,6 +691,10 @@ final class BlogServicePersistenceTest extends TestCase
             );
         $service = new BlogService($repository);
 
+        self::assertSame(
+            [],
+            $service->publishedSitemapEntriesForPost(self::POST_A)
+        );
         self::assertCount(50_000, $service->sitemapEntries());
         $this->expectBlogIssue(
             BlogException::SITEMAP_OVERFLOW,

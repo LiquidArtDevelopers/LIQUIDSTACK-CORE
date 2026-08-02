@@ -173,6 +173,30 @@ final class SectionBlogGrid01ContractTest extends TestCase
         self::assertStringContainsString("unset(\$params['items_data'])", $controller);
     }
 
+    public function testKeyboardFocusUsesTheAccessibleBaseColor(): void
+    {
+        $scss = (string) file_get_contents(
+            self::coreRoot() . '/resources/scss/_sectionBlogGrid01.scss'
+        );
+
+        self::assertStringContainsString(
+            'outline: 0.18rem solid c.$color02;',
+            $scss
+        );
+        self::assertStringNotContainsString(
+            'outline: 0.18rem solid c.$color02bis3;',
+            $scss
+        );
+        self::assertStringNotContainsString(
+            'color: c.$color03;',
+            $scss
+        );
+        self::assertGreaterThanOrEqual(
+            2,
+            substr_count($scss, 'overflow-wrap: anywhere;')
+        );
+    }
+
     public function testCatalogsContainFourCompleteMatrixFixtures(): void
     {
         foreach (['es', 'en', 'eu'] as $language) {

@@ -283,6 +283,27 @@ de presentación: locale, slug, nombre y contador para filtros; y locale, slug,
 URL, H1, extracto y fechas para cards. PDO, prefijos, IDs numéricos y UUIDs no
 cruzan hacia los recursos.
 
+## SEO técnico de artículos públicos
+
+Cada variante publicada renderiza en servidor su `title`, meta description,
+`robots=index,follow` y canonical absoluto. También incluye Open Graph de tipo
+`article`, Twitter Card y un conjunto completo de `hreflang` formado
+exclusivamente por las variantes publicadas del mismo post. El conjunto
+incluye la URL actual. `x-default` apunta al idioma principal declarado por el
+orden de `App/config/langs.php` cuando esa variante está publicada; si no lo
+está, usa la primera variante publicada según el orden de `public_paths`. El
+orden de ese array no redefine por accidente el idioma principal mientras su
+variante predeterminada sí esté publicada.
+
+Las URLs se construyen siempre desde `RAIZ` y desde el base path configurado
+para cada locale. Una variante en borrador o retirada no aparece ni como
+canonical alternativa ni como `hreflang`. Las plantillas legacy y
+`article-basic-01` usan una Twitter Card `summary` y no inventan una portada.
+Solo `article-cover-01`, cuyo contrato exige una imagen `cover` como primer
+bloque, publica `og:image`, `twitter:image` y `summary_large_image`; la URL
+corresponde a la variante AVIF mayor que el resolver público autoriza para el
+documento actual publicado.
+
 ## Sitemap dinámico
 
 El endpoint configurado, `/blog-sitemap.xml` por defecto, consulta únicamente
@@ -300,6 +321,10 @@ legacy. Esta excepción no adelanta las URLs de artículo.
 El documento admite como máximo 50.000 URLs: la consulta obtiene hasta 50.001
 candidatas para detectar el desbordamiento y responder con un fallo genérico,
 sin cargar un conjunto ilimitado ni truncarlo silenciosamente.
+El XML declara el namespace XHTML. Cada URL contiene los alternates de todas
+las variantes publicadas del mismo post y el mismo `x-default` que su HTML.
+Las equivalencias se agrupan por el UUID estable del post, nunca por posición,
+título o parecido entre slugs.
 
 Una ruta o fichero project-owned con el mismo path bloquea `sitemap_ready` y se
 muestra en `doctor`; no se reemplaza automáticamente. Desactivar el selector

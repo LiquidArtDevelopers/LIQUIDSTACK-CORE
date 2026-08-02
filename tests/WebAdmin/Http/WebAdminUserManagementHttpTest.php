@@ -102,7 +102,7 @@ final class WebAdminUserManagementHttpTest extends TestCase
         );
         $management = new UserManagementService(
             new UserManagementRepository($this->pdo, $tables),
-            new ActiveModuleSet(['webadmin']),
+            new ActiveModuleSet(['webadmin', 'blog']),
             $config,
             $this->securityKey,
             $clock,
@@ -402,6 +402,108 @@ final class WebAdminUserManagementHttpTest extends TestCase
         ));
         self::assertSame(400, $invalidCursor->status());
         self::assertSame('Bad request', $invalidCursor->body());
+    }
+
+    public function testCapabilityFormsRenderClearLabelsForBlogAndMedia(): void
+    {
+        $capabilities = [
+            [
+                'webadmin',
+                'webadmin.media.view',
+                'webadmin.capabilities.media_view',
+                'Consultar la biblioteca de medios',
+            ],
+            [
+                'webadmin',
+                'webadmin.media.upload',
+                'webadmin.capabilities.media_upload',
+                'Subir imágenes a la biblioteca',
+            ],
+            [
+                'blog',
+                'blog.articles.view',
+                'blog.capabilities.articles_view',
+                'Consultar artículos del Blog',
+            ],
+            [
+                'blog',
+                'blog.articles.edit',
+                'blog.capabilities.articles_edit',
+                'Crear y editar artículos del Blog',
+            ],
+            [
+                'blog',
+                'blog.articles.publish',
+                'blog.capabilities.articles_publish',
+                'Publicar y retirar artículos del Blog',
+            ],
+            [
+                'blog',
+                'blog.categories.view',
+                'blog.capabilities.categories_view',
+                'Consultar categorías del Blog',
+            ],
+            [
+                'blog',
+                'blog.categories.edit',
+                'blog.capabilities.categories_edit',
+                'Crear y editar categorías del Blog',
+            ],
+        ];
+        $insert = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_capabilities '
+            . '(module_id, code, label_key, is_delegable) '
+            . 'VALUES (:module_id, :code, :label_key, 1)'
+        );
+        $grant = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_role_capabilities '
+            . '(role_id, capability_id) SELECT r.id, c.id '
+            . 'FROM ls_webadmin_roles r CROSS JOIN '
+            . 'ls_webadmin_capabilities c WHERE r.code = :role '
+            . 'AND c.code = :code'
+        );
+        foreach ($capabilities as [$module, $code, $labelKey]) {
+            self::assertTrue($insert->execute([
+                'module_id' => $module,
+                'code' => $code,
+                'label_key' => $labelKey,
+            ]));
+            self::assertTrue($grant->execute([
+                'role' => 'site_admin',
+                'code' => $code,
+            ]));
+            self::assertSame(1, $grant->rowCount());
+        }
+
+        $admin = $this->seedAdmin();
+        $target = $this->seedEditor('labels-target@example.test');
+        [$token] = $this->seedSession($admin['id']);
+        $responses = [
+            $this->controller->inviteEditorForm(
+                $this->get('/admin/users/invite', $token)
+            ),
+            $this->controller->editEditor($this->get(
+                '/admin/users/edit',
+                $token,
+                ['user' => $target['public_id']]
+            )),
+        ];
+
+        foreach ($responses as $response) {
+            self::assertSame(200, $response->status());
+            foreach ($capabilities as [, $code, $labelKey, $label]) {
+                self::assertStringContainsString(
+                    'value="' . $code . '"',
+                    $response->body()
+                );
+                self::assertStringContainsString($label, $response->body());
+                self::assertStringNotContainsString(
+                    $labelKey,
+                    $response->body()
+                );
+            }
+            $this->assertHtmlResponse($response);
+        }
     }
 
     public function testInvitationUsesPrgAndCreatesACompletePendingIdentity(): void

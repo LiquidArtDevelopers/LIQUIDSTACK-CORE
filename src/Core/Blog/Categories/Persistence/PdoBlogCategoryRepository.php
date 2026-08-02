@@ -18,7 +18,8 @@ use Throwable;
 
 /** Portable PDO repository for the category aggregate. */
 final class PdoBlogCategoryRepository implements
-    BlogCategoryRepositoryInterface
+    BlogCategoryRepositoryInterface,
+    BlogCategoryLocaleLookupRepositoryInterface
 {
     private const UTC_FORMAT = 'Y-m-d H:i:s.u';
     private readonly string $driver;
@@ -283,6 +284,38 @@ final class PdoBlogCategoryRepository implements
                 'locale' => $locale,
             ]
         ));
+    }
+
+    public function categoryLocales(string $categoryPublicId): ?array
+    {
+        $statement = $this->prepare(
+            'SELECT l.locale FROM ' . $this->categories . ' c LEFT JOIN '
+            . $this->localizations . ' l ON l.category_id = c.id '
+            . 'WHERE c.public_id = :category_public_id ORDER BY l.locale'
+        );
+        $this->execute($statement, [
+            'category_public_id' => $categoryPublicId,
+        ]);
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        if ($rows === []) {
+            return null;
+        }
+        $locales = [];
+        foreach ($rows as $row) {
+            $locale = $row['locale'] ?? null;
+            if ($locale === null) {
+                continue;
+            }
+            if (!is_string($locale) || $locale === '') {
+                throw new BlogCategoryPersistenceException();
+            }
+            if (isset($locales[$locale])) {
+                throw new BlogCategoryPersistenceException();
+            }
+            $locales[$locale] = true;
+        }
+
+        return array_keys($locales);
     }
 
     public function listLocalizations(

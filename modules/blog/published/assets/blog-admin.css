@@ -106,6 +106,10 @@
     border-inline-start: 0.35rem solid var(--ls-webadmin-accent);
 }
 
+.blogAdmin .blogEditor__blockTitle {
+    margin: 0 0 0.8rem;
+}
+
 .blogAdmin .blogEditor__block > fieldset,
 .blogAdmin .blogEditor__inlineNode > fieldset,
 .blogAdmin .blogEditor__listItem > fieldset {

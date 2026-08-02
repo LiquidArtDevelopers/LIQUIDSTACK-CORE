@@ -387,8 +387,71 @@
     }
 
     function announce(context, message, isError) {
-        context.status.textContent = message;
+        context.announcementVersion += 1;
+        var version = context.announcementVersion;
+        context.status.textContent = '';
         context.status.dataset.state = isError ? 'error' : 'ok';
+
+        var deliver = function () {
+            if (context.announcementVersion === version) {
+                context.status.textContent = message;
+            }
+        };
+        if (typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(deliver);
+        } else if (typeof window.setTimeout === 'function') {
+            window.setTimeout(deliver, 0);
+        } else {
+            deliver();
+        }
+    }
+
+    function focusElement(elementValue) {
+        if (!elementValue || typeof elementValue.focus !== 'function') {
+            return false;
+        }
+        elementValue.focus();
+        return true;
+    }
+
+    function focusAfterRender(context, target) {
+        var candidates = [];
+        var match = function () { return false; };
+
+        if (target && target.kind === 'block') {
+            candidates = context.blockList.querySelectorAll(
+                '[data-blog-block-title]'
+            );
+            match = function (candidate) {
+                return candidate.dataset.blogBlockTitle === target.id;
+            };
+        } else if (target && target.kind === 'inline') {
+            candidates = context.blockList.querySelectorAll(
+                '[data-blog-inline-owner][data-blog-inline-index]'
+            );
+            match = function (candidate) {
+                return candidate.dataset.blogInlineOwner === target.owner
+                    && candidate.dataset.blogInlineIndex
+                        === String(target.index);
+            };
+        } else if (target && target.kind === 'list-item') {
+            candidates = context.blockList.querySelectorAll(
+                '[data-blog-list-item-id]'
+            );
+            match = function (candidate) {
+                return candidate.dataset.blogListItemId === target.id;
+            };
+        }
+
+        for (var index = 0; index < candidates.length; index += 1) {
+            if (match(candidates[index])) {
+                return focusElement(candidates[index]);
+            }
+        }
+
+        return focusElement(context.form.querySelector(
+            '[data-blog-add-block]:not([disabled])'
+        )) || focusElement(context.templateSelect);
     }
 
     function sync(context) {
@@ -707,13 +770,16 @@
         return wrapper;
     }
 
-    function renderInlineEditor(context, content, allowBreak, title) {
+    function renderInlineEditor(context, content, allowBreak, title, ownerId) {
         var editor = element('div', 'blogEditor__inlineEditor');
         editor.append(element('h4', '', title));
         var list = element('ol', 'blogEditor__inlineList');
 
         content.forEach(function (node, index) {
             var item = element('li', 'blogEditor__inlineNode');
+            item.dataset.blogInlineOwner = ownerId;
+            item.dataset.blogInlineIndex = String(index);
+            item.tabIndex = -1;
             var fieldset = document.createElement('fieldset');
             fieldset.append(element(
                 'legend',
@@ -749,6 +815,11 @@
                         content[index] = next;
                     }
                     render(context);
+                    focusAfterRender(context, {
+                        kind: 'inline',
+                        owner: ownerId,
+                        index: index
+                    });
                 }
             );
             fieldset.append(field('Tipo de nodo', type));
@@ -812,6 +883,11 @@
                     function () {
                         move(content, index, index - 1);
                         render(context);
+                        focusAfterRender(context, {
+                            kind: 'inline',
+                            owner: ownerId,
+                            index: index - 1
+                        });
                     },
                     index === 0
                 ),
@@ -823,6 +899,11 @@
                     function () {
                         move(content, index, index + 1);
                         render(context);
+                        focusAfterRender(context, {
+                            kind: 'inline',
+                            owner: ownerId,
+                            index: index + 1
+                        });
                     },
                     index === content.length - 1
                 ),
@@ -834,6 +915,11 @@
                     function () {
                         content.splice(index, 1);
                         render(context);
+                        focusAfterRender(context, {
+                            kind: 'inline',
+                            owner: ownerId,
+                            index: Math.min(index, content.length - 1)
+                        });
                     },
                     content.length <= 1
                 )
@@ -874,6 +960,11 @@
                             content.push(textNode('Nuevo texto'));
                         }
                         render(context);
+                        focusAfterRender(context, {
+                            kind: 'inline',
+                            owner: ownerId,
+                            index: content.length - 1
+                        });
                     },
                     content.length >= MAX_INLINE_NODES
                 ));
@@ -962,6 +1053,8 @@
         var list = element('ol', 'blogEditor__listItems');
         block.items.forEach(function (itemValue, itemIndex) {
             var item = element('li', 'blogEditor__listItem');
+            item.dataset.blogListItemId = itemValue.id;
+            item.tabIndex = -1;
             var fieldset = document.createElement('fieldset');
             fieldset.append(element(
                 'legend',
@@ -972,7 +1065,8 @@
                 context,
                 itemValue.content,
                 true,
-                'Contenido del elemento'
+                'Contenido del elemento',
+                itemValue.id
             ));
             var actions = element('div', 'blogEditor__actions');
             actions.append(
@@ -984,6 +1078,10 @@
                     function () {
                         move(block.items, itemIndex, itemIndex - 1);
                         render(context);
+                        focusAfterRender(context, {
+                            kind: 'list-item',
+                            id: itemValue.id
+                        });
                     },
                     itemIndex === 0
                 ),
@@ -995,6 +1093,10 @@
                     function () {
                         move(block.items, itemIndex, itemIndex + 1);
                         render(context);
+                        focusAfterRender(context, {
+                            kind: 'list-item',
+                            id: itemValue.id
+                        });
                     },
                     itemIndex === block.items.length - 1
                 ),
@@ -1004,8 +1106,13 @@
                     'data-blog-list-action',
                     'remove',
                     function () {
+                        var adjacent = block.items[itemIndex + 1]
+                            || block.items[itemIndex - 1];
                         block.items.splice(itemIndex, 1);
                         render(context);
+                        focusAfterRender(context, adjacent
+                            ? { kind: 'list-item', id: adjacent.id }
+                            : { kind: 'block', id: block.id });
                     },
                     block.items.length <= 1
                 )
@@ -1029,6 +1136,10 @@
                     content: [textNode('Nuevo elemento')]
                 });
                 render(context);
+                focusAfterRender(context, {
+                    kind: 'list-item',
+                    id: block.items[block.items.length - 1].id
+                });
             },
             block.items.length >= MAX_LIST_ITEMS
         );
@@ -1071,6 +1182,7 @@
                     block.alt = 'Descripción de la imagen';
                 }
                 render(context);
+                focusAfterRender(context, { kind: 'block', id: block.id });
             }
         );
         fragment.append(field('Imagen decorativa', decorative));
@@ -1133,7 +1245,8 @@
                 context,
                 block.content,
                 true,
-                'Contenido del párrafo'
+                'Contenido del párrafo',
+                block.id
             ));
         } else if (block.type === 'heading') {
             fragment.append(field(
@@ -1159,7 +1272,8 @@
                 context,
                 block.content,
                 false,
-                'Texto del encabezado'
+                'Texto del encabezado',
+                block.id
             ));
         } else if (block.type === 'list') {
             fragment.append(renderListEditor(context, block));
@@ -1182,7 +1296,8 @@
                 context,
                 block.content,
                 true,
-                'Contenido destacado'
+                'Contenido destacado',
+                block.id
             ));
         } else if (block.type === 'link') {
             fragment.append(renderLinkFields(context, block));
@@ -1263,13 +1378,19 @@
             var item = element('li', 'blogEditor__block');
             item.dataset.blockId = block.id;
             item.dataset.blockType = block.type;
+            var titleId = 'blog-editor-block-title-'
+                + context.instance + '-' + (blockIndex + 1);
+            var title = element(
+                'h3',
+                'blogEditor__blockTitle',
+                'Bloque ' + (blockIndex + 1) + ': ' + BLOCK_LABELS[block.type]
+            );
+            title.id = titleId;
+            title.dataset.blogBlockTitle = block.id;
+            title.tabIndex = -1;
             var fieldset = document.createElement('fieldset');
             fieldset.disabled = context.readOnly;
-            fieldset.append(element(
-                'legend',
-                '',
-                'Bloque ' + (blockIndex + 1) + ': ' + BLOCK_LABELS[block.type]
-            ));
+            fieldset.setAttribute('aria-labelledby', titleId);
             var actions = element('div', 'blogEditor__actions');
             actions.append(
                 actionButton(
@@ -1281,6 +1402,10 @@
                         move(context.documentValue.blocks, blockIndex, blockIndex - 1);
                         normalizeContracts(context, true);
                         render(context);
+                        focusAfterRender(context, {
+                            kind: 'block',
+                            id: block.id
+                        });
                     },
                     blockIndex === 0
                 ),
@@ -1293,6 +1418,10 @@
                         move(context.documentValue.blocks, blockIndex, blockIndex + 1);
                         normalizeContracts(context, true);
                         render(context);
+                        focusAfterRender(context, {
+                            kind: 'block',
+                            id: block.id
+                        });
                     },
                     blockIndex === context.documentValue.blocks.length - 1
                 ),
@@ -1305,16 +1434,23 @@
                         if (!window.confirm('¿Eliminar este bloque?')) {
                             return;
                         }
+                        var adjacent = context.documentValue.blocks[
+                            blockIndex + 1
+                        ] || context.documentValue.blocks[blockIndex - 1];
                         context.documentValue.blocks.splice(blockIndex, 1);
                         normalizeContracts(context, true);
                         render(context);
+                        focusAfterRender(context, adjacent
+                            ? { kind: 'block', id: adjacent.id }
+                            : { kind: 'add-block' });
+                        announce(context, 'Bloque eliminado.', false);
                     },
                     false
                 )
             );
             fieldset.append(actions);
             fieldset.append(renderBlockFields(context, block, blockIndex));
-            item.append(fieldset);
+            item.append(title, fieldset);
             context.blockList.append(item);
         });
         sync(context);
@@ -1390,7 +1526,8 @@
             status: status,
             media: readMedia(mediaCatalog),
             documentValue: documentValue,
-            readOnly: form.dataset.blogEditorReadonly === 'true'
+            readOnly: form.dataset.blogEditorReadonly === 'true',
+            announcementVersion: 0
         };
 
         form.querySelectorAll('[data-blog-add-block]').forEach(function (button) {
@@ -1407,9 +1544,14 @@
                     return;
                 }
                 try {
-                    context.documentValue.blocks.push(makeBlock(context, type));
+                    var addedBlock = makeBlock(context, type);
+                    context.documentValue.blocks.push(addedBlock);
                     normalizeContracts(context, true);
                     render(context);
+                    focusAfterRender(context, {
+                        kind: 'block',
+                        id: addedBlock.id
+                    });
                     announce(context, 'Bloque añadido.', false);
                 } catch (error) {
                     announce(context, 'No se pudo añadir el bloque.', true);

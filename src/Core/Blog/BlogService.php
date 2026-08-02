@@ -10,6 +10,7 @@ use App\Core\Blog\Editing\BlogDraftMutationCoordinator;
 use App\Core\Blog\Editing\BlogPlainDraftWriteGuardInterface;
 use App\Core\Blog\Persistence\BlogPersistenceConflict;
 use App\Core\Blog\Persistence\BlogPersistenceException;
+use App\Core\Blog\Persistence\BlogPublishedSitemapRepositoryInterface;
 use App\Core\Blog\Persistence\BlogRepositoryInterface;
 use App\Core\WebAdmin\Support\ClockInterface;
 use App\Core\WebAdmin\Support\RandomUuidV4Generator;
@@ -404,6 +405,43 @@ final class BlogService
             );
             if (count($entries) > self::MAX_SITEMAP_ENTRIES) {
                 throw new BlogException(BlogException::SITEMAP_OVERFLOW);
+            }
+
+            return $entries;
+        });
+    }
+
+    /** @return list<BlogSitemapEntry> */
+    public function publishedSitemapEntriesForPost(
+        string $postPublicId
+    ): array {
+        $postPublicId = BlogInput::publicId($postPublicId);
+        if (
+            !$this->repository instanceof
+                BlogPublishedSitemapRepositoryInterface
+        ) {
+            return [];
+        }
+
+        return $this->read(function () use ($postPublicId): array {
+            $entries = $this->repository->publishedSitemapEntriesForPost(
+                $postPublicId,
+                BlogSitemapEntry::ALTERNATES_OVERFLOW_QUERY_LIMIT
+            );
+            if (count($entries) > BlogSitemapEntry::MAX_LANGUAGE_ALTERNATES) {
+                throw new BlogException(BlogException::SITEMAP_OVERFLOW);
+            }
+            foreach ($entries as $entry) {
+                if (
+                    !$entry instanceof BlogSitemapEntry
+                    || $entry->postPublicId() === null
+                    || !hash_equals(
+                        $postPublicId,
+                        $entry->postPublicId()
+                    )
+                ) {
+                    throw new BlogPersistenceException();
+                }
             }
 
             return $entries;

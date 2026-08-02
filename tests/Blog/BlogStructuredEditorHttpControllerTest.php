@@ -404,6 +404,40 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         );
     }
 
+    public function testDraftEditorRemainsAvailableWithoutPublishCapability(): void
+    {
+        $this->removeCapability(
+            BlogAdminHttpController::PUBLISH_CAPABILITY
+        );
+        $query = ['post' => self::POST, 'locale' => 'es'];
+
+        $editor = $this->controller->edit($this->get(
+            '/admin/blog/editor',
+            $query
+        ));
+        self::assertSame(200, $editor->status());
+        self::assertStringContainsString(
+            'action="/admin/blog/editor/save"',
+            $editor->body()
+        );
+        self::assertStringContainsString(
+            '>Guardar documento</button>',
+            $editor->body()
+        );
+        self::assertStringNotContainsString(
+            'action="/admin/blog/posts/publish"',
+            $editor->body()
+        );
+        self::assertStringNotContainsString(
+            'action="/admin/blog/posts/unpublish"',
+            $editor->body()
+        );
+        self::assertSame(200, $this->controller->preview($this->get(
+            '/admin/blog/editor/preview',
+            $query
+        ))->status());
+    }
+
     public function testSaveAdoptsLegacyAndRestoreAppendsImmutableRevision(): void
     {
         $firstJson = $this->documentJson('First structured body.');

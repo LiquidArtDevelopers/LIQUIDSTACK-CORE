@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Blog\Http;
 
 use App\Core\Blog\BlogException;
+use App\Core\Blog\BlogPostVariant;
 use App\Core\Http\Response;
 use Throwable;
 
@@ -35,23 +36,34 @@ final class BlogPublicHttpController
             if ($base === null) {
                 throw new BlogPublicHttpRuntimeException();
             }
+            [$alternatePaths, $xDefaultPath] = $this->articleAlternates(
+                $variant
+            );
             $structured = $this->runtime->structuredDocument(
                 $variant->localizationPublicId()
             );
+            $canonicalSlug = $variant->draft()->slug();
+            if ($canonicalSlug === null) {
+                throw new BlogPublicHttpRuntimeException();
+            }
             $html = $structured === null
                 ? $this->articleRenderer->renderFromOrigin(
                     $variant,
                     $this->runtime->origin(),
-                    $base . '/' . $slug
+                    $base . '/' . $canonicalSlug,
+                    $alternatePaths,
+                    $xDefaultPath
                 )
                 : $this->articleRenderer->renderStructuredFromOrigin(
                     $variant,
                     $this->runtime->origin(),
-                    $base . '/' . $slug,
+                    $base . '/' . $canonicalSlug,
                     $structured->snapshot()->document(),
                     $this->runtime->imageResolver(
                         $variant->localizationPublicId()
-                    )
+                    ),
+                    $alternatePaths,
+                    $xDefaultPath
                 );
 
             return new Response(
@@ -133,5 +145,51 @@ final class BlogPublicHttpController
             'Cross-Origin-Opener-Policy' => 'same-origin',
             'Cross-Origin-Resource-Policy' => 'same-origin',
         ];
+    }
+
+    /**
+     * @return array{array<string, string>, string}
+     */
+    private function articleAlternates(BlogPostVariant $variant): array
+    {
+        $slugs = [];
+        foreach (
+            $this->runtime->service()->publishedSitemapEntriesForPost(
+                $variant->postPublicId()
+            ) as $entry
+        ) {
+            if (
+                $entry->postPublicId() !== null
+                && !hash_equals(
+                    $variant->postPublicId(),
+                    $entry->postPublicId()
+                )
+            ) {
+                throw new BlogPublicHttpRuntimeException();
+            }
+            if (isset($slugs[$entry->locale()])) {
+                throw new BlogPublicHttpRuntimeException();
+            }
+            $slugs[$entry->locale()] = $entry->slug();
+        }
+        $currentSlug = $variant->draft()->slug();
+        if ($currentSlug === null) {
+            throw new BlogPublicHttpRuntimeException();
+        }
+        $slugs[$variant->locale()] = $currentSlug;
+
+        $paths = [];
+        foreach ($this->runtime->config()->publicPaths() as $locale => $base) {
+            if (isset($slugs[$locale])) {
+                $paths[$locale] = $base . '/' . $slugs[$locale];
+            }
+        }
+        $xDefaultPath = $paths[$this->runtime->config()->defaultLocale()]
+            ?? reset($paths);
+        if (!is_string($xDefaultPath)) {
+            throw new BlogPublicHttpRuntimeException();
+        }
+
+        return [$paths, $xDefaultPath];
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Blog\StructuredContent;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Process\Process;
 
 final class BlogStructuredEditorAssetsContractTest extends TestCase
 {
@@ -69,6 +70,9 @@ final class BlogStructuredEditorAssetsContractTest extends TestCase
             'function normalizeContracts(',
             'function hasPreviousH2(',
             "block.level = value === '3' ? 3 : 2",
+            "element(\n                'h3',\n                'blogEditor__blockTitle'",
+            "fieldset.setAttribute('aria-labelledby', titleId)",
+            "announce(context, 'Bloque eliminado.', false)",
             "provider: 'youtube'",
             "video_id: 'vKQi3bBA1y8'",
             'context.documentValue.blocks.splice(',
@@ -81,6 +85,156 @@ final class BlogStructuredEditorAssetsContractTest extends TestCase
         ] as $contract) {
             self::assertStringContainsString($contract, $this->javascript);
         }
+    }
+
+    public function testJavascriptRestoresFocusAndReannouncesRepeatedStatus(): void
+    {
+        foreach ([
+            'function focusAfterRender(',
+            'title.dataset.blogBlockTitle = block.id',
+            'item.dataset.blogInlineOwner = ownerId',
+            'item.dataset.blogInlineIndex = String(index)',
+            'item.dataset.blogListItemId = itemValue.id',
+            'context.status.textContent = \'\'',
+            'context.announcementVersion += 1',
+        ] as $contract) {
+            self::assertStringContainsString($contract, $this->javascript);
+        }
+        self::assertGreaterThanOrEqual(
+            12,
+            substr_count($this->javascript, 'focusAfterRender(context,')
+        );
+
+        $node = new Process(['node', '--version']);
+        $node->run();
+        if (!$node->isSuccessful()) {
+            self::markTestSkipped('Node.js no está disponible.');
+        }
+
+        $asset = dirname(__DIR__, 3)
+            . '/modules/blog/published/assets/blog-editor.js';
+        $script = <<<'JS'
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+let source = fs.readFileSync(process.argv[1], 'utf8');
+const marker = '}());';
+const markerIndex = source.lastIndexOf(marker);
+if (markerIndex < 0) throw new Error('Unable to expose editor test hooks.');
+source = source.slice(0, markerIndex)
+    + 'globalThis.__blogEditorHooks = { announce, focusAfterRender };\n'
+    + source.slice(markerIndex);
+
+const scheduled = [];
+globalThis.document = {
+  readyState: 'loading',
+  addEventListener() {},
+};
+globalThis.window = {
+  requestAnimationFrame(callback) {
+    scheduled.push(callback);
+    return scheduled.length;
+  },
+};
+vm.runInThisContext(source, { filename: process.argv[1] });
+
+const focused = [];
+const node = (label, dataset) => ({
+  dataset,
+  focus() { focused.push(label); },
+});
+const blockNodes = [
+  node('block-a', { blogBlockTitle: 'block-a' }),
+  node('block-b', { blogBlockTitle: 'block-b' }),
+];
+const inlineNodes = [
+  node('owner-a:0', {
+    blogInlineOwner: 'owner-a',
+    blogInlineIndex: '0',
+  }),
+  node('owner-a:1', {
+    blogInlineOwner: 'owner-a',
+    blogInlineIndex: '1',
+  }),
+];
+const listNodes = [
+  node('list-a', { blogListItemId: 'list-a' }),
+];
+const fallback = node('fallback', {});
+const context = {
+  blockList: {
+    querySelectorAll(selector) {
+      if (selector === '[data-blog-block-title]') return blockNodes;
+      if (selector.includes('data-blog-inline-owner')) return inlineNodes;
+      if (selector === '[data-blog-list-item-id]') return listNodes;
+      return [];
+    },
+  },
+  form: { querySelector() { return fallback; } },
+  templateSelect: node('template', {}),
+};
+
+const hooks = globalThis.__blogEditorHooks;
+hooks.focusAfterRender(context, { kind: 'block', id: 'block-b' });
+hooks.focusAfterRender(context, {
+  kind: 'inline',
+  owner: 'owner-a',
+  index: 1,
+});
+hooks.focusAfterRender(context, { kind: 'list-item', id: 'list-a' });
+hooks.focusAfterRender(context, { kind: 'block', id: 'missing' });
+
+const writes = [];
+const status = {
+  dataset: {},
+  _text: 'Bloque eliminado.',
+  get textContent() { return this._text; },
+  set textContent(value) {
+    this._text = value;
+    writes.push(value);
+  },
+};
+const announcement = { status, announcementVersion: 0 };
+hooks.announce(announcement, 'Bloque eliminado.', false);
+scheduled.shift()();
+hooks.announce(announcement, 'Bloque eliminado.', false);
+scheduled.shift()();
+
+process.stdout.write(JSON.stringify({
+  focused,
+  writes,
+  state: status.dataset.state,
+}));
+JS;
+
+        $process = new Process([
+            'node',
+            '--input-type=module',
+            '--eval',
+            $script,
+            $asset,
+        ]);
+        $process->mustRun();
+        $result = json_decode(
+            $process->getOutput(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame([
+            'block-b',
+            'owner-a:1',
+            'list-a',
+            'fallback',
+        ], $result['focused']);
+        self::assertSame([
+            '',
+            'Bloque eliminado.',
+            '',
+            'Bloque eliminado.',
+        ], $result['writes']);
+        self::assertSame('ok', $result['state']);
     }
 
     public function testJavascriptDoesNotIntroduceFreeHtmlPersistenceOrDependencies(): void

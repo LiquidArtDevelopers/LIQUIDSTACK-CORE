@@ -74,6 +74,7 @@ PHP);
 
         self::assertSame('project', $config->source());
         self::assertSame('/noticias', $config->publicPath('es'));
+        self::assertSame('es', $config->defaultLocale());
         self::assertSame('/news-sitemap.xml', $config->sitemapPath());
         self::assertSame('client_blog_', $config->tablePrefix());
         self::assertSame($config->toSafeArray(), [
@@ -115,6 +116,25 @@ PHP);
             'database'
         ]['connection']);
         self::assertSame('client_blog_', $config->tablePrefix());
+    }
+
+    public function testDefaultLocaleFollowsLanguageConfigurationOrder(): void
+    {
+        $this->writeConfig(<<<'PHP'
+<?php
+
+return [
+    'public_paths' => [
+        'en' => '/en/news',
+        'es' => '/noticias',
+        'eu' => '/eu/albisteak',
+    ],
+];
+PHP);
+
+        $config = $this->load(['es', 'eu', 'en']);
+
+        self::assertSame('es', $config->defaultLocale());
     }
 
     public function testDatabaseConnectionCanBeResolvedWithoutLanguageCatalog(): void

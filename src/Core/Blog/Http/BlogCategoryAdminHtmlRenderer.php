@@ -72,8 +72,9 @@ final class BlogCategoryAdminHtmlRenderer
         ?string $categoryPublicId = null
     ): string {
         $options = '';
-        foreach ($languages as $language) {
-            $options .= '<option value="' . $this->escape($language) . '">'
+        foreach ($languages as $index => $language) {
+            $options .= '<option value="' . $this->escape($language) . '"'
+                . ($index === 0 ? ' selected' : '') . '>'
                 . $this->escape($language) . '</option>';
         }
         if ($options === '') {
@@ -103,8 +104,16 @@ final class BlogCategoryAdminHtmlRenderer
     public function editForm(
         string $basePath,
         string $csrf,
-        BlogCategoryLocalization $category
+        BlogCategoryLocalization $category,
+        bool $canAddLocalization = true
     ): string {
+        $localizationAction = $canAddLocalization
+            ? '<p><a href="' . $this->query($basePath . '/new', [
+                'category' => $category->categoryPublicId(),
+            ]) . '">A&ntilde;adir otro idioma</a></p>'
+            : '<p role="status">Esta categor&iacute;a ya est&aacute; traducida a '
+                . 'todos los idiomas activos.</p>';
+
         return $this->document(
             'Editar categor&iacute;a',
             '<main><article aria-labelledby="category-edit-title">'
@@ -121,9 +130,19 @@ final class BlogCategoryAdminHtmlRenderer
             . $category->lockVersion() . '">'
             . $this->draftFields($category)
             . '<button type="submit">Guardar cambios</button></form>'
-            . '<p><a href="' . $this->query($basePath . '/new', [
-                'category' => $category->categoryPublicId(),
-            ]) . '">A&ntilde;adir otro idioma</a></p>'
+            . $localizationAction
+            . $this->back($basePath) . '</article></main>'
+        );
+    }
+
+    public function localizationsComplete(string $basePath): string
+    {
+        return $this->document(
+            'Idiomas de la categor&iacute;a',
+            '<main><article aria-labelledby="category-locales-title">'
+            . '<h1 id="category-locales-title">Idiomas de la categor&iacute;a</h1>'
+            . '<p role="status">Esta categor&iacute;a ya est&aacute; traducida a '
+            . 'todos los idiomas activos.</p>'
             . $this->back($basePath) . '</article></main>'
         );
     }

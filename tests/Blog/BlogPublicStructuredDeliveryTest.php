@@ -67,17 +67,8 @@ final class BlogPublicStructuredDeliveryTest extends TestCase
             BlogDocument::fromArray([
                 'schema' => BlogDocument::SCHEMA,
                 'version' => BlogDocument::VERSION,
-                'template' => 'article-basic-01',
+                'template' => 'article-cover-01',
                 'blocks' => [
-                    [
-                        'id' => self::BLOCK_PARAGRAPH,
-                        'type' => 'paragraph',
-                        'content' => [[
-                            'type' => 'text',
-                            'text' => 'Structured & "quoted" \'single\'',
-                            'marks' => ['strong'],
-                        ]],
-                    ],
                     [
                         'id' => self::BLOCK_CURRENT,
                         'type' => 'image',
@@ -86,7 +77,16 @@ final class BlogPublicStructuredDeliveryTest extends TestCase
                         'title' => 'Image "title"',
                         'caption' => 'Escaped & contextual caption',
                         'decorative' => false,
-                        'display' => 'wide',
+                        'display' => 'cover',
+                    ],
+                    [
+                        'id' => self::BLOCK_PARAGRAPH,
+                        'type' => 'paragraph',
+                        'content' => [[
+                            'type' => 'text',
+                            'text' => 'Structured & "quoted" \'single\'',
+                            'marks' => ['strong'],
+                        ]],
                     ],
                     [
                         'id' => self::BLOCK_VIDEO,
@@ -152,7 +152,16 @@ final class BlogPublicStructuredDeliveryTest extends TestCase
         self::assertNotNull($structured);
         self::assertSame(200, $structured->status());
         self::assertStringContainsString(
-            'class="blogDocument blogDocument--basic"',
+            'class="blogDocument blogDocument--cover"',
+            $structured->body()
+        );
+        self::assertStringContainsString(
+            '<meta property="og:image" content="https://example.test/_liquidstack/blog-media/'
+                . self::ASSET_CURRENT . '/960.avif">',
+            $structured->body()
+        );
+        self::assertStringContainsString(
+            '<meta name="twitter:card" content="summary_large_image">',
             $structured->body()
         );
         self::assertStringContainsString(
@@ -554,7 +563,7 @@ SQL);
             $documentId,
             $blockPublicId,
             $assetPublicId,
-            'image',
+            $draft->mediaReferences()[0]->role(),
             $this->timestamp(),
         ]);
     }

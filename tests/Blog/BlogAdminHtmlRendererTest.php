@@ -28,7 +28,9 @@ final class BlogAdminHtmlRendererTest extends TestCase
         $html = (new BlogAdminHtmlRenderer())->index(
             '/admin/blog',
             [$summary],
-            true
+            true,
+            canPublish: true,
+            canViewMedia: true
         );
 
         self::assertStringContainsString('<table>', $html);
@@ -216,13 +218,98 @@ final class BlogAdminHtmlRendererTest extends TestCase
         $html = (new BlogAdminHtmlRenderer())->index(
             '/admin/blog',
             [$summary],
-            false
+            false,
+            canViewMedia: true
         );
 
         self::assertStringContainsString('Solo lectura', $html);
         self::assertStringContainsString('/editor/preview', $html);
         self::assertStringNotContainsString('/editor?', $html);
         self::assertStringNotContainsString('/posts/new', $html);
+    }
+
+    public function testListActionsMatchStateAndEffectiveCapabilities(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $draft = new BlogPostSummary(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            'matrix-draft',
+            'Matrix borrador',
+            BlogPostVariant::DRAFT,
+            null,
+            2,
+            $now
+        );
+        $published = new BlogPostSummary(
+            '33333333-3333-4333-8333-333333333333',
+            '44444444-4444-4444-8444-444444444444',
+            'es',
+            'matrix-published',
+            'Matrix publicada',
+            BlogPostVariant::PUBLISHED,
+            $now,
+            3,
+            $now
+        );
+        $renderer = new BlogAdminHtmlRenderer();
+
+        $editor = $renderer->index(
+            '/admin/blog',
+            [$draft, $published],
+            true,
+            canPublish: false,
+            canViewMedia: true
+        );
+        self::assertStringContainsString(
+            '/admin/blog/editor?post=11111111-1111-4111-8111-111111111111'
+                . '&amp;locale=es',
+            $editor
+        );
+        self::assertStringNotContainsString(
+            '/admin/blog/editor?post=33333333-3333-4333-8333-333333333333'
+                . '&amp;locale=es',
+            $editor
+        );
+        self::assertSame(2, substr_count(
+            $editor,
+            '/admin/blog/editor/preview?'
+        ));
+
+        $publisher = $renderer->index(
+            '/admin/blog',
+            [$draft, $published],
+            true,
+            canPublish: true,
+            canViewMedia: true
+        );
+        self::assertStringContainsString(
+            '/admin/blog/editor?post=33333333-3333-4333-8333-333333333333'
+                . '&amp;locale=es',
+            $publisher
+        );
+
+        $withoutMedia = $renderer->index(
+            '/admin/blog',
+            [$draft, $published],
+            true,
+            canPublish: true,
+            canViewMedia: false
+        );
+        self::assertSame(2, substr_count(
+            $withoutMedia,
+            '/admin/blog/posts/preview?'
+        ));
+        self::assertStringNotContainsString('/admin/blog/editor?', $withoutMedia);
+        self::assertStringNotContainsString(
+            '/admin/blog/editor/preview?',
+            $withoutMedia
+        );
+        self::assertStringNotContainsString(
+            '/admin/blog/posts/new',
+            $withoutMedia
+        );
     }
 
     public function testPublishedVariantMustBeWithdrawnBeforeEditing(): void

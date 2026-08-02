@@ -128,7 +128,6 @@ final class ManagedFileManifestTest extends TestCase
     public function testSegmentedShowroomFilesShareOneAtomicGroup(): void
     {
         foreach ([
-            'resources/js/_traducciones.js',
             'stubs/App/views/_showroom.php',
             'stubs/App/views/_templates.php',
             'stubs/App/views/showroom/_heroes.php',
@@ -142,6 +141,17 @@ final class ManagedFileManifestTest extends TestCase
                 'catalog:showroom',
                 ManagedFileRegistry::groupForSource($sourceId),
                 "{$sourceId} debe actualizarse con el catálogo completo"
+            );
+        }
+
+        foreach ([
+            'resources/js/_languagePreference.mjs',
+            'resources/js/_traducciones.js',
+        ] as $sourceId) {
+            self::assertSame(
+                'runtime:translations',
+                ManagedFileRegistry::groupForSource($sourceId),
+                "{$sourceId} debe actualizarse con el runtime de idiomas"
             );
         }
     }

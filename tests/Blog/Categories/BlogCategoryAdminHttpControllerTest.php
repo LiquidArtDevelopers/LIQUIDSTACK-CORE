@@ -9,6 +9,7 @@ use App\Core\Blog\Categories\BlogCategoryService;
 use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Http\BlogCategoryAdminHttpController;
+use App\Core\Blog\Http\BlogCategoryAdminHtmlRenderer;
 use App\Core\Blog\Http\BlogCategoryAdminHttpRuntime;
 use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Http\Request;
@@ -47,6 +48,18 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
     private BlogCategoryAdminHttpController $controller;
     private string $sessionToken;
     private string $csrfToken;
+
+    public function testRendererKeepsLegacyThreeArgumentEditContract(): void
+    {
+        $method = new \ReflectionMethod(
+            BlogCategoryAdminHtmlRenderer::class,
+            'editForm'
+        );
+        $parameter = $method->getParameters()[3];
+
+        self::assertTrue($parameter->isOptional());
+        self::assertTrue($parameter->getDefaultValue());
+    }
 
     protected function setUp(): void
     {
@@ -127,9 +140,10 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
             $uuidGenerator,
             $clock
         );
+        $languages = ['es', 'en', 'eu'];
         $runtime = new BlogCategoryAdminHttpRuntime(
-            ['es'],
-            BlogConfig::defaults(['es']),
+            $languages,
+            BlogConfig::defaults($languages),
             $config,
             $blogService,
             $categoryService,
@@ -234,6 +248,111 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
             $get->headers()['Cache-Control'],
             $head->headers()['Cache-Control']
         );
+    }
+
+    public function testLocalizationFormOnlyOffersMissingActiveLanguages(): void
+    {
+        $newCategory = $this->controller->newCategory(
+            $this->get('/admin/blog/categories/new')
+        );
+        self::assertSame(200, $newCategory->status());
+        self::assertSame(3, substr_count($newCategory->body(), '<option '));
+        self::assertStringContainsString(
+            '<option value="es" selected>es</option>',
+            $newCategory->body()
+        );
+
+        $category = $this->insertCategory(700);
+        $addLanguage = $this->controller->newCategory($this->get(
+            '/admin/blog/categories/new',
+            ['category' => $category]
+        ));
+        self::assertSame(200, $addLanguage->status());
+        self::assertSame(2, substr_count($addLanguage->body(), '<option '));
+        self::assertStringNotContainsString(
+            '<option value="es"',
+            $addLanguage->body()
+        );
+        self::assertStringContainsString(
+            '<option value="en" selected>en</option>',
+            $addLanguage->body()
+        );
+        self::assertStringContainsString(
+            '<option value="eu">eu</option>',
+            $addLanguage->body()
+        );
+
+        $editWithMissingLanguages = $this->controller->edit($this->get(
+            '/admin/blog/categories/edit',
+            ['category' => $category, 'locale' => 'es']
+        ));
+        self::assertSame(200, $editWithMissingLanguages->status());
+        self::assertStringContainsString(
+            'A&ntilde;adir otro idioma',
+            $editWithMissingLanguages->body()
+        );
+
+        foreach ([
+            'en' => ['Financial news', 'financial-news'],
+            'eu' => ['Finantza albisteak', 'finantza-albisteak'],
+        ] as $locale => [$name, $slug]) {
+            $created = $this->controller->create($this->post(
+                '/admin/blog/categories/create',
+                [
+                    'csrf' => $this->csrfToken,
+                    'category' => $category,
+                    'locale' => $locale,
+                    'name' => $name,
+                    'slug' => $slug,
+                ]
+            ));
+            self::assertSame(303, $created->status());
+
+            $remaining = $this->controller->newCategory($this->get(
+                '/admin/blog/categories/new',
+                ['category' => $category]
+            ));
+            self::assertSame(200, $remaining->status());
+            if ($locale === 'en') {
+                self::assertSame(1, substr_count(
+                    $remaining->body(),
+                    '<option '
+                ));
+                self::assertStringContainsString(
+                    '<option value="eu" selected>eu</option>',
+                    $remaining->body()
+                );
+            } else {
+                self::assertStringNotContainsString(
+                    '<form',
+                    $remaining->body()
+                );
+                self::assertStringContainsString(
+                    'todos los idiomas activos',
+                    $remaining->body()
+                );
+            }
+        }
+
+        $completeEdit = $this->controller->edit($this->get(
+            '/admin/blog/categories/edit',
+            ['category' => $category, 'locale' => 'es']
+        ));
+        self::assertSame(200, $completeEdit->status());
+        self::assertStringNotContainsString(
+            'A&ntilde;adir otro idioma',
+            $completeEdit->body()
+        );
+        self::assertStringContainsString(
+            'todos los idiomas activos',
+            $completeEdit->body()
+        );
+
+        $unknown = $this->controller->newCategory($this->get(
+            '/admin/blog/categories/new',
+            ['category' => '89999999-9999-4999-8999-999999999999']
+        ));
+        self::assertSame(404, $unknown->status());
     }
 
     public function testAssignmentFormAndMutationPreserveMoreThanFiftyItems(): void

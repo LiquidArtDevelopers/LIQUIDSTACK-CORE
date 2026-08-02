@@ -123,7 +123,13 @@ final class ManagedFileRegistry
         $sourceId = self::normalizePath($sourceId);
 
         if (in_array($sourceId, [
+            'resources/js/_languagePreference.mjs',
             'resources/js/_traducciones.js',
+        ], true)) {
+            return 'runtime:translations';
+        }
+
+        if (in_array($sourceId, [
             'src/js/templates.js',
             'src/scss/templates.scss',
             'stubs/App/views/_showroom.php',

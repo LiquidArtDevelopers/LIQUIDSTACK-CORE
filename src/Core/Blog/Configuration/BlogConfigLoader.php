@@ -152,7 +152,8 @@ final class BlogConfigLoader
             $sitemapPath,
             $tablePrefix,
             'project',
-            $connection
+            $connection,
+            $languages[0]
         );
     }
 

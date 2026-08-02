@@ -48,6 +48,8 @@ final class BlogPublicHttpControllerTest extends TestCase
             private array $values = [
                 '11111111-1111-4111-8111-111111111111',
                 '22222222-2222-4222-8222-222222222222',
+                '44444444-4444-4444-8444-444444444444',
+                '55555555-5555-4555-8555-555555555555',
             ];
 
             public function generateV4(): string
@@ -61,7 +63,11 @@ final class BlogPublicHttpControllerTest extends TestCase
             $uuidGenerator
         );
         $config = new BlogConfig(
-            ['es' => '/noticias'],
+            [
+                'es' => '/noticias',
+                'en' => '/en/news',
+                'eu' => '/eu/albisteak',
+            ],
             '/blog-sitemap.xml',
             'ls_blog_',
             'fixture'
@@ -144,6 +150,112 @@ final class BlogPublicHttpControllerTest extends TestCase
         );
     }
 
+    public function testPublishedLocaleEquivalentsDriveArticleAndSitemapSeo(): void
+    {
+        $spanish = $this->service->createPost(
+            $this->actorGate(),
+            'es',
+            $this->draft()
+        );
+        $english = $this->service->addLocalization(
+            $this->actorGate(),
+            $spanish->postPublicId(),
+            'en',
+            $this->localizedDraft(
+                'matrix-en',
+                'Matrix in English',
+                'Matrix | English news'
+            )
+        );
+        $this->service->addLocalization(
+            $this->actorGate(),
+            $spanish->postPublicId(),
+            'eu',
+            $this->localizedDraft(
+                'matrix-eu',
+                'Matrix euskaraz',
+                'Matrix | Albisteak'
+            )
+        );
+        $this->service->publish(
+            $this->actorGate(),
+            $spanish->postPublicId(),
+            'es',
+            $spanish->lockVersion()
+        );
+        $englishPublished = $this->service->publish(
+            $this->actorGate(),
+            $spanish->postPublicId(),
+            'en',
+            $english->lockVersion()
+        );
+
+        $article = $this->controller->article('en', 'matrix-en');
+        self::assertNotNull($article);
+        self::assertStringContainsString(
+            '<title>Matrix | English news</title>',
+            $article->body()
+        );
+        self::assertStringContainsString(
+            '<meta name="description" content="Description for Matrix in English.">',
+            $article->body()
+        );
+        self::assertStringContainsString(
+            '<meta name="robots" content="index,follow">',
+            $article->body()
+        );
+        self::assertStringContainsString(
+            'hreflang="es" href="https://example.test/noticias/matrix"',
+            $article->body()
+        );
+        self::assertStringContainsString(
+            'hreflang="en" href="https://example.test/en/news/matrix-en"',
+            $article->body()
+        );
+        self::assertStringContainsString(
+            'hreflang="x-default" href="https://example.test/noticias/matrix"',
+            $article->body()
+        );
+        self::assertStringNotContainsString('matrix-eu', $article->body());
+
+        $sitemap = $this->controller->sitemap()->body();
+        self::assertStringContainsString(
+            'xmlns:xhtml="http://www.w3.org/1999/xhtml"',
+            $sitemap
+        );
+        self::assertSame(2, substr_count(
+            $sitemap,
+            'hreflang="es" href="https://example.test/noticias/matrix"'
+        ));
+        self::assertSame(2, substr_count(
+            $sitemap,
+            'hreflang="en" href="https://example.test/en/news/matrix-en"'
+        ));
+        self::assertSame(2, substr_count(
+            $sitemap,
+            'hreflang="x-default" href="https://example.test/noticias/matrix"'
+        ));
+        self::assertStringNotContainsString('matrix-eu', $sitemap);
+
+        $this->service->unpublish(
+            $this->actorGate(),
+            $spanish->postPublicId(),
+            'en',
+            $englishPublished->lockVersion()
+        );
+        self::assertNull($this->controller->article('en', 'matrix-en'));
+        $spanishArticle = $this->controller->article('es', 'matrix');
+        self::assertNotNull($spanishArticle);
+        self::assertStringNotContainsString(
+            'hreflang="en"',
+            $spanishArticle->body()
+        );
+        self::assertStringNotContainsString(
+            '/en/news/matrix-en',
+            $this->controller->sitemap()->body()
+        );
+    }
+
     public function testPublishedArticleUsesTypedLocalOriginInDevelopment(): void
     {
         $created = $this->service->createPost(
@@ -183,6 +295,36 @@ final class BlogPublicHttpControllerTest extends TestCase
         );
     }
 
+    public function testXDefaultFallsBackToFirstPublishedLocale(): void
+    {
+        $english = $this->service->createPost(
+            $this->actorGate(),
+            'en',
+            $this->localizedDraft(
+                'matrix-en',
+                'Matrix in English',
+                'Matrix | English news'
+            )
+        );
+        $this->service->publish(
+            $this->actorGate(),
+            $english->postPublicId(),
+            'en',
+            $english->lockVersion()
+        );
+
+        $article = $this->controller->article('en', 'matrix-en');
+        self::assertNotNull($article);
+        self::assertStringContainsString(
+            'hreflang="x-default" href="https://example.test/en/news/matrix-en"',
+            $article->body()
+        );
+        self::assertStringContainsString(
+            'hreflang="x-default" href="https://example.test/en/news/matrix-en"',
+            $this->controller->sitemap()->body()
+        );
+    }
+
     private function draft(): BlogDraft
     {
         return new BlogDraft(
@@ -192,6 +334,21 @@ final class BlogPublicHttpControllerTest extends TestCase
             'Matrix | Noticias',
             'Descripción de Matrix.',
             'Extracto de Matrix.'
+        );
+    }
+
+    private function localizedDraft(
+        string $slug,
+        string $h1,
+        string $seoTitle
+    ): BlogDraft {
+        return new BlogDraft(
+            $h1,
+            'First paragraph.' . "\n\n" . 'Second paragraph.',
+            $slug,
+            $seoTitle,
+            'Description for ' . $h1 . '.',
+            'Excerpt for ' . $h1 . '.'
         );
     }
 

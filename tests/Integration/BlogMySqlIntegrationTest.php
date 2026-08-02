@@ -7,6 +7,7 @@ use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
+use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Http\BlogAdminHttpRuntime;
 use App\Core\Blog\Persistence\PdoBlogRepository;
@@ -382,6 +383,14 @@ final class BlogMySqlIntegrationTest extends TestCase
                 )?->postPublicId()
             );
             self::assertCount(1, $runtime->service()->sitemapEntries());
+            $equivalents = $runtime->service()
+                ->publishedSitemapEntriesForPost($created->postPublicId());
+            self::assertCount(1, $equivalents);
+            self::assertSame(
+                $created->postPublicId(),
+                $equivalents[0]->postPublicId()
+            );
+            self::assertSame('es', $equivalents[0]->locale());
             self::assertNull(
                 $runtime->service()->resolvePublished('eu', 'matrix-mysql-eu')
             );
@@ -402,6 +411,12 @@ final class BlogMySqlIntegrationTest extends TestCase
                 $runtime->service()->resolvePublished('es', 'matrix-mysql')
             );
             self::assertSame([], $runtime->service()->sitemapEntries());
+            self::assertSame(
+                [],
+                $runtime->service()->publishedSitemapEntriesForPost(
+                    $created->postPublicId()
+                )
+            );
             self::assertCount(2, $runtime->service()->listPosts(10));
 
             $secondConnection = $this->connect($configuration);
@@ -514,6 +529,19 @@ final class BlogMySqlIntegrationTest extends TestCase
                 $basque,
                 $clock->now()
             );
+            $categoryRepository = new PdoBlogCategoryRepository(
+                $connection,
+                $blogScope
+            );
+            self::assertSame(
+                ['es'],
+                $categoryRepository->categoryLocales(
+                    self::CATEGORY_PUBLIC_ID
+                )
+            );
+            self::assertNull($categoryRepository->categoryLocales(
+                '99999999-9999-4999-8999-999999999999'
+            ));
             $this->assertExtendedFixtureRows(
                 $connection,
                 $webAdminPrefix,

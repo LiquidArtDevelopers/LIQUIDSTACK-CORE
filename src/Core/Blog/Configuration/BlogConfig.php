@@ -28,9 +28,23 @@ final class BlogConfig
         private readonly string $tablePrefix,
         private readonly string $source,
         private readonly string $databaseConnection =
-            DatabaseConnectionProfile::SHARED
+            DatabaseConnectionProfile::SHARED,
+        ?string $defaultLocale = null
     ) {
+        $defaultLocale ??= array_key_first($publicPaths);
+        if (
+            !is_string($defaultLocale)
+            || !array_key_exists($defaultLocale, $publicPaths)
+        ) {
+            throw new BlogConfigException(
+                'config.default_language_missing',
+                'public_paths'
+            );
+        }
+        $this->defaultLocale = $defaultLocale;
     }
+
+    private readonly string $defaultLocale;
 
     /** @param list<string> $languages */
     public static function defaults(array $languages): self
@@ -46,7 +60,9 @@ final class BlogConfig
             $paths,
             self::DEFAULT_SITEMAP_PATH,
             self::DEFAULT_TABLE_PREFIX,
-            'defaults'
+            'defaults',
+            DatabaseConnectionProfile::SHARED,
+            array_key_first($paths)
         );
     }
 
@@ -79,6 +95,11 @@ final class BlogConfig
     public function source(): string
     {
         return $this->source;
+    }
+
+    public function defaultLocale(): string
+    {
+        return $this->defaultLocale;
     }
 
     /** @return array<string, mixed> */

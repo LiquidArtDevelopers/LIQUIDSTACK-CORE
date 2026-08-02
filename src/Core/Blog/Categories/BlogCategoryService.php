@@ -7,6 +7,7 @@ namespace App\Core\Blog\Categories;
 use App\Core\Blog\BlogException;
 use App\Core\Blog\Categories\Audit\BlogCategoryAuditEvent;
 use App\Core\Blog\Categories\Audit\BlogCategoryAuditPortInterface;
+use App\Core\Blog\Categories\Persistence\BlogCategoryLocaleLookupRepositoryInterface;
 use App\Core\Blog\Categories\Persistence\BlogCategoryPersistenceConflict;
 use App\Core\Blog\Categories\Persistence\BlogCategoryPersistenceException;
 use App\Core\Blog\Categories\Persistence\BlogCategoryRepositoryInterface;
@@ -306,6 +307,60 @@ final class BlogCategoryService
         });
     }
 
+    /**
+     * @param list<string> $candidateLocales
+     * @return list<string>
+     */
+    public function localesForCategory(
+        string $categoryPublicId,
+        array $candidateLocales = []
+    ): array {
+        $categoryPublicId = BlogCategoryInput::publicId($categoryPublicId);
+        if (
+            !array_is_list($candidateLocales)
+            || count($candidateLocales) > 100
+        ) {
+            throw new BlogCategoryException(
+                BlogCategoryException::INVALID_INPUT
+            );
+        }
+        $normalizedCandidates = [];
+        foreach ($candidateLocales as $candidateLocale) {
+            if (!is_string($candidateLocale)) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::INVALID_INPUT
+                );
+            }
+            $candidateLocale = BlogCategoryInput::locale($candidateLocale);
+            if (isset($normalizedCandidates[$candidateLocale])) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::INVALID_INPUT
+                );
+            }
+            $normalizedCandidates[$candidateLocale] = true;
+        }
+
+        return $this->read(function () use (
+            $categoryPublicId,
+            $normalizedCandidates
+        ): array {
+            $locales = $this->repository instanceof
+                BlogCategoryLocaleLookupRepositoryInterface
+                ? $this->repository->categoryLocales($categoryPublicId)
+                : $this->categoryLocalesFromBaseContract(
+                    $categoryPublicId,
+                    array_keys($normalizedCandidates)
+                );
+            if ($locales === null) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::NOT_FOUND
+                );
+            }
+
+            return $locales;
+        });
+    }
+
     /** @return list<string> */
     public function assignedToPost(string $postPublicId): array
     {
@@ -313,6 +368,31 @@ final class BlogCategoryService
 
         return $this->read(fn (): array =>
             $this->repository->assignedCategoryPublicIds($postPublicId));
+    }
+
+    /**
+     * @param list<string> $candidateLocales
+     * @return null|list<string>
+     */
+    private function categoryLocalesFromBaseContract(
+        string $categoryPublicId,
+        array $candidateLocales
+    ): ?array {
+        if ($candidateLocales === []) {
+            throw new BlogCategoryPersistenceException();
+        }
+        $locales = [];
+        foreach ($candidateLocales as $candidateLocale) {
+            $localization = $this->repository->category(
+                $categoryPublicId,
+                $candidateLocale
+            );
+            if ($localization !== null) {
+                $locales[$localization->locale()] = true;
+            }
+        }
+
+        return $locales === [] ? null : array_keys($locales);
     }
 
     /** @template T @param callable(PDO): T $operation @return T */

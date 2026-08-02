@@ -110,6 +110,14 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             );
         }
         self::assertStringContainsString(
+            '>A&ntilde;adir v&iacute;deo de YouTube</button>',
+            $html
+        );
+        self::assertStringNotContainsString(
+            '>A&ntilde;adir v&iacute;deo de youtube</button>',
+            $html
+        );
+        self::assertStringContainsString(
             '<option value="' . $mediaId
             . '">Matrix &amp; &quot;portada&quot;</option>',
             $html

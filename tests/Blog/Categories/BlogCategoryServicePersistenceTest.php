@@ -8,8 +8,10 @@ use App\Core\Blog\Categories\Audit\BlogCategoryAuditEvent;
 use App\Core\Blog\Categories\Audit\BlogCategoryAuditPortInterface;
 use App\Core\Blog\Categories\BlogCategoryDraft;
 use App\Core\Blog\Categories\BlogCategoryException;
+use App\Core\Blog\Categories\BlogCategoryLocalization;
 use App\Core\Blog\Categories\BlogCategoryPublicProjectionService;
 use App\Core\Blog\Categories\BlogCategoryService;
+use App\Core\Blog\Categories\Persistence\BlogCategoryRepositoryInterface;
 use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Modules\Blog\BlogMigrationProvider;
@@ -104,12 +106,31 @@ final class BlogCategoryServicePersistenceTest extends TestCase
             'es',
             new BlogCategoryDraft('Noticias', 'noticias')
         );
+        self::assertSame(
+            ['es'],
+            $this->service->localesForCategory($created->categoryPublicId())
+        );
         $this->service->addLocalization(
             $this->gate(),
             $created->categoryPublicId(),
             'eu',
             new BlogCategoryDraft('Albisteak', 'albisteak')
         );
+        self::assertSame(
+            ['es', 'eu'],
+            $this->service->localesForCategory($created->categoryPublicId())
+        );
+        try {
+            $this->service->localesForCategory(
+                '99999999-9999-4999-8999-999999999999'
+            );
+            self::fail('An unknown category aggregate must not be projected.');
+        } catch (BlogCategoryException $exception) {
+            self::assertSame(
+                BlogCategoryException::NOT_FOUND,
+                $exception->issueCode()
+            );
+        }
         $saved = $this->service->save(
             $this->gate(),
             $created->categoryPublicId(),
@@ -147,6 +168,44 @@ final class BlogCategoryServicePersistenceTest extends TestCase
             $created->categoryPublicId(),
             'es'
         )->draft()->name());
+    }
+
+    public function testLocaleLookupSupportsTheOriginalRepositoryContract(): void
+    {
+        $repository = $this->createMock(
+            BlogCategoryRepositoryInterface::class
+        );
+        $spanish = $this->localization(
+            '80000000-0000-4000-8000-000000000002',
+            '81000000-0000-4000-8000-000000000002',
+            'es'
+        );
+        $basque = $this->localization(
+            '80000000-0000-4000-8000-000000000002',
+            '81000000-0000-4000-8000-000000000003',
+            'eu'
+        );
+        $repository->expects(self::exactly(3))
+            ->method('category')
+            ->willReturnCallback(static fn (
+                string $categoryPublicId,
+                string $locale
+            ): ?BlogCategoryLocalization => match ($locale) {
+                'es' => $spanish,
+                'en' => null,
+                'eu' => $basque,
+                default => throw new \RuntimeException(
+                    'Unexpected compatibility-locale request.'
+                ),
+            });
+
+        self::assertSame(
+            ['es', 'eu'],
+            (new BlogCategoryService($repository))->localesForCategory(
+                '80000000-0000-4000-8000-000000000002',
+                ['es', 'en', 'eu']
+            )
+        );
     }
 
     public function testAssignmentsScalePastFiftyAndRollbackOnActorFailure(): void
@@ -292,5 +351,20 @@ final class BlogCategoryServicePersistenceTest extends TestCase
         ]);
 
         return $category;
+    }
+
+    private function localization(
+        string $categoryPublicId,
+        string $localizationPublicId,
+        string $locale
+    ): BlogCategoryLocalization {
+        return new BlogCategoryLocalization(
+            $categoryPublicId,
+            $localizationPublicId,
+            $locale,
+            new BlogCategoryDraft('Matrix', 'matrix-' . $locale),
+            1,
+            new DateTimeImmutable('2030-01-01 10:00:00 UTC')
+        );
     }
 }

@@ -4,45 +4,47 @@
 
 //IMPORTAMOS UN OBJETO CON LA RELACIÓN DE PATHNAME CON RUTA
 import rutas from "../../../App/config/rutas.js";
+import {
+  createLatestLanguageRequestTracker,
+  loadLanguageCatalogs,
+  navigateToLanguageHref,
+  persistLanguagePreference,
+} from "./_languagePreference.mjs";
 const DEFAULT_LANG = import.meta.env.LANG_DEFAULT || "es";
+const languageRequests = createLatestLanguageRequestTracker();
 // console.log(rutas)
 
 
 document.addEventListener('DOMContentLoaded', () => {
     const btn_idiomas = document.getElementsByClassName("btn_idioma");
     for (const btn of btn_idiomas) {
-        btn.addEventListener("click", function (event) {
+        btn.addEventListener("click", async function (event) {
+            event.preventDefault();
 
-            event.preventDefault(); // Evita la recarga del enlace
+            const idioma = btn.id;
+            const fallbackHref = btn.getAttribute("href");
+            const requestToken = languageRequests.next();
 
-            const idioma = btn.id; //
-            // const newUrl = btn.getAttribute('href'); // Obtiene la URL del href
+            // CookieLAD solo gobierna la persistencia opcional. Su ausencia o
+            // cualquier fallo interno nunca debe bloquear el cambio de idioma.
+            persistLanguagePreference(window.CookieLAD, idioma);
 
             try {
-                // Manejar cookies
-                if (typeof window.CookieLAD === 'undefined') {
-                    console.error('CookieLAD no está definido. Asegúrate de que el script de CookieLAD esté cargado.');
+                if (typeof traduccionClass !== "function") {
+                    if (languageRequests.isCurrent(requestToken)) {
+                        navigateToLanguageHref(window, fallbackHref);
+                    }
                     return;
-                }
-                const cookie = window.CookieLAD;
-                const okCookie = cookie.comprobarOkCookie("cookie_custom");
-                if (okCookie) {
-                    cookie.setCookie("cookie_custom_lang", idioma, 90);
                 }
 
-                // Manejar traducciones
-                if (typeof traduccionClass === 'undefined') {
-                    console.error('traduccionClass no está definido. Asegúrate de que el script de traducciones esté cargado.');
-                    return;
-                }
                 const traduccion = traduccionClass.getInstance();
-                traduccion.resetearIdioma();
-                traduccion.traducirTodo(idioma);
-
-                // // Actualizar la URL sin recargar
-                // history.pushState({}, '', newUrl);
+                await traduccion.traducirTodo(idioma, requestToken);
             } catch (error) {
-                console.error('Error al cambiar idioma:', error);
+                if (!languageRequests.isCurrent(requestToken)) {
+                    return;
+                }
+                console.error("Error al cambiar idioma:", error);
+                navigateToLanguageHref(window, fallbackHref);
             }
         });
     }
@@ -212,7 +214,7 @@ export default class traduccionClass {
     fetch("/languages",{
       body:new URLSearchParams({route:this.jsonIdioma,lang:this.idioma}),
       method:"POST",
-      headers:{"application":"application/x-www-form-urlencoded"}
+      headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"}
     })
       .then((response) => {
         if (response.ok) return response.text();
@@ -273,7 +275,7 @@ export default class traduccionClass {
     fetch("/languages",{
       body:new URLSearchParams({route:this.jsonIdioma,lang:this.idioma}),
       method:"POST",
-      headers:{"application":"application/x-www-form-urlencoded"}
+      headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"}
     })
       .then((response) => {
         if (response.ok) return response.text();
@@ -325,10 +327,49 @@ export default class traduccionClass {
       });
   }
 
-  //Traduciomos todo el documento en función de la url y el idioma
-  traducirTodo(idioma) {
-    this.idioma = idioma;
-    const targetLang = this.idioma;
+  aplicarCatalogo(objGroupJson, pathOrigin, targetLang) {
+    const datalangs = document.querySelectorAll("[data-lang]");
+    for (const datalang of datalangs) {
+      const dataLangValue = datalang.getAttribute("data-lang");
+      const entry = objGroupJson[dataLangValue];
+
+      if (entry) {
+        if (entry.alt) datalang.alt = entry.alt;
+        if (entry.title) datalang.title = entry.title;
+        if (entry.text) datalang.innerHTML = entry.text;
+        if (Object.keys(entry).includes("href")) {
+          datalang.href = this.resolveLocalizedHref(
+            pathOrigin,
+            targetLang,
+            entry.href
+          );
+        }
+        if (entry.placeholder) datalang.placeholder = entry.placeholder;
+        if (entry.value) datalang.value = entry.value;
+        if (entry.content) datalang.content = entry.content;
+        if (Object.keys(entry).includes("src") && entry.src) {
+          datalang.src = `${pathOrigin}/${entry.src}`;
+        }
+        continue;
+      }
+
+      if (
+        objGroupJson.errors
+        && dataLangValue
+        && objGroupJson.errors[dataLangValue]
+      ) {
+        datalang.textContent = objGroupJson.errors[dataLangValue];
+      }
+    }
+  }
+
+  // Traducimos todo el documento solo tras cargar ambos catálogos. Un
+  // fallo HTTP o JSON rechaza la promesa para que el selector navegue al href
+  // localizado sin dejar una traducción parcial como estado definitivo.
+  async traducirTodo(idioma, requestToken = null) {
+    const activeRequestToken = requestToken
+      ?? languageRequests.next();
+    const targetLang = idioma;
     const appConfig =
       typeof window !== "undefined" &&
       window.__APP_CONFIG__ &&
@@ -336,44 +377,50 @@ export default class traduccionClass {
         ? window.__APP_CONFIG__
         : null;
 
-    if (document?.documentElement) {
-      document.documentElement.setAttribute("lang", targetLang);
-    }
-
-    if (appConfig) {
-      appConfig.lang = targetLang;
-      if (!appConfig.defaultLang && DEFAULT_LANG) {
-        appConfig.defaultLang = DEFAULT_LANG;
-      }
-    }
-
-    //COGEMOS EL PROTOCOLO Y EL HOSTNAME
-    let pathOrigin = window.location.origin;
-
-    //COGEMOS LA URL ACTUAL
-    let pathActual = window.location.pathname;
-    // console.log(pathActual)
-
-    //COGEMOS EL IDIOMA DE LA URL ACTUAL
-    let arrPathActual = pathActual.split("/");
-    // console.log(arrPathActual)
+    const pathOrigin = window.location.origin;
+    const pathActual = window.location.pathname;
+    const arrPathActual = pathActual.split("/");
     let pathLang = arrPathActual[1];
-    if (pathLang == "" || pathLang.length > 2) {
+    if (pathLang === "" || pathLang.length > 2) {
       pathLang = DEFAULT_LANG;
     }
 
     const routeContext = this.resolveRouteContext(
       pathActual,
       pathLang,
-      this.idioma
+      targetLang
     );
     const pathNueva = routeContext.path ?? pathActual;
     const ruta = routeContext.route;
-
     const normalizedRoute = ruta ?? (appConfig?.route ?? null);
 
+    const catalogRoutes = ["global"];
+    if (normalizedRoute && normalizedRoute !== "global") {
+      catalogRoutes.push(normalizedRoute);
+    }
+    const catalogs = await loadLanguageCatalogs(
+      fetch,
+      catalogRoutes,
+      targetLang
+    );
+    if (!languageRequests.isCurrent(activeRequestToken)) {
+      return false;
+    }
+
+    this.idioma = targetLang;
+    if (document?.documentElement) {
+      document.documentElement.setAttribute("lang", targetLang);
+    }
     if (appConfig) {
+      appConfig.lang = targetLang;
       appConfig.route = normalizedRoute;
+      if (!appConfig.defaultLang && DEFAULT_LANG) {
+        appConfig.defaultLang = DEFAULT_LANG;
+      }
+    }
+
+    for (const catalog of catalogs) {
+      this.aplicarCatalogo(catalog, pathOrigin, targetLang);
     }
 
     window.dispatchEvent(
@@ -390,151 +437,9 @@ export default class traduccionClass {
     //CAMBIAMOS LA RUTA VISIBLE POR LA NUEVA
     history.pushState(null, "", pathNueva);
 
+    this.resetearIdioma();
     this.colorearIdioma();
 
-    //----------
-    // COGEMOS EL JSON DEL GLOBAL E IDIOMA CORRESPONDIENTE
-    this.jsonIdioma = "global"
-
-    // console.log(this.jsonIdioma);
-
-      //RECOGEMOS TODOS LOS ELEMENTOS DEL JSON
-      fetch("/languages",{
-      body:new URLSearchParams({route:this.jsonIdioma,lang:this.idioma}),
-      method:"POST",
-      headers:{"application":"application/x-www-form-urlencoded"}
-    })
-      .then((response) => {
-        if (response.ok) return response.text();
-        else throw new Error(response.status);
-      })
-      .then((data) => {
-        //PARSEAMOS EL JSON EN UN OBJETO
-        const objGroupJson = JSON.parse(data);
-
-        // RECOGEMOS EN UN ARRAY TODOS LOS ELEMENTOS HTML CON ESE ATRIBUTO Y LOS RECORREMOS
-        const datalangs = document.querySelectorAll("[data-lang]");
-        for (const datalang of datalangs) {
-          //COGENMOS EL VALOR DEL DATALANG DE ESE TAG
-          let dataLangValue = datalang.getAttribute("data-lang");
-
-          //SI EXISTE DENTRO DEL OBJETO EL TAG COMO PROPIEDAD, ENTONCES MODIFICAMOS ATRIBUTOS DEL TAG (SI EXISTEN)
-          if (objGroupJson[dataLangValue]) {
-            /* Object.keys(objGroupJson[dataLangValue]).forEach( key=>{
-                        if(key === "text"){
-                            datalang.innerHTML = objGroupJson[dataLangValue][key]
-                        }else{
-                            if(datalang[key]){
-                                datalang[key] = objGroupJson[dataLangValue][key]
-                            }
-                        }
-                    } ) */
-
-            if (objGroupJson[dataLangValue]["alt"]) {
-              datalang.alt = objGroupJson[dataLangValue]["alt"];
-            }
-            if (objGroupJson[dataLangValue]["title"]) {
-              datalang.title = objGroupJson[dataLangValue]["title"];
-            }
-            if (objGroupJson[dataLangValue]["text"]) {
-              datalang.innerHTML = objGroupJson[dataLangValue]["text"];
-            }
-            if (Object.keys(objGroupJson[dataLangValue]).includes("href")) {
-              datalang.href = this.resolveLocalizedHref(
-                pathOrigin,
-                targetLang,
-                objGroupJson[dataLangValue]["href"]
-              );
-            }
-            if (objGroupJson[dataLangValue]["placeholder"]) {
-              datalang.placeholder = objGroupJson[dataLangValue]["placeholder"];
-            }
-            if (objGroupJson[dataLangValue]["value"]) {
-              datalang.value = objGroupJson[dataLangValue]["value"];
-            }
-            if (objGroupJson[dataLangValue]["content"]) {
-              datalang.content = objGroupJson[dataLangValue]["content"];
-            }
-            if (Object.keys(objGroupJson[dataLangValue]).includes("src")) {
-              if (objGroupJson[dataLangValue]["src"]) {
-                datalang.src = `${pathOrigin}/${objGroupJson[dataLangValue]["src"]}`;
-              }
-            }
-          }
-        }
-      })
-      .catch((err) => {
-        console.error("ERROR", err.message)
-      });
-
-    // COGEMOS EL JSON DE LA RUTA E IDIOMA CORRESPONDIENTE
-    this.jsonIdioma = ruta
-
-      //RECOGEMOS TODOS LOS ELEMENTOS DEL JSON
-      fetch("/languages",{
-      body:new URLSearchParams({route:this.jsonIdioma,lang:this.idioma}),
-      method:"POST",
-      headers:{"application":"application/x-www-form-urlencoded"}
-    })
-      .then((response) => {
-        if (response.ok) return response.text();
-        else throw new Error(response.status);
-      })
-      .then((data) => {
-        //PARSEAMOS EL JSON EN UN OBJETO
-        const objGroupJson = JSON.parse(data);
-
-        // RECOGEMOS EN UN ARRAY TODOS LOS ELEMENTOS HTML CON ESE ATRIBUTO Y LOS RECORREMOS
-        const datalangs = document.querySelectorAll("[data-lang]");
-        for (const datalang of datalangs) {
-          // console.log(datalang)
-
-          //COGENMOS EL VALOR DEL DATALANG DE ESE TAG
-          let dataLangValue = datalang.getAttribute("data-lang");
-
-          //SI EXISTE DENTRO DEL OBJETO EL TAG COMO PROPIEDAD, ENTONCES MODIFICAMOS ATRIBUTOS DEL TAG (SI EXISTEN)
-          if (objGroupJson[dataLangValue]) {
-            if (objGroupJson[dataLangValue]["alt"]) {
-              datalang.alt = objGroupJson[dataLangValue]["alt"];
-            }
-            if (objGroupJson[dataLangValue]["title"]) {
-              datalang.title = objGroupJson[dataLangValue]["title"];
-            }
-            if (objGroupJson[dataLangValue]["text"]) {
-              datalang.innerHTML = objGroupJson[dataLangValue]["text"];
-            }
-            if (Object.keys(objGroupJson[dataLangValue]).includes("href")) {
-              datalang.href = this.resolveLocalizedHref(
-                pathOrigin,
-                targetLang,
-                objGroupJson[dataLangValue]["href"]
-              );
-            }
-            if (objGroupJson[dataLangValue]["placeholder"]) {
-              datalang.placeholder = objGroupJson[dataLangValue]["placeholder"];
-            }
-            if (objGroupJson[dataLangValue]["value"]) {
-              datalang.value = objGroupJson[dataLangValue]["value"];
-            }
-            if (objGroupJson[dataLangValue]["content"]) {
-              datalang.content = objGroupJson[dataLangValue]["content"];
-            }
-            if (Object.keys(objGroupJson[dataLangValue]).includes("src")) {
-              if (objGroupJson[dataLangValue]["src"]) {
-                datalang.src = `${pathOrigin}/${objGroupJson[dataLangValue]["src"]}`;
-              }
-            }
-          } else {
-            if (objGroupJson.hasOwnProperty("errors")) {
-              if (objGroupJson.errors[dataLangValue]) {
-                datalang.textContent = objGroupJson.errors[dataLangValue];
-              }
-            }
-          }
-        }
-      })
-      .catch((err) => {
-        console.error("ERROR", err.message);
-      });
+    return true;
   }
 }

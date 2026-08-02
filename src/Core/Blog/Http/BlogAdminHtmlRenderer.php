@@ -18,7 +18,9 @@ final class BlogAdminHtmlRenderer
         array $summaries,
         bool $canEdit,
         int $offset = 0,
-        bool $hasNext = false
+        bool $hasNext = false,
+        bool $canPublish = false,
+        bool $canViewMedia = false
     ): string {
         if (
             $offset < 0
@@ -39,7 +41,7 @@ final class BlogAdminHtmlRenderer
             }
             $preview = $this->pathWithQuery(
                 $basePath,
-                '/editor/preview',
+                $canViewMedia ? '/editor/preview' : '/posts/preview',
                 [
                     'post' => $summary->postPublicId(),
                     'locale' => $summary->locale(),
@@ -48,7 +50,13 @@ final class BlogAdminHtmlRenderer
             $action = '<a href="' . $preview
                 . '" target="_blank" rel="noopener">Vista previa '
                 . 'guardada</a>';
-            if ($canEdit) {
+            $canOpenEditor = $canEdit
+                && $canViewMedia
+                && (
+                    $summary->status() === BlogPostVariant::DRAFT
+                    || $canPublish
+                );
+            if ($canOpenEditor) {
                 $edit = $this->pathWithQuery($basePath, '/editor', [
                     'post' => $summary->postPublicId(),
                     'locale' => $summary->locale(),
@@ -68,7 +76,7 @@ final class BlogAdminHtmlRenderer
         if ($rows === '') {
             $rows = '<tr><td colspan="5">No hay art&iacute;culos.</td></tr>';
         }
-        $create = $canEdit
+        $create = $canEdit && $canViewMedia
             ? '<p><a href="' . $this->path($basePath, '/posts/new')
                 . '">Crear art&iacute;culo</a></p>'
             : '';

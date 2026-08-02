@@ -539,7 +539,8 @@ function hreflangAlternates(string $lang, string $url): string
  * helpers.php
  * ------------------------------------------------------------------
  * Devuelve el <script type="application/ld+json"> con el esquema
- * de la página actual, incluyendo accesibilidad WCAG 2.0/2.1
+ * WebPage de la página actual. El nombre histórico se conserva por BC;
+ * no declara prestaciones de accesibilidad que el helper no puede auditar.
  * ------------------------------------------------------------------ */
 function schemaWebPageAccessibility( string $lang, string $url, string $title, string $description ): string
 {
@@ -555,23 +556,6 @@ function schemaWebPageAccessibility( string $lang, string $url, string $title, s
         'inLanguage'          => $lang,
         'name'                => $title,
         'description'         => $description,
-
-        /* ==== Accesibilidad WCAG 2.x ================================ */
-        'accessibilityAPI'    => 'ARIA',
-        'accessibilityControl'=> [
-            'fullKeyboardControl',          // navegación 100 % por teclado
-            'fullMouseControl'              // y ratón
-        ],
-        'accessibilityFeature'=> [
-            'highContrast',                 // colores accesibles
-            'longDescription',              // descripciones de imágenes
-            'ARIA'                          // marcado ARIA
-        ],
-        'accessibilityHazard' => [
-            'noFlashingHazard',             // sin destellos
-            'noMotionSimulationHazard'      // sin movimiento brusco
-        ],
-        'accessibilitySummary'=> 'El contenido cumple las directrices WCAG 2.1 nivel AA: contraste suficiente, navegación por teclado completa y marcado ARIA para lectores de pantalla.'
     ];
 
     /* ==== Alternates hreflang (opcional en el schema) =============== */
@@ -596,7 +580,17 @@ function schemaWebPageAccessibility( string $lang, string $url, string $title, s
 
     /* ==== Devolvemos el bloque listo para el <head> ================= */
     return '<script type="application/ld+json">' . PHP_EOL
-         . json_encode( $schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT )
+         . json_encode(
+             $schema,
+             JSON_UNESCAPED_UNICODE
+                | JSON_UNESCAPED_SLASHES
+                | JSON_PRETTY_PRINT
+                | JSON_HEX_TAG
+                | JSON_HEX_AMP
+                | JSON_HEX_APOS
+                | JSON_HEX_QUOT
+                | JSON_INVALID_UTF8_SUBSTITUTE
+         )
          . PHP_EOL . '</script>';
 }
 

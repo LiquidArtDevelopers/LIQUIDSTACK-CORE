@@ -385,6 +385,10 @@ router multidioma y de la sesión, tras comprobar que no pertenece al proyecto.
 Se alimenta de la DB de producción; publicar o retirar un artículo actualiza su
 respuesta sin modificar el repositorio ni requerir deploy. El contrato completo
 del primer corte está en [Liquid Blog](liquid-blog.md).
+Las URLs del sitemap y el HTML público comparten el mismo origen tipado,
+canonical y conjunto de variantes publicadas. Los alternates `hreflang` y
+`x-default` se derivan del agregado multidioma y nunca incluyen borradores;
+solo una portada estructurada y publicable puede convertirse en imagen social.
 
 ## Estado de implementación
 

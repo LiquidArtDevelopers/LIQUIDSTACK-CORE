@@ -264,7 +264,7 @@ final class BlogStructuredEditorHtmlRenderer
                 || ($type === 'image' && $mediaOptions === []);
             $buttons .= '<button type="button" data-blog-add-block="'
                 . $type . '"' . ($disabled ? ' disabled' : '')
-                . '>A&ntilde;adir ' . strtolower($label) . '</button>';
+                . '>A&ntilde;adir ' . lcfirst($label) . '</button>';
         }
 
         return '<section class="blogEditor__document" '

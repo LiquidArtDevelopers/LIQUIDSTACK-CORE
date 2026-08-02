@@ -19,7 +19,9 @@ use PDOStatement;
 use Throwable;
 
 /** Portable PDO implementation for the Blog posts aggregate. */
-final class PdoBlogRepository implements BlogRepositoryInterface
+final class PdoBlogRepository implements
+    BlogRepositoryInterface,
+    BlogPublishedSitemapRepositoryInterface
 {
     private const UTC_FORMAT = 'Y-m-d H:i:s.u';
     private const SUPPORTED_DRIVERS = ['mysql', 'sqlite'];
@@ -462,10 +464,12 @@ final class PdoBlogRepository implements BlogRepositoryInterface
             throw new BlogPersistenceException();
         }
         $statement = $this->prepare(
-            'SELECT locale, slug, published_at, updated_at FROM '
-            . $this->localizations . ' WHERE status = :status '
-            . 'AND slug IS NOT NULL AND published_at IS NOT NULL '
-            . 'ORDER BY locale ASC, slug ASC, public_id ASC '
+            'SELECT p.public_id AS post_public_id, l.locale, l.slug, '
+            . 'l.published_at, l.updated_at FROM ' . $this->posts . ' p '
+            . 'JOIN ' . $this->localizations . ' l ON l.post_id = p.id '
+            . 'WHERE l.status = :status AND l.slug IS NOT NULL '
+            . 'AND l.published_at IS NOT NULL '
+            . 'ORDER BY l.locale ASC, l.slug ASC, l.public_id ASC '
             . 'LIMIT :sitemap_limit'
         );
         try {
@@ -477,6 +481,60 @@ final class PdoBlogRepository implements BlogRepositoryInterface
                 )
                 || !$statement->bindValue(
                     ':sitemap_limit',
+                    $limit,
+                    PDO::PARAM_INT
+                )
+                || !$statement->execute()
+            ) {
+                throw new BlogPersistenceException();
+            }
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+
+        return array_map(
+            fn (array $row): BlogSitemapEntry =>
+                $this->sitemapEntryFromRow($row),
+            $this->rows($statement->fetchAll(PDO::FETCH_ASSOC))
+        );
+    }
+
+    public function publishedSitemapEntriesForPost(
+        string $postPublicId,
+        int $limit
+    ): array {
+        if (
+            $limit < 1
+            || $limit > BlogSitemapEntry::ALTERNATES_OVERFLOW_QUERY_LIMIT
+        ) {
+            throw new BlogPersistenceException();
+        }
+        $statement = $this->prepare(
+            'SELECT p.public_id AS post_public_id, l.locale, l.slug, '
+            . 'l.published_at, l.updated_at FROM ' . $this->posts . ' p '
+            . 'JOIN ' . $this->localizations . ' l ON l.post_id = p.id '
+            . 'WHERE p.public_id = :post_public_id '
+            . 'AND l.status = :status AND l.slug IS NOT NULL '
+            . 'AND l.published_at IS NOT NULL '
+            . 'ORDER BY l.locale ASC, l.slug ASC, l.public_id ASC '
+            . 'LIMIT :alternate_limit'
+        );
+        try {
+            if (
+                !$statement->bindValue(
+                    ':post_public_id',
+                    $postPublicId,
+                    PDO::PARAM_STR
+                )
+                || !$statement->bindValue(
+                    ':status',
+                    BlogPostVariant::PUBLISHED,
+                    PDO::PARAM_STR
+                )
+                || !$statement->bindValue(
+                    ':alternate_limit',
                     $limit,
                     PDO::PARAM_INT
                 )
@@ -578,7 +636,8 @@ final class PdoBlogRepository implements BlogRepositoryInterface
                 $this->requiredString($row, 'locale'),
                 $this->requiredString($row, 'slug'),
                 $this->timestamp($row['published_at'] ?? null),
-                $this->timestamp($row['updated_at'] ?? null)
+                $this->timestamp($row['updated_at'] ?? null),
+                $this->nullableString($row, 'post_public_id')
             );
         } catch (Throwable) {
             throw new BlogPersistenceException();

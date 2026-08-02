@@ -56,7 +56,10 @@ Implementado mediante `0001` a `0004` del scope Blog:
 - índice project-owned por idioma y recurso Blog reutilizable, con fixtures
   Matrix solo en showroom;
 - sitemap dinámico respaldado por la DB del entorno, sin escribir archivos ni
-  necesitar deploy al publicar o retirar una URL.
+  necesitar deploy al publicar o retirar una URL;
+- canonical, robots, Open Graph, Twitter Card y alternates `hreflang`/`x-default`
+  coherentes entre el HTML público y el sitemap, limitados siempre a variantes
+  publicadas.
 
 ### 4. Editor estructurado v1
 
@@ -118,6 +121,12 @@ seguirá siendo editable y publicable de forma independiente.
 
 El sitemap dinámico ya es la fuente técnica inmediata de URLs. Una petición a
 un buscador será complementaria y nunca condicionará la publicación.
+
+Antes de convertir el índice Blog en una superficie de alto tráfico se medirán
+dos optimizaciones sin alterar su contrato funcional: evitar que el bootstrap
+legacy abra `PHPSESSID` y fuerce `no-store` en rutas públicas project-owned, y
+reunir cards y categorías en una sola proyección para no abrir dos runtimes PDO
+por petición. Son mejoras de caché y coste, no requisitos para publicar el MVP.
 
 ### 8. Plantillas y maquetador
 

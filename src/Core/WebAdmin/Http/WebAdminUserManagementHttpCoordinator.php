@@ -435,13 +435,17 @@ final class WebAdminUserManagementHttpCoordinator
             'webadmin.capabilities.media_view' =>
                 'Consultar la biblioteca de medios',
             'webadmin.capabilities.media_upload' =>
-                'Subir imagenes a la biblioteca',
+                'Subir imágenes a la biblioteca',
             'blog.capabilities.articles_view' =>
                 'Consultar artículos del Blog',
             'blog.capabilities.articles_edit' =>
                 'Crear y editar artículos del Blog',
             'blog.capabilities.articles_publish' =>
                 'Publicar y retirar artículos del Blog',
+            'blog.capabilities.categories_view' =>
+                'Consultar categorías del Blog',
+            'blog.capabilities.categories_edit' =>
+                'Crear y editar categorías del Blog',
             default => $capability->code(),
         };
     }

@@ -318,6 +318,11 @@ PHP
             <<<'PHP'
 <?php
 $projectedItems = [];
+$catalogText = static function ($entry): string {
+    return is_object($entry) && isset($entry->text)
+        ? (string) $entry->text
+        : '';
+};
 
 echo controller('dynamicGrid', 0, [
     'items_data' => $projectedItems,
@@ -337,7 +342,13 @@ PHP
         );
         $this->writeFile(
             $this->fixtureRoot . '/App/controllers/dynamicGrid.php',
-            "<?php\n"
+            <<<'PHP'
+<?php
+$pad = '00';
+$idPrefix = "dynamicGrid-{$pad}";
+$headerKey = "dynamicGrid_{$pad}_headerPrimary";
+$header = $GLOBALS[$headerKey] ?? null;
+PHP
         );
 
         foreach (['es', 'en'] as $language) {
@@ -382,6 +393,8 @@ PHP
                     $catalog["dynamicGrid_{$pad}_headerPrimary"]['text']
                 );
             }
+            self::assertArrayNotHasKey('entry', $catalog);
+            self::assertArrayNotHasKey('dynamicGrid-00', $catalog);
 
             self::assertSame(
                 [

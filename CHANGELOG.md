@@ -4,6 +4,41 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Corregido
+- El selector público de idioma ya no depende de que CookieLAD esté cargado o
+  responda correctamente para traducir o navegar. La preferencia
+  `cookie_custom_lang` solo se persiste cuando `cookie_custom` vale exactamente
+  `true`; si el runtime de traducción falla, el enlace conserva una navegación
+  segura al `href` localizado del mismo origen. Los catálogos global y de vista
+  se cargan de forma conjunta antes de mutar DOM o URL, y el runtime viaja en
+  un grupo Composer independiente de cualquier personalización del showroom.
+  Si se solicitan varios idiomas antes de completar la red, solo la selección
+  más reciente puede aplicar contenido, cambiar URL o ejecutar el fallback.
+- `update-languages.php` conserva el contenido existente sin inferir claves de
+  variables locales como `$entry->text` ni confundir ids HTML con claves
+  traducibles; los recursos alimentados mediante `items_data` siguen sin
+  rehidratar fixtures de items que pertenecen a la DB.
+- WebAdmin muestra etiquetas legibles para todas las capacidades delegables y
+  Blog ajusta enlaces y acciones al estado real, acceso a Media y permiso de
+  publicación. Las categorías ofrecen solo idiomas activos aún no asociados,
+  ocultan el alta cuando están completas y conservan compatibilidad con
+  adaptadores anteriores. Crear una variante revalida además edición y acceso
+  a Media dentro de la misma transacción antes de escribir el borrador.
+- El editor estructurado usa encabezados reales para nombrar cada bloque,
+  restaura el foco tras reordenar, añadir o eliminar contenido, reanuncia
+  mensajes idénticos en su región viva y corrige el copy de YouTube. El recurso
+  `sectionBlogGrid01` usa foco y hover con contraste suficiente y permite
+  cortar títulos o extractos largos sin desbordar el viewport.
+- Los artículos Blog publicados generan robots, canonical, Open Graph y Twitter
+  Card, y comparten con el sitemap un conjunto `hreflang`/`x-default` formado
+  solo por variantes publicadas. La imagen social se limita a la portada formal
+  de `article-cover-01`; documentos legacy o sin portada no infieren una imagen
+  arbitraria ni exponen medios de borrador.
+- El helper histórico `schemaWebPageAccessibility()` deja de publicar
+  afirmaciones WCAG, contraste, descripciones largas o control total por
+  teclado que el runtime no puede auditar; conserva su firma y el esquema
+  `WebPage` para no romper consumidores. Su JSON-LD neutraliza cierres de
+  `script`, caracteres HTML y bytes UTF-8 inválidos antes de insertarse en el
+  documento.
 - Los verificadores compuestos de WebAdmin y Blog reconocen ahora las formas
   equivalentes con las que MySQL 8 y MariaDB publican `CHECK`, `LCASE`,
   `REGEXP_LIKE`, `IS NULL`, índices y defaults en `INFORMATION_SCHEMA`, sin

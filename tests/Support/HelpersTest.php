@@ -8,6 +8,7 @@ use Symfony\Component\Filesystem\Filesystem;
 use function App\Core\Support\getMatchRouteByLang;
 use function App\Core\Support\homePath;
 use function App\Core\Support\resolve_localized_href;
+use function App\Core\Support\schemaWebPageAccessibility;
 use function App\Core\Support\shouldExcludeFromSitemap;
 
 final class HelpersTest extends TestCase
@@ -23,6 +24,7 @@ final class HelpersTest extends TestCase
     {
         $_ENV = $this->originalEnv;
         unset($GLOBALS['lang']);
+        unset($GLOBALS['arrayRutasGet']);
     }
 
     public function testHomePathUsesSimplifiedDefaultLanguage(): void
@@ -72,6 +74,112 @@ final class HelpersTest extends TestCase
                 'sitemap' => true,
             ]
         ));
+    }
+
+    public function testWebPageSchemaDoesNotClaimUnauditedAccessibility(): void
+    {
+        $_ENV['RAIZ'] = 'https://example.test';
+        $GLOBALS['arrayRutasGet'] = [
+            'es' => ['/es/noticias' => []],
+            'en' => ['/en/news' => []],
+        ];
+
+        $html = schemaWebPageAccessibility(
+            'en',
+            '/en/news',
+            'News & insights',
+            'Independent description.'
+        );
+        self::assertSame(1, preg_match(
+            '~<script type="application/ld\+json">\s*(.*?)\s*</script>~s',
+            $html,
+            $matches
+        ));
+        $schema = json_decode(
+            $matches[1],
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame('WebPage', $schema['@type']);
+        self::assertSame('en', $schema['inLanguage']);
+        self::assertSame('News & insights', $schema['name']);
+        self::assertCount(2, $schema['hasPart']);
+        foreach ([
+            'accessibilityAPI',
+            'accessibilityControl',
+            'accessibilityFeature',
+            'accessibilityHazard',
+            'accessibilitySummary',
+        ] as $unsupportedClaim) {
+            self::assertArrayNotHasKey($unsupportedClaim, $schema);
+        }
+        self::assertStringNotContainsString('WCAG', $html);
+    }
+
+    public function testWebPageSchemaCannotCloseItsJsonLdScript(): void
+    {
+        $_ENV['RAIZ'] = 'https://example.test';
+        $GLOBALS['arrayRutasGet'] = [
+            'es' => ['/es/noticias' => []],
+        ];
+        $payload = '</script><script>alert("matrix")</script>&\'seo\'';
+
+        $html = schemaWebPageAccessibility(
+            'es',
+            '/es/noticias',
+            $payload,
+            $payload
+        );
+
+        self::assertStringNotContainsString(
+            '</script><script',
+            $html
+        );
+        self::assertSame(1, substr_count($html, '</script>'));
+        self::assertStringContainsString('\\u003C/script\\u003E', $html);
+        self::assertSame(1, preg_match(
+            '~<script type="application/ld\+json">\s*(.*?)\s*</script>~s',
+            $html,
+            $matches
+        ));
+        $schema = json_decode(
+            $matches[1],
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertSame($payload, $schema['name']);
+        self::assertSame($payload, $schema['description']);
+    }
+
+    public function testWebPageSchemaSubstitutesInvalidUtf8InsteadOfFailing(): void
+    {
+        $_ENV['RAIZ'] = 'https://example.test';
+        $GLOBALS['arrayRutasGet'] = [
+            'es' => ['/es/noticias' => []],
+        ];
+
+        $html = schemaWebPageAccessibility(
+            'es',
+            '/es/noticias',
+            "SEO\xB1",
+            'Description'
+        );
+
+        self::assertSame(1, preg_match(
+            '~<script type="application/ld\+json">\s*(.*?)\s*</script>~s',
+            $html,
+            $matches
+        ));
+        $schema = json_decode(
+            $matches[1],
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertSame("SEO\u{FFFD}", $schema['name']);
     }
 
     public function testShowroomCategoryHasServerRenderedLanguageLinks(): void

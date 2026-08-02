@@ -213,6 +213,14 @@ final class InstallerResourceSyncTest extends TestCase
             $this->projectRoot . '/src/js/resources/_inlineEditor.js'
         );
         self::assertFileEquals(
+            $coreRoot . '/resources/js/_traducciones.js',
+            $this->projectRoot . '/src/js/resources/_traducciones.js'
+        );
+        self::assertFileEquals(
+            $coreRoot . '/resources/js/_languagePreference.mjs',
+            $this->projectRoot . '/src/js/resources/_languagePreference.mjs'
+        );
+        self::assertFileEquals(
             $coreRoot . '/stubs/App/app/updateLanguage.php',
             $this->projectRoot . '/App/app/updateLanguage.php'
         );
@@ -521,6 +529,31 @@ final class InstallerResourceSyncTest extends TestCase
                 $language
             );
         }
+    }
+
+    public function testCustomizedShowroomDoesNotBlockTranslationRuntime(): void
+    {
+        $customShowroom = '<?php echo "showroom local";';
+        $this->writeFile(
+            $this->projectRoot . '/App/views/_showroom.php',
+            $customShowroom
+        );
+
+        Installer::postUpdate($this->createEvent());
+
+        $coreRoot = dirname(__DIR__, 2);
+        self::assertSame(
+            $customShowroom,
+            file_get_contents($this->projectRoot . '/App/views/_showroom.php')
+        );
+        self::assertFileEquals(
+            $coreRoot . '/resources/js/_traducciones.js',
+            $this->projectRoot . '/src/js/resources/_traducciones.js'
+        );
+        self::assertFileEquals(
+            $coreRoot . '/resources/js/_languagePreference.mjs',
+            $this->projectRoot . '/src/js/resources/_languagePreference.mjs'
+        );
     }
 
     public function testComposerUpdatePreservesExistingProjectLogos(): void

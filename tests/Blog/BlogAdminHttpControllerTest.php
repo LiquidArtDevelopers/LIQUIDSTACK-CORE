@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Http\BlogAdminHttpController;
 use App\Core\Blog\Http\BlogAdminHttpRuntime;
+use App\Core\Blog\Http\BlogAdminHttpRuntimeInterface;
+use App\Core\Blog\Http\BlogStructuredEditorHttpRuntimeInterface;
 use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
@@ -17,6 +20,7 @@ use App\Core\WebAdmin\Authentication\WebAdminAuthenticationService;
 use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
 use App\Core\WebAdmin\Authorization\WebAdminMutationActorGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
+use App\Core\WebAdmin\Media\MediaService;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Security\PasswordHasher;
 use App\Core\WebAdmin\Security\SecureTokenGenerator;
@@ -35,6 +39,74 @@ final class BlogAdminControllerClock implements ClockInterface
     public function now(): DateTimeImmutable
     {
         return $this->now;
+    }
+}
+
+final class LegacyBlogAdminRuntimeAdapter implements
+    BlogAdminHttpRuntimeInterface
+{
+    /** @var list<string> */
+    public array $requestedGateCapabilities = [];
+    public int $deniedMediaGateRuns = 0;
+
+    public function __construct(
+        private readonly BlogAdminHttpRuntime $inner
+    ) {
+    }
+
+    public function projectRoot(): string
+    {
+        return $this->inner->projectRoot();
+    }
+
+    public function languages(): array
+    {
+        return $this->inner->languages();
+    }
+
+    public function blogConfig(): BlogConfig
+    {
+        return $this->inner->blogConfig();
+    }
+
+    public function webAdminConfig(): WebAdminConfig
+    {
+        return $this->inner->webAdminConfig();
+    }
+
+    public function service(): BlogService
+    {
+        return $this->inner->service();
+    }
+
+    public function authentication(): WebAdminAuthenticationService
+    {
+        return $this->inner->authentication();
+    }
+
+    public function authorization(): WebAdminAuthorizationService
+    {
+        return $this->inner->authorization();
+    }
+
+    public function mutationGate(
+        #[\SensitiveParameter] string $sessionToken,
+        #[\SensitiveParameter] string $csrfToken,
+        string $capability
+    ): Closure {
+        $this->requestedGateCapabilities[] = $capability;
+        if ($capability === MediaService::VIEW_CAPABILITY) {
+            return function (PDO $pdo): string {
+                $this->deniedMediaGateRuns += 1;
+                throw new BlogException(BlogException::ACTOR_GATE_FAILED);
+            };
+        }
+
+        return $this->inner->mutationGate(
+            $sessionToken,
+            $csrfToken,
+            $capability
+        );
     }
 }
 
@@ -82,11 +154,9 @@ final class BlogAdminHttpControllerTest extends TestCase
             'ls_webadmin_'
         );
         $blogScope = MigrationScope::forTablePrefix('blog', 'ls_blog_');
-        $webAdminMigration = iterator_to_array(
-            WebAdminMigrationProvider::migrations(),
-            false
-        )[0];
-        $this->executeMigration($webAdminMigration, $webAdminScope);
+        foreach (WebAdminMigrationProvider::migrations() as $migration) {
+            $this->executeMigration($migration, $webAdminScope);
+        }
         foreach (BlogMigrationProvider::migrations() as $migration) {
             $this->executeMigration(
                 $migration,
@@ -244,6 +314,53 @@ final class BlogAdminHttpControllerTest extends TestCase
         )));
         self::assertSame('draft', $this->pdo->query(
             'SELECT status FROM ls_blog_post_localizations'
+        )->fetchColumn());
+    }
+
+    public function testLegacyRuntimeRevalidatesMediaInsideCreateTransaction(): void
+    {
+        self::assertTrue($this->runtime->authorization()->hasCapability(
+            $this->sessionToken,
+            MediaService::VIEW_CAPABILITY
+        ));
+        $legacyRuntime = new LegacyBlogAdminRuntimeAdapter($this->runtime);
+        self::assertNotInstanceOf(
+            BlogStructuredEditorHttpRuntimeInterface::class,
+            $legacyRuntime
+        );
+        $controller = new BlogAdminHttpController($legacyRuntime);
+        $postsBefore = (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn();
+        $localizationsBefore = (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_post_localizations'
+        )->fetchColumn();
+        $auditBefore = (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_webadmin_audit_log'
+        )->fetchColumn();
+
+        $response = $controller->create($this->post(
+            '/admin/blog/posts/create',
+            ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
+                + $this->editorial('matrix-legacy-gate')
+        ));
+
+        self::assertSame(403, $response->status());
+        self::assertSame('Forbidden', $response->body());
+        self::assertSame([], $response->headerValues('Location'));
+        self::assertSame([
+            BlogAdminHttpController::EDIT_CAPABILITY,
+            MediaService::VIEW_CAPABILITY,
+        ], $legacyRuntime->requestedGateCapabilities);
+        self::assertSame(1, $legacyRuntime->deniedMediaGateRuns);
+        self::assertSame($postsBefore, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+        self::assertSame($localizationsBefore, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_post_localizations'
+        )->fetchColumn());
+        self::assertSame($auditBefore, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_webadmin_audit_log'
         )->fetchColumn());
     }
 
@@ -527,6 +644,169 @@ final class BlogAdminHttpControllerTest extends TestCase
         ))->status());
     }
 
+    public function testIndexOnlyOffersActionsAllowedByStateAndCapabilities(): void
+    {
+        foreach (['matrix-draft', 'matrix-published'] as $slug) {
+            $created = $this->controller->create($this->post(
+                '/admin/blog/posts/create',
+                ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
+                    + $this->editorial($slug)
+            ));
+            self::assertSame(303, $created->status());
+        }
+        $statement = $this->pdo->query(
+            'SELECT p.public_id, l.slug, l.lock_version FROM ls_blog_posts p '
+            . 'JOIN ls_blog_post_localizations l ON l.post_id = p.id'
+        );
+        self::assertNotFalse($statement);
+        $posts = [];
+        foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $posts[(string) $row['slug']] = [
+                'public_id' => (string) $row['public_id'],
+                'lock_version' => (string) $row['lock_version'],
+            ];
+        }
+        self::assertArrayHasKey('matrix-draft', $posts);
+        self::assertArrayHasKey('matrix-published', $posts);
+        $this->assertPrg($this->controller->publish($this->post(
+            '/admin/blog/posts/publish',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $posts['matrix-published']['public_id'],
+                'locale' => 'es',
+                'lock_version' => $posts['matrix-published']['lock_version'],
+            ]
+        )));
+        $publishedPreviewWithCapabilities = $this->controller->preview(
+            $this->get('/admin/blog/posts/preview', [
+                'post' => $posts['matrix-published']['public_id'],
+                'locale' => 'es',
+            ])
+        );
+        self::assertSame(200, $publishedPreviewWithCapabilities->status());
+        self::assertStringContainsString(
+            '/admin/blog/editor?post='
+                . $posts['matrix-published']['public_id']
+                . '&amp;locale=es',
+            $publishedPreviewWithCapabilities->body()
+        );
+        $this->removeCapability(BlogAdminHttpController::PUBLISH_CAPABILITY);
+
+        $index = $this->controller->index($this->get('/admin/blog'));
+        self::assertSame(200, $index->status());
+        self::assertStringContainsString(
+            '/admin/blog/editor?post='
+                . $posts['matrix-draft']['public_id']
+                . '&amp;locale=es',
+            $index->body()
+        );
+        self::assertStringNotContainsString(
+            '/admin/blog/editor?post='
+                . $posts['matrix-published']['public_id']
+                . '&amp;locale=es',
+            $index->body()
+        );
+        self::assertSame(2, substr_count(
+            $index->body(),
+            '/admin/blog/editor/preview?'
+        ));
+        $publishedPreview = $this->controller->preview($this->get(
+            '/admin/blog/posts/preview',
+            [
+                'post' => $posts['matrix-published']['public_id'],
+                'locale' => 'es',
+            ]
+        ));
+        self::assertSame(200, $publishedPreview->status());
+        self::assertStringNotContainsString(
+            '/admin/blog/editor?',
+            $publishedPreview->body()
+        );
+        $draftPreview = $this->controller->preview($this->get(
+            '/admin/blog/posts/preview',
+            [
+                'post' => $posts['matrix-draft']['public_id'],
+                'locale' => 'es',
+            ]
+        ));
+        self::assertSame(200, $draftPreview->status());
+        self::assertStringContainsString(
+            '/admin/blog/editor?post=' . $posts['matrix-draft']['public_id']
+                . '&amp;locale=es',
+            $draftPreview->body()
+        );
+
+        $this->removeCapability(MediaService::VIEW_CAPABILITY);
+        $withoutMedia = $this->controller->index($this->get('/admin/blog'));
+        self::assertSame(200, $withoutMedia->status());
+        self::assertStringNotContainsString(
+            '/admin/blog/editor?',
+            $withoutMedia->body()
+        );
+        self::assertStringNotContainsString(
+            '/admin/blog/editor/preview?',
+            $withoutMedia->body()
+        );
+        self::assertSame(2, substr_count(
+            $withoutMedia->body(),
+            '/admin/blog/posts/preview?'
+        ));
+        self::assertStringNotContainsString(
+            '/admin/blog/posts/new',
+            $withoutMedia->body()
+        );
+        $draftPreviewWithoutMedia = $this->controller->preview($this->get(
+            '/admin/blog/posts/preview',
+            [
+                'post' => $posts['matrix-draft']['public_id'],
+                'locale' => 'es',
+            ]
+        ));
+        self::assertSame(200, $draftPreviewWithoutMedia->status());
+        self::assertStringNotContainsString(
+            '/admin/blog/editor?',
+            $draftPreviewWithoutMedia->body()
+        );
+
+        $postsBeforeDeniedCreate = (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn();
+        $localizationsBeforeDeniedCreate = (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_post_localizations'
+        )->fetchColumn();
+        $auditBeforeDeniedCreate = (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_webadmin_audit_log'
+        )->fetchColumn();
+
+        $newWithoutMedia = $this->controller->newPost($this->get(
+            '/admin/blog/posts/new'
+        ));
+        self::assertSame(403, $newWithoutMedia->status());
+        self::assertSame('Forbidden', $newWithoutMedia->body());
+        self::assertSame([], $newWithoutMedia->headerValues('Location'));
+
+        $createWithoutMedia = $this->controller->create($this->post(
+            '/admin/blog/posts/create',
+            ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
+                + $this->editorial('matrix-forbidden')
+        ));
+        self::assertSame(403, $createWithoutMedia->status());
+        self::assertSame('Forbidden', $createWithoutMedia->body());
+        self::assertSame([], $createWithoutMedia->headerValues('Location'));
+        self::assertSame($postsBeforeDeniedCreate, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+        self::assertSame(
+            $localizationsBeforeDeniedCreate,
+            (int) $this->pdo->query(
+                'SELECT COUNT(*) FROM ls_blog_post_localizations'
+            )->fetchColumn()
+        );
+        self::assertSame($auditBeforeDeniedCreate, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_webadmin_audit_log'
+        )->fetchColumn());
+    }
+
     private function seedActor(
         SecureTokenGenerator $tokens,
         WebAdminConfig $config
@@ -557,6 +837,7 @@ final class BlogAdminHttpControllerTest extends TestCase
             BlogAdminHttpController::VIEW_CAPABILITY,
             BlogAdminHttpController::EDIT_CAPABILITY,
             BlogAdminHttpController::PUBLISH_CAPABILITY,
+            MediaService::VIEW_CAPABILITY,
         ] as $capability) {
             $statement = $this->pdo->prepare(
                 'INSERT INTO ls_webadmin_user_capabilities '
@@ -593,6 +874,17 @@ final class BlogAdminHttpControllerTest extends TestCase
             'absolute' => '2030-01-01 11:00:00.000000',
         ]));
         self::assertSame('LS_WEBADMIN_SID', $config->cookieName());
+    }
+
+    private function removeCapability(string $capability): void
+    {
+        $statement = $this->pdo->prepare(
+            'DELETE FROM ls_webadmin_user_capabilities WHERE capability_id = '
+            . '(SELECT id FROM ls_webadmin_capabilities WHERE code = :code)'
+        );
+        self::assertNotFalse($statement);
+        self::assertTrue($statement->execute(['code' => $capability]));
+        self::assertSame(1, $statement->rowCount(), $capability);
     }
 
     private function seedBlogSummaries(int $count): void
