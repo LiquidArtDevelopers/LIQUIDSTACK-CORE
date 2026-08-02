@@ -32,6 +32,7 @@ final class ApplicationLanguageCatalogTest extends TestCase
         }
 
         $this->previousEnvironment['DEV_MODE'] = $_ENV['DEV_MODE'] ?? null;
+        $this->previousEnvironment['RAIZ'] = $_ENV['RAIZ'] ?? null;
         $_ENV['DEV_MODE'] = 'true';
 
         foreach ([
@@ -39,6 +40,8 @@ final class ApplicationLanguageCatalogTest extends TestCase
             'templates_only',
             'showroom_only',
             'shared',
+            'css',
+            'js',
         ] as $key) {
             $this->previousGlobals[$key] = array_key_exists($key, $GLOBALS)
                 ? ['exists' => true, 'value' => $GLOBALS[$key]]
@@ -52,6 +55,11 @@ final class ApplicationLanguageCatalogTest extends TestCase
             unset($_ENV['DEV_MODE']);
         } else {
             $_ENV['DEV_MODE'] = $this->previousEnvironment['DEV_MODE'];
+        }
+        if ($this->previousEnvironment['RAIZ'] === null) {
+            unset($_ENV['RAIZ']);
+        } else {
+            $_ENV['RAIZ'] = $this->previousEnvironment['RAIZ'];
         }
 
         foreach ($this->previousGlobals as $key => $state) {
@@ -136,6 +144,81 @@ final class ApplicationLanguageCatalogTest extends TestCase
         );
     }
 
+    public function testProductionAssetsUseTheExactViteManifestEntry(): void
+    {
+        $_ENV['DEV_MODE'] = '0';
+        $_ENV['RAIZ'] = 'https://example.test';
+
+        $this->writeAsset('assets/js/blog-entry.js');
+        $this->writeAsset('assets/js/blog-showroom-chunk.js');
+        $this->writeAsset('assets/js/blogArticle-entry.js');
+        $this->writeAsset('assets/css/blog-entry.css');
+        $this->writeAsset('assets/css/blog-showroom.css');
+        $this->writeManifest([
+            'src/js/blog.js' => [
+                'file' => 'assets/js/blog-entry.js',
+                'src' => 'src/js/blog.js',
+                'isEntry' => true,
+                'css' => ['assets/css/blog-entry.css'],
+            ],
+            'src/js/blogArticle.js' => [
+                'file' => 'assets/js/blogArticle-entry.js',
+                'src' => 'src/js/blogArticle.js',
+                'isEntry' => true,
+            ],
+            'src/js/showroom/blog.js' => [
+                'file' => 'assets/js/blog-showroom-chunk.js',
+                'src' => 'src/js/showroom/blog.js',
+                'css' => ['assets/css/blog-showroom.css'],
+            ],
+        ]);
+
+        $view = $this->fixtureRoot . '/production-assets-view.php';
+        file_put_contents(
+            $view,
+            '<?php echo json_encode([$css ?? null, $js ?? null]);'
+        );
+
+        self::assertSame(
+            [
+                'https://example.test/assets/css/blog-entry.css',
+                'https://example.test/assets/js/blog-entry.js',
+            ],
+            json_decode(
+                $this->renderRoute($view, ['resources' => 'blog']),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            )
+        );
+    }
+
+    public function testLegacyAssetFallbackRefusesAmbiguousCandidates(): void
+    {
+        $_ENV['DEV_MODE'] = '0';
+        $_ENV['RAIZ'] = 'https://example.test';
+
+        $this->writeAsset('assets/js/blog-first.js');
+        $this->writeAsset('assets/js/blog-second.js');
+        $this->writeAsset('assets/css/blog-only.css');
+
+        $view = $this->fixtureRoot . '/legacy-assets-view.php';
+        file_put_contents(
+            $view,
+            '<?php echo json_encode([$css ?? null, $js ?? null]);'
+        );
+
+        self::assertSame(
+            ['https://example.test/assets/css/blog-only.css', null],
+            json_decode(
+                $this->renderRoute($view, ['resources' => 'blog']),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            )
+        );
+    }
+
     /**
      * @param array<string, mixed> $route
      */
@@ -171,6 +254,28 @@ final class ApplicationLanguageCatalogTest extends TestCase
                 $data,
                 JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR
             )
+        );
+    }
+
+    private function writeAsset(string $path): void
+    {
+        $absolutePath = $this->fixtureRoot . '/public/' . $path;
+        if (!is_dir(dirname($absolutePath))) {
+            self::assertTrue(mkdir(dirname($absolutePath), 0777, true));
+        }
+        file_put_contents($absolutePath, 'fixture');
+    }
+
+    /** @param array<string, mixed> $manifest */
+    private function writeManifest(array $manifest): void
+    {
+        $path = $this->fixtureRoot . '/public/.vite/manifest.json';
+        if (!is_dir(dirname($path))) {
+            self::assertTrue(mkdir(dirname($path), 0777, true));
+        }
+        file_put_contents(
+            $path,
+            json_encode($manifest, JSON_THROW_ON_ERROR)
         );
     }
 

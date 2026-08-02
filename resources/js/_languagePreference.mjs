@@ -118,3 +118,105 @@ export function navigateToLanguageHref(windowRef, rawHref) {
   windowRef.location.assign(targetHref);
   return true;
 }
+
+export function bindLanguageNavigation(
+  windowRef,
+  documentRef,
+  selector = "a.btn_idioma"
+) {
+  const ElementType = windowRef?.Element;
+  const AnchorType = windowRef?.HTMLAnchorElement;
+  if (
+    typeof windowRef?.addEventListener !== "function"
+    || typeof documentRef?.querySelectorAll !== "function"
+    || typeof ElementType !== "function"
+    || typeof AnchorType !== "function"
+  ) {
+    throw new TypeError("language_navigation_environment_invalid");
+  }
+
+  const links = new Set();
+  const isNativeModifiedNavigation = (event, link) => event.button !== 0
+    || event.metaKey
+    || event.ctrlKey
+    || event.shiftKey
+    || event.altKey
+    || (link.target !== "" && link.target !== "_self")
+    || link.hasAttribute("download");
+
+  const preserveModifiedNavigation = (event) => {
+    if (event.defaultPrevented || !(event.target instanceof ElementType)) {
+      return;
+    }
+    const link = event.target.closest(selector);
+    if (
+      !(link instanceof AnchorType)
+      || !isNativeModifiedNavigation(event, link)
+    ) {
+      return;
+    }
+
+    // Keep the browser's tab/download behavior and isolate editor handlers.
+    event.stopImmediatePropagation();
+  };
+
+  const handleLanguageNavigation = (event) => {
+    const link = event.currentTarget;
+    if (!(link instanceof AnchorType) || event.defaultPrevented) {
+      return;
+    }
+    if (isNativeModifiedNavigation(event, link)) {
+      event.stopImmediatePropagation();
+      return;
+    }
+
+    const target = resolveLanguageNavigationHref(
+      link.getAttribute("href"),
+      windowRef.location.href
+    );
+    if (target === null) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    persistLanguagePreference(windowRef.CookieLAD, link.id);
+    if (target !== windowRef.location.href) {
+      navigateToLanguageHref(windowRef, target);
+    }
+  };
+
+  const bindLinks = () => {
+    documentRef.querySelectorAll(selector).forEach((link) => {
+      if (!(link instanceof AnchorType) || links.has(link)) {
+        return;
+      }
+      links.add(link);
+      link.addEventListener("click", handleLanguageNavigation, true);
+    });
+  };
+
+  const unbind = () => {
+    windowRef.removeEventListener(
+      "click",
+      preserveModifiedNavigation,
+      true
+    );
+    documentRef.removeEventListener("DOMContentLoaded", bindLinks);
+    links.forEach((link) => {
+      link.removeEventListener("click", handleLanguageNavigation, true);
+    });
+    links.clear();
+  };
+
+  windowRef.addEventListener("click", preserveModifiedNavigation, true);
+  if (documentRef.readyState === "loading") {
+    documentRef.addEventListener("DOMContentLoaded", bindLinks, {
+      once: true,
+    });
+  } else {
+    bindLinks();
+  }
+
+  return unbind;
+}

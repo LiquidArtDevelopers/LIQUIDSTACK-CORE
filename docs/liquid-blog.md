@@ -310,6 +310,16 @@ siendo el fallback compatible; enlaza el asset gestionado
 `/assets/modules/blog/blog-public.css` y usa una CSP cerrada que solo amplía
 `style-src 'self'` para cargarlo.
 
+Si el shell reutiliza la navegación global del proyecto, debe enlazar cada
+idioma al valor publicado de `languageNavigationUrls()` y activar
+`bindLanguageNavigation(window, document)` desde el helper gestionado
+`src/js/resources/_languagePreference.mjs`. Este binding intercepta en captura
+el traductor SPA legacy, persiste `cookie_custom_lang` solo con consentimiento
+CookieLAD y realiza una navegación normal al `href` localizado. No consulta
+`/languages`, por lo que no abre la sesión legacy ni crea `PHPSESSID`; los
+clics modificados, `target` y `download` conservan el comportamiento nativo. Su
+función de limpieza debe ejecutarse en HMR o al desmontar el entrypoint.
+
 Las imágenes estructuradas se entregan como AVIF responsive desde el namespace
 fijo `/_liquidstack/blog-media/{uuid}/{width}.avif`. La frontera pública solo
 sirve una variante si el asset está referenciado por el documento actual de un

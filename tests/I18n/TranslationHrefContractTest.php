@@ -241,6 +241,189 @@ JS;
         ], $result['assigned']);
     }
 
+    public function testBoundPublicNavigationSuppressesLegacyLanguagePost(): void
+    {
+        $node = new Process(['node', '--version']);
+        $node->run();
+        if (!$node->isSuccessful()) {
+            self::markTestSkipped('Node.js no está disponible.');
+        }
+
+        $module = dirname(__DIR__, 2)
+            . '/resources/js/_languagePreference.mjs';
+        $script = <<<'JS'
+import { pathToFileURL } from 'node:url';
+
+const preference = await import(pathToFileURL(process.argv[1]).href);
+const windowListeners = new Map();
+const assigned = [];
+const legacyPosts = [];
+
+class ElementFixture {
+  closest(selector) {
+    return selector === 'a.btn_idioma'
+      && this instanceof AnchorFixture
+      ? this
+      : null;
+  }
+}
+
+class AnchorFixture extends ElementFixture {
+  constructor(id, href) {
+    super();
+    this.id = id;
+    this.href = href;
+    this.target = '';
+    this.attributes = new Map([['href', href]]);
+    this.listeners = [];
+  }
+
+  addEventListener(type, handler, capture = false) {
+    this.listeners.push({ type, handler, capture: capture === true });
+  }
+
+  removeEventListener(type, handler, capture = false) {
+    this.listeners = this.listeners.filter((listener) => !(
+      listener.type === type
+      && listener.handler === handler
+      && listener.capture === (capture === true)
+    ));
+  }
+
+  getAttribute(name) {
+    return this.attributes.get(name) ?? null;
+  }
+
+  hasAttribute(name) {
+    return this.attributes.has(name);
+  }
+
+  dispatchClick(overrides = {}) {
+    const event = {
+      button: 0,
+      metaKey: false,
+      ctrlKey: false,
+      shiftKey: false,
+      altKey: false,
+      target: this,
+      currentTarget: null,
+      defaultPrevented: false,
+      propagationStopped: false,
+      preventDefault() { this.defaultPrevented = true; },
+      stopImmediatePropagation() { this.propagationStopped = true; },
+      ...overrides,
+    };
+
+    for (const listener of windowListeners.get('click') ?? []) {
+      listener(event);
+      if (event.propagationStopped) return event;
+    }
+
+    const ordered = [...this.listeners].sort(
+      (left, right) => Number(right.capture) - Number(left.capture)
+    );
+    for (const listener of ordered) {
+      event.currentTarget = this;
+      listener.handler(event);
+      if (event.propagationStopped) break;
+    }
+
+    return event;
+  }
+}
+
+const english = new AnchorFixture('en', '/en/news/the-matrix');
+const spanish = new AnchorFixture('es', '/es/noticias/matrix');
+const legacyHandler = (event) => {
+  event.preventDefault();
+  legacyPosts.push({ url: '/languages', method: 'POST' });
+};
+english.addEventListener('click', legacyHandler);
+spanish.addEventListener('click', legacyHandler);
+
+const windowRef = {
+  Element: ElementFixture,
+  HTMLAnchorElement: AnchorFixture,
+  location: {
+    href: 'https://example.test/es/noticias/matrix',
+    assign(href) { assigned.push(href); },
+  },
+  addEventListener(type, handler) {
+    const listeners = windowListeners.get(type) ?? [];
+    listeners.push(handler);
+    windowListeners.set(type, listeners);
+  },
+  removeEventListener(type, handler) {
+    windowListeners.set(
+      type,
+      (windowListeners.get(type) ?? []).filter(
+        (listener) => listener !== handler
+      )
+    );
+  },
+};
+const documentRef = {
+  readyState: 'complete',
+  querySelectorAll() { return [english, spanish]; },
+  addEventListener() {},
+  removeEventListener() {},
+};
+
+const unbind = preference.bindLanguageNavigation(windowRef, documentRef);
+const normal = english.dispatchClick();
+const modified = spanish.dispatchClick({ ctrlKey: true });
+const postsWhileBound = [...legacyPosts];
+unbind();
+const afterCleanup = english.dispatchClick();
+
+process.stdout.write(JSON.stringify({
+  assigned,
+  postsWhileBound,
+  legacyPosts,
+  normalDefaultPrevented: normal.defaultPrevented,
+  modifiedDefaultPrevented: modified.defaultPrevented,
+  afterCleanupDefaultPrevented: afterCleanup.defaultPrevented,
+  windowClickListeners: (windowListeners.get('click') ?? []).length,
+}));
+JS;
+
+        $process = new Process([
+            'node',
+            '--input-type=module',
+            '--eval',
+            $script,
+            $module,
+        ]);
+        $process->mustRun();
+
+        $result = json_decode(
+            $process->getOutput(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame([
+            'https://example.test/en/news/the-matrix',
+        ], $result['assigned']);
+        self::assertSame([], $result['postsWhileBound']);
+        self::assertSame([
+            ['url' => '/languages', 'method' => 'POST'],
+        ], $result['legacyPosts']);
+        self::assertTrue($result['normalDefaultPrevented']);
+        self::assertFalse($result['modifiedDefaultPrevented']);
+        self::assertTrue($result['afterCleanupDefaultPrevented']);
+        self::assertSame(0, $result['windowClickListeners']);
+
+        $source = (string) file_get_contents($module);
+        $binding = substr(
+            $source,
+            (int) strpos($source, 'export function bindLanguageNavigation')
+        );
+        self::assertStringNotContainsString('/languages', $binding);
+        self::assertStringNotContainsString('fetch(', $binding);
+    }
+
     public function testLanguageCatalogLoadingIsAtomicAndRejectsInvalidResponses(): void
     {
         $node = new Process(['node', '--version']);

@@ -21,6 +21,15 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   un grupo Composer independiente de cualquier personalización del showroom.
   Si se solicitan varios idiomas antes de completar la red, solo la selección
   más reciente puede aplicar contenido, cambiar URL o ejecutar el fallback.
+  El helper gestionado expone además `bindLanguageNavigation()` para shells
+  públicos DB-backed: captura los enlaces localizados antes del traductor
+  legacy, conserva pestaña nueva/descarga y navega por su `href` sin hacer POST
+  a `/languages`; así el cambio de idioma no crea `PHPSESSID` por accidente.
+- En producción, las vistas resuelven JS y CSS por la entrada exacta
+  `src/js/{resources}.js` del manifest de Vite. Ya no eligen el primer fichero
+  de un glob por prefijo, que podía confundir `blog` con `blogArticle` o con el
+  chunk homónimo del showroom. El fallback para builds legacy solo se usa
+  cuando existe un único candidato inequívoco y mantiene `$css` como URL.
 - `update-languages.php` conserva el contenido existente sin inferir claves de
   variables locales como `$entry->text` ni confundir ids HTML con claves
   traducibles; los recursos alimentados mediante `items_data` siguen sin

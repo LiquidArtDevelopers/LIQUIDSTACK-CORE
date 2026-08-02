@@ -285,20 +285,134 @@ class Application
         }
 
         if (is_string($resources) && $resources !== '' && !$this->isDevMode()) {
-            $cssFiles = glob(Paths::publicPath() . "/assets/css/{$resources}*.css");
-            $jsFiles  = glob(Paths::publicPath() . "/assets/js/{$resources}*.js");
+            $assets = $this->resolveProductionAssets($resources);
 
-            if ($cssFiles) {
-                $css              = ($_ENV['RAIZ'] ?? '') . '/assets/css/' . basename($cssFiles[0]);
+            if ($assets['css'] !== []) {
+                // Preserve the legacy view contract: `$css` is one URL.
+                $css = $assets['css'][0];
                 $GLOBALS['css'] = $css;
             }
-            if ($jsFiles) {
-                $js              = ($_ENV['RAIZ'] ?? '') . '/assets/js/' . basename($jsFiles[0]);
+            if ($assets['js'] !== null) {
+                $js = $assets['js'];
                 $GLOBALS['js'] = $js;
             }
         }
 
         require_once $view;
+    }
+
+    /**
+     * Resolve the exact Vite entry instead of guessing from a filename glob.
+     *
+     * A prefix such as `blog*` can also match `blogArticle` or a dynamic
+     * showroom chunk named `blog`. The manifest is the only source that
+     * preserves the relationship with `src/js/{resource}.js`.
+     *
+     * @return array{css: list<string>, js: ?string}
+     */
+    private function resolveProductionAssets(string $resources): array
+    {
+        $manifestPath = Paths::publicPath() . '/.vite/manifest.json';
+        $manifest = null;
+
+        if (is_file($manifestPath) && is_readable($manifestPath)) {
+            $contents = file_get_contents($manifestPath);
+            if (is_string($contents)) {
+                $decoded = json_decode($contents, true);
+                if (is_array($decoded)) {
+                    $manifest = $decoded;
+                }
+            }
+        }
+
+        $entry = is_array($manifest)
+            ? ($manifest["src/js/{$resources}.js"] ?? null)
+            : null;
+        if (is_array($entry)) {
+            $jsPath = $this->validatedPublicAssetPath(
+                $entry['file'] ?? null,
+                'js'
+            );
+            if ($jsPath !== null) {
+                $cssUrls = [];
+                $cssPaths = $entry['css'] ?? [];
+                if (is_array($cssPaths)) {
+                    foreach ($cssPaths as $cssPath) {
+                        $validated = $this->validatedPublicAssetPath(
+                            $cssPath,
+                            'css'
+                        );
+                        if ($validated !== null) {
+                            $cssUrls[] = $this->publicAssetUrl($validated);
+                        }
+                    }
+                }
+
+                return [
+                    'css' => array_values(array_unique($cssUrls)),
+                    'js' => $this->publicAssetUrl($jsPath),
+                ];
+            }
+        }
+
+        return $this->resolveLegacyProductionAssets($resources);
+    }
+
+    /** @return array{css: list<string>, js: ?string} */
+    private function resolveLegacyProductionAssets(string $resources): array
+    {
+        $cssFiles = glob(
+            Paths::publicPath() . "/assets/css/{$resources}-*.css"
+        );
+        $jsFiles = glob(
+            Paths::publicPath() . "/assets/js/{$resources}-*.js"
+        );
+        $cssFiles = is_array($cssFiles) ? $cssFiles : [];
+        $jsFiles = is_array($jsFiles) ? $jsFiles : [];
+
+        /*
+         * A legacy build without a readable manifest is only unambiguous
+         * when one candidate exists. Choosing the first of several files can
+         * silently execute a different resource or an obsolete build.
+         */
+        $css = count($cssFiles) === 1
+            ? [$this->publicAssetUrl('assets/css/' . basename($cssFiles[0]))]
+            : [];
+        $js = count($jsFiles) === 1
+            ? $this->publicAssetUrl('assets/js/' . basename($jsFiles[0]))
+            : null;
+
+        return ['css' => $css, 'js' => $js];
+    }
+
+    /** @param mixed $path */
+    private function validatedPublicAssetPath($path, string $type): ?string
+    {
+        if (!is_string($path)) {
+            return null;
+        }
+
+        $expectedPrefix = "assets/{$type}/";
+        $expectedSuffix = ".{$type}";
+        if (
+            !str_starts_with($path, $expectedPrefix)
+            || !str_ends_with($path, $expectedSuffix)
+            || str_contains($path, '..')
+            || str_contains($path, '\\')
+            || preg_match('/[\x00-\x1F\x7F]/', $path) === 1
+            || !is_file(Paths::publicPath() . '/' . $path)
+        ) {
+            return null;
+        }
+
+        return $path;
+    }
+
+    private function publicAssetUrl(string $path): string
+    {
+        $root = rtrim((string) ($_ENV['RAIZ'] ?? ''), '/');
+
+        return $root . '/' . ltrim($path, '/');
     }
 
     /**

@@ -394,6 +394,7 @@
             "sha256:fca9978efb02f7a2889abf31bc56073bda1a3b329cea289abef9b58c6d6875c1"
         ],
         "resources/js/_languagePreference.mjs": [
+            "sha256:8cae3d05be53ffeda734a46354858c37c37a5d72701a7c2129217d1184e2da45",
             "sha256:eef27d6d5121dd54f082d7a6ce21099afaf7e101c8e9c6ee2031f7d111005b77"
         ],
         "resources/js/_moduleFormAuth.js": [

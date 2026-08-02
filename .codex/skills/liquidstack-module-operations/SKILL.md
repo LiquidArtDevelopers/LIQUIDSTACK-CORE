@@ -310,6 +310,12 @@ composer liquidstack:migrate --dry-run
   fallback standalone y su CSS gestionado. `shared` permanece como default; si
   se declara `liquidstack`, WebAdmin debe declararlo también. Composer no debe
   crear, fusionar ni sobrescribir este fichero.
+- Cuando el shell público reutilice `.btn_idioma`, activar
+  `bindLanguageNavigation(window, document)` desde
+  `_languagePreference.mjs` y limpiar el binding en HMR. Los enlaces deben usar
+  `languageNavigationUrls()`; el helper preserva navegación modificada y evita
+  que el traductor legacy haga POST a `/languages`, sin saltarse el gate de
+  CookieLAD para `cookie_custom_lang`.
 - Exigir que las claves de `public_paths` coincidan exactamente con
   `App/config/langs.php`, que sus rutas sean absolutas y únicas y que no
   colisionen con rutas o ficheros del proyecto. El path base puede pertenecer a
