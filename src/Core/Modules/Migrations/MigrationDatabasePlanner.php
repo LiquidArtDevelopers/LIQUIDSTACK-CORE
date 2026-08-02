@@ -57,6 +57,7 @@ final class MigrationDatabasePlanner
         $blockers = $databaseContractBlockers;
         $catalogKeys = [];
         $supersededPostconditions = $this->supersededPostconditions(
+            $pdo,
             $catalog,
             $appliedByKey,
             $scopes
@@ -256,6 +257,7 @@ final class MigrationDatabasePlanner
      * @return array<string, true>
      */
     private function supersededPostconditions(
+        PDO $pdo,
         MigrationCatalog $catalog,
         array $appliedByKey,
         MigrationScopeCollection $scopes
@@ -274,6 +276,11 @@ final class MigrationDatabasePlanner
                 || $scope === null
                 || $record->checksum() !== $migration->checksum()
                 || $record->scopeHash() !== $scope->hash()
+                || !$this->postconditionIsSatisfied(
+                    $pdo,
+                    $migration,
+                    $scope
+                )
             ) {
                 continue;
             }
@@ -281,8 +288,9 @@ final class MigrationDatabasePlanner
                 $migration->supersededPostconditionIds()
                 as $targetId
             ) {
-                // Only a recorded superseder can retire the old verifier. A
-                // pending migration must still prove the state it starts from.
+                // Only a recorded and currently valid superseder can retire
+                // the old verifier. Pending or drifted composite migrations
+                // must still prove the state they extend.
                 $superseded[$this->key($module, $targetId)] = true;
             }
         }

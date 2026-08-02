@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Core\Modules\Blog\BlogMigrationProvider;
+use App\Core\Modules\Blog\BlogCategoryWebAdminNavigationProvider;
+use App\Core\Modules\Blog\BlogCategoryRouteProvider;
 use App\Core\Modules\Blog\BlogPublicRouteProvider;
 use App\Core\Modules\Blog\BlogRouteProvider;
 use App\Core\Modules\Blog\BlogWebAdminNavigationProvider;
@@ -14,6 +16,8 @@ use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRouteProviderInterface;
 use App\Core\Modules\ModuleWebAdminNavigationProviderInterface;
 use App\Core\Modules\WebAdmin\WebAdminMigrationProvider;
+use App\Core\Modules\WebAdmin\WebAdminMediaNavigationProvider;
+use App\Core\Modules\WebAdmin\WebAdminMediaRouteProvider;
 use App\Core\Modules\WebAdmin\WebAdminRouteProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
@@ -79,18 +83,36 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
                 'class' => WebAdminRouteProvider::class,
             ],
             [
+                'module' => 'webadmin',
+                'class' => WebAdminMediaRouteProvider::class,
+            ],
+            [
                 'module' => 'blog',
                 'class' => BlogRouteProvider::class,
+            ],
+            [
+                'module' => 'blog',
+                'class' => BlogCategoryRouteProvider::class,
             ],
         ];
         $publicRoutes = [[
             'module' => 'blog',
             'class' => BlogPublicRouteProvider::class,
         ]];
-        $navigation = [[
-            'module' => 'blog',
-            'class' => BlogWebAdminNavigationProvider::class,
-        ]];
+        $navigation = [
+            [
+                'module' => 'webadmin',
+                'class' => WebAdminMediaNavigationProvider::class,
+            ],
+            [
+                'module' => 'blog',
+                'class' => BlogWebAdminNavigationProvider::class,
+            ],
+            [
+                'module' => 'blog',
+                'class' => BlogCategoryWebAdminNavigationProvider::class,
+            ],
+        ];
         $migrations = [
             [
                 'module' => 'webadmin',
@@ -174,6 +196,11 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
                 'migration' => '0001_webadmin_identity_and_access',
             ],
             [
+                'module' => 'webadmin',
+                'provider' => WebAdminMigrationProvider::class,
+                'migration' => '0002_webadmin_media_library',
+            ],
+            [
                 'module' => 'blog',
                 'provider' => BlogMigrationProvider::class,
                 'migration' => '0001_blog_posts',
@@ -182,6 +209,21 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
                 'module' => 'blog',
                 'provider' => BlogMigrationProvider::class,
                 'migration' => '0002_blog_capabilities',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0003_blog_categories',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0004_blog_category_capabilities',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0005_blog_structured_content',
             ],
         ], array_map(
             static fn (array $entry): array => [

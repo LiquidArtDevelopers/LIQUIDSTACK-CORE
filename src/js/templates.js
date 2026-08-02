@@ -52,6 +52,7 @@ const categoryLoaders = {
   media: () => import('./showroom/media.js'),
   'forms-interactive': () => import('./showroom/forms-interactive.js'),
   'modules-sections': () => import('./showroom/modules-sections.js'),
+  blog: () => import('./showroom/blog.js'),
 };
 
 // Extensión reservada para BASE y consumidores. Un fichero local como

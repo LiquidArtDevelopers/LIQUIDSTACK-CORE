@@ -3872,5 +3872,188 @@
     },
     "moduleTable01_00_c_list_c": {
         "text": "Matrix ipsum C3"
+    },
+    "artAuth01_00_headerPrimary": {
+        "text": "artAuth01 · Acceso a la Matrix"
+    },
+    "artAuth01_00_intro": {
+        "text": "Introduce tus credenciales para atravesar el sistema, reconocer la señal de la operadora y continuar hacia el lugar donde descubrirás hasta dónde llega la madriguera del conejo blanco."
+    },
+    "artAuth01_00_headerSecondary": {
+        "text": "Antes de elegir la píldora"
+    },
+    "artAuth01_00_support": {
+        "text": "Comprueba la dirección, protege tu código y recuerda que cada acceso deja una señal dentro de la Matrix."
+    },
+    "moduleFormAuthLogin01_00_legend": {
+        "text": "moduleFormAuthLogin01 · Identifica tu señal"
+    },
+    "moduleFormAuthLogin01_00_intro": {
+        "text": "La operadora necesita reconocer tu identidad antes de abrir una línea segura con la resistencia."
+    },
+    "moduleFormAuthLogin01_00_emailLabel": {
+        "text": "Correo de acceso"
+    },
+    "moduleFormAuthLogin01_00_emailPlaceholder": {
+        "placeholder": "neo@matrix.example"
+    },
+    "moduleFormAuthLogin01_00_emailHint": {
+        "text": "Utiliza la cuenta vinculada a tu identidad digital."
+    },
+    "moduleFormAuthLogin01_00_passwordLabel": {
+        "text": "Código secreto"
+    },
+    "moduleFormAuthLogin01_00_passwordPlaceholder": {
+        "placeholder": "Escribe tu código de acceso"
+    },
+    "moduleFormAuthLogin01_00_passwordHint": {
+        "text": "No compartas este código con ningún agente."
+    },
+    "moduleFormAuthLogin01_00_toggleShow": {
+        "text": "Mostrar contraseña"
+    },
+    "moduleFormAuthLogin01_00_toggleHide": {
+        "text": "Ocultar contraseña"
+    },
+    "moduleFormAuthLogin01_00_submit": {
+        "text": "Entrar en la Matrix"
+    },
+    "moduleFormAuthLogin01_00_feedback": {
+        "text": "La operadora está verificando tu señal."
+    },
+    "moduleFormAuthLogin01_00_secondaryAction": {
+        "text": "¿Has olvidado el código de acceso?",
+        "href": "#",
+        "title": "Recuperar el código de acceso"
+    },
+    "moduleFormAuthRecover01_00_legend": {
+        "text": "moduleFormAuthRecover01 · Recupera la conexión"
+    },
+    "moduleFormAuthRecover01_00_intro": {
+        "text": "Facilita la cuenta asociada y la operadora enviará las instrucciones necesarias para restablecer tu enlace seguro."
+    },
+    "moduleFormAuthRecover01_00_emailLabel": {
+        "text": "Correo vinculado"
+    },
+    "moduleFormAuthRecover01_00_emailPlaceholder": {
+        "placeholder": "trinity@matrix.example"
+    },
+    "moduleFormAuthRecover01_00_emailHint": {
+        "text": "Recibirás un enlace temporal en esta dirección."
+    },
+    "moduleFormAuthRecover01_00_submit": {
+        "text": "Enviar enlace seguro"
+    },
+    "moduleFormAuthRecover01_00_feedback": {
+        "text": "La transmisión está preparada para su envío."
+    },
+    "moduleFormAuthRecover01_00_secondaryAction": {
+        "text": "Volver al acceso",
+        "href": "#",
+        "title": "Volver al formulario de acceso"
+    },
+    "moduleFormAuthPassword01_00_legend": {
+        "text": "moduleFormAuthPassword01 · Renueva tu código"
+    },
+    "moduleFormAuthPassword01_00_intro": {
+        "text": "Crea una contraseña resistente para proteger la nueva conexión antes de regresar al sistema de la operadora."
+    },
+    "moduleFormAuthPassword01_00_passwordLabel": {
+        "text": "Nueva contraseña"
+    },
+    "moduleFormAuthPassword01_00_passwordPlaceholder": {
+        "placeholder": "Escribe una contraseña segura"
+    },
+    "moduleFormAuthPassword01_00_passwordHint": {
+        "text": "Debe cumplir todos los requisitos indicados."
+    },
+    "moduleFormAuthPassword01_00_confirmationLabel": {
+        "text": "Repite la contraseña"
+    },
+    "moduleFormAuthPassword01_00_confirmationPlaceholder": {
+        "placeholder": "Vuelve a escribir la contraseña"
+    },
+    "moduleFormAuthPassword01_00_confirmationHint": {
+        "text": "Ambas contraseñas deben coincidir exactamente."
+    },
+    "moduleFormAuthPassword01_00_toggleShow": {
+        "text": "Mostrar contraseña"
+    },
+    "moduleFormAuthPassword01_00_toggleHide": {
+        "text": "Ocultar contraseña"
+    },
+    "moduleFormAuthPassword01_00_requirementsLabel": {
+        "text": "Requisitos de la contraseña"
+    },
+    "moduleFormAuthPassword01_00_requirementLength": {
+        "text": "Entre 15 y 1024 bytes en UTF-8"
+    },
+    "moduleFormAuthPassword01_00_submit": {
+        "text": "Guardar nueva contraseña"
+    },
+    "moduleFormAuthPassword01_00_feedback": {
+        "text": "El nuevo código está listo para validarse."
+    },
+    "moduleFormAuthPassword01_00_secondaryAction": {
+        "text": "Volver al acceso",
+        "href": "#",
+        "title": "Volver al formulario de acceso"
+    },
+    "showroom_catalog_category_blog_label": {
+        "text": "Blog"
+    },
+    "showroom_catalog_category_blog_description": {
+        "text": "Recursos dinámicos para índices y entradas del blog."
+    },
+    "sectionBlogGrid01_00_headerPrimary": {
+        "text": "sectionBlogGrid01 · Últimas señales de Matrix"
+    },
+    "sectionBlogGrid01_00_a_link": {
+        "text": "La llamada que despertó a Neo",
+        "href": "/es/noticias/la-llamada-que-desperto-a-neo",
+        "title": "Leer La llamada que despertó a Neo"
+    },
+    "sectionBlogGrid01_00_a_excerpt": {
+        "text": "Una pantalla en negro, una pregunta imposible y el rastro de un conejo blanco abrieron la primera grieta entre la rutina de Thomas Anderson y el mundo real."
+    },
+    "sectionBlogGrid01_00_a_publishedAt": {
+        "text": "18/03/1999",
+        "datetime": "1999-03-18"
+    },
+    "sectionBlogGrid01_00_b_link": {
+        "text": "La ciudad de Sion vuelve a resistir",
+        "href": "/es/noticias/la-ciudad-de-sion-vuelve-a-resistir",
+        "title": "Leer La ciudad de Sion vuelve a resistir"
+    },
+    "sectionBlogGrid01_00_b_excerpt": {
+        "text": "Mientras las máquinas avanzan hacia Sion, Neo aprende que incluso una profecía puede formar parte de otro sistema de control construido alrededor de sus decisiones."
+    },
+    "sectionBlogGrid01_00_b_publishedAt": {
+        "text": "15/05/2003",
+        "datetime": "2003-05-15"
+    },
+    "sectionBlogGrid01_00_c_link": {
+        "text": "La última batalla por ambos mundos",
+        "href": "/es/noticias/la-ultima-batalla-por-ambos-mundos",
+        "title": "Leer La última batalla por ambos mundos"
+    },
+    "sectionBlogGrid01_00_c_excerpt": {
+        "text": "Neo y Trinity cruzan la frontera definitiva para negociar un futuro en el que humanos y máquinas deben afrontar juntos una amenaza nacida dentro del propio código."
+    },
+    "sectionBlogGrid01_00_c_publishedAt": {
+        "text": "05/11/2003",
+        "datetime": "2003-11-05"
+    },
+    "sectionBlogGrid01_00_d_link": {
+        "text": "El regreso a una realidad reconstruida",
+        "href": "/es/noticias/el-regreso-a-una-realidad-reconstruida",
+        "title": "Leer El regreso a una realidad reconstruida"
+    },
+    "sectionBlogGrid01_00_d_excerpt": {
+        "text": "Una nueva versión de Matrix intenta encerrar el recuerdo de Neo y Trinity, pero la conexión entre ambos vuelve a desafiar las reglas impuestas por el sistema."
+    },
+    "sectionBlogGrid01_00_d_publishedAt": {
+        "text": "22/12/2021",
+        "datetime": "2021-12-22"
     }
 }

@@ -6,6 +6,8 @@ namespace App\Core\Blog;
 
 use App\Core\Blog\Audit\BlogMutationAuditEvent;
 use App\Core\Blog\Audit\BlogMutationAuditPortInterface;
+use App\Core\Blog\Editing\BlogDraftMutationCoordinator;
+use App\Core\Blog\Editing\BlogPlainDraftWriteGuardInterface;
 use App\Core\Blog\Persistence\BlogPersistenceConflict;
 use App\Core\Blog\Persistence\BlogPersistenceException;
 use App\Core\Blog\Persistence\BlogRepositoryInterface;
@@ -31,14 +33,26 @@ final class BlogService
     public const MAX_LIST_OFFSET = BlogInput::MAX_LIST_OFFSET;
     public const MAX_SITEMAP_ENTRIES =
         BlogSitemapEntry::MAX_DOCUMENT_ENTRIES;
+    public const DEFAULT_PUBLIC_LIST_LIMIT = 12;
+
+    private readonly BlogDraftMutationCoordinator $draftMutationCoordinator;
 
     public function __construct(
         private readonly BlogRepositoryInterface $repository,
         private readonly UuidGeneratorInterface $uuidGenerator =
             new RandomUuidV4Generator(),
         private readonly ClockInterface $clock = new SystemClock(),
-        private readonly ?BlogMutationAuditPortInterface $auditPort = null
+        private readonly ?BlogMutationAuditPortInterface $auditPort = null,
+        private readonly ?BlogPlainDraftWriteGuardInterface
+            $plainDraftWriteGuard = null,
+        ?BlogDraftMutationCoordinator $draftMutationCoordinator = null
     ) {
+        $this->draftMutationCoordinator = $draftMutationCoordinator
+            ?? new BlogDraftMutationCoordinator(
+                $repository,
+                $clock,
+                $auditPort
+            );
     }
 
     /**
@@ -163,51 +177,28 @@ final class BlogService
         $locale = BlogInput::locale($locale);
         BlogInput::expectedLockVersion($expectedLockVersion);
 
-        return $this->mutate(
-            function (PDO $pdo) use (
+        return $this->mutate(fn (PDO $pdo): BlogPostVariant =>
+            $this->draftMutationCoordinator->saveWithinTransaction(
+                $pdo,
                 $actorGate,
                 $postPublicId,
                 $locale,
                 $expectedLockVersion,
-                $draft
-            ): BlogPostVariant {
-                $actorPublicId = $this->authorizedActor($actorGate, $pdo);
-                $now = $this->now();
-                $current = $this->requiredLockedVariant(
-                    $postPublicId,
-                    $locale
-                );
-                $this->assertExpectedVersion($current, $expectedLockVersion);
-                if ($current->status() !== BlogPostVariant::DRAFT) {
-                    throw new BlogException(BlogException::INVALID_STATE);
-                }
-                $this->assertSlugAvailable(
-                    $locale,
-                    $draft->slug(),
-                    $current->localizationPublicId()
-                );
-                if (!$this->repository->updateDraft(
-                    $current->localizationPublicId(),
-                    $expectedLockVersion,
-                    $draft,
-                    $actorPublicId,
-                    $now
-                )) {
-                    throw new BlogException(BlogException::LOCK_CONFLICT);
-                }
-                $this->repository->touchPost($postPublicId, $now);
+                $draft,
+                $this->plainDraftWriteGuard === null
+                    ? null
+                    : function (
+                        PDO $transaction,
+                        BlogPostVariant $current
+                    ): bool {
+                        $this->plainDraftWriteGuard->assertPlainSaveAllowed(
+                            $transaction,
+                            $current->localizationPublicId()
+                        );
 
-                $stored = $this->requiredStoredVariant($postPublicId, $locale);
-                $this->auditMutation(
-                    $pdo,
-                    BlogMutationAuditEvent::SAVE,
-                    $actorPublicId,
-                    $postPublicId,
-                    $now
-                );
-
-                return $stored;
-            }
+                        return true;
+                    }
+            )
         );
     }
 
@@ -382,6 +373,25 @@ final class BlogService
         return $this->read(
             fn (): ?BlogPostVariant =>
                 $this->repository->publishedVariant($locale, $slug)
+        );
+    }
+
+    /** @return list<PublishedPostCard> */
+    public function listPublishedCards(
+        string $locale,
+        int $limit = self::DEFAULT_PUBLIC_LIST_LIMIT,
+        int $offset = 0
+    ): array {
+        $locale = BlogInput::locale($locale);
+        $limit = BlogInput::listLimit($limit);
+        $offset = BlogInput::listOffset($offset);
+
+        return $this->read(
+            fn (): array => $this->repository->listPublishedCards(
+                $locale,
+                $limit,
+                $offset
+            )
         );
     }
 

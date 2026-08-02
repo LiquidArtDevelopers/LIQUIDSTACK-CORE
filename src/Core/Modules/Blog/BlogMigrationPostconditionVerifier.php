@@ -19,7 +19,9 @@ final class BlogMigrationPostconditionVerifier implements
 {
     public function __construct(
         private readonly MySqlColumnDefaultNormalizer $defaultNormalizer =
-            new MySqlColumnDefaultNormalizer()
+            new MySqlColumnDefaultNormalizer(),
+        private readonly bool $expectCategoryExtension = false,
+        private readonly bool $expectStructuredContentExtension = false
     ) {
     }
 
@@ -99,6 +101,30 @@ final class BlogMigrationPostconditionVerifier implements
         ];
         foreach ($this->sqliteIndexSuffixes() as $suffix) {
             $expected[] = 'index:' . strtolower($scope->tableName($suffix));
+        }
+        if ($this->expectCategoryExtension) {
+            foreach ($this->categoryTableSuffixes() as $suffix) {
+                $expected[] = 'table:' . strtolower(
+                    $scope->tableName($suffix)
+                );
+            }
+            foreach ($this->categoryIndexSuffixes() as $suffix) {
+                $expected[] = 'index:' . strtolower(
+                    $scope->tableName($suffix)
+                );
+            }
+        }
+        if ($this->expectStructuredContentExtension) {
+            foreach ($this->structuredContentTableSuffixes() as $suffix) {
+                $expected[] = 'table:' . strtolower(
+                    $scope->tableName($suffix)
+                );
+            }
+            foreach ($this->structuredContentIndexSuffixes() as $suffix) {
+                $expected[] = 'index:' . strtolower(
+                    $scope->tableName($suffix)
+                );
+            }
         }
         sort($expected, SORT_STRING);
 
@@ -397,6 +423,24 @@ final class BlogMigrationPostconditionVerifier implements
                 'INNODB',
                 'utf8mb4_unicode_ci',
             ];
+        }
+        if ($this->expectCategoryExtension) {
+            foreach ($this->categoryTableSuffixes() as $suffix) {
+                $expected[strtolower($scope->tableName($suffix))] = [
+                    'BASE TABLE',
+                    'INNODB',
+                    'utf8mb4_unicode_ci',
+                ];
+            }
+        }
+        if ($this->expectStructuredContentExtension) {
+            foreach ($this->structuredContentTableSuffixes() as $suffix) {
+                $expected[strtolower($scope->tableName($suffix))] = [
+                    'BASE TABLE',
+                    'INNODB',
+                    'utf8mb4_unicode_ci',
+                ];
+            }
         }
         ksort($expected, SORT_STRING);
 
@@ -767,6 +811,55 @@ final class BlogMigrationPostconditionVerifier implements
             'ux_pl_post_locale',
             'ux_pl_locale_slug',
             'ix_pl_state',
+        ];
+    }
+
+    /** @return list<string> */
+    private function categoryTableSuffixes(): array
+    {
+        return ['categories', 'category_locales', 'post_categories'];
+    }
+
+    /** @return list<string> */
+    private function categoryIndexSuffixes(): array
+    {
+        return [
+            'ux_ca_public',
+            'ix_ca_author',
+            'ux_cl_public',
+            'ux_cl_cat_locale',
+            'ux_cl_locale_slug',
+            'ix_cl_name',
+            'ux_pc_public',
+            'ux_pc_pair',
+            'ix_pc_category',
+        ];
+    }
+
+    /** @return list<string> */
+    private function structuredContentTableSuffixes(): array
+    {
+        return [
+            'content_docs',
+            'content_revisions',
+            'content_media',
+            'revision_media',
+        ];
+    }
+
+    /** @return list<string> */
+    private function structuredContentIndexSuffixes(): array
+    {
+        return [
+            'ux_cd_public',
+            'ux_cd_local',
+            'ix_cd_updated',
+            'ux_cr_public',
+            'ux_cr_loc_rev',
+            'ux_cr_loc_variant',
+            'ix_cr_time',
+            'ix_cm_asset',
+            'ix_rm_asset',
         ];
     }
 

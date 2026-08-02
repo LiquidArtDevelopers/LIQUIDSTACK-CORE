@@ -9,6 +9,12 @@ use App\Core\Blog\BlogService;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogConfigLoader;
 use App\Core\Blog\Persistence\PdoBlogRepository;
+use App\Core\Blog\StructuredContent\Editing\BlogStructuredEditorService;
+use App\Core\Blog\StructuredContent\Media\PdoWebAdminMediaAvailabilityAdapter;
+use App\Core\Blog\StructuredContent\Media\PdoBlogEditorImageResolver;
+use App\Core\Blog\StructuredContent\Media\WebAdminMediaCatalogAdapter;
+use App\Core\Blog\StructuredContent\Persistence\BlogStructuredPlainDraftWriteGuard;
+use App\Core\Blog\StructuredContent\Persistence\PdoBlogStructuredContentRepository;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Modules\Blog\BlogHttpSchemaGate;
@@ -17,6 +23,7 @@ use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Modules\WebAdmin\WebAdminHttpSchemaGate;
+use App\Core\Modules\WebAdmin\WebAdminMediaHttpSchemaGate;
 use App\Core\WebAdmin\Authentication\WebAdminAuthenticationRepository;
 use App\Core\WebAdmin\Authentication\WebAdminAuthenticationService;
 use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
@@ -24,6 +31,7 @@ use App\Core\WebAdmin\Authorization\WebAdminMutationActorGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
+use App\Core\WebAdmin\Media\PdoMediaRepository;
 use App\Core\WebAdmin\Security\ExceptionTraceGuard;
 use App\Core\WebAdmin\Security\InvalidSecurityKey;
 use App\Core\WebAdmin\Security\PasswordHasher;
@@ -49,6 +57,7 @@ final class BlogAdminHttpRuntimeFactory implements
     private readonly ConfiguredMigrationScopeFactory $scopeFactory;
     private readonly BlogHttpSchemaGate $blogSchemaGate;
     private readonly WebAdminHttpSchemaGate $webAdminSchemaGate;
+    private readonly WebAdminMediaHttpSchemaGate $webAdminMediaSchemaGate;
     private readonly ClockInterface $clock;
     private readonly UuidGeneratorInterface $uuidGenerator;
     private readonly SecureTokenGenerator $tokenGenerator;
@@ -64,6 +73,7 @@ final class BlogAdminHttpRuntimeFactory implements
         ?ConfiguredMigrationScopeFactory $scopeFactory = null,
         ?BlogHttpSchemaGate $blogSchemaGate = null,
         ?WebAdminHttpSchemaGate $webAdminSchemaGate = null,
+        ?WebAdminMediaHttpSchemaGate $webAdminMediaSchemaGate = null,
         ?ClockInterface $clock = null,
         ?UuidGeneratorInterface $uuidGenerator = null,
         ?SecureTokenGenerator $tokenGenerator = null
@@ -91,6 +101,8 @@ final class BlogAdminHttpRuntimeFactory implements
             ?? new BlogHttpSchemaGate();
         $this->webAdminSchemaGate = $webAdminSchemaGate
             ?? new WebAdminHttpSchemaGate();
+        $this->webAdminMediaSchemaGate = $webAdminMediaSchemaGate
+            ?? new WebAdminMediaHttpSchemaGate();
         $this->clock = $clock ?? new SystemClock();
         $this->uuidGenerator = $uuidGenerator
             ?? new RandomUuidV4Generator();
@@ -191,6 +203,15 @@ final class BlogAdminHttpRuntimeFactory implements
                     'blog.webadmin_schema_not_ready'
                 );
             }
+            if (!$this->webAdminMediaSchemaGate->isReady(
+                $pdo,
+                $registry,
+                $webAdminScope
+            )) {
+                throw new BlogAdminHttpRuntimeException(
+                    'blog.webadmin_media_schema_not_ready'
+                );
+            }
             if (!$this->blogSchemaGate->isReady(
                 $pdo,
                 $registry,
@@ -231,15 +252,39 @@ final class BlogAdminHttpRuntimeFactory implements
                 $this->tokenGenerator,
                 $passwordHasher
             );
+            $blogRepository = new PdoBlogRepository($pdo, $blogScope);
+            $contentRepository = new PdoBlogStructuredContentRepository(
+                $pdo,
+                $blogScope
+            );
+            $audit = new WebAdminBlogMutationAuditAdapter(
+                $pdo,
+                $tables,
+                $this->uuidGenerator
+            );
             $service = new BlogService(
-                new PdoBlogRepository($pdo, $blogScope),
+                $blogRepository,
                 $this->uuidGenerator,
                 $this->clock,
-                new WebAdminBlogMutationAuditAdapter(
+                $audit,
+                new BlogStructuredPlainDraftWriteGuard(
                     $pdo,
-                    $tables,
-                    $this->uuidGenerator
+                    $contentRepository
                 )
+            );
+            $structuredEditor = new BlogStructuredEditorService(
+                $blogRepository,
+                $contentRepository,
+                new PdoWebAdminMediaAvailabilityAdapter(
+                    $pdo,
+                    $webAdminScope
+                ),
+                $this->uuidGenerator,
+                $this->clock,
+                $audit
+            );
+            $editorMediaCatalog = new WebAdminMediaCatalogAdapter(
+                new PdoMediaRepository($pdo, $tables)
             );
 
             return new BlogAdminHttpRuntime(
@@ -251,7 +296,14 @@ final class BlogAdminHttpRuntimeFactory implements
                 $authentication,
                 $authorization,
                 $pdo,
-                $mutationActorGate
+                $mutationActorGate,
+                $structuredEditor,
+                $editorMediaCatalog,
+                new PdoBlogEditorImageResolver(
+                    $pdo,
+                    $webAdminScope,
+                    $canonicalWebAdminConfig->basePath()
+                )
             );
         } catch (BlogAdminHttpRuntimeException $exception) {
             throw $exception;

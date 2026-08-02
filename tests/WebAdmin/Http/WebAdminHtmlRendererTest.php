@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Core\WebAdmin\Http\WebAdminHtmlRenderer;
+use App\Core\WebAdmin\Http\WebAdminPageDocumentRenderer;
 use App\Core\WebAdmin\Navigation\WebAdminNavigationItem;
 use PHPUnit\Framework\TestCase;
 
@@ -13,6 +14,56 @@ final class WebAdminHtmlRendererTest extends TestCase
     protected function setUp(): void
     {
         $this->renderer = new WebAdminHtmlRenderer();
+    }
+
+    public function testEveryScreenUsesTheModuleOwnedDocumentShell(): void
+    {
+        $html = $this->renderer->login('/admin', 'csrf', false);
+
+        self::assertStringContainsString('<body class="webadmin">', $html);
+        self::assertStringContainsString(
+            '<link rel="stylesheet" href="'
+                . WebAdminPageDocumentRenderer::STYLESHEET_PATH . '">',
+            $html
+        );
+        self::assertStringContainsString(
+            '<script src="' . WebAdminPageDocumentRenderer::SCRIPT_PATH
+                . '" defer></script>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<meta name="robots" content="noindex,nofollow,noarchive">',
+            $html
+        );
+    }
+
+    public function testCredentialScreensUseTheCanonicalAuthResources(): void
+    {
+        $login = $this->renderer->login('/admin', 'csrf', false);
+        $recover = $this->renderer->forgotPassword('/admin', 'csrf');
+        $password = $this->renderer->credentialAction(
+            '/admin',
+            'password_reset',
+            'csrf',
+            false
+        );
+
+        self::assertStringContainsString('class="artAuth01 ', $login);
+        self::assertStringContainsString('moduleFormAuthLogin01', $login);
+        self::assertStringContainsString('data-auth-password-toggle', $login);
+        self::assertStringContainsString('moduleFormAuthRecover01', $recover);
+        self::assertStringContainsString('moduleFormAuthPassword01', $password);
+        self::assertSame(2, substr_count(
+            $password,
+            'data-auth-password-toggle data-auth-label-show='
+        ));
+        foreach ([$login, $recover, $password] as $html) {
+            self::assertDoesNotMatchRegularExpression(
+                '/\{[A-Za-z][A-Za-z0-9-]*\}/',
+                $html
+            );
+            self::assertStringNotContainsString('data-lang=', $html);
+        }
     }
 
     public function testEveryViewIsACompleteSemanticPrivateDocument(): void
@@ -76,9 +127,15 @@ final class WebAdminHtmlRendererTest extends TestCase
             self::assertStringContainsString('<main><article ', $html);
             self::assertStringContainsString('aria-labelledby="', $html);
             self::assertStringContainsString('<h1 id="', $html);
-            self::assertStringEndsWith('</article></main></body></html>', $html);
+            self::assertStringEndsWith(
+                '<script src="'
+                    . WebAdminPageDocumentRenderer::SCRIPT_PATH
+                    . '" defer></script></body></html>',
+                $html
+            );
             self::assertStringNotContainsString('<style', $html);
-            self::assertStringNotContainsString('<script', $html);
+            self::assertSame(1, substr_count($html, '<script '));
+            self::assertStringNotContainsString('<script>', $html);
         }
     }
 
@@ -121,8 +178,7 @@ final class WebAdminHtmlRendererTest extends TestCase
             $html
         );
         self::assertStringContainsString(
-            'aria-describedby="webadmin-login-description '
-            . 'webadmin-login-notice webadmin-login-error"',
+            'class="moduleFormAuth-feedback" aria-live="polite"',
             $html
         );
     }
@@ -131,8 +187,8 @@ final class WebAdminHtmlRendererTest extends TestCase
     {
         $html = $this->renderer->login('/admin/', 'csrf-value', false);
 
-        self::assertStringContainsString(
-            '<form method="post" action="/admin/login"',
+        self::assertMatchesRegularExpression(
+            '/<form(?=[^>]*method="post")(?=[^>]*action="\/admin\/login")[^>]*>/',
             $html
         );
         self::assertStringContainsString(
@@ -516,8 +572,8 @@ final class WebAdminHtmlRendererTest extends TestCase
     {
         $html = $this->renderer->forgotPassword('/', 'csrf-forgot');
 
-        self::assertStringContainsString(
-            '<form method="post" action="/password/forgot"',
+        self::assertMatchesRegularExpression(
+            '/<form(?=[^>]*method="post")(?=[^>]*action="\/password\/forgot")[^>]*>/',
             $html
         );
         self::assertStringContainsString(
@@ -525,7 +581,8 @@ final class WebAdminHtmlRendererTest extends TestCase
             $html
         );
         self::assertStringContainsString(
-            'aria-describedby="webadmin-forgot-email-description"',
+            'aria-describedby="webadmin-forgot-email-description '
+                . 'webadmin-forgot-email-error"',
             $html
         );
         self::assertDoesNotMatchRegularExpression(
@@ -562,8 +619,9 @@ final class WebAdminHtmlRendererTest extends TestCase
             true
         );
 
-        self::assertStringContainsString(
-            '<form method="post" action="' . $action . '"',
+        self::assertMatchesRegularExpression(
+            '/<form(?=[^>]*method="post")(?=[^>]*action="'
+                . preg_quote($action, '/') . '")[^>]*>/',
             $html
         );
         self::assertStringContainsString($heading, $html);

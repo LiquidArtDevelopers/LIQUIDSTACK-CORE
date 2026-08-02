@@ -1,0 +1,21 @@
+@use '../config' as c;
+@use 'moduleFormAuth';
+
+.moduleFormAuthRecover01 {
+    .moduleFormAuth-form {
+        padding: clamp(1rem, 4vw, 2rem);
+        border: 1px solid c.$color01bis4;
+        border-radius: 1rem;
+        background: c.$color00bis;
+    }
+
+    .moduleFormAuth-submit {
+        background: c.$color03;
+        border-color: c.$color03;
+
+        &:hover {
+            color: c.$color03;
+            background: c.$color00;
+        }
+    }
+}

@@ -9,56 +9,32 @@ use InvalidArgumentException;
 
 final class WebAdminHtmlRenderer
 {
+    private readonly WebAdminPageDocumentRenderer $documentRenderer;
+    private readonly WebAdminAuthHtmlRenderer $authRenderer;
+
+    public function __construct(
+        ?WebAdminPageDocumentRenderer $documentRenderer = null,
+        ?WebAdminAuthHtmlRenderer $authRenderer = null
+    ) {
+        $this->documentRenderer = $documentRenderer
+            ?? new WebAdminPageDocumentRenderer();
+        $this->authRenderer = $authRenderer
+            ?? new WebAdminAuthHtmlRenderer(
+                documents: $this->documentRenderer
+            );
+    }
+
     public function login(
         string $basePath,
         string $csrf,
         bool $failed,
         ?string $notice = null
     ): string {
-        $descriptionIds = ['webadmin-login-description'];
-        $feedback = '';
-
-        if ($notice !== null && $notice !== '') {
-            $descriptionIds[] = 'webadmin-login-notice';
-            $feedback .= '<p id="webadmin-login-notice" role="status" '
-                . 'aria-live="polite">' . $this->escape($notice) . '</p>';
-        }
-        if ($failed) {
-            $descriptionIds[] = 'webadmin-login-error';
-            $feedback .= '<p id="webadmin-login-error" role="alert" '
-                . 'aria-live="assertive">No se pudo iniciar sesi&oacute;n '
-                . 'con esos datos.</p>';
-        }
-
-        return $this->document(
-            'Acceso a la gesti&oacute;n web',
-            '<main><article aria-labelledby="webadmin-login-title">'
-            . '<h1 id="webadmin-login-title">Acceso a la gesti&oacute;n web</h1>'
-            . '<p id="webadmin-login-description">Introduce tus credenciales '
-            . 'de administraci&oacute;n.</p>'
-            . $feedback
-            . '<form method="post" action="'
-            . $this->path($basePath, '/login') . '" aria-describedby="'
-            . implode(' ', $descriptionIds) . '">'
-            . $this->csrfInput($csrf)
-            . '<div><label for="webadmin-email">Correo electr&oacute;nico</label>'
-            . '<p id="webadmin-email-description">Usa el correo asociado a '
-            . 'tu acceso de gesti&oacute;n.</p>'
-            . '<input id="webadmin-email" name="email" type="email" '
-            . 'autocomplete="username" autocapitalize="none" '
-            . 'spellcheck="false" maxlength="254" '
-            . 'aria-describedby="webadmin-email-description" required></div>'
-            . '<div><label for="webadmin-password">Contrase&ntilde;a</label>'
-            . '<p id="webadmin-password-description">Introduce tu contrase&ntilde;a '
-            . 'actual.</p>'
-            . '<input id="webadmin-password" name="password" type="password" '
-            . 'autocomplete="current-password" '
-            . 'aria-describedby="webadmin-password-description" required></div>'
-            . '<button type="submit">Entrar</button>'
-            . '</form>'
-            . '<p><a href="' . $this->path($basePath, '/password/forgot')
-            . '">He olvidado mi contrase&ntilde;a</a></p>'
-            . '</article></main>'
+        return $this->authRenderer->login(
+            $basePath,
+            $csrf,
+            $failed,
+            $notice
         );
     }
 
@@ -336,30 +312,7 @@ final class WebAdminHtmlRenderer
 
     public function forgotPassword(string $basePath, string $csrf): string
     {
-        return $this->document(
-            'Recuperar contrase&ntilde;a',
-            '<main><article aria-labelledby="webadmin-forgot-title">'
-            . '<h1 id="webadmin-forgot-title">Recuperar contrase&ntilde;a</h1>'
-            . '<p id="webadmin-forgot-description">Indica el correo con el '
-            . 'que accedes a la gesti&oacute;n web. Si existe una cuenta disponible, '
-            . 'recibir&aacute;s las instrucciones.</p>'
-            . '<form method="post" action="'
-            . $this->path($basePath, '/password/forgot')
-            . '" aria-describedby="webadmin-forgot-description">'
-            . $this->csrfInput($csrf)
-            . '<div><label for="webadmin-forgot-email">Correo electr&oacute;nico</label>'
-            . '<p id="webadmin-forgot-email-description">Escribe el correo '
-            . 'asociado a tu acceso.</p>'
-            . '<input id="webadmin-forgot-email" name="email" type="email" '
-            . 'autocomplete="username" autocapitalize="none" '
-            . 'spellcheck="false" maxlength="254" '
-            . 'aria-describedby="webadmin-forgot-email-description" required></div>'
-            . '<button type="submit">Enviar instrucciones</button>'
-            . '</form>'
-            . '<p><a href="' . $this->path($basePath, '/login')
-            . '">Volver al acceso</a></p>'
-            . '</article></main>'
-        );
+        return $this->authRenderer->forgotPassword($basePath, $csrf);
     }
 
     public function forgotPasswordSent(string $basePath): string
@@ -383,63 +336,11 @@ final class WebAdminHtmlRenderer
         string $csrf,
         bool $failed
     ): string {
-        $presentation = match ($purpose) {
-            'invite' => [
-                'title' => 'Activar acceso',
-                'description' => 'Crea una contrase&ntilde;a para activar tu '
-                    . 'acceso a la gesti&oacute;n web.',
-                'action' => '/activate',
-                'button' => 'Activar acceso',
-            ],
-            'password_reset' => [
-                'title' => 'Cambiar contrase&ntilde;a',
-                'description' => 'Crea una nueva contrase&ntilde;a para tu '
-                    . 'acceso a la gesti&oacute;n web.',
-                'action' => '/password/reset',
-                'button' => 'Guardar contrase&ntilde;a',
-            ],
-            default => throw new InvalidArgumentException(
-                'Unsupported credential action purpose.'
-            ),
-        };
-        $descriptionIds = ['webadmin-credential-action-description'];
-        $feedback = '';
-        if ($failed) {
-            $descriptionIds[] = 'webadmin-credential-action-error';
-            $feedback = '<p id="webadmin-credential-action-error" role="alert" '
-                . 'aria-live="assertive">No se pudo completar la operaci&oacute;n. '
-                . 'Revisa los datos e int&eacute;ntalo de nuevo.</p>';
-        }
-
-        return $this->document(
-            $presentation['title'],
-            '<main><article aria-labelledby="webadmin-credential-action-title">'
-            . '<h1 id="webadmin-credential-action-title">'
-            . $presentation['title'] . '</h1>'
-            . '<p id="webadmin-credential-action-description">'
-            . $presentation['description'] . '</p>'
-            . $feedback
-            . '<form method="post" action="'
-            . $this->path($basePath, $presentation['action'])
-            . '" aria-describedby="' . implode(' ', $descriptionIds) . '">'
-            . $this->csrfInput($csrf)
-            . '<div><label for="webadmin-new-password">Nueva contrase&ntilde;a</label>'
-            . '<p id="webadmin-new-password-description">Debe tener entre '
-            . '15 y 1024 bytes en UTF-8.</p>'
-            . '<input id="webadmin-new-password" name="password" '
-            . 'type="password" autocomplete="new-password" '
-            . 'aria-describedby="webadmin-new-password-description" required></div>'
-            . '<div><label for="webadmin-password-confirmation">Confirma la '
-            . 'contrase&ntilde;a</label>'
-            . '<p id="webadmin-password-confirmation-description">Repite la '
-            . 'nueva contrase&ntilde;a.</p>'
-            . '<input id="webadmin-password-confirmation" '
-            . 'name="password_confirmation" type="password" '
-            . 'autocomplete="new-password" '
-            . 'aria-describedby="webadmin-password-confirmation-description" '
-            . 'required></div>'
-            . '<button type="submit">' . $presentation['button'] . '</button>'
-            . '</form></article></main>'
+        return $this->authRenderer->credentialAction(
+            $basePath,
+            $purpose,
+            $csrf,
+            $failed
         );
     }
 
@@ -464,11 +365,7 @@ final class WebAdminHtmlRenderer
 
     private function document(string $title, string $body): string
     {
-        return '<!doctype html><html lang="es"><head><meta charset="utf-8">'
-            . '<meta name="viewport" content="width=device-width,initial-scale=1">'
-            . '<meta name="robots" content="noindex,nofollow,noarchive">'
-            . '<title>' . $title . '</title></head><body>'
-            . $body . '</body></html>';
+        return $this->documentRenderer->render($title, $body);
     }
 
     /**

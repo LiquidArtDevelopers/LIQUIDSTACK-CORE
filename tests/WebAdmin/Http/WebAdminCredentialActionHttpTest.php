@@ -49,10 +49,14 @@ final class WebAdminCredentialActionHttpTest extends TestCase
         $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         $this->pdo->setAttribute(PDO::ATTR_STRINGIFY_FETCHES, false);
         $this->pdo->exec('PRAGMA foreign_keys = ON');
-        $migration = iterator_to_array(
-            WebAdminMigrationProvider::migrations(),
-            false
-        )[0];
+        $migration = null;
+        foreach (WebAdminMigrationProvider::migrations() as $candidate) {
+            if ($candidate->id() === '0001_webadmin_identity_and_access') {
+                $migration = $candidate;
+                break;
+            }
+        }
+        self::assertNotNull($migration);
         $scope = MigrationScope::forTablePrefix('webadmin', 'ls_webadmin_');
         foreach ($migration->statementsFor('sqlite', $scope) as $statement) {
             self::assertNotFalse($this->pdo->exec($statement));
@@ -960,7 +964,7 @@ final class WebAdminCredentialActionHttpTest extends TestCase
     {
         $this->assertCommonSecurityHeaders($response);
         self::assertSame(
-            "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+            "default-src 'none'; style-src 'self'; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
             $response->headers()['Content-Security-Policy']
         );
         self::assertSame(

@@ -112,6 +112,21 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   rutas públicas DB-backed se resuelven después de las rutas estáticas del
   proyecto y el sitemap dinámico refleja publicar/retirar sin modificar el
   repositorio ni desplegar; detecta de forma acotada el límite de 50.000 URLs.
+- Biblioteca privada WebAdmin `0002`: subida validada de JPEG, PNG y WebP,
+  variantes responsive AVIF sin metadatos, cuota y rate limit, storage fuera
+  de `public`, entrega autenticada y assets administrativos distribuidos por
+  el manifiesto modular. Composer nunca crea ni modifica la DB o el storage.
+- Liquid Blog `0003` a `0005`: categorías localizadas y asignables, capacidades
+  independientes, documentos JSON canónicos con ocho bloques controlados,
+  adopción compatible del contenido legacy, revisiones inmutables y
+  restauración transaccional. El editor integra idiomas, categorías,
+  publicación y biblioteca Media; la salida pública conserva fallback legacy
+  y solo entrega un AVIF si el documento actual publicado lo referencia.
+- Gates de funciones y diagnóstico aditivos: una migración futura pendiente no
+  inutiliza las fronteras anteriores ya verificadas, mientras que schemas
+  parciales o assets modulares ausentes fallan cerrados y se explican en
+  `liquidstack:doctor`. Los checksums publicados quedan congelados para impedir
+  la reescritura accidental de migraciones ya aplicadas.
 - El prefijo neutral ya no puede sombrear silenciosamente rutas legacy con
   claves dinámicas: una clave calculada, concatenada o añadida mediante índice
   bloquea el registro y aparece como `route_file.dynamic_key`. La autorización

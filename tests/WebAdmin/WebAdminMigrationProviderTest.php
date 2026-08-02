@@ -9,6 +9,7 @@ use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\WebAdmin\WebAdminMigrationProvider;
+use App\Core\Modules\WebAdmin\WebAdminMediaMigrationPostconditionVerifier;
 use App\Core\Modules\WebAdmin\WebAdminMigrationPostconditionVerifier;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
@@ -57,18 +58,23 @@ final class WebAdminMigrationProviderTest extends TestCase
         $this->filesystem->remove($this->projectRoot);
     }
 
-    public function testManifestRegistersOneApplicableWebAdminMigration(): void
+    public function testManifestRegistersTheBaseAndMediaMigrations(): void
     {
         $entries = $this->catalog()->entries();
 
-        self::assertCount(1, $entries);
-        self::assertSame('webadmin', $entries[0]['module']);
-        self::assertSame(
-            WebAdminMigrationProvider::class,
-            $entries[0]['provider']
-        );
+        self::assertCount(2, $entries);
+        $migrationsById = [];
+        foreach ($entries as $entry) {
+            self::assertSame('webadmin', $entry['module']);
+            self::assertSame(WebAdminMigrationProvider::class, $entry['provider']);
+            $migrationsById[$entry['migration']->id()] = $entry['migration'];
+        }
+        self::assertSame([
+            '0001_webadmin_identity_and_access',
+            '0002_webadmin_media_library',
+        ], array_keys($migrationsById));
 
-        $migration = $entries[0]['migration'];
+        $migration = $migrationsById['0001_webadmin_identity_and_access'];
         self::assertSame(
             '0001_webadmin_identity_and_access',
             $migration->id()
@@ -87,6 +93,27 @@ final class WebAdminMigrationProviderTest extends TestCase
             'webadmin-initial-schema-v1',
             $migration->postconditionVerifier()?->contractVersion()
         );
+
+        $media = $migrationsById['0002_webadmin_media_library'];
+        self::assertSame('0002_webadmin_media_library', $media->id());
+        self::assertTrue($media->isExecutableFor('mysql'));
+        self::assertTrue($media->isExecutableFor('sqlite'));
+        self::assertFalse($media->isTransactionalFor('mysql'));
+        self::assertTrue($media->isTransactionalFor('sqlite'));
+        self::assertTrue($media->isRetrySafe());
+        self::assertFalse($media->isDestructive());
+        self::assertSame(
+            ['0001_webadmin_identity_and_access'],
+            $media->supersededPostconditionIds()
+        );
+        self::assertInstanceOf(
+            WebAdminMediaMigrationPostconditionVerifier::class,
+            $media->postconditionVerifier()
+        );
+        self::assertSame(
+            'webadmin-media-schema-v1',
+            $media->postconditionVerifier()?->contractVersion()
+        );
     }
 
     public function testSQLiteApplyCreatesTheCompleteScopedSchemaAndSeeds(): void
@@ -101,7 +128,10 @@ final class WebAdminMigrationProviderTest extends TestCase
         self::assertTrue($result->changed());
         self::assertSame(1, $result->batch());
         self::assertSame(
-            ['webadmin:0001_webadmin_identity_and_access'],
+            [
+                'webadmin:0001_webadmin_identity_and_access',
+                'webadmin:0002_webadmin_media_library',
+            ],
             array_map(
                 static fn (array $entry): string =>
                     $entry['module'] . ':' . $entry['id'],
@@ -115,6 +145,8 @@ final class WebAdminMigrationProviderTest extends TestCase
         foreach (self::TABLE_SUFFIXES as $suffix) {
             self::assertContains('ls_webadmin_' . $suffix, $tables);
         }
+        self::assertContains('ls_webadmin_media_assets', $tables);
+        self::assertContains('ls_webadmin_media_variants', $tables);
         self::assertContains('ls_module_migrations', $tables);
 
         self::assertSame([
@@ -145,6 +177,8 @@ final class WebAdminMigrationProviderTest extends TestCase
         self::assertSame([
             'webadmin.access' => 0,
             'webadmin.audit.view' => 0,
+            'webadmin.media.upload' => 1,
+            'webadmin.media.view' => 1,
             'webadmin.profile.manage_self' => 0,
             'webadmin.system.diagnose' => 0,
             'webadmin.users.capabilities.manage' => 0,
@@ -161,6 +195,8 @@ final class WebAdminMigrationProviderTest extends TestCase
             'site_admin' => [
                 'webadmin.access',
                 'webadmin.audit.view',
+                'webadmin.media.upload',
+                'webadmin.media.view',
                 'webadmin.profile.manage_self',
                 'webadmin.users.capabilities.manage',
                 'webadmin.users.invite',
@@ -170,6 +206,8 @@ final class WebAdminMigrationProviderTest extends TestCase
             'system_superadmin' => [
                 'webadmin.access',
                 'webadmin.audit.view',
+                'webadmin.media.upload',
+                'webadmin.media.view',
                 'webadmin.profile.manage_self',
                 'webadmin.system.diagnose',
                 'webadmin.users.capabilities.manage',
@@ -181,6 +219,10 @@ final class WebAdminMigrationProviderTest extends TestCase
         self::assertSame('pending', $pdo->query(
             "SELECT value_text FROM ls_webadmin_state "
             . "WHERE state_key = 'bootstrap.initial_accounts'"
+        )->fetchColumn());
+        self::assertSame('v1', $pdo->query(
+            "SELECT value_text FROM ls_webadmin_state "
+            . "WHERE state_key = 'media.quota_lock'"
         )->fetchColumn());
 
         $createdAt = $pdo->query(
@@ -360,7 +402,9 @@ final class WebAdminMigrationProviderTest extends TestCase
             . "ls_webadmin_capabilities WHERE code = 'webadmin.users.view')"
         );
 
-        $migration = $catalog->entries()[0]['migration'];
+        $migration = $this->migration(
+            '0001_webadmin_identity_and_access'
+        );
         foreach ($migration->statementsFor(
             'sqlite',
             $this->scopes()->get('webadmin')
@@ -371,10 +415,10 @@ final class WebAdminMigrationProviderTest extends TestCase
         self::assertSame(3, (int) $pdo->query(
             'SELECT COUNT(*) FROM ls_webadmin_roles'
         )->fetchColumn());
-        self::assertSame(8, (int) $pdo->query(
+        self::assertSame(10, (int) $pdo->query(
             'SELECT COUNT(*) FROM ls_webadmin_capabilities'
         )->fetchColumn());
-        self::assertSame(17, (int) $pdo->query(
+        self::assertSame(21, (int) $pdo->query(
             'SELECT COUNT(*) FROM ls_webadmin_role_capabilities'
         )->fetchColumn());
         self::assertSame([
@@ -394,14 +438,14 @@ final class WebAdminMigrationProviderTest extends TestCase
             . 'FROM ls_webadmin_capabilities '
             . "WHERE code = 'webadmin.users.view'"
         )->fetch(PDO::FETCH_ASSOC));
-        self::assertSame(1, (int) $pdo->query(
+        self::assertSame(2, (int) $pdo->query(
             'SELECT COUNT(*) FROM ls_webadmin_state'
         )->fetchColumn());
         self::assertSame('completed', $pdo->query(
             "SELECT value_text FROM ls_webadmin_state "
             . "WHERE state_key = 'bootstrap.initial_accounts'"
         )->fetchColumn(), 'Retry-safe seeds must never reset bootstrap state.');
-        self::assertSame(1, (int) $pdo->query(
+        self::assertSame(2, (int) $pdo->query(
             'SELECT COUNT(*) FROM ls_module_migrations'
         )->fetchColumn());
     }
@@ -433,7 +477,9 @@ final class WebAdminMigrationProviderTest extends TestCase
 
     public function testMySqlContractIsRetrySafeAndMariaDbCompatible(): void
     {
-        $migration = $this->migration();
+        $migration = $this->migration(
+            '0001_webadmin_identity_and_access'
+        );
         $scope = MigrationScope::forTablePrefix(
             'webadmin',
             'ls_webadmin_'
@@ -547,9 +593,15 @@ final class WebAdminMigrationProviderTest extends TestCase
         ));
     }
 
-    private function migration(): MigrationDefinition
+    private function migration(string $id): MigrationDefinition
     {
-        return $this->catalog()->entries()[0]['migration'];
+        foreach ($this->catalog()->entries() as $entry) {
+            if ($entry['migration']->id() === $id) {
+                return $entry['migration'];
+            }
+        }
+
+        self::fail('Missing WebAdmin migration: ' . $id);
     }
 
     private function scopes(): MigrationScopeCollection

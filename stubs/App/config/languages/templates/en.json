@@ -3888,5 +3888,188 @@
     },
     "moduleTable01_00_c_list_c": {
         "text": "Matrix ipsum C3"
+    },
+    "artAuth01_00_headerPrimary": {
+        "text": "artAuth01 · Access the Matrix"
+    },
+    "artAuth01_00_intro": {
+        "text": "Enter your credentials to cross the system, let the operator recognise your signal and continue towards the place where you will discover how deep the white rabbit hole goes."
+    },
+    "artAuth01_00_headerSecondary": {
+        "text": "Before choosing the pill"
+    },
+    "artAuth01_00_support": {
+        "text": "Check the address, protect your code and remember that every access leaves a signal inside the Matrix."
+    },
+    "moduleFormAuthLogin01_00_legend": {
+        "text": "moduleFormAuthLogin01 · Identify your signal"
+    },
+    "moduleFormAuthLogin01_00_intro": {
+        "text": "The operator needs to recognise your identity before opening a secure line to the resistance."
+    },
+    "moduleFormAuthLogin01_00_emailLabel": {
+        "text": "Access email"
+    },
+    "moduleFormAuthLogin01_00_emailPlaceholder": {
+        "placeholder": "neo@matrix.example"
+    },
+    "moduleFormAuthLogin01_00_emailHint": {
+        "text": "Use the account linked to your digital identity."
+    },
+    "moduleFormAuthLogin01_00_passwordLabel": {
+        "text": "Secret code"
+    },
+    "moduleFormAuthLogin01_00_passwordPlaceholder": {
+        "placeholder": "Enter your access code"
+    },
+    "moduleFormAuthLogin01_00_passwordHint": {
+        "text": "Never share this code with an agent."
+    },
+    "moduleFormAuthLogin01_00_toggleShow": {
+        "text": "Show password"
+    },
+    "moduleFormAuthLogin01_00_toggleHide": {
+        "text": "Hide password"
+    },
+    "moduleFormAuthLogin01_00_submit": {
+        "text": "Enter the Matrix"
+    },
+    "moduleFormAuthLogin01_00_feedback": {
+        "text": "The operator is checking your signal."
+    },
+    "moduleFormAuthLogin01_00_secondaryAction": {
+        "text": "Have you forgotten your access code?",
+        "href": "#",
+        "title": "Recover the access code"
+    },
+    "moduleFormAuthRecover01_00_legend": {
+        "text": "moduleFormAuthRecover01 · Recover the connection"
+    },
+    "moduleFormAuthRecover01_00_intro": {
+        "text": "Provide the linked account and the operator will send the instructions required to restore your secure connection."
+    },
+    "moduleFormAuthRecover01_00_emailLabel": {
+        "text": "Linked email"
+    },
+    "moduleFormAuthRecover01_00_emailPlaceholder": {
+        "placeholder": "trinity@matrix.example"
+    },
+    "moduleFormAuthRecover01_00_emailHint": {
+        "text": "You will receive a temporary link at this address."
+    },
+    "moduleFormAuthRecover01_00_submit": {
+        "text": "Send secure link"
+    },
+    "moduleFormAuthRecover01_00_feedback": {
+        "text": "The transmission is ready to be sent."
+    },
+    "moduleFormAuthRecover01_00_secondaryAction": {
+        "text": "Return to access",
+        "href": "#",
+        "title": "Return to the access form"
+    },
+    "moduleFormAuthPassword01_00_legend": {
+        "text": "moduleFormAuthPassword01 · Renew your code"
+    },
+    "moduleFormAuthPassword01_00_intro": {
+        "text": "Create a resilient password to protect the new connection before returning to the operator's system."
+    },
+    "moduleFormAuthPassword01_00_passwordLabel": {
+        "text": "New password"
+    },
+    "moduleFormAuthPassword01_00_passwordPlaceholder": {
+        "placeholder": "Enter a secure password"
+    },
+    "moduleFormAuthPassword01_00_passwordHint": {
+        "text": "It must meet every listed requirement."
+    },
+    "moduleFormAuthPassword01_00_confirmationLabel": {
+        "text": "Repeat the password"
+    },
+    "moduleFormAuthPassword01_00_confirmationPlaceholder": {
+        "placeholder": "Enter the password again"
+    },
+    "moduleFormAuthPassword01_00_confirmationHint": {
+        "text": "Both passwords must match exactly."
+    },
+    "moduleFormAuthPassword01_00_toggleShow": {
+        "text": "Show password"
+    },
+    "moduleFormAuthPassword01_00_toggleHide": {
+        "text": "Hide password"
+    },
+    "moduleFormAuthPassword01_00_requirementsLabel": {
+        "text": "Password requirements"
+    },
+    "moduleFormAuthPassword01_00_requirementLength": {
+        "text": "Between 15 and 1024 bytes in UTF-8"
+    },
+    "moduleFormAuthPassword01_00_submit": {
+        "text": "Save new password"
+    },
+    "moduleFormAuthPassword01_00_feedback": {
+        "text": "The new code is ready for validation."
+    },
+    "moduleFormAuthPassword01_00_secondaryAction": {
+        "text": "Return to access",
+        "href": "#",
+        "title": "Return to the access form"
+    },
+    "showroom_catalog_category_blog_label": {
+        "text": "Blog"
+    },
+    "showroom_catalog_category_blog_description": {
+        "text": "Dynamic resources for blog indexes and posts."
+    },
+    "sectionBlogGrid01_00_headerPrimary": {
+        "text": "sectionBlogGrid01 · Latest Matrix signals"
+    },
+    "sectionBlogGrid01_00_a_link": {
+        "text": "The call that woke Neo",
+        "href": "/en/news/the-call-that-woke-neo",
+        "title": "Read The call that woke Neo"
+    },
+    "sectionBlogGrid01_00_a_excerpt": {
+        "text": "A black screen, an impossible question and the trail of a white rabbit opened the first crack between Thomas Anderson's routine and the real world."
+    },
+    "sectionBlogGrid01_00_a_publishedAt": {
+        "text": "Mar 18, 1999",
+        "datetime": "1999-03-18"
+    },
+    "sectionBlogGrid01_00_b_link": {
+        "text": "The city of Zion resists again",
+        "href": "/en/news/the-city-of-zion-resists-again",
+        "title": "Read The city of Zion resists again"
+    },
+    "sectionBlogGrid01_00_b_excerpt": {
+        "text": "As the machines advance towards Zion, Neo learns that even a prophecy may belong to another system of control built around every decision he makes."
+    },
+    "sectionBlogGrid01_00_b_publishedAt": {
+        "text": "May 15, 2003",
+        "datetime": "2003-05-15"
+    },
+    "sectionBlogGrid01_00_c_link": {
+        "text": "The final battle for both worlds",
+        "href": "/en/news/the-final-battle-for-both-worlds",
+        "title": "Read The final battle for both worlds"
+    },
+    "sectionBlogGrid01_00_c_excerpt": {
+        "text": "Neo and Trinity cross the final boundary to negotiate a future in which humans and machines must face a threat born inside the code together."
+    },
+    "sectionBlogGrid01_00_c_publishedAt": {
+        "text": "Nov 5, 2003",
+        "datetime": "2003-11-05"
+    },
+    "sectionBlogGrid01_00_d_link": {
+        "text": "Returning to a reconstructed reality",
+        "href": "/en/news/returning-to-a-reconstructed-reality",
+        "title": "Read Returning to a reconstructed reality"
+    },
+    "sectionBlogGrid01_00_d_excerpt": {
+        "text": "A new version of the Matrix tries to contain Neo and Trinity's memories, but their connection once again challenges every rule imposed by the system."
+    },
+    "sectionBlogGrid01_00_d_publishedAt": {
+        "text": "Dec 22, 2021",
+        "datetime": "2021-12-22"
     }
 }

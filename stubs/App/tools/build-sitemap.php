@@ -4,6 +4,8 @@
 declare(strict_types=1);
 
 use App\Core\Support\Paths;
+use App\Core\Blog\Configuration\BlogConfigLoader;
+use App\Core\Modules\ModuleRegistry;
 use Dotenv\Dotenv;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
@@ -32,6 +34,29 @@ if ($productionHost === '') {
 $sitemapUrl = $productionHost . '/sitemap.xml';
 $robotsPath = Paths::publicPath() . '/robots.txt';
 ensureRobotsTxtHasSitemap($robotsPath, $sitemapUrl);
+
+try {
+    $moduleRegistry = ModuleRegistry::forProject(Paths::projectRoot());
+    if ($moduleRegistry->isEnabled('blog')) {
+        $blogConfig = (new BlogConfigLoader())->load(
+            Paths::projectRoot(),
+            array_values(array_filter(
+                array_keys($arrayRutasGet),
+                static fn (mixed $language): bool => is_string($language)
+            ))
+        );
+        ensureRobotsTxtHasSitemap(
+            $robotsPath,
+            $productionHost . $blogConfig->sitemapPath()
+        );
+    }
+} catch (Throwable) {
+    fwrite(
+        STDERR,
+        "Error: No se pudo validar la declaración del sitemap de Blog. Ejecuta composer liquidstack:doctor.\n"
+    );
+    exit(1);
+}
 
 echo "Sitemap generado y robots.txt actualizado.\n";
 
@@ -74,19 +99,39 @@ function ensureRobotsTxtHasSitemap(string $robotsPath, string $sitemapUrl): void
 
     $robotsContent = normalizeLineEndings($robotsContent);
     $sitemapLine = 'Sitemap: ' . $sitemapUrl;
-    $pattern = '/^sitemap:\s*[^\n]*sitemap\.xml[^\n]*$/im';
-
-    if (preg_match($pattern, $robotsContent)) {
-        $robotsContent = (string) preg_replace($pattern, $sitemapLine, $robotsContent);
-    } elseif (!str_contains(strtolower($robotsContent), strtolower($sitemapLine))) {
-        $robotsContent = rtrim($robotsContent);
-        if ($robotsContent !== '') {
-            $robotsContent .= PHP_EOL . PHP_EOL;
-        }
-        $robotsContent .= $sitemapLine . PHP_EOL;
+    $targetPath = parse_url($sitemapUrl, PHP_URL_PATH);
+    if (!is_string($targetPath) || $targetPath === '') {
+        throw new RuntimeException('La URL del sitemap no contiene una ruta válida.');
     }
 
-    $robotsContent = rtrim($robotsContent) . PHP_EOL;
+    $lines = explode(PHP_EOL, rtrim($robotsContent));
+    $normalizedLines = [];
+    $targetWritten = false;
+    foreach ($lines as $line) {
+        if (preg_match('/\Asitemap:\s*(\S+)\s*\z/i', $line, $matches) === 1) {
+            $existingPath = parse_url($matches[1], PHP_URL_PATH);
+            if (is_string($existingPath) && $existingPath === $targetPath) {
+                if (!$targetWritten) {
+                    $normalizedLines[] = $sitemapLine;
+                    $targetWritten = true;
+                }
+                continue;
+            }
+        }
+        $normalizedLines[] = $line;
+    }
+
+    if (!$targetWritten) {
+        while ($normalizedLines !== [] && end($normalizedLines) === '') {
+            array_pop($normalizedLines);
+        }
+        if ($normalizedLines !== []) {
+            $normalizedLines[] = '';
+        }
+        $normalizedLines[] = $sitemapLine;
+    }
+
+    $robotsContent = rtrim(implode(PHP_EOL, $normalizedLines)) . PHP_EOL;
     file_put_contents($robotsPath, $robotsContent);
 }
 

@@ -211,6 +211,47 @@ composer liquidstack:migrate --dry-run
   lifecycle completo y carrera real sobre MariaDB aislada. El contrato
   detallado vive en `docs/webadmin-editor-management.md`.
 
+## Operar la biblioteca de medios WebAdmin
+
+- Tratar la biblioteca como una funcionalidad de WebAdmin, nunca como datos
+  propios de Blog. `/admin` exige la migración fundacional 0001;
+  `/admin/media` exige además `0002_webadmin_media_library`. Una 0002 pendiente
+  no puede bloquear el panel base.
+- Aplicar 0002 solo mediante el flujo explícito `doctor` → `migrate --plan` →
+  `migrate --dry-run` → `migrate --apply`. Composer distribuye el contrato,
+  pero nunca crea tablas, inicializa directorios, procesa imágenes o borra
+  datos.
+- Configurar producción con
+  `LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT` apuntando a una ruta absoluta,
+  persistente y fuera del árbol del proyecto/deploy. El único default interno
+  permitido es `storage/liquidstack/webadmin/media` cuando coinciden
+  `DEV_MODE=1` y una `RAIZ` loopback canónica.
+- No usar `public`, `vendor`, `.git`, la raíz del proyecto, una raíz de disco,
+  traversal, symlinks o junctions como storage. DB y storage se respaldan y
+  restauran como una unidad; cambiar la variable no mueve ni adopta medios.
+- Antes de habilitar uploads, comprobar en `doctor` por separado:
+  `media.schema`, `file_uploads`, `upload_max_filesize` (12 MiB mínimo),
+  `post_max_size` (límite multipart completo), fileinfo, Imagick, round-trip
+  AVIF y storage inicializado/escribible. `media_ready=false` no cambia
+  `runtime_ready` del WebAdmin base.
+- Admitir una sola entrada multipart plana JPEG, PNG o WebP, máximo 12 MiB,
+  12.000 px por lado y 40 MP. Ignorar nombre, ruta y MIME del navegador;
+  verificar firma, contenedor y decoder, rechazar animación/multiframe y
+  generar exclusivamente variantes AVIF verificadas y sin metadatos.
+- Mantener `webadmin.media.view` y `webadmin.media.upload` como gates separados.
+  Toda subida revalida ambas dentro de la transacción. Adquirir primero el
+  mutex global `state.media.quota_lock=v1`; bajo ese lock decidir rate limits,
+  suma de cuota, promoción, filas y auditoría para evitar carreras de ausencia
+  y sobrecuota.
+- Servir ficheros solo por UUID + ancho y tras verificar bytes/hash en storage
+  privado. `HEAD` debe conservar autenticación, status y cabeceras de `GET`,
+  pero usar el probe streaming de metadata/hash y no materializar el AVIF.
+- Mantener `no-store`, `noindex`, `nosniff`, CSP privada y jerarquía semántica
+  H1 de página → H2 de sección → H3 de card. No persistir ALT/title/pie en el
+  asset compartido: pertenecen al uso localizado que hará Blog u otro editor.
+- Consultar `docs/mejoras-pendientes/webadmin-media-library.md` para el
+  contrato implementado y sus pendientes reales de ciclo de vida y formatos.
+
 ## Operar Liquid Blog
 
 - Activar Blog solo mediante el selector directo `liquidstack/blog`; su cierre
@@ -233,28 +274,71 @@ composer liquidstack:migrate --dry-run
   debe prevalecer la `RAIZ` loopback. No derivar el origen de `Host`,
   `Forwarded` ni del request. Blog no debe depender de que el transporte SMTP
   esté listo.
-- Aplicar en orden `doctor`, `migrate --plan`, `migrate --dry-run`,
-  `migrate --apply`, `webadmin:bootstrap` y un segundo `doctor`. Repetir el
-  bootstrap es obligatorio al añadir Blog a un WebAdmin ya inicializado para
-  completar de forma idempotente las capacidades de las cuentas protegidas.
+- Aplicar en orden `doctor`, `migrate --plan`, `migrate --dry-run`, backup
+  recuperable de DB y storage, autorización expresa, `migrate --apply`,
+  `webadmin:bootstrap` y un segundo `doctor`. No confundir
+  `--backup-confirmed` con la creación del backup. Repetir el bootstrap es
+  obligatorio al añadir Blog a un WebAdmin ya inicializado para completar de
+  forma idempotente las capacidades de las cuentas protegidas.
 - Mantener separados `blog.articles.view`, `blog.articles.edit` y
   `blog.articles.publish`. Ocultar botones no sustituye el gate transaccional:
   SID, CSRF, lifecycle, `auth_version` y capability deben revalidarse con el
   mismo PDO y dentro de la transacción Blog.
-- Servir la vista previa guardada solo dentro del prefijo privado de WebAdmin y
-  con `blog.articles.view`. No convertirla en una URL compartible ni emitir
-  canonical, metadatos SEO públicos o entradas de sitemap; debe usar
-  `no-store`, `noindex` y no realizar mutaciones ni auditoría editorial.
+- Servir las vistas previas y revisiones solo dentro del prefijo privado de
+  WebAdmin y con `blog.articles.view` más `webadmin.media.view` cuando se use el
+  editor estructurado. No convertirlas en URLs compartibles ni emitir
+  canonical, metadatos SEO públicos o entradas de sitemap; deben usar
+  `no-store`, `noindex` y no realizar mutaciones, adopción ni auditoría
+  editorial en GET o HEAD.
 - Conservar el agregado y cada variante por idioma como unidades estables. En
   el MVP solo existen `draft` y `published`; una variante publicada se retira
   antes de editarla, cada escritura usa `lock_version` y no existe borrado HTTP.
-- Mantener el cuerpo como texto plano validado. No introducir HTML libre,
-  uploads, bloques, categorías, traducción IA o programación dentro del MVP
-  0001 por conveniencia local.
+- Tratar `0003_blog_categories` y `0004_blog_category_capabilities` como las
+  fronteras ya implementadas de categorías localizadas, asignaciones y sus
+  capacidades. La proyección pública exige `0001+0003`; la administración
+  exige `0001+0002+0003+0004`. Una categoría usa UUID público, slug por locale,
+  lock optimista y un máximo de 100 asignaciones por operación.
+- Tratar `0005_blog_structured_content` como la frontera ya implementada del
+  editor `/admin/blog/editor`: documento actual, referencias de medios y
+  revisiones inmutables. Exige las postcondiciones combinadas de
+  `0001+0003+0005`; las imágenes requieren además
+  `0002_webadmin_media_library` en el scope WebAdmin.
+- Mantener el contrato exacto del documento
+  `liquidstack.blog.document`, versión `1`. Admite ocho bloques controlados:
+  párrafo, heading H2/H3, lista, callout, enlace, imagen, YouTube y CTA. No
+  admitir H1, HTML, clases o CSS libres en el cuerpo. El H1 vive en los
+  metadatos de la variante y `body_text` se deriva siempre en servidor.
+- Conservar `article-basic-01` y `article-cover-01` como las plantillas v1. Una
+  plantilla nueva exige ampliar registro, validación, renderer, editor,
+  persistencia y pruebas como un único contrato; no aceptar claves arbitrarias
+  llegadas del formulario.
+- Al abrir un artículo legacy, proyectar `body_text` a un documento temporal sin
+  escribir. Adoptarlo solo cuando el usuario guarda el editor estructurado. A
+  partir de esa adopción, bloquear el guardado plano para que no existan dos
+  fuentes de verdad.
+- Cada guardado efectivo crea una revisión inmutable dentro de la misma
+  transacción que variante, documento, referencias, lock y auditoría. Restaurar
+  exige la `lock_version` actual y crea una revisión nueva; nunca actualiza ni
+  elimina la revisión elegida.
+- Exigir `blog.articles.edit` y `webadmin.media.view` para abrir, guardar o
+  restaurar el editor; preview e historial exigen `blog.articles.view` y
+  `webadmin.media.view`. La subida se realiza en `/admin/media` y requiere
+  además `webadmin.media.upload`. Revalidar dentro de la transacción que todos
+  los UUID de imagen existen y tienen variantes AVIF.
 - Resolver las URLs de artículo Blog únicamente después de que fallen las rutas
   estáticas del proyecto. Un borrador o slug desconocido continúa al 404 legacy;
   un runtime reconocido pero no operativo responde `503`, y un método de
   escritura reconocido responde `405` sin abrir PDO.
+- Renderizar el documento estructurado actual cuando exista y conservar el
+  renderer legacy de `body_text` mientras la variante no se haya adoptado. Una
+  actualización de Composer nunca debe reescribir contenido para forzar la
+  adopción.
+- Servir AVIF público solo por
+  `/_liquidstack/blog-media/{uuid}/{width}.avif`, y solo cuando el asset esté
+  referenciado por el documento actual de un artículo publicado. Una referencia
+  presente únicamente en borrador o revisión no autoriza la entrega. Verificar
+  storage, bytes y hash; responder `404` uniforme ante ausencia, corrupción o
+  falta de referencia publicable.
 - Declarar el sitemap como endpoint público exacto pre-bootstrap para que no lo
   intercepte el resolver multidioma ni cree `PHPSESSID`. Antes de despacharlo,
   preservar una ruta GET exacta, un fichero o symlink público y una subruta de
@@ -263,13 +347,22 @@ composer liquidstack:migrate --dry-run
   `public/sitemap.xml`, `robots.txt`, Git o el deploy al publicar. Consultar como
   máximo 50.001 filas para admitir 50.000 y fallar cerrado ante overflow, sin
   truncar silenciosamente.
+- Mantener `blog-admin.css` y `blog-editor.js` bajo
+  `modules/blog/published/assets`; el manifiesto los sincroniza como assets
+  module-managed en `public/assets/modules/blog`. No integrarlos en el bundle
+  general ni convertirlos en ficheros project-owned. Revisar `blog.assets` en
+  `doctor`: un destino ausente o inválido debe bloquear con
+  `assets.missing_or_invalid`, sin intentar reparar DB o storage.
 - Probar SQLite aislado y, ante cambios de DDL, repositorio, locks o auditoría,
   la integración opt-in MySQL/MariaDB. Cubrir create/add-locale/save/publish/
-  unpublish, stale writes con dos PDO, rollback conjunto de contenido y
-  auditoría, prioridad estática, sitemap y ausencia de mutaciones en `HEAD`.
+  unpublish, categorías, documento canónico, adopción legacy, revisiones,
+  restauración, medios, stale writes con dos PDO, rollback conjunto de
+  contenido y auditoría, prioridad estática, sitemap y ausencia de mutaciones
+  en `HEAD`.
 - Consultar `docs/liquid-blog.md` como contrato completo antes de ampliar el
-  módulo. Categorías, medios, editor enriquecido, IA y recursos de showroom
-  requieren cortes versionados posteriores.
+  módulo. No presentar categorías, AVIF ni el editor v1 como pendientes. Los
+  pendientes reales incluyen SEO avanzado, traducción IA, Search Console o
+  Indexing API, vídeo local y el maquetador libre de secciones/filas/columnas.
 
 ## Modificar la infraestructura en CORE
 

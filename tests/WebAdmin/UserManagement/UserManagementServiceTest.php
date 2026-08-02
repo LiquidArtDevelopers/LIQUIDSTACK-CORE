@@ -1240,10 +1240,14 @@ final class UserManagementServiceTest extends TestCase
 
     private function applySchema(): void
     {
-        $migration = iterator_to_array(
-            WebAdminMigrationProvider::migrations(),
-            false
-        )[0];
+        $migration = null;
+        foreach (WebAdminMigrationProvider::migrations() as $candidate) {
+            if ($candidate->id() === '0001_webadmin_identity_and_access') {
+                $migration = $candidate;
+                break;
+            }
+        }
+        self::assertNotNull($migration);
         $scope = MigrationScope::forTablePrefix(
             'webadmin',
             'ls_webadmin_'

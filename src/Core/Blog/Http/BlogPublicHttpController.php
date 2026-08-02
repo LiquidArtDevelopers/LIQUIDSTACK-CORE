@@ -15,7 +15,9 @@ final class BlogPublicHttpController
         private readonly BlogPublicHtmlRenderer $articleRenderer =
             new BlogPublicHtmlRenderer(),
         private readonly BlogSitemapRenderer $sitemapRenderer =
-            new BlogSitemapRenderer()
+            new BlogSitemapRenderer(),
+        private readonly BlogPublicMediaHttpResponseFactory
+            $mediaResponseFactory = new BlogPublicMediaHttpResponseFactory()
     ) {
     }
 
@@ -33,13 +35,28 @@ final class BlogPublicHttpController
             if ($base === null) {
                 throw new BlogPublicHttpRuntimeException();
             }
-            return new Response(
-                200,
-                $this->articleRenderer->renderFromOrigin(
+            $structured = $this->runtime->structuredDocument(
+                $variant->localizationPublicId()
+            );
+            $html = $structured === null
+                ? $this->articleRenderer->renderFromOrigin(
                     $variant,
                     $this->runtime->origin(),
                     $base . '/' . $slug
-                ),
+                )
+                : $this->articleRenderer->renderStructuredFromOrigin(
+                    $variant,
+                    $this->runtime->origin(),
+                    $base . '/' . $slug,
+                    $structured->snapshot()->document(),
+                    $this->runtime->imageResolver(
+                        $variant->localizationPublicId()
+                    )
+                );
+
+            return new Response(
+                200,
+                $html,
                 $this->articleHeaders()
             );
         } catch (BlogException $exception) {
@@ -52,6 +69,28 @@ final class BlogPublicHttpController
             throw $exception;
         } catch (Throwable) {
             throw new BlogPublicHttpRuntimeException();
+        }
+    }
+
+    public function media(
+        string $mediaAssetPublicId,
+        int $width,
+        bool $head
+    ): Response {
+        try {
+            $file = $this->runtime->mediaFile(
+                $mediaAssetPublicId,
+                $width,
+                $head
+            );
+
+            return $file === null
+                ? $this->mediaResponseFactory->notFound($head)
+                : $this->mediaResponseFactory->success($file, $head);
+        } catch (Throwable) {
+            // Missing, unreferenced, unpublished, corrupt and unavailable
+            // media are deliberately indistinguishable at the public edge.
+            return $this->mediaResponseFactory->notFound($head);
         }
     }
 
@@ -85,7 +124,7 @@ final class BlogPublicHttpController
         return [
             'Content-Type' => 'text/html; charset=utf-8',
             'Cache-Control' => 'no-cache, must-revalidate',
-            'Content-Security-Policy' => "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+            'Content-Security-Policy' => "default-src 'none'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
             'Permissions-Policy' =>
                 'camera=(), microphone=(), geolocation=()',
             'Referrer-Policy' => 'strict-origin-when-cross-origin',

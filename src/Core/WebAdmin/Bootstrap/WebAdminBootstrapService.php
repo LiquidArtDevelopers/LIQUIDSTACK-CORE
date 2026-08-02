@@ -90,6 +90,25 @@ final class WebAdminBootstrapService
         ],
     ];
 
+    /**
+     * Additive WebAdmin features may extend protected roles after 0001. They
+     * are optional as one complete, exact set so bootstrap remains compatible
+     * both before and after the feature migration without accepting arbitrary
+     * privilege drift.
+     *
+     * @var array<string, array{label: string, delegable: int}>
+     */
+    private const OPTIONAL_CAPABILITY_SPECS = [
+        'webadmin.media.upload' => [
+            'label' => 'webadmin.capabilities.media_upload',
+            'delegable' => 1,
+        ],
+        'webadmin.media.view' => [
+            'label' => 'webadmin.capabilities.media_view',
+            'delegable' => 1,
+        ],
+    ];
+
     private readonly ClockInterface $clock;
     private readonly UuidGeneratorInterface $uuidGenerator;
 
@@ -537,9 +556,11 @@ final class WebAdminBootstrapService
      */
     private function assertRoleCapabilities(
         array $rows,
-        array $requiredCodes
+        array $requiredCodes,
+        bool $mediaFeatureApplied
     ): void {
         $actual = [];
+        $optionalPresent = [];
         foreach ($rows as $row) {
             $code = $row['code'] ?? null;
             if (!is_string($code) || isset($actual[$code])) {
@@ -556,10 +577,33 @@ final class WebAdminBootstrapService
                 ($row['module_id'] ?? null) === 'webadmin'
                 && !in_array($code, $requiredCodes, true)
             ) {
-                throw new BootstrapException(
-                    'bootstrap.capability_incompatible'
-                );
+                $expected = self::OPTIONAL_CAPABILITY_SPECS[$code] ?? null;
+                if (
+                    $expected === null
+                    || ($row['label_key'] ?? null) !== $expected['label']
+                    || !$this->integerEquals(
+                        $row['is_delegable'] ?? null,
+                        $expected['delegable']
+                    )
+                ) {
+                    throw new BootstrapException(
+                        'bootstrap.capability_incompatible'
+                    );
+                }
+                $optionalPresent[$code] = true;
             }
+        }
+
+        $actualOptional = array_keys($optionalPresent);
+        $expectedOptional = $mediaFeatureApplied
+            ? array_keys(self::OPTIONAL_CAPABILITY_SPECS)
+            : [];
+        sort($actualOptional, SORT_STRING);
+        sort($expectedOptional, SORT_STRING);
+        if ($actualOptional !== $expectedOptional) {
+            throw new BootstrapException(
+                'bootstrap.capability_incompatible'
+            );
         }
 
         foreach ($requiredCodes as $code) {
@@ -649,7 +693,8 @@ final class WebAdminBootstrapService
         $roleId = (int) $role['id'];
         $this->assertRoleCapabilities(
             $repository->roleCapabilities($roleId),
-            $spec['capabilities']
+            $spec['capabilities'],
+            $repository->mediaFeatureIsApplied()
         );
 
         return $roleId;

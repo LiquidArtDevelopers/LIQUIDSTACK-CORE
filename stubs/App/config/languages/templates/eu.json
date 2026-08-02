@@ -3872,5 +3872,188 @@
     },
     "moduleTable01_00_c_list_c": {
         "text": "Matrix ipsum C3"
+    },
+    "artAuth01_00_headerPrimary": {
+        "text": "artAuth01 · Matrixera sarbidea"
+    },
+    "artAuth01_00_intro": {
+        "text": "Sartu zure kredentzialak sistema zeharkatzeko, operadoreak zure seinalea ezagutzeko eta untxi zuriaren gordelekua noraino iristen den deskubritzeko bidean jarraitzeko."
+    },
+    "artAuth01_00_headerSecondary": {
+        "text": "Pilula aukeratu aurretik"
+    },
+    "artAuth01_00_support": {
+        "text": "Egiaztatu helbidea, babestu zure kodea eta gogoratu sarbide bakoitzak seinale bat uzten duela Matrix barruan."
+    },
+    "moduleFormAuthLogin01_00_legend": {
+        "text": "moduleFormAuthLogin01 · Identifikatu zure seinalea"
+    },
+    "moduleFormAuthLogin01_00_intro": {
+        "text": "Operadoreak zure nortasuna ezagutu behar du erresistentziarekin linea segurua ireki aurretik."
+    },
+    "moduleFormAuthLogin01_00_emailLabel": {
+        "text": "Sarbideko e-posta"
+    },
+    "moduleFormAuthLogin01_00_emailPlaceholder": {
+        "placeholder": "neo@matrix.example"
+    },
+    "moduleFormAuthLogin01_00_emailHint": {
+        "text": "Erabili zure nortasun digitalari lotutako kontua."
+    },
+    "moduleFormAuthLogin01_00_passwordLabel": {
+        "text": "Kode sekretua"
+    },
+    "moduleFormAuthLogin01_00_passwordPlaceholder": {
+        "placeholder": "Idatzi sarbide-kodea"
+    },
+    "moduleFormAuthLogin01_00_passwordHint": {
+        "text": "Ez partekatu kode hau inolako agenterekin."
+    },
+    "moduleFormAuthLogin01_00_toggleShow": {
+        "text": "Erakutsi pasahitza"
+    },
+    "moduleFormAuthLogin01_00_toggleHide": {
+        "text": "Ezkutatu pasahitza"
+    },
+    "moduleFormAuthLogin01_00_submit": {
+        "text": "Sartu Matrixen"
+    },
+    "moduleFormAuthLogin01_00_feedback": {
+        "text": "Operadorea zure seinalea egiaztatzen ari da."
+    },
+    "moduleFormAuthLogin01_00_secondaryAction": {
+        "text": "Sarbide-kodea ahaztu duzu?",
+        "href": "#",
+        "title": "Sarbide-kodea berreskuratu"
+    },
+    "moduleFormAuthRecover01_00_legend": {
+        "text": "moduleFormAuthRecover01 · Berreskuratu konexioa"
+    },
+    "moduleFormAuthRecover01_00_intro": {
+        "text": "Eman lotutako kontua eta operadoreak zure konexio segurua berrezartzeko beharrezko jarraibideak bidaliko ditu."
+    },
+    "moduleFormAuthRecover01_00_emailLabel": {
+        "text": "Lotutako e-posta"
+    },
+    "moduleFormAuthRecover01_00_emailPlaceholder": {
+        "placeholder": "trinity@matrix.example"
+    },
+    "moduleFormAuthRecover01_00_emailHint": {
+        "text": "Aldi baterako esteka jasoko duzu helbide honetan."
+    },
+    "moduleFormAuthRecover01_00_submit": {
+        "text": "Bidali esteka segurua"
+    },
+    "moduleFormAuthRecover01_00_feedback": {
+        "text": "Transmisioa bidaltzeko prest dago."
+    },
+    "moduleFormAuthRecover01_00_secondaryAction": {
+        "text": "Itzuli sarbidera",
+        "href": "#",
+        "title": "Itzuli sarbide-formulariora"
+    },
+    "moduleFormAuthPassword01_00_legend": {
+        "text": "moduleFormAuthPassword01 · Berritu zure kodea"
+    },
+    "moduleFormAuthPassword01_00_intro": {
+        "text": "Sortu pasahitz sendoa konexio berria babesteko, operadorearen sistemara itzuli aurretik."
+    },
+    "moduleFormAuthPassword01_00_passwordLabel": {
+        "text": "Pasahitz berria"
+    },
+    "moduleFormAuthPassword01_00_passwordPlaceholder": {
+        "placeholder": "Idatzi pasahitz segurua"
+    },
+    "moduleFormAuthPassword01_00_passwordHint": {
+        "text": "Adierazitako baldintza guztiak bete behar ditu."
+    },
+    "moduleFormAuthPassword01_00_confirmationLabel": {
+        "text": "Errepikatu pasahitza"
+    },
+    "moduleFormAuthPassword01_00_confirmationPlaceholder": {
+        "placeholder": "Idatzi berriro pasahitza"
+    },
+    "moduleFormAuthPassword01_00_confirmationHint": {
+        "text": "Bi pasahitzek berdinak izan behar dute."
+    },
+    "moduleFormAuthPassword01_00_toggleShow": {
+        "text": "Erakutsi pasahitza"
+    },
+    "moduleFormAuthPassword01_00_toggleHide": {
+        "text": "Ezkutatu pasahitza"
+    },
+    "moduleFormAuthPassword01_00_requirementsLabel": {
+        "text": "Pasahitzaren baldintzak"
+    },
+    "moduleFormAuthPassword01_00_requirementLength": {
+        "text": "15 eta 1024 byte artean UTF-8n"
+    },
+    "moduleFormAuthPassword01_00_submit": {
+        "text": "Gorde pasahitz berria"
+    },
+    "moduleFormAuthPassword01_00_feedback": {
+        "text": "Kode berria baliozkotzeko prest dago."
+    },
+    "moduleFormAuthPassword01_00_secondaryAction": {
+        "text": "Itzuli sarbidera",
+        "href": "#",
+        "title": "Itzuli sarbide-formulariora"
+    },
+    "showroom_catalog_category_blog_label": {
+        "text": "Bloga"
+    },
+    "showroom_catalog_category_blog_description": {
+        "text": "Blogaren aurkibide eta sarreretarako baliabide dinamikoak."
+    },
+    "sectionBlogGrid01_00_headerPrimary": {
+        "text": "sectionBlogGrid01 · Matrixeko azken seinaleak"
+    },
+    "sectionBlogGrid01_00_a_link": {
+        "text": "Neo esnatu zuen deia",
+        "href": "/eu/albisteak/neo-esnatu-zuen-deia",
+        "title": "Irakurri Neo esnatu zuen deia"
+    },
+    "sectionBlogGrid01_00_a_excerpt": {
+        "text": "Pantaila beltz batek, ezinezko galdera batek eta untxi zuriaren arrastoak Thomas Andersonen egunerokoaren eta mundu errealaren arteko lehen arrakala ireki zuten."
+    },
+    "sectionBlogGrid01_00_a_publishedAt": {
+        "text": "1999/03/18",
+        "datetime": "1999-03-18"
+    },
+    "sectionBlogGrid01_00_b_link": {
+        "text": "Sion hiriak berriro eusten dio",
+        "href": "/eu/albisteak/sion-hiriak-berriro-eusten-dio",
+        "title": "Irakurri Sion hiriak berriro eusten dio"
+    },
+    "sectionBlogGrid01_00_b_excerpt": {
+        "text": "Makinak Sionera hurbiltzen diren bitartean, Neok ikasten du profezia bat ere bere erabakien inguruan eraikitako beste kontrol-sistema baten zatia izan daitekeela."
+    },
+    "sectionBlogGrid01_00_b_publishedAt": {
+        "text": "2003/05/15",
+        "datetime": "2003-05-15"
+    },
+    "sectionBlogGrid01_00_c_link": {
+        "text": "Bi munduen aldeko azken borroka",
+        "href": "/eu/albisteak/bi-munduen-aldeko-azken-borroka",
+        "title": "Irakurri Bi munduen aldeko azken borroka"
+    },
+    "sectionBlogGrid01_00_c_excerpt": {
+        "text": "Neok eta Trinityk azken muga zeharkatzen dute, gizakiek eta makinek kodearen barruan jaiotako mehatxu bati elkarrekin aurre egin beharko dioten etorkizuna negoziatzeko."
+    },
+    "sectionBlogGrid01_00_c_publishedAt": {
+        "text": "2003/11/05",
+        "datetime": "2003-11-05"
+    },
+    "sectionBlogGrid01_00_d_link": {
+        "text": "Berreraikitako errealitatera itzulera",
+        "href": "/eu/albisteak/berreraikitako-errealitatera-itzulera",
+        "title": "Irakurri Berreraikitako errealitatera itzulera"
+    },
+    "sectionBlogGrid01_00_d_excerpt": {
+        "text": "Matrixen bertsio berri batek Neo eta Trinityren oroitzapenak giltzapetu nahi ditu, baina bien arteko konexioak sistemak ezarritako arauak berriro desafiatzen ditu."
+    },
+    "sectionBlogGrid01_00_d_publishedAt": {
+        "text": "2021/12/22",
+        "datetime": "2021-12-22"
     }
 }

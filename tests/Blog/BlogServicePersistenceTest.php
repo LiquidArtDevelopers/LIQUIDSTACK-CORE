@@ -498,6 +498,19 @@ final class BlogServicePersistenceTest extends TestCase
         );
         self::assertNull($service->resolvePublished('eu', 'published-post'));
         self::assertCount(1, $service->sitemapEntries());
+        $cards = $service->listPublishedCards('es');
+        self::assertCount(1, $cards);
+        self::assertSame('es', $cards[0]->locale());
+        self::assertSame('published-post', $cards[0]->slug());
+        self::assertSame('Published H1', $cards[0]->h1());
+        self::assertSame('Published H1 excerpt.', $cards[0]->excerpt());
+        self::assertSame(
+            '2030-01-02 12:00:00.654321',
+            $cards[0]->publishedAt()->format('Y-m-d H:i:s.u')
+        );
+        self::assertSame([], $service->listPublishedCards('eu'));
+        self::assertArrayNotHasKey('body_text', $cards[0]->toArray());
+        self::assertArrayNotHasKey('post_public_id', $cards[0]->toArray());
 
         $this->expectBlogIssue(
             BlogException::INVALID_STATE,
@@ -525,6 +538,7 @@ final class BlogServicePersistenceTest extends TestCase
         self::assertSame($before->bodyText(), $withdrawn->draft()->bodyText());
         self::assertNull($service->resolvePublished('es', 'published-post'));
         self::assertSame([], $service->sitemapEntries());
+        self::assertSame([], $service->listPublishedCards('es'));
     }
 
     public function testSlugUniquenessIsPerLocaleAndConflictsRollBack(): void

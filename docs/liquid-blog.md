@@ -1,15 +1,29 @@
-# Liquid Blog: contrato del MVP 0001
+# Liquid Blog: contrato operativo
 
 Liquid Blog es un módulo interno de `liquidstack/core`. Se activa mediante el
 selector lógico `liquidstack/blog`, que activa también WebAdmin. No es un
 paquete físico independiente y nunca ejecuta migraciones durante
 `composer install` o `composer update`.
 
-El primer corte entrega un flujo completo y deliberadamente pequeño: crear un
-artículo, mantener variantes localizadas independientes, publicar o retirar
-cada variante, servirla desde la base de datos y reflejarla inmediatamente en
-un sitemap propio. El cuerpo es texto plano UTF-8 dividido en párrafos al
-renderizar; no admite HTML libre.
+El módulo mantiene el contrato editorial inicial —artículos, variantes por
+idioma, publicación, resolución pública y sitemap dinámico— y lo amplía con
+categorías localizadas y un editor estructurado. El cuerpo canónico nuevo es
+un documento JSON validado; `body_text` se deriva siempre en servidor para
+conservar la compatibilidad con las consultas y artículos anteriores.
+
+Las migraciones Blog se aplican de forma aditiva y explícita:
+
+| Migración | Frontera que incorpora |
+| --- | --- |
+| `0001_blog_posts` | Artículos y variantes localizadas. |
+| `0002_blog_capabilities` | Capacidades base de artículos. |
+| `0003_blog_categories` | Categorías localizadas y asignaciones; compone y verifica el esquema de `0001`. |
+| `0004_blog_category_capabilities` | Capacidades de categorías; compone las semillas de `0002`. |
+| `0005_blog_structured_content` | Documento actual, referencias de medios y revisiones inmutables; compone y verifica las postcondiciones de `0001` y `0003`. |
+
+Cada frontera tiene su propio gate de disponibilidad. Una migración nueva
+pendiente no autoriza a CORE a completar tablas por intuición ni debe inutilizar
+las funciones anteriores cuyo contrato siga verificado.
 
 ## Propiedad y configuración
 
@@ -94,17 +108,56 @@ produce conflicto y nunca sobrescribe cambios posteriores. Una variante
 publicada es inmutable desde el editor: debe retirarse antes de modificar sus
 campos y volver a publicarse después.
 
+Cada categoría es otro agregado estable con UUID público y una traducción
+independiente por locale. Nombre y slug pertenecen a la traducción; el slug es
+único dentro de su idioma. La edición usa `lock_version` y las asignaciones se
+reemplazan de forma transaccional, conservando las relaciones que no cambian.
+Una operación admite hasta 100 categorías y nunca expone IDs numéricos de DB.
+
+El contenido estructurado usa el esquema exacto
+`liquidstack.blog.document`, versión `1`, con un máximo de 200 bloques y
+300.000 bytes de JSON canónico. Las plantillas iniciales son
+`article-basic-01` y `article-cover-01`; esta última exige una única imagen de
+portada como primer bloque. El H1 sigue siendo un campo independiente de la
+variante y no forma parte del cuerpo.
+
+El documento admite ocho tipos de bloque controlados:
+
+- párrafo;
+- encabezado H2 o H3, sin saltos de jerarquía;
+- lista ordenada o no ordenada;
+- destacado (`callout`);
+- enlace independiente;
+- imagen de WebAdmin Media con ALT, title, caption, estado decorativo y modo de
+  presentación por cada uso;
+- vídeo YouTube con carga ligera;
+- CTA primaria o secundaria.
+
+El texto inline admite texto, saltos y enlaces con marcas `strong` y `em`, pero
+no HTML, clases o CSS libres. `body_text` nunca llega desde el navegador: se
+proyecta desde el documento validado dentro del mismo guardado.
+
+Cada guardado efectivo crea una revisión inmutable que conserva documento,
+metadatos y versión editorial. Restaurar una revisión no reescribe el historial:
+crea una revisión nueva y también exige la `lock_version` vigente. Al abrir el
+editor para un artículo anterior, CORE proyecta `body_text` a párrafos solo en
+memoria; la adopción estructurada ocurre exclusivamente al guardar. Desde ese
+momento, el guardado legacy de texto plano queda bloqueado para evitar dos
+fuentes de verdad.
+
 ## Capacidades
 
-El contrato inicial registra tres capacidades delegables:
+El contrato registra capacidades delegables por frontera:
 
 | Capacidad | Permite |
 | --- | --- |
 | `blog.articles.view` | Consultar el listado y la vista previa privada guardada. |
 | `blog.articles.edit` | Crear y editar borradores o variantes. |
 | `blog.articles.publish` | Publicar y retirar variantes. |
+| `blog.categories.view` | Consultar categorías localizadas. |
+| `blog.categories.edit` | Crear, traducir, editar y asignar categorías. |
 
-Las cuentas protegidas de WebAdmin reciben las tres. Un `site_admin` puede
+Las cuentas protegidas de WebAdmin reciben todas. Un `site_admin` puede
 delegarlas a editores mediante la gestión existente; solo aparecen cuando Blog
 está activo y el actor también las posee.
 
@@ -120,7 +173,7 @@ defaults. Si WebAdmin no pudo reclamar su prefijo, Blog no puede apropiarse del
 hijo. Ambos comparten cookie, sesión, CSRF, política de credencial, perfil de
 conexión y el mismo PDO.
 
-Rutas del MVP:
+Rutas privadas:
 
 | Método | Ruta por defecto | Finalidad |
 | --- | --- | --- |
@@ -133,26 +186,58 @@ Rutas del MVP:
 | `POST` | `/admin/blog/posts/publish` | Publicar una variante completa. |
 | `POST` | `/admin/blog/posts/unpublish` | Retirar una variante. |
 | `GET`/`HEAD` | `/admin/blog/posts/updated` | Destino PRG sin PII. |
+| `GET`/`HEAD` | `/admin/blog/categories` | Listado localizado de categorías. |
+| `GET`/`HEAD` | `/admin/blog/categories/new` | Alta de categoría o traducción. |
+| `POST` | `/admin/blog/categories/create` | Crear categoría o traducción. |
+| `GET`/`HEAD` | `/admin/blog/categories/edit` | Edición por UUID y locale. |
+| `POST` | `/admin/blog/categories/save` | Guardado con versión optimista. |
+| `GET`/`HEAD` | `/admin/blog/categories/assign` | Selección para un artículo. |
+| `POST` | `/admin/blog/categories/assign` | Sustitución transaccional de asignaciones. |
+| `GET`/`HEAD` | `/admin/blog/categories/updated` | Destino PRG sin datos editoriales. |
+| `GET`/`HEAD` | `/admin/blog/editor` | Editor estructurado de una variante. |
+| `POST` | `/admin/blog/editor/save` | Guardado atómico de metadatos, documento y revisión. |
+| `GET`/`HEAD` | `/admin/blog/editor/preview` | Vista previa privada del documento guardado o de la proyección legacy. |
+| `GET`/`HEAD` | `/admin/blog/editor/revisions` | Historial o detalle de una revisión. |
+| `POST` | `/admin/blog/editor/restore` | Restauración mediante una revisión nueva. |
 
 Los formularios son `application/x-www-form-urlencoded`, tienen campos
-exactos, CSRF de la sesión WebAdmin y límites de bytes. El cuerpo admite hasta
-300.000 bytes para que, incluso con percent-encoding completo y el resto de
-campos, la petición permanezca dentro del límite global HTTP de 1 MiB. La
+exactos, CSRF de la sesión WebAdmin y límites de bytes. El editor envía
+`document_json` junto a H1, slug, title SEO, description y extracto; el JSON
+admite hasta 300.000 bytes para permanecer dentro del límite global HTTP. La
 autorización de la UI es solo presentación: cada escritura vuelve a validar
-SID, CSRF, `auth_version`, lifecycle y capacidad dentro de la transacción antes
-de bloquear la variante. Toda mutación genera auditoría sin cuerpo, metadatos,
-correo, SID, CSRF ni IP.
+SID, CSRF, `auth_version`, lifecycle y capacidades dentro de la transacción
+antes de bloquear la variante. Toda mutación genera auditoría sin cuerpo,
+metadatos, correo, SID, CSRF ni IP.
+
+Abrir, guardar o restaurar desde el editor requiere
+`webadmin.media.view` además de la capacidad Blog correspondiente:
+`blog.articles.edit` para editar y mutar, y `blog.articles.view` para previews e
+historial. La subida de nuevos assets se realiza en `/admin/media` y requiere
+también `webadmin.media.upload`; el editor solo selecciona medios ya
+disponibles. La revalidación transaccional comprueba que cada UUID exista y
+tenga variantes AVIF antes de persistir su referencia.
 
 El listado se pagina en bloques de 50 mediante offsets canónicos y acotados;
 consulta una fila adicional para saber si existe página siguiente y nunca
 oculta silenciosamente las variantes posteriores.
 
-La vista previa carga la variante persistida por UUID y locale, exige
-`blog.articles.view` y no representa cambios todavía sin guardar. Funciona con
-borradores incompletos, no necesita origen público y nunca emite canonical,
-metadatos SEO públicos, slug ni una URL compartible. Su respuesta conserva
-`no-store`, `noindex`, CSP privada y el resto de cabeceras de WebAdmin. No
-publica, audita ni modifica la variante.
+Las vistas previas cargan la variante persistida por UUID y locale y no
+representan cambios todavía sin guardar. La preview estructurada renderiza el
+documento actual o, si aún no existe, su proyección legacy en memoria. Funcionan
+con borradores incompletos, no necesitan origen público y nunca emiten
+canonical, metadatos SEO públicos, slug ni una URL compartible. Sus respuestas
+conservan `no-store`, `noindex`, CSP privada y el resto de cabeceras de
+WebAdmin. Un GET o HEAD no publica, audita, adopta ni modifica la variante.
+
+El CSS administrativo y el runtime progresivo del editor viven en
+`modules/blog/published/assets` y se sincronizan como assets gestionados del
+módulo hacia `public/assets/modules/blog`. El editor funciona con HTML SSR y
+controles seguros; JavaScript facilita añadir, editar, mover y retirar bloques,
+pero el servidor vuelve a validar el documento completo. Estos assets no son
+configuración project-owned ni deben duplicarse en el bundle general del stack.
+`doctor` inspecciona los `project_files` declarados por `modules/blog`, expone
+el estado como `blog.assets` y añade `assets.missing_or_invalid` a los blockers
+si falta un asset gestionado o su destino es inválido.
 
 ## Resolución pública y prioridad
 
@@ -176,6 +261,27 @@ normal del proyecto. Una ruta reconocida cuyo runtime o esquema no esté listo
 responde `503` genérico; una URL ajena no abre PDO. `HEAD` conserva status y
 cabeceras sin cuerpo ni escrituras. Un `POST` no estático sobre una URL pública
 Blog devuelve `405` con `Allow: GET, HEAD`.
+
+Si la variante tiene un documento estructurado actual, la URL pública lo
+renderiza con la misma semántica validada del preview. Si todavía no ha sido
+adoptada, conserva el renderer legacy de `body_text`; actualizar CORE no
+reescribe el artículo ni cambia por sí solo su salida. No existe fallback de
+Matrix o contenido dummy en producción.
+
+Las imágenes estructuradas se entregan como AVIF responsive desde el namespace
+fijo `/_liquidstack/blog-media/{uuid}/{width}.avif`. La frontera pública solo
+sirve una variante si el asset está referenciado por el documento actual de un
+artículo publicado; referencias de borradores o revisiones no bastan. Los bytes
+y hashes se verifican contra el storage privado y cualquier ausencia,
+corrupción o referencia no publicable responde como `404` sin revelar la causa.
+
+Las vistas project-owned obtienen filtros y cards por categoría mediante
+`BlogCategoryPublicFeedFactory`. La frontera valida `0001+0003` sin depender
+de las capacidades administrativas de `0004`, ejecuta consultas acotadas sin
+N+1 y devuelve exclusivamente arrays
+de presentación: locale, slug, nombre y contador para filtros; y locale, slug,
+URL, H1, extracto y fechas para cards. PDO, prefijos, IDs numéricos y UUIDs no
+cruzan hacia los recursos.
 
 ## Sitemap dinámico
 
@@ -211,19 +317,29 @@ El flujo operativo es explícito:
 composer liquidstack:doctor
 composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
+# Crear y verificar aquí un backup recuperable de DB y storage.
 composer liquidstack:migrate --apply
 composer liquidstack:webadmin:bootstrap
 composer liquidstack:doctor
 ```
 
 `--plan` permanece offline y `--dry-run` solo lee. `--apply` no forma parte del
-flujo por defecto: se ejecuta únicamente después de revisar el plan, confirmar
-un backup recuperable y autorizar expresamente la mutación.
+flujo por defecto: se ejecuta únicamente después de revisar el plan, crear y
+comprobar un backup recuperable de DB y storage, y autorizar expresamente la
+mutación.
 
 El bootstrap es idempotente y debe repetirse después de añadir Blog a una
 instalación WebAdmin existente: así las cuentas protegidas reciben las nuevas
 capacidades sin reactivar, duplicar ni sustituir usuarios. Ninguno de estos
 pasos se ejecuta desde `composer update`.
+
+La resolución pública base exige `0001`; la administración de artículos suma
+`0002`. La proyección pública de categorías exige `0001+0003` y su
+administración `0001+0002+0003+0004`. El documento estructurado y sus
+revisiones requieren `0001+0003+0005`; su selección de imágenes necesita
+además `0002_webadmin_media_library` en el scope WebAdmin. Una migración
+compuesta registrada solo retira la postcondición anterior mientras su propio
+contrato completo continúe siendo válido.
 
 Cambiar un proyecto con artículos o identidades existentes desde `shared` a
 `liquidstack` no traslada ni adopta datos. Requiere una migración y verificación
@@ -232,25 +348,35 @@ backup previo. El perfil dedicado inicial solo debe usarse en `localhost` o
 una red confiable; el acceso a hosts no confiables queda pendiente de un
 contrato TLS con CA y verificación del servidor.
 
+El mismo código sirve en local, staging y producción. El cambio de entorno se
+realiza mediante `RAIZ`, `DEV_MODE`, `LIQUIDSTACK_DB_*` y la raíz de storage
+declarada fuera de Git; no requiere modificar controladores. Cambiar esos
+valores selecciona otro destino, pero nunca copia ni sincroniza sus datos.
+Composer se limita a distribuir código y assets gestionados: jamás toca DB,
+`.env`, configuración modular ni `storage`.
+
 `blog_ready` exige selector, configuración, idiomas, esquema y capacidades
 aplicados, WebAdmin operativo, rutas públicas válidas y sitemap libre. El
 diagnóstico no revela prefijos efectivos, slugs, contenido, correos, SQL ni
 mensajes PDO.
 
-## Fuera del MVP 0001
+## Fuera del contrato actual
 
 Quedan expresamente para cortes posteriores:
 
-- categorías, etiquetas, buscador, archivos, relacionados, RSS y comentarios;
-- biblioteca de medios, uploads, AVIF y metadatos de imagen;
-- editor enriquecido, bloques, revisiones, previews compartibles y plantillas
-  múltiples;
+- etiquetas, buscador reactivo completo, archivos, relacionados, RSS y
+  comentarios;
+- crop, focal point, vídeo local, audio, reemplazo y garbage collection de
+  medios;
+- nuevas plantillas editoriales y el maquetador libre de secciones, filas y
+  columnas;
 - workflow de aprobación, programación y borrado;
 - redirecciones automáticas por cambio de slug;
 - traducción mediante IA y generación automática de variantes;
 - medidor SEO avanzado, Search Console e Indexing API;
-- recursos de showroom alimentados por Blog.
+- ampliación del catálogo de recursos Blog con sliders, relacionados y otras
+  composiciones dinámicas.
 
-Estas exclusiones evitan fijar prematuramente el constructor de contenido. El
-agregado, las variantes, permisos, URLs y estados del MVP son la base estable
-sobre la que se añadirán esas capacidades.
+El documento JSON v1, sus revisiones, el agregado, las variantes, permisos,
+URLs y estados forman la base estable sobre la que se añadirán esas
+capacidades.

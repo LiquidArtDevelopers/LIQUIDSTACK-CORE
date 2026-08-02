@@ -1383,16 +1383,19 @@ final class WebAdminAuthenticationServiceTest extends TestCase
 
     private function applySchema(PDO $pdo): void
     {
-        $migrations = iterator_to_array(
-            WebAdminMigrationProvider::migrations(),
-            false
-        );
-        self::assertCount(1, $migrations);
+        $migration = null;
+        foreach (WebAdminMigrationProvider::migrations() as $candidate) {
+            if ($candidate->id() === '0001_webadmin_identity_and_access') {
+                $migration = $candidate;
+                break;
+            }
+        }
+        self::assertNotNull($migration);
         $scope = MigrationScope::forTablePrefix(
             'webadmin',
             'ls_webadmin_'
         );
-        foreach ($migrations[0]->statementsFor('sqlite', $scope) as $sql) {
+        foreach ($migration->statementsFor('sqlite', $scope) as $sql) {
             self::assertNotFalse($pdo->exec($sql));
         }
     }

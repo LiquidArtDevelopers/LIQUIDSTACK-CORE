@@ -8,6 +8,7 @@ use App\Core\Modules\Blog\BlogCapabilitySeedPostcondition;
 use App\Core\Modules\Blog\BlogInitialNamespacePrecondition;
 use App\Core\Modules\Blog\BlogMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogMigrationProvider;
+use App\Core\Modules\Blog\BlogStructuredContentMigrationPostconditionVerifier;
 use App\Core\Modules\Migrations\MigrationDefinition;
 use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
@@ -24,9 +25,15 @@ final class BlogMigrationProviderTest extends TestCase
         self::assertSame('blog', BlogMigrationProvider::moduleId());
         $migrations = $this->migrations();
 
-        self::assertCount(2, $migrations);
+        self::assertCount(5, $migrations);
         self::assertSame(
-            ['0001_blog_posts', '0002_blog_capabilities'],
+            [
+                '0001_blog_posts',
+                '0002_blog_capabilities',
+                '0003_blog_categories',
+                '0004_blog_category_capabilities',
+                '0005_blog_structured_content',
+            ],
             array_map(
                 static fn (MigrationDefinition $migration): string =>
                     $migration->id(),
@@ -51,6 +58,9 @@ final class BlogMigrationProviderTest extends TestCase
         );
         self::assertNull($migrations[0]->targetScopeModuleId());
         self::assertSame('webadmin', $migrations[1]->targetScopeModuleId());
+        self::assertNull($migrations[2]->targetScopeModuleId());
+        self::assertSame('webadmin', $migrations[3]->targetScopeModuleId());
+        self::assertNull($migrations[4]->targetScopeModuleId());
         $scopes = MigrationScopeCollection::fromTablePrefixes([
             'blog' => 'ls_blog_',
             'webadmin' => 'ls_webadmin_',
@@ -75,6 +85,28 @@ final class BlogMigrationProviderTest extends TestCase
         self::assertInstanceOf(
             BlogCapabilitySeedPostcondition::class,
             $migrations[1]->postconditionVerifier()
+        );
+        self::assertInstanceOf(
+            BlogStructuredContentMigrationPostconditionVerifier::class,
+            $migrations[4]->postconditionVerifier()
+        );
+        self::assertSame(
+            ['0001_blog_posts', '0003_blog_categories'],
+            $migrations[4]->supersededPostconditionIds()
+        );
+    }
+
+    public function testPublishedMigrationChecksumsRemainFrozen(): void
+    {
+        $migrations = $this->migrations();
+
+        self::assertSame(
+            '51cb25e2bc0029ee61decac1810f055543591589a2026fffbe2c04dbc45f9d77',
+            $migrations[0]->checksum()
+        );
+        self::assertSame(
+            '09e727d09bce7f0c60306099a15df21b882766f878eb0be4c40aca546791d2e7',
+            $migrations[1]->checksum()
         );
     }
 

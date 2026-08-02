@@ -20,6 +20,7 @@ final class BlogMutationAuditEvent
     public const CREATE = 'create';
     public const ADD_LOCALE = 'add_locale';
     public const SAVE = 'save';
+    public const RESTORE = 'restore';
     public const PUBLISH = 'publish';
     public const UNPUBLISH = 'unpublish';
 
@@ -27,6 +28,7 @@ final class BlogMutationAuditEvent
         self::CREATE,
         self::ADD_LOCALE,
         self::SAVE,
+        self::RESTORE,
         self::PUBLISH,
         self::UNPUBLISH,
     ];

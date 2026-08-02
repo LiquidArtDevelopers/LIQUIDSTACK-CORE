@@ -40,7 +40,8 @@ final class BlogAdminHtmlRendererTest extends TestCase
             'post=11111111-1111-4111-8111-111111111111&amp;locale=es',
             $html
         );
-        self::assertStringContainsString('/admin/blog/posts/preview', $html);
+        self::assertStringContainsString('/admin/blog/editor/preview', $html);
+        self::assertStringContainsString('/admin/blog/editor?', $html);
         self::assertStringContainsString('Vista previa guardada', $html);
         self::assertStringContainsString('/admin/blog/posts/new', $html);
     }
@@ -130,7 +131,7 @@ final class BlogAdminHtmlRendererTest extends TestCase
             '<p>Segundo &quot;final&quot;.</p>',
             $html
         );
-        self::assertStringContainsString('/admin/blog/posts/edit', $html);
+        self::assertStringContainsString('/admin/blog/editor?', $html);
         self::assertStringNotContainsString('private-matrix', $html);
         self::assertStringNotContainsString('SEO title must stay private', $html);
         self::assertStringNotContainsString(
@@ -219,8 +220,8 @@ final class BlogAdminHtmlRendererTest extends TestCase
         );
 
         self::assertStringContainsString('Solo lectura', $html);
-        self::assertStringContainsString('/posts/preview', $html);
-        self::assertStringNotContainsString('/posts/edit', $html);
+        self::assertStringContainsString('/editor/preview', $html);
+        self::assertStringNotContainsString('/editor?', $html);
         self::assertStringNotContainsString('/posts/new', $html);
     }
 

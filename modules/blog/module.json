@@ -8,12 +8,14 @@
     "providers": {
         "routes": [
             "App\\Core\\Modules\\Blog\\BlogRouteProvider",
+            "App\\Core\\Modules\\Blog\\BlogCategoryRouteProvider",
             "App\\Core\\Modules\\Blog\\BlogPublicRouteProvider"
         ],
         "middleware": [],
         "services": [],
         "navigation": [
-            "App\\Core\\Modules\\Blog\\BlogWebAdminNavigationProvider"
+            "App\\Core\\Modules\\Blog\\BlogWebAdminNavigationProvider",
+            "App\\Core\\Modules\\Blog\\BlogCategoryWebAdminNavigationProvider"
         ],
         "capabilities": [],
         "migrations": [
@@ -21,5 +23,12 @@
         ],
         "sitemap": []
     },
-    "project_files": []
+    "project_files": [
+        {
+            "source": "published/assets",
+            "target": "public/assets/modules/blog",
+            "type": "dir",
+            "policy": "managed_hash"
+        }
+    ]
 }

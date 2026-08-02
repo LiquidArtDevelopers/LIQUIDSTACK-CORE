@@ -6,10 +6,15 @@ namespace App\Core\WebAdmin\Diagnostics;
 
 use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Database\DatabaseConnectionProfile;
+use App\Core\Http\Request;
+use App\Core\Modules\Diagnostics\ProjectAssetInspector;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Configuration\WebAdminConfigException;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
 use App\Core\WebAdmin\Mail\WebAdminMailConfigurationLoader;
+use App\Core\WebAdmin\Media\ImagickAvifImageProcessor;
+use App\Core\WebAdmin\Media\MediaException;
+use App\Core\WebAdmin\Media\PrivateMediaStorage;
 use App\Core\WebAdmin\Security\EmailAddress;
 use App\Core\WebAdmin\Security\ExceptionTraceGuard;
 use App\Core\WebAdmin\Security\InvalidEmailAddress;
@@ -24,7 +29,9 @@ final class WebAdminDiagnosticService
         private readonly ConfiguredPdoConnectionFactoryResolver $databaseResolver =
             new ConfiguredPdoConnectionFactoryResolver(),
         private readonly WebAdminMailConfigurationLoader $mailConfigurationLoader =
-            new WebAdminMailConfigurationLoader()
+            new WebAdminMailConfigurationLoader(),
+        private readonly ProjectAssetInspector $assetInspector =
+            new ProjectAssetInspector()
     ) {
     }
 
@@ -35,12 +42,15 @@ final class WebAdminDiagnosticService
      *
      * @param array<string, mixed> $environment already-loaded environment
      * @param list<string> $requiredAssets project-relative module assets
+     * @param ?list<string> $knownMediaPublicIds IDs obtained through a
+     *        separate read-only DB probe; null leaves orphan scan unchecked
      */
     public function inspect(
         string $projectRoot,
         #[\SensitiveParameter] array $environment,
         array $requiredAssets = [],
-        ?WebAdminDatabaseDiagnostic $databaseDiagnostic = null
+        ?WebAdminDatabaseDiagnostic $databaseDiagnostic = null,
+        ?array $knownMediaPublicIds = null
     ): WebAdminDiagnosticReport {
         $databaseDiagnostic ??= WebAdminDatabaseDiagnostic::notChecked();
         $config = null;
@@ -74,8 +84,17 @@ final class WebAdminDiagnosticService
             ->requiredEnvironmentNames($environment);
         $exceptionTraceReady = $this->exceptionTraceIsSafe();
         $passwordPolicyReady = PasswordHasher::runtimeSupportsArgon2id();
-        $assets = $this->inspectAssets($projectRoot, $requiredAssets);
+        $assets = $this->assetInspector->inspect(
+            $projectRoot,
+            $requiredAssets
+        );
         $operational = $databaseDiagnostic->toArray();
+        $media = $this->inspectMedia(
+            $projectRoot,
+            $environment,
+            $databaseDiagnostic,
+            $knownMediaPublicIds
+        );
 
         $sharedBlockers = [];
         if ($configIssue !== null) {
@@ -191,6 +210,7 @@ final class WebAdminDiagnosticService
             ))),
             'assets' => $assets,
             'database' => $operational,
+            'media' => $media,
             'readiness' => [
                 'scope' => $databaseDiagnostic->connectionStatus()
                     === 'not_checked'
@@ -200,6 +220,7 @@ final class WebAdminDiagnosticService
                 'runtime_ready' => $runtimeReady,
                 'bootstrap_ready' => $bootstrapReady,
                 'mail_ready' => $mailReady,
+                'media_ready' => $media['ready'],
                 'database_connection' =>
                     $databaseDiagnostic->connectionStatus(),
                 'migrations' => $databaseDiagnostic->migrationStatus(),
@@ -208,6 +229,132 @@ final class WebAdminDiagnosticService
                 'mail_blockers' => $mailBlockers,
             ],
         ]);
+    }
+
+    /**
+     * @param array<string, mixed> $environment
+     * @param ?list<string> $knownPublicIds
+     * @return array<string, mixed>
+     */
+    private function inspectMedia(
+        string $projectRoot,
+        #[\SensitiveParameter] array $environment,
+        WebAdminDatabaseDiagnostic $databaseDiagnostic,
+        ?array $knownPublicIds
+    ): array {
+        $codec = ImagickAvifImageProcessor::runtimeDiagnostic();
+        $fileUploads = filter_var(
+            ini_get('file_uploads'),
+            FILTER_VALIDATE_BOOLEAN
+        );
+        $uploadLimit = $this->iniByteLimit(
+            ini_get('upload_max_filesize'),
+            false
+        );
+        $postLimit = $this->iniByteLimit(
+            ini_get('post_max_size'),
+            true
+        );
+        $limitsReady = $uploadLimit !== null && $postLimit !== null
+            && $uploadLimit >= Request::MAX_UPLOAD_FILE_BYTES
+            && $postLimit >= Request::MAX_MULTIPART_BODY_BYTES;
+
+        $configuredValue = $environment[PrivateMediaStorage::ROOT_ENV] ?? null;
+        $explicitStorage = is_string($configuredValue)
+            && trim($configuredValue) !== '';
+        $storage = [
+            'required' => [PrivateMediaStorage::ROOT_ENV],
+            'configured' => false,
+            'explicit' => $explicitStorage,
+            'ready' => false,
+            'status' => 'configuration_missing_or_invalid',
+            'orphan_count' => null,
+            'orphan_scan_status' => 'not_checked',
+            'staging_count' => 0,
+        ];
+        try {
+            $probe = PrivateMediaStorage::forProject(
+                $projectRoot,
+                $environment
+            )->diagnostic($knownPublicIds);
+            $storage = [
+                'required' => [PrivateMediaStorage::ROOT_ENV],
+                'configured' => true,
+                'explicit' => $explicitStorage,
+                'ready' => $probe['ready'],
+                'status' => $probe['status'],
+                'orphan_count' => $probe['orphan_count'],
+                'orphan_scan_status' => $probe['orphan_scan_status'],
+                'staging_count' => $probe['staging_count'],
+            ];
+        } catch (MediaException $exception) {
+            $storage['status'] = $exception->issueCode();
+        } catch (\Throwable) {
+            $storage['status'] = 'webadmin.media.storage_invalid';
+        }
+
+        $schema = $databaseDiagnostic->mediaMigrations();
+        $blockers = [];
+        if (($schema['ready'] ?? false) !== true) {
+            $blockers[] = 'database.media_schema_not_ready';
+        }
+        if (($codec['ready'] ?? false) !== true) {
+            $blockers[] = 'runtime.media_codec_not_ready';
+        }
+        if (!$fileUploads) {
+            $blockers[] = 'runtime.file_uploads_disabled';
+        }
+        if (!$limitsReady) {
+            $blockers[] = 'runtime.upload_limits_too_low';
+        }
+        if ($storage['ready'] !== true) {
+            $blockers[] = 'storage.media_not_ready';
+        }
+
+        return [
+            'ready' => $blockers === [],
+            'schema' => $schema,
+            'runtime' => $codec,
+            'uploads' => [
+                'file_uploads' => $fileUploads,
+                'upload_max_filesize_bytes' => $uploadLimit,
+                'post_max_size_bytes' => $postLimit,
+                'required_file_bytes' => Request::MAX_UPLOAD_FILE_BYTES,
+                'required_post_bytes' => Request::MAX_MULTIPART_BODY_BYTES,
+                'ready' => $fileUploads && $limitsReady,
+            ],
+            'storage' => $storage,
+            'blockers' => $blockers,
+        ];
+    }
+
+    private function iniByteLimit(string|false $value, bool $zeroUnlimited): ?int
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+        $value = trim($value);
+        if (preg_match('/\A([0-9]+)\s*([KMG])?\z/i', $value, $match) !== 1) {
+            return null;
+        }
+        $number = (int) $match[1];
+        if ($number === 0 && $zeroUnlimited) {
+            return PHP_INT_MAX;
+        }
+        $power = match (strtoupper($match[2] ?? '')) {
+            'K' => 1,
+            'M' => 2,
+            'G' => 3,
+            default => 0,
+        };
+        for ($index = 0; $index < $power; ++$index) {
+            if ($number > intdiv(PHP_INT_MAX, 1024)) {
+                return PHP_INT_MAX;
+            }
+            $number *= 1024;
+        }
+
+        return $number;
     }
 
     /**
@@ -304,88 +451,4 @@ final class WebAdminDiagnosticService
         ];
     }
 
-    /**
-     * @param list<string> $requiredAssets
-     * @return array{ready: bool, required: list<string>, missing: list<string>, invalid: list<string>}
-     */
-    private function inspectAssets(
-        string $projectRoot,
-        array $requiredAssets
-    ): array {
-        $required = [];
-        $missing = [];
-        $invalid = [];
-
-        foreach ($requiredAssets as $asset) {
-            if (!is_string($asset) || !$this->isSafeRelativePath($asset)) {
-                $invalid[] = is_string($asset) ? $asset : '[invalid-type]';
-                continue;
-            }
-
-            $normalized = str_replace('\\', '/', $asset);
-            $required[] = $normalized;
-            if (!$this->assetExistsInsideProject($projectRoot, $normalized)) {
-                $missing[] = $normalized;
-            }
-        }
-
-        $required = array_values(array_unique($required));
-        $missing = array_values(array_unique($missing));
-        $invalid = array_values(array_unique($invalid));
-
-        return [
-            'ready' => $missing === [] && $invalid === [],
-            'required' => $required,
-            'missing' => $missing,
-            'invalid' => $invalid,
-        ];
-    }
-
-    private function isSafeRelativePath(string $path): bool
-    {
-        $normalized = str_replace('\\', '/', $path);
-        $segments = explode('/', $normalized);
-
-        return $normalized !== ''
-            && !str_starts_with($normalized, '/')
-            && preg_match('/\A[A-Za-z]:\//', $normalized) !== 1
-            && preg_match('/[\x00-\x1F\x7F:]/', $normalized) !== 1
-            && !in_array('', $segments, true)
-            && !in_array('.', $segments, true)
-            && !in_array('..', $segments, true);
-    }
-
-    private function assetExistsInsideProject(
-        string $projectRoot,
-        string $asset
-    ): bool {
-        $root = realpath($projectRoot);
-        if ($root === false) {
-            return false;
-        }
-
-        $path = $root . DIRECTORY_SEPARATOR . str_replace(
-            '/',
-            DIRECTORY_SEPARATOR,
-            $asset
-        );
-        $real = realpath($path);
-        if ($real === false || (!is_file($real) && !is_dir($real))) {
-            return false;
-        }
-
-        $rootPrefix = rtrim(
-            str_replace('\\', '/', $root),
-            '/'
-        ) . '/';
-        $realNormalized = str_replace('\\', '/', $real);
-        $candidate = $realNormalized . (is_dir($real) ? '/' : '');
-
-        if (DIRECTORY_SEPARATOR === '\\') {
-            $rootPrefix = strtolower($rootPrefix);
-            $candidate = strtolower($candidate);
-        }
-
-        return str_starts_with($candidate, $rootPrefix);
-    }
 }

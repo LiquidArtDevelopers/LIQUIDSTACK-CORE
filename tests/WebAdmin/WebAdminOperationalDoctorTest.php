@@ -65,6 +65,10 @@ final class WebAdminOperationalDoctorTest extends TestCase
             $this->projectRoot . '/App/config',
             $this->projectRoot . '/src/scss',
         ]);
+        $this->filesystem->mirror(
+            $this->coreRoot . '/modules/webadmin/published/assets',
+            $this->projectRoot . '/public/assets/modules/webadmin'
+        );
         $this->filesystem->dumpFile(
             $this->projectRoot . '/composer.json',
             json_encode([

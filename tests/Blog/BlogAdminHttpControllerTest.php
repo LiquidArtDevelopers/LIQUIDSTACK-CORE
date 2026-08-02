@@ -186,7 +186,6 @@ final class BlogAdminHttpControllerTest extends TestCase
             ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
                 + $this->editorial('matrix')
         ));
-        $this->assertPrg($create);
         self::assertSame(1, (int) $this->pdo->query(
             'SELECT COUNT(*) FROM ls_blog_post_localizations'
         )->fetchColumn());
@@ -194,6 +193,7 @@ final class BlogAdminHttpControllerTest extends TestCase
         $post = (string) $this->pdo->query(
             'SELECT public_id FROM ls_blog_posts'
         )->fetchColumn();
+        $this->assertCreatePrg($create, $post, 'es');
         $edit = $this->controller->edit($this->get(
             '/admin/blog/posts/edit',
             ['post' => $post, 'locale' => 'es']
@@ -249,14 +249,15 @@ final class BlogAdminHttpControllerTest extends TestCase
 
     public function testPublicationGuardBlocksStaticRouteBeforeMutation(): void
     {
-        $this->assertPrg($this->controller->create($this->post(
+        $created = $this->controller->create($this->post(
             '/admin/blog/posts/create',
             ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
                 + $this->editorial('matrix')
-        )));
+        ));
         $post = (string) $this->pdo->query(
             'SELECT public_id FROM ls_blog_posts'
         )->fetchColumn();
+        $this->assertCreatePrg($created, $post, 'es');
         $inactive = $this->controller->publish($this->post(
             '/admin/blog/posts/publish',
             [
@@ -297,14 +298,15 @@ final class BlogAdminHttpControllerTest extends TestCase
             'h1' => 'Matrix & preview',
             'body_text' => "Primer bloque.\n\nSegundo bloque.",
         ]);
-        $this->assertPrg($this->controller->create($this->post(
+        $created = $this->controller->create($this->post(
             '/admin/blog/posts/create',
             ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
                 + $editorial
-        )));
+        ));
         $post = (string) $this->pdo->query(
             'SELECT public_id FROM ls_blog_posts'
         )->fetchColumn();
+        $this->assertCreatePrg($created, $post, 'es');
         $before = $this->pdo->query(
             'SELECT status, lock_version, body_text FROM '
             . 'ls_blog_post_localizations'
@@ -434,8 +436,9 @@ final class BlogAdminHttpControllerTest extends TestCase
             'HTTPS' => 'on',
         ]);
         $response = $this->controller->index($head);
-        self::assertSame(200, $response->status());
+        self::assertSame(303, $response->status());
         self::assertSame('', $response->body());
+        self::assertSame('/admin/login', $response->headers()['Location']);
 
         $headPreview = Request::fromInput([
             'REQUEST_METHOD' => 'HEAD',
@@ -446,8 +449,9 @@ final class BlogAdminHttpControllerTest extends TestCase
             'locale' => 'es',
         ]);
         $response = $this->controller->preview($headPreview);
-        self::assertSame(200, $response->status());
+        self::assertSame(303, $response->status());
         self::assertSame('', $response->body());
+        self::assertSame('/admin/login', $response->headers()['Location']);
 
         $insecure = Request::fromInput([
             'REQUEST_METHOD' => 'GET',
@@ -695,6 +699,24 @@ final class BlogAdminHttpControllerTest extends TestCase
         self::assertSame(303, $response->status());
         self::assertSame(
             '/admin/blog/posts/updated',
+            $response->headers()['Location']
+        );
+        self::assertSame('', $response->body());
+        self::assertStringNotContainsString('Matrix', implode(
+            "\n",
+            $response->headers()
+        ));
+    }
+
+    private function assertCreatePrg(
+        App\Core\Http\Response $response,
+        string $post,
+        string $locale
+    ): void {
+        self::assertSame(303, $response->status());
+        self::assertSame(
+            '/admin/blog/editor?post=' . rawurlencode($post)
+                . '&locale=' . rawurlencode($locale),
             $response->headers()['Location']
         );
         self::assertSame('', $response->body());

@@ -244,7 +244,11 @@ final class ModuleDoctor
                     $databasePlan instanceof MigrationDatabasePlan
                         ? $databasePlan
                         : null,
-                    $inspectDatabase
+                    $inspectDatabase,
+                    array_map(
+                        static fn (array $file): string => $file['target'],
+                        $catalog->get('blog')->projectFiles()
+                    )
                 );
                 $blogPayload = $blogReport->toArray();
                 $moduleDiagnostics['blog'] = $blogPayload;
@@ -648,6 +652,46 @@ final class ModuleDoctor
                     'El esquema WebAdmin está pendiente, bloqueado o presenta deriva; consulta module_diagnostics.webadmin.database.migrations.'
                 ));
 
+        $featureStatus = is_array($migrations['features'] ?? null)
+            && is_string($migrations['features']['status'] ?? null)
+                ? $migrations['features']['status']
+                : 'not_checked';
+        $checks[] = match ($featureStatus) {
+            'applied', 'not_applicable' => DiagnosticCheck::ok(
+                'webadmin.database.features',
+                'No hay ampliaciones WebAdmin pendientes.'
+            ),
+            'pending', 'blocked' => DiagnosticCheck::warning(
+                'webadmin.database.features',
+                'Hay ampliaciones WebAdmin pendientes o bloqueadas; el runtime base permanece disponible.'
+            ),
+            default => DiagnosticCheck::warning(
+                'webadmin.database.features',
+                'Las ampliaciones WebAdmin no se evaluaron en este diagnostico.'
+            ),
+        };
+
+        $media = $payload['media'] ?? [];
+        $mediaReady = is_array($media)
+            && ($media['ready'] ?? false) === true;
+        $mediaSchemaStatus = is_array($media)
+            && is_array($media['schema'] ?? null)
+            && is_string($media['schema']['status'] ?? null)
+                ? $media['schema']['status']
+                : 'not_checked';
+        $checks[] = $mediaReady
+            ? DiagnosticCheck::ok(
+                'webadmin.media',
+                'Biblioteca de medios preparada: esquema, codec AVIF, limites PHP y storage privado validos.'
+            )
+            : DiagnosticCheck::warning(
+                'webadmin.media',
+                $mediaSchemaStatus === 'pending'
+                    || $mediaSchemaStatus === 'catalog_missing'
+                    ? 'La biblioteca de medios espera su migracion explicita; WebAdmin base permanece operativo.'
+                    : 'La biblioteca de medios no esta preparada; consulta module_diagnostics.webadmin.media. WebAdmin base permanece independiente.'
+            );
+
         $securityKey = $payload['environment']['security_key'] ?? [];
         $securityKeyReady = is_array($securityKey)
             && ($securityKey['ready'] ?? false) === true;
@@ -828,6 +872,17 @@ final class ModuleDoctor
                 'WebAdmin debe estar operativo para gestionar el Blog.'
                 ));
 
+        $assetsReady = ($payload['assets']['ready'] ?? false) === true;
+        $checks[] = $assetsReady
+            ? DiagnosticCheck::ok(
+                'blog.assets',
+                'Assets Blog declarados presentes y dentro del proyecto.'
+            )
+            : DiagnosticCheck::error(
+                'blog.assets',
+                'Faltan assets Blog o sus rutas no son seguras.'
+            );
+
         $databaseReady = ($payload['database']['ready'] ?? false) === true;
         $databaseStatus = is_string($payload['database']['status'] ?? null)
             ? $payload['database']['status']
@@ -848,6 +903,24 @@ final class ModuleDoctor
                     'Esquema o capacidades Blog pendientes o bloqueados.'
                 );
         }
+
+        $featureStatus = is_string(
+            $payload['database']['features']['status'] ?? null
+        ) ? $payload['database']['features']['status'] : 'not_checked';
+        $checks[] = match ($featureStatus) {
+            'applied', 'not_applicable' => DiagnosticCheck::ok(
+                'blog.database.features',
+                'No hay ampliaciones Blog pendientes.'
+            ),
+            'pending', 'blocked' => DiagnosticCheck::warning(
+                'blog.database.features',
+                'Hay ampliaciones Blog pendientes o bloqueadas; las funciones base conservan su estado independiente.'
+            ),
+            default => DiagnosticCheck::warning(
+                'blog.database.features',
+                'Las ampliaciones Blog no se evaluaron en este diagnostico.'
+            ),
+        };
     }
 
     /**

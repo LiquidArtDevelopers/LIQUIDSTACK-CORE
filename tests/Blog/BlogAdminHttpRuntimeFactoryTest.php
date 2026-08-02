@@ -321,6 +321,7 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             '53000000-0000-4000-8000-000000000005',
             '54000000-0000-4000-8000-000000000005',
             '55000000-0000-4000-8000-000000000005',
+            '56000000-0000-4000-8000-000000000005',
         ];
         $adapter = new WebAdminBlogMutationAuditAdapter(
             $this->pdo,
@@ -334,6 +335,7 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             BlogMutationAuditEvent::CREATE,
             BlogMutationAuditEvent::ADD_LOCALE,
             BlogMutationAuditEvent::SAVE,
+            BlogMutationAuditEvent::RESTORE,
             BlogMutationAuditEvent::PUBLISH,
             BlogMutationAuditEvent::UNPUBLISH,
         ];
@@ -357,11 +359,12 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             'blog.article.created',
             'blog.article.locale_added',
             'blog.article.saved',
+            'blog.article.restored',
             'blog.article.published',
             'blog.article.unpublished',
         ], array_column($rows, 'event_code'));
         self::assertSame(
-            [null, null, null, null, null],
+            [null, null, null, null, null, null],
             array_column($rows, 'metadata_json')
         );
     }

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Core\Modules\Blog\BlogHttpSchemaGate;
+use App\Core\Modules\Blog\BlogCategoryHttpSchemaGate;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationCatalog;
 use App\Core\Modules\Migrations\MigrationRunner;
@@ -108,7 +109,9 @@ final class BlogHttpSchemaGateTest extends TestCase
     {
         $this->pdo->exec(
             "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
-            . "AND migration_id = '0002_blog_capabilities'"
+            . "AND migration_id IN ('0002_blog_capabilities', "
+            . "'0003_blog_categories', '0004_blog_category_capabilities', "
+            . "'0005_blog_structured_content')"
         );
         self::assertFalse((new BlogHttpSchemaGate())->isReady(
             $this->pdo,
@@ -118,6 +121,94 @@ final class BlogHttpSchemaGateTest extends TestCase
 
         $this->pdo->exec('DROP TABLE ls_blog_post_localizations');
         self::assertFalse((new BlogHttpSchemaGate())->isReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+    }
+
+    public function testPublicContentAndSitemapDoNotRequireAdminCapabilityMigration(): void
+    {
+        $this->pdo->exec(
+            "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
+            . "AND migration_id IN ('0002_blog_capabilities', "
+            . "'0003_blog_categories', '0004_blog_category_capabilities', "
+            . "'0005_blog_structured_content')"
+        );
+        $gate = new BlogHttpSchemaGate();
+
+        self::assertTrue($gate->isPublicReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+        self::assertFalse($gate->isAdministrationReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+    }
+
+    public function testCategoriesHaveAnIndependentMigrationGate(): void
+    {
+        $categoryGate = new BlogCategoryHttpSchemaGate();
+        $blogGate = new BlogHttpSchemaGate();
+
+        self::assertTrue($categoryGate->isReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+
+        $this->pdo->exec(
+            "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
+            . "AND migration_id IN ('0004_blog_category_capabilities', "
+            . "'0005_blog_structured_content')"
+        );
+        self::assertFalse($categoryGate->isReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+        self::assertTrue($categoryGate->isPublicReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+        self::assertFalse($categoryGate->isAdministrationReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+        self::assertTrue($blogGate->isAdministrationReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+    }
+
+    public function testExistingBlogAdminRemainsReadyBeforeCategoryMigrations(): void
+    {
+        $this->pdo->exec(
+            "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
+            . "AND migration_id IN ('0003_blog_categories', "
+            . "'0004_blog_category_capabilities', "
+            . "'0005_blog_structured_content')"
+        );
+        $this->pdo->exec(
+            "DELETE FROM ls_webadmin_capabilities WHERE code IN "
+            . "('blog.categories.view', 'blog.categories.edit')"
+        );
+        $this->pdo->exec('DROP TABLE ls_blog_post_categories');
+        $this->pdo->exec('DROP TABLE ls_blog_category_locales');
+        $this->pdo->exec('DROP TABLE ls_blog_categories');
+
+        self::assertTrue((new BlogHttpSchemaGate())->isAdministrationReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+        self::assertFalse((new BlogCategoryHttpSchemaGate())->isReady(
             $this->pdo,
             $this->registry,
             $this->scopes

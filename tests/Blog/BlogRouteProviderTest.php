@@ -79,11 +79,17 @@ final class BlogRouteProviderTest extends TestCase
             '/admin/blog/posts/edit',
             '/admin/blog/posts/preview',
             '/admin/blog/posts/updated',
+            '/admin/blog/editor',
+            '/admin/blog/editor/preview',
+            '/admin/blog/editor/revisions',
         ];
         foreach ($gets as $path) {
             $query = in_array($path, [
                 '/admin/blog/posts/edit',
                 '/admin/blog/posts/preview',
+                '/admin/blog/editor',
+                '/admin/blog/editor/preview',
+                '/admin/blog/editor/revisions',
             ], true)
                 ? ['post' => $this->uuid(), 'locale' => 'es']
                 : [];
@@ -100,6 +106,18 @@ final class BlogRouteProviderTest extends TestCase
             $this->get('/admin/blog/posts/delete')
         )?->status());
 
+        foreach ([
+            '/admin/blog/editor/save',
+            '/admin/blog/editor/restore',
+        ] as $postOnlyPath) {
+            $wrongMethod = $this->routes->dispatch(
+                $this->get($postOnlyPath)
+            );
+            self::assertNotNull($wrongMethod);
+            self::assertSame(405, $wrongMethod->status(), $postOnlyPath);
+            self::assertSame('POST', $wrongMethod->headers()['Allow']);
+        }
+
         $previewPost = Request::fromServer([
             'REQUEST_METHOD' => 'POST',
             'REQUEST_URI' => '/admin/blog/posts/preview',
@@ -112,7 +130,7 @@ final class BlogRouteProviderTest extends TestCase
         self::assertSame(0, $this->factory->calls);
     }
 
-    public function testHeadIsBodylessAndDoesNotOpenTheRuntime(): void
+    public function testAnonymousHeadRedirectsWithoutOpeningRuntime(): void
     {
         $response = $this->routes->dispatch(Request::fromInput([
             'REQUEST_METHOD' => 'HEAD',
@@ -124,8 +142,9 @@ final class BlogRouteProviderTest extends TestCase
         ]));
 
         self::assertNotNull($response);
-        self::assertSame(200, $response->status());
+        self::assertSame(303, $response->status());
         self::assertSame('', $response->body());
+        self::assertSame('/admin/login', $response->headers()['Location']);
         self::assertSame(
             'no-store, no-cache, must-revalidate, max-age=0',
             $response->headers()['Cache-Control']
@@ -144,8 +163,9 @@ final class BlogRouteProviderTest extends TestCase
             'locale' => 'es',
         ]));
         self::assertNotNull($head);
-        self::assertSame(200, $head->status());
+        self::assertSame(303, $head->status());
         self::assertSame('', $head->body());
+        self::assertSame('/admin/login', $head->headers()['Location']);
 
         $malformed = $this->routes->dispatch($this->get(
             '/admin/blog/posts/preview',
@@ -169,8 +189,9 @@ final class BlogRouteProviderTest extends TestCase
             'HTTPS' => 'on',
         ], query: ['offset' => '50']));
         self::assertNotNull($head);
-        self::assertSame(200, $head->status());
+        self::assertSame(303, $head->status());
         self::assertSame('', $head->body());
+        self::assertSame('/admin/login', $head->headers()['Location']);
 
         $sid = str_repeat('A', 43);
         $overlap = $this->routes->dispatch($this->get(
@@ -216,6 +237,57 @@ final class BlogRouteProviderTest extends TestCase
         self::assertSame(405, $response->status());
         self::assertSame('POST', $response->headers()['Allow']);
         self::assertSame(0, $this->factory->calls);
+    }
+
+    public function testMalformedStructuredRequestNeverBuildsRuntime(): void
+    {
+        $sid = str_repeat('A', 43);
+        $response = $this->routes->dispatch($this->get(
+            '/admin/blog/editor',
+            [
+                'post' => $this->uuid(),
+                'locale' => 'es',
+                'unexpected' => 'must-not-reach-pdo',
+            ],
+            $sid
+        ));
+
+        self::assertNotNull($response);
+        self::assertSame(400, $response->status());
+        self::assertSame('Bad request', $response->body());
+        self::assertSame(0, $this->factory->calls);
+
+        $malformedPost = $this->routes->dispatch(Request::fromInput([
+            'REQUEST_METHOD' => 'POST',
+            'REQUEST_URI' => '/admin/blog/editor/save',
+            'HTTPS' => 'on',
+        ], form: [
+            'csrf' => 'csrf',
+            'post' => $this->uuid(),
+            'locale' => 'es',
+            'lock_version' => '1',
+            'document_json' => '{}',
+            'h1' => 'Matrix',
+            'slug' => 'matrix',
+            'seo_title' => 'Matrix',
+            'meta_description' => 'Matrix',
+            'excerpt' => 'Matrix',
+            'unexpected' => 'must-not-reach-pdo',
+        ], cookies: ['LS_WEBADMIN_SID' => $sid], headers: [
+            'Content-Type' => 'application/x-www-form-urlencoded',
+        ]));
+        self::assertNotNull($malformedPost);
+        self::assertSame(400, $malformedPost->status());
+        self::assertSame(0, $this->factory->calls);
+
+        $validShape = $this->routes->dispatch($this->get(
+            '/admin/blog/editor',
+            ['post' => $this->uuid(), 'locale' => 'es'],
+            $sid
+        ));
+        self::assertNotNull($validShape);
+        self::assertSame(503, $validShape->status());
+        self::assertSame(1, $this->factory->calls);
     }
 
     public function testExactLoopbackHttpRedirectsAnonymousUserInDevelopment(): void

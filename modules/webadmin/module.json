@@ -5,16 +5,26 @@
     "requires": [],
     "providers": {
         "routes": [
-            "App\\Core\\Modules\\WebAdmin\\WebAdminRouteProvider"
+            "App\\Core\\Modules\\WebAdmin\\WebAdminRouteProvider",
+            "App\\Core\\Modules\\WebAdmin\\WebAdminMediaRouteProvider"
         ],
         "middleware": [],
         "services": [],
-        "navigation": [],
+        "navigation": [
+            "App\\Core\\Modules\\WebAdmin\\WebAdminMediaNavigationProvider"
+        ],
         "capabilities": [],
         "migrations": [
             "App\\Core\\Modules\\WebAdmin\\WebAdminMigrationProvider"
         ],
         "sitemap": []
     },
-    "project_files": []
+    "project_files": [
+        {
+            "source": "published/assets",
+            "target": "public/assets/modules/webadmin",
+            "type": "dir",
+            "policy": "managed_hash"
+        }
+    ]
 }

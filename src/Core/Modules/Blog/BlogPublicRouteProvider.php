@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Core\Modules\Blog;
 
-use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogConfigLoader;
 use App\Core\Blog\Http\BlogPublicHttpController;
+use App\Core\Blog\Http\BlogPublicMediaHttpResponseFactory;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeFactory;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeFactoryInterface;
+use App\Core\Blog\PublicDelivery\BlogPublicMediaRoute;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\Modules\ModulePublicRouteProviderInterface;
@@ -28,7 +29,9 @@ final class BlogPublicRouteProvider implements
         private readonly BlogPublicHttpRuntimeFactoryInterface $runtimeFactory =
             new BlogPublicHttpRuntimeFactory(),
         private readonly BlogConfigLoader $configLoader =
-            new BlogConfigLoader()
+            new BlogConfigLoader(),
+        private readonly BlogPublicMediaHttpResponseFactory
+            $mediaResponseFactory = new BlogPublicMediaHttpResponseFactory()
     ) {
     }
 
@@ -49,7 +52,10 @@ final class BlogPublicRouteProvider implements
 
             return array_values(array_unique(array_merge(
                 array_values($config->publicPaths()),
-                [$config->sitemapPath()]
+                [
+                    $config->sitemapPath(),
+                    BlogPublicMediaRoute::PREFIX,
+                ]
             )));
         } catch (Throwable) {
             return [];
@@ -95,6 +101,11 @@ final class BlogPublicRouteProvider implements
             $config->sitemapPath(),
             fn (Request $request): ?Response => $this->sitemap($request)
         );
+        $routes->addGet(
+            self::moduleId(),
+            BlogPublicMediaRoute::PREFIX,
+            fn (Request $request): Response => $this->media($request)
+        );
     }
 
     private function article(
@@ -130,6 +141,21 @@ final class BlogPublicRouteProvider implements
         }
 
         return $this->controller()->sitemap();
+    }
+
+    private function media(Request $request): Response
+    {
+        $head = $request->method() === 'HEAD';
+        $match = BlogPublicMediaRoute::match($request->path());
+        if ($match === null) {
+            return $this->mediaResponseFactory->notFound($head);
+        }
+
+        return $this->controller()->media(
+            $match['public_id'],
+            $match['width'],
+            $head
+        );
     }
 
     private function controller(): BlogPublicHttpController

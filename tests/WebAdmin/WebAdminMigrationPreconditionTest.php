@@ -102,16 +102,24 @@ final class WebAdminMigrationPreconditionTest extends TestCase
     public function testProviderDeclaresVersionedPreconditionAndFreshReplayWorks(): void
     {
         $migrations = iterator_to_array(
-            WebAdminMigrationProvider::migrations()
+            WebAdminMigrationProvider::migrations(),
+            false
         );
-        self::assertCount(1, $migrations);
+        $migration = null;
+        foreach ($migrations as $candidate) {
+            if ($candidate->id() === '0001_webadmin_identity_and_access') {
+                $migration = $candidate;
+                break;
+            }
+        }
+        self::assertNotNull($migration);
         self::assertInstanceOf(
             WebAdminInitialNamespacePrecondition::class,
-            $migrations[0]->preconditionVerifier()
+            $migration->preconditionVerifier()
         );
         self::assertSame(
             'webadmin-initial-namespace-empty-v1',
-            $migrations[0]->preconditionVerifier()?->contractVersion()
+            $migration->preconditionVerifier()?->contractVersion()
         );
 
         $pdo = $this->sqlite();

@@ -28,6 +28,7 @@ final class WebAdminBlogMutationAuditAdapter implements
         BlogMutationAuditEvent::ADD_LOCALE =>
             'blog.article.locale_added',
         BlogMutationAuditEvent::SAVE => 'blog.article.saved',
+        BlogMutationAuditEvent::RESTORE => 'blog.article.restored',
         BlogMutationAuditEvent::PUBLISH => 'blog.article.published',
         BlogMutationAuditEvent::UNPUBLISH =>
             'blog.article.unpublished',

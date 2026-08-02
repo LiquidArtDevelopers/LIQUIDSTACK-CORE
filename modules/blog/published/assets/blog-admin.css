@@ -1,0 +1,190 @@
+.blogAdmin .blogEditor {
+    width: 100%;
+    place-items: start center;
+}
+
+.blogAdmin .blogEditor > article {
+    max-width: 82rem;
+}
+
+.blogAdmin .blogEditor__navigation ul {
+    grid-template-columns: 1fr;
+}
+
+.blogAdmin .blogEditor__form,
+.blogAdmin .blogEditor__metadata,
+.blogAdmin .blogEditor__document,
+.blogAdmin .blogEditor__revisions {
+    display: grid;
+    gap: 1rem;
+}
+
+.blogAdmin .blogEditor__metadata,
+.blogAdmin .blogEditor__document,
+.blogAdmin .blogEditor__revisions {
+    margin-block-start: 1.5rem;
+    padding-block-start: 1.5rem;
+    border-block-start: 1px solid var(--ls-webadmin-border);
+}
+
+.blogAdmin .blogEditor__metadataGrid {
+    display: grid;
+    gap: 1rem;
+}
+
+.blogAdmin .blogEditor__metadataGrid > div,
+.blogAdmin .blogEditor__template,
+.blogAdmin .blogEditor__field {
+    min-width: 0;
+    display: grid;
+    gap: 0.35rem;
+}
+
+.blogAdmin .blogEditor__blockToolbar,
+.blogAdmin .blogEditor__actions,
+.blogAdmin .blogEditor__inlineToolbar,
+.blogAdmin .blogEditor__save {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.blogAdmin .blogEditor__blockToolbar,
+.blogAdmin .blogEditor__inlineToolbar {
+    padding: 0.8rem;
+    border: 1px solid var(--ls-webadmin-border);
+    border-radius: 0.75rem;
+    background: rgba(8, 127, 140, 0.08);
+}
+
+.blogAdmin .blogEditor__blockToolbar button,
+.blogAdmin .blogEditor__actions button,
+.blogAdmin .blogEditor__inlineToolbar button {
+    min-height: 2.35rem;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.88rem;
+}
+
+.blogAdmin .blogEditor__actions [data-blog-action="remove"],
+.blogAdmin .blogEditor__actions [data-blog-inline-action="remove"],
+.blogAdmin .blogEditor__actions [data-blog-list-action="remove"] {
+    background: var(--ls-webadmin-danger);
+}
+
+.blogAdmin button:disabled,
+.blogAdmin input:disabled,
+.blogAdmin textarea:disabled,
+.blogAdmin select:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+
+.blogAdmin .blogEditor__blockList,
+.blogAdmin .blogEditor__inlineList,
+.blogAdmin .blogEditor__listItems,
+.blogAdmin .blogEditor__revisions > ol {
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+    list-style: none;
+}
+
+.blogAdmin .blogEditor__block,
+.blogAdmin .blogEditor__inlineNode,
+.blogAdmin .blogEditor__listItem,
+.blogAdmin .blogEditor__revision {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid var(--ls-webadmin-border);
+    border-radius: 0.8rem;
+    background: var(--ls-webadmin-surface-strong);
+}
+
+.blogAdmin .blogEditor__block {
+    border-inline-start: 0.35rem solid var(--ls-webadmin-accent);
+}
+
+.blogAdmin .blogEditor__block > fieldset,
+.blogAdmin .blogEditor__inlineNode > fieldset,
+.blogAdmin .blogEditor__listItem > fieldset {
+    min-width: 0;
+}
+
+.blogAdmin .blogEditor__inlineEditor,
+.blogAdmin .blogEditor__listEditor {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.blogAdmin .blogEditor__marks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.blogAdmin .blogEditor__marks label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.blogAdmin .blogEditor__marks input {
+    width: 1.25rem;
+}
+
+.blogAdmin .blogEditor__revision form {
+    margin-block-start: 0.75rem;
+}
+
+.blogAdmin .blogEditor__save {
+    margin-block-start: 1rem;
+}
+
+.blogAdmin .blogEditor__save [data-blog-editor-status]:empty {
+    display: none;
+}
+
+.blogAdmin .blogEditor__save [data-blog-editor-status] {
+    flex: 1 1 20rem;
+}
+
+@media (min-width: 48rem) {
+    .blogAdmin .blogEditor__navigation ul {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .blogAdmin .blogEditor__metadataGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .blogAdmin .blogEditor__metadataWide {
+        grid-column: 1 / -1;
+    }
+
+    .blogAdmin .blogEditor__block {
+        padding: 1.25rem;
+    }
+}
+
+@media (min-width: 64rem) {
+    .blogAdmin .blogEditor__blockList {
+        gap: 1.25rem;
+    }
+
+    .blogAdmin .blogEditor__inlineList {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .blogAdmin .blogEditor *,
+    .blogAdmin .blogEditor *::before,
+    .blogAdmin .blogEditor *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}

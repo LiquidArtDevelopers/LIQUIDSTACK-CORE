@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Core\Blog\Persistence;
 
 use App\Core\Blog\BlogDraft;
-use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogPostSummary;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogSitemapEntry;
+use App\Core\Blog\BlogTransactionalExceptionInterface;
+use App\Core\Blog\PublishedPostCard;
 use App\Core\Modules\Migrations\MigrationScope;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -83,7 +84,7 @@ final class PdoBlogRepository implements BlogRepositoryInterface
         try {
             return $this->transactionOnce($operation);
         } catch (
-            BlogException|BlogPersistenceConflict|BlogPersistenceException $exception
+            BlogTransactionalExceptionInterface|BlogPersistenceConflict|BlogPersistenceException $exception
         ) {
             throw $exception;
         } catch (Throwable) {
@@ -404,6 +405,54 @@ final class PdoBlogRepository implements BlogRepositoryInterface
         return $row === null ? null : $this->variantFromRow($row);
     }
 
+    public function listPublishedCards(
+        string $locale,
+        int $limit,
+        int $offset
+    ): array {
+        $statement = $this->prepare(
+            'SELECT locale, slug, h1, excerpt, published_at, updated_at FROM '
+            . $this->localizations . ' WHERE locale = :locale '
+            . 'AND status = :status AND slug IS NOT NULL '
+            . 'AND excerpt IS NOT NULL AND published_at IS NOT NULL '
+            . 'ORDER BY published_at DESC, public_id ASC '
+            . 'LIMIT :list_limit OFFSET :list_offset'
+        );
+        try {
+            if (
+                !$statement->bindValue(':locale', $locale, PDO::PARAM_STR)
+                || !$statement->bindValue(
+                    ':status',
+                    BlogPostVariant::PUBLISHED,
+                    PDO::PARAM_STR
+                )
+                || !$statement->bindValue(
+                    ':list_limit',
+                    $limit,
+                    PDO::PARAM_INT
+                )
+                || !$statement->bindValue(
+                    ':list_offset',
+                    $offset,
+                    PDO::PARAM_INT
+                )
+                || !$statement->execute()
+            ) {
+                throw new BlogPersistenceException();
+            }
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+
+        return array_map(
+            fn (array $row): PublishedPostCard =>
+                $this->publishedCardFromRow($row),
+            $this->rows($statement->fetchAll(PDO::FETCH_ASSOC))
+        );
+    }
+
     public function sitemapEntries(int $limit): array
     {
         if (
@@ -528,6 +577,22 @@ final class PdoBlogRepository implements BlogRepositoryInterface
             return new BlogSitemapEntry(
                 $this->requiredString($row, 'locale'),
                 $this->requiredString($row, 'slug'),
+                $this->timestamp($row['published_at'] ?? null),
+                $this->timestamp($row['updated_at'] ?? null)
+            );
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+    }
+
+    private function publishedCardFromRow(array $row): PublishedPostCard
+    {
+        try {
+            return new PublishedPostCard(
+                $this->requiredString($row, 'locale'),
+                $this->requiredString($row, 'slug'),
+                $this->requiredString($row, 'h1'),
+                $this->requiredString($row, 'excerpt'),
                 $this->timestamp($row['published_at'] ?? null),
                 $this->timestamp($row['updated_at'] ?? null)
             );

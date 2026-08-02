@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Core\Modules\Blog;
 
-use App\Core\Modules\Migrations\AppliedMigration;
-use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationFeatureGate;
 use App\Core\Modules\Migrations\MigrationDatabaseConnectionContract;
 use App\Core\Modules\Migrations\MigrationDatabaseDriver;
-use App\Core\Modules\Migrations\MigrationDefinition;
 use App\Core\Modules\Migrations\MigrationRegistry;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
@@ -18,16 +16,21 @@ use Throwable;
 /** Bounded fail-closed readiness gate for Blog HTTP requests. */
 final class BlogHttpSchemaGate
 {
-    private const MODULE = 'blog';
+    private readonly MigrationFeatureGate $migrationGate;
 
     public function __construct(
-        private readonly MigrationRegistry $migrationRegistry =
-            new MigrationRegistry(),
-        private readonly MigrationDatabaseConnectionContract $connectionContract =
+        MigrationRegistry $migrationRegistry = new MigrationRegistry(),
+        MigrationDatabaseConnectionContract $connectionContract =
             new MigrationDatabaseConnectionContract(),
         private readonly BlogCapabilitySeedPostcondition $capabilityVerifier =
-            new BlogCapabilitySeedPostcondition()
+            new BlogCapabilitySeedPostcondition(),
+        ?MigrationFeatureGate $migrationGate = null
     ) {
+        $this->migrationGate = $migrationGate
+            ?? new MigrationFeatureGate(
+                $migrationRegistry,
+                $connectionContract
+            );
     }
 
     public function isReady(
@@ -35,43 +38,54 @@ final class BlogHttpSchemaGate
         ModuleRegistry $registry,
         MigrationScopeCollection $scopes
     ): bool {
+        return $this->isAdministrationReady($pdo, $registry, $scopes);
+    }
+
+    public function isPublicReady(
+        PDO $pdo,
+        ModuleRegistry $registry,
+        MigrationScopeCollection $scopes
+    ): bool {
         try {
             $blogScope = $scopes->get('blog');
-            $webAdminScope = $scopes->get('webadmin');
-            if (
-                !$registry->isEnabled(self::MODULE)
-                || $blogScope === null
-                || $webAdminScope === null
-            ) {
+            if ($blogScope === null) {
                 return false;
             }
             $driver = MigrationDatabaseDriver::fromPdo($pdo)->value;
-            if ($this->connectionContract->issueCodes($pdo, $driver) !== []) {
-                return false;
-            }
-            $expected = $this->expectedMigrations(
-                MigrationCatalog::fromRegistry($registry),
+            if (!$this->migrationGate->isReady(
+                $pdo,
+                $registry,
                 $scopes,
-                $driver
-            );
-            if ($expected === []) {
+                BlogMigrationRequirements::publicContent()
+            )) {
                 return false;
             }
-            $applied = $this->appliedMigrations($pdo);
-            if (
-                $applied === null
-                || array_keys($applied) !== array_keys($expected)
-            ) {
+
+            return $this->tablesAreQueryable($pdo, $blogScope, $driver);
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    public function isAdministrationReady(
+        PDO $pdo,
+        ModuleRegistry $registry,
+        MigrationScopeCollection $scopes
+    ): bool {
+        try {
+            $blogScope = $scopes->get('blog');
+            $webAdminScope = $scopes->get('webadmin');
+            if ($blogScope === null || $webAdminScope === null) {
                 return false;
             }
-            foreach ($expected as $id => $entry) {
-                $record = $applied[$id];
-                if (
-                    $record->checksum() !== $entry['migration']->checksum()
-                    || $record->scopeHash() !== $entry['scope_hash']
-                ) {
-                    return false;
-                }
+            $driver = MigrationDatabaseDriver::fromPdo($pdo)->value;
+            if (!$this->migrationGate->isReady(
+                $pdo,
+                $registry,
+                $scopes,
+                BlogMigrationRequirements::administration()
+            )) {
+                return false;
             }
 
             return $this->tablesAreQueryable($pdo, $blogScope, $driver)
@@ -79,60 +93,6 @@ final class BlogHttpSchemaGate
         } catch (Throwable) {
             return false;
         }
-    }
-
-    /**
-     * @return array<string, array{migration: MigrationDefinition, scope_hash: string}>
-     */
-    private function expectedMigrations(
-        MigrationCatalog $catalog,
-        MigrationScopeCollection $scopes,
-        string $driver
-    ): array {
-        $expected = [];
-        foreach ($catalog->entries() as $entry) {
-            if ($entry['module'] !== self::MODULE) {
-                continue;
-            }
-            $migration = $entry['migration'];
-            $scope = $migration->targetScope(self::MODULE, $scopes);
-            if (
-                $scope === null
-                || !$migration->isExecutableFor($driver)
-                || $migration->statementsFor($driver, $scope) === []
-                || isset($expected[$migration->id()])
-            ) {
-                return [];
-            }
-            $expected[$migration->id()] = [
-                'migration' => $migration,
-                'scope_hash' => $scope->hash(),
-            ];
-        }
-        ksort($expected, SORT_STRING);
-
-        return $expected;
-    }
-
-    /** @return null|array<string, AppliedMigration> */
-    private function appliedMigrations(PDO $pdo): ?array
-    {
-        $applied = [];
-        foreach (
-            $this->migrationRegistry->recordedForModule($pdo, self::MODULE)
-            as $record
-        ) {
-            if (
-                $record->moduleId() !== self::MODULE
-                || isset($applied[$record->migrationId()])
-            ) {
-                return null;
-            }
-            $applied[$record->migrationId()] = $record;
-        }
-        ksort($applied, SORT_STRING);
-
-        return $applied;
     }
 
     private function tablesAreQueryable(

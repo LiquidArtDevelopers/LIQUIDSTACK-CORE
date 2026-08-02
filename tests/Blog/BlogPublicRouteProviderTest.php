@@ -75,6 +75,7 @@ PHP
             '/noticias',
             '/en/news',
             '/news-sitemap.xml',
+            '/_liquidstack/blog-media',
         ], BlogPublicRouteProvider::publicRoutePrefixes($context));
         self::assertSame(
             ['/news-sitemap.xml'],
@@ -103,6 +104,23 @@ PHP
             ])));
         }
         self::assertSame(0, $factory->calls);
+
+        foreach ([
+            '/_liquidstack/blog-media',
+            '/_liquidstack/blog-media/not-a-uuid/480.avif',
+            '/_liquidstack/blog-media/11111111-1111-4111-8111-111111111111/0.avif',
+            '/_liquidstack/blog-media/11111111-1111-4111-8111-111111111111/480.jpg',
+        ] as $path) {
+            $response = $routes->dispatch(Request::fromServer([
+                'REQUEST_METHOD' => 'GET',
+                'REQUEST_URI' => $path,
+                'HTTPS' => 'on',
+            ]));
+            self::assertNotNull($response);
+            self::assertSame(404, $response->status());
+            self::assertSame('no-store', $response->headers()['Cache-Control']);
+        }
+        self::assertSame(0, $factory->calls);
     }
 
     public function testInvalidConfigurationPublishesNoPrefixes(): void
@@ -118,5 +136,59 @@ PHP
         self::assertSame([], BlogPublicRouteProvider::preBootstrapPublicRoutePaths(
             new ModuleRuntimeContext($this->root)
         ));
+    }
+
+    public function testInvalidOrTraversingMediaRequestsNeverOpenRuntime(): void
+    {
+        $context = new ModuleRuntimeContext($this->root);
+        $factory = new CountingBlogPublicRuntimeFactoryFixture();
+        $routes = new ModulePublicRouteCollection(
+            'blog',
+            BlogPublicRouteProvider::publicRoutePrefixes($context)
+        );
+        (new BlogPublicRouteProvider($factory))->registerPublicRoutes(
+            $routes,
+            $context
+        );
+
+        foreach ([
+            '/_liquidstack/blog-media/../secret/480.avif',
+            '/_liquidstack/blog-media/%2e%2e/secret/480.avif',
+            '/_liquidstack/blog-media/11111111-1111-4111-8111-111111111111%2f480.avif',
+        ] as $path) {
+            self::assertNull($routes->dispatch(Request::fromServer([
+                'REQUEST_METHOD' => 'GET',
+                'REQUEST_URI' => $path,
+                'HTTPS' => 'on',
+            ])));
+        }
+
+        $get = $routes->dispatch(Request::fromServer([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/_liquidstack/blog-media/bad/480.avif',
+            'HTTPS' => 'on',
+        ]));
+        $head = $routes->dispatch(Request::fromServer([
+            'REQUEST_METHOD' => 'HEAD',
+            'REQUEST_URI' => '/_liquidstack/blog-media/bad/480.avif',
+            'HTTPS' => 'on',
+        ]));
+        self::assertNotNull($get);
+        self::assertNotNull($head);
+        self::assertSame(404, $get->status());
+        self::assertSame($get->status(), $head->status());
+        self::assertSame($get->headers(), $head->headers());
+        self::assertSame('Not found', $get->body());
+        self::assertSame('', $head->body());
+
+        $write = $routes->dispatch(Request::fromServer([
+            'REQUEST_METHOD' => 'POST',
+            'REQUEST_URI' => '/_liquidstack/blog-media/bad/480.avif',
+            'HTTPS' => 'on',
+        ]));
+        self::assertNotNull($write);
+        self::assertSame(405, $write->status());
+        self::assertSame('GET, HEAD', $write->headers()['Allow']);
+        self::assertSame(0, $factory->calls);
     }
 }

@@ -169,8 +169,10 @@ hash. Una migración destructiva requiere además
 mensajes PDO.
 
 El orden de una instalación nueva es: activar el selector, actualizar CORE,
-configurar entorno, ejecutar `doctor`, revisar migraciones y, tras autorización
-explícita, aplicarlas; después se ejecuta el bootstrap y se despacha su outbox.
+configurar entorno, ejecutar `doctor`, revisar `migrate --plan` y
+`migrate --dry-run`, crear y comprobar un backup recuperable de DB y storage y,
+tras autorización explícita, aplicar las migraciones; después se ejecuta el
+bootstrap y se despacha su outbox.
 El bootstrap solo encola las
 dos invitaciones iniciales. `--resend-invites` es una recuperación confirmada
 para invitaciones bootstrap ya enviadas o fallidas de forma terminal; no
@@ -331,17 +333,47 @@ cada mutación. El contrato de rutas, preservación de permisos, lifecycle,
 outbox y auditoría se documenta en
 [gestión de editores de WebAdmin](docs/webadmin-editor-management.md).
 
-### Liquid Blog 0001
+### Biblioteca de medios WebAdmin
 
-El selector `liquidstack/blog` habilita un primer flujo editorial completo y
-activa WebAdmin como dependencia. Cada artículo conserva un UUID estable y
-variantes independientes por idioma con slug, H1, title SEO, description,
-extracto, cuerpo de texto plano, estado y versión de concurrencia. La UI vive
-bajo el prefijo WebAdmin efectivo (`/admin/blog` por defecto), no permite
-borrado y exige retirar una variante publicada antes de volver a editarla.
-Cada variante dispone además de una vista previa privada de su última versión
-guardada, protegida por `blog.articles.view`, sin canonical ni exposición en
-las rutas públicas o el sitemap.
+`0002_webadmin_media_library` añade `/admin/media` sin cambiar el gate del
+panel base. Acepta una imagen JPEG, PNG o WebP validada por firma y decoder,
+genera variantes responsive AVIF sin metadatos y las conserva en storage
+privado. `webadmin.media.view` y `webadmin.media.upload` son capacidades
+separadas; ALT, title y caption pertenecen a cada uso editorial, no al asset.
+
+Producción debe declarar una ruta absoluta y persistente mediante
+`LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT`. El único default interno,
+`storage/liquidstack/webadmin/media`, requiere `DEV_MODE=1` y `RAIZ` loopback.
+DB y storage se respaldan como una unidad. Composer distribuye el código, la
+migración y los assets module-managed, pero nunca crea tablas o directorios,
+procesa imágenes, cambia `.env` ni mueve medios. El contrato completo está en
+[biblioteca de medios WebAdmin](docs/mejoras-pendientes/webadmin-media-library.md).
+
+### Liquid Blog: categorías y editor estructurado
+
+El selector `liquidstack/blog` habilita el flujo editorial y activa WebAdmin
+como dependencia. Cada artículo conserva un UUID estable y variantes
+independientes por idioma con slug, H1, title SEO, description, extracto,
+estado y versión de concurrencia. `0003_blog_categories` y
+`0004_blog_category_capabilities` añaden categorías localizadas, asignaciones y
+capacidades separadas. La UI vive bajo el prefijo WebAdmin efectivo
+(`/admin/blog` por defecto), no permite borrado y exige retirar una variante
+publicada antes de volver a editarla.
+
+`0005_blog_structured_content` incorpora `/admin/blog/editor`, documento actual,
+referencias de medios y revisiones inmutables. El JSON canónico v1 admite ocho
+bloques controlados: párrafo, heading H2/H3, lista, callout, enlace, imagen,
+YouTube y CTA. El H1 permanece separado y `body_text` se deriva en servidor.
+Abrir un artículo legacy solo proyecta su texto en memoria; se adopta al guardar.
+Cada restauración crea una revisión nueva y todas las escrituras conservan el
+lock optimista.
+
+El editor exige `webadmin.media.view` junto a `blog.articles.view` o
+`blog.articles.edit`, según la acción. Los uploads siguen perteneciendo a
+`/admin/media` y requieren `webadmin.media.upload`. Las variantes AVIF se sirven
+públicamente desde `/_liquidstack/blog-media/{uuid}/{width}.avif` solo si el
+asset está referenciado por el documento actual de un artículo publicado. Los
+artículos aún no adoptados conservan el renderer legacy de `body_text`.
 
 La configuración opcional sigue siendo propiedad del proyecto en
 `App/config/modules/blog.php`:
@@ -384,23 +416,31 @@ Blog usa `RAIZ` como origen canónico: HTTPS en producción y HTTP solo cuando
 `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` se conserva como alias compatible, pero
 si difiere en producción se mantiene temporalmente para no cambiar URLs durante
 el update y `doctor` avisa hasta que se alinee con `RAIZ`. La `RAIZ` loopback
-prevalece en desarrollo. Blog no necesita que SMTP esté configurado. Después de activar el
-selector se
-deben revisar y aplicar las migraciones explícitas y volver a ejecutar el
+prevalece en desarrollo. Blog no necesita que SMTP esté configurado. Después
+de activar el selector se deben revisar y aplicar las migraciones explícitas y
+volver a ejecutar el
 bootstrap idempotente de WebAdmin para garantizar las capacidades protegidas:
 
 ```bash
 composer liquidstack:doctor
 composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
+# Crear y verificar aquí un backup recuperable de DB y storage.
 composer liquidstack:migrate --apply
 composer liquidstack:webadmin:bootstrap
 composer liquidstack:doctor
 ```
 
 Composer no ejecuta esos pasos ni toca la DB durante un update. El contrato de
-rutas, estados, permisos, auditoría y exclusiones del MVP está en
+rutas, categorías, editor, revisiones, medios, estados y permisos está en
 [Liquid Blog](docs/liquid-blog.md).
+
+`blog-admin.css` y `blog-editor.js` viven en
+`modules/blog/published/assets` y se sincronizan hacia
+`public/assets/modules/blog` mediante el manifiesto del módulo. No forman parte
+del bundle general ni son configuración project-owned. `doctor` informa su
+estado en `blog.assets`; si falta un destino gestionado o es inválido, incluye
+el blocker `assets.missing_or_invalid`.
 
 La frontera HTTP exige HTTPS fuera del laboratorio. `npm run lad` puede usar
 HTTP únicamente con `DEV_MODE=1`, una `RAIZ` loopback, coincidencia exacta de
@@ -428,9 +468,10 @@ o caché local.
 idempotencia, bootstrap, outbox/ACK, activación, login, reset, gestión de
 editores, una carrera de identidad única y probes concurrentes de orden de
 locks InnoDB. Con Blog activo cubre además sus dos scopes, CRUD localizado,
-publicación/retirada, resolución pública, sitemap, stale writes con dos PDO y
-rollback atómico de auditoría. No contacta SMTP y limpia solo los objetos
-conocidos. Su contrato y variables `LIQUIDSTACK_TEST_MYSQL_*` se documentan en
+categorías, documentos y revisiones, publicación/retirada, medios, resolución
+pública, sitemap, stale writes con dos PDO y rollback atómico de auditoría. No
+contacta SMTP y limpia solo los objetos conocidos. Su contrato y variables
+`LIQUIDSTACK_TEST_MYSQL_*` se documentan en
 [integración MySQL/MariaDB de WebAdmin](docs/webadmin-mysql-integration-test.md).
 
 La selección lee solo `require` del `composer.json` raíz. Retirar un selector
@@ -904,11 +945,14 @@ Despues de publicar:
 2. Ejecutar instalacion frontend (`npm install`, `pnpm install` o
    `yarn install`) si se anadieron dependencias.
 
-## Mejoras pendientes
+## Contratos y mejoras pendientes
 
 - [Biblioteca de medios de WebAdmin](docs/mejoras-pendientes/webadmin-media-library.md):
-  siguiente corte versionado para uploads privados y AVIF responsive, con una
-  migración que no puede bloquear el núcleo de `/admin` mientras esté pendiente.
+  contrato ya implementado de uploads privados, AVIF responsive y consumo
+  Blog, junto a los pendientes reales de ciclo de vida y nuevos formatos.
+- [Hoja de ruta de WebAdmin y Liquid Blog](docs/liquid-blog-roadmap.md):
+  estado de WebAdmin, Media, categorías y editor estructurado, y siguientes
+  cortes de SEO, IA, indexación y futuro maquetador.
 - [Promoción de la DB modular entre local y producción](docs/mejoras-pendientes/promocion-db-modulos-local-produccion.md):
   AIWA trabaja actualmente sobre XAMPP local; queda definido el contrato para
   proyectos que usen DB local o producción y el protocolo para cambiar de

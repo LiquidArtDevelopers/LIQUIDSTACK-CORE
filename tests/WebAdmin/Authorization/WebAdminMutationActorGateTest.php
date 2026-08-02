@@ -47,10 +47,14 @@ final class WebAdminMutationActorGateTest extends TestCase
         );
         $this->pdo->exec('PRAGMA foreign_keys = ON');
 
-        $migration = iterator_to_array(
-            WebAdminMigrationProvider::migrations(),
-            false
-        )[0];
+        $migration = null;
+        foreach (WebAdminMigrationProvider::migrations() as $candidate) {
+            if ($candidate->id() === '0001_webadmin_identity_and_access') {
+                $migration = $candidate;
+                break;
+            }
+        }
+        self::assertNotNull($migration);
         $scope = MigrationScope::forTablePrefix(
             'webadmin',
             'ls_webadmin_'
@@ -147,6 +151,36 @@ final class WebAdminMutationActorGateTest extends TestCase
 
         self::assertInstanceOf(WebAdminAuthorizedActor::class, $actor);
         self::assertTrue($this->pdo->inTransaction());
+    }
+
+    public function testAuthorizeAllRequiresEveryDistinctCapabilityAtomically(): void
+    {
+        $this->grantRoleCapability();
+        $this->begin();
+
+        self::assertInstanceOf(
+            WebAdminAuthorizedActor::class,
+            $this->gate()->authorizeAll(
+                $this->sessionToken,
+                $this->csrfToken,
+                ['webadmin.access', 'webadmin.profile.manage_self']
+            )
+        );
+        self::assertTrue($this->pdo->rollBack());
+
+        $before = $this->sessionTimes();
+        $this->begin();
+        self::assertNull($this->gate()->authorizeAll(
+            $this->sessionToken,
+            $this->csrfToken,
+            ['webadmin.access', 'webadmin.audit.view']
+        ));
+        self::assertSame($before, $this->sessionTimes());
+        self::assertNull($this->gate()->authorizeAll(
+            $this->sessionToken,
+            $this->csrfToken,
+            ['webadmin.access', 'webadmin.access']
+        ));
     }
 
     public function testMissingCapabilityDeniesWithoutSlidingSession(): void

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Core\Routing\ShowroomCategoryRoute;
+use App\Core\Support\Paths;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -10,7 +11,7 @@ require_once dirname(__DIR__) . '/Support/ShowroomCatalogFixture.php';
 
 final class ShowroomCategoryRouteTest extends TestCase
 {
-    private const CATEGORIES = [
+    private const BASE_CATEGORIES = [
         'heroes',
         'particles',
         'gsap-specials',
@@ -19,6 +20,11 @@ final class ShowroomCategoryRouteTest extends TestCase
         'media',
         'forms-interactive',
         'modules-sections',
+    ];
+
+    private const CATEGORIES = [
+        ...self::BASE_CATEGORIES,
+        'blog',
     ];
 
     public function testOnlyAllowlistedChildrenOfRegisteredCatalogParentsResolve(): void
@@ -43,7 +49,7 @@ final class ShowroomCategoryRouteTest extends TestCase
             ],
         ];
 
-        foreach (self::CATEGORIES as $category) {
+        foreach (self::BASE_CATEGORIES as $category) {
             $resolved = ShowroomCategoryRoute::resolve(
                 "/es/showroom/{$category}",
                 $routes
@@ -77,7 +83,7 @@ final class ShowroomCategoryRouteTest extends TestCase
         }
     }
 
-    public function testSegmentedCatalogHasEightLiteralPartialsAndNoShellH1(): void
+    public function testSegmentedCatalogHasNineLiteralPartialsAndNoShellH1(): void
     {
         $root = dirname(__DIR__, 2);
         $shell = (string) file_get_contents(
@@ -119,6 +125,169 @@ final class ShowroomCategoryRouteTest extends TestCase
             self::assertFileExists(
                 $root . "/src/scss/showroom/{$category}.scss"
             );
+        }
+    }
+
+    public function testBlogCategoryAndRouteRequireTheDirectBlogSelector(): void
+    {
+        $filesystem = new Filesystem();
+        $fixtureRoot = sys_get_temp_dir()
+            . DIRECTORY_SEPARATOR
+            . 'liquidstack-showroom-blog-'
+            . bin2hex(random_bytes(8));
+        $coreRoot = dirname(__DIR__, 2);
+        $routes = [
+            '/es/showroom' => [
+                'resources' => 'templates',
+                'content' => 'templates',
+                'view' => '../App/views/_showroom.php',
+            ],
+        ];
+
+        try {
+            $filesystem->mkdir($fixtureRoot);
+            $filesystem->dumpFile(
+                $fixtureRoot . '/composer.json',
+                json_encode([
+                    'require' => ['liquidstack/core' => '^1.0'],
+                ], JSON_THROW_ON_ERROR)
+            );
+
+            self::assertNotContains(
+                'blog',
+                ShowroomCategoryRoute::availableCategories(
+                    $fixtureRoot,
+                    $coreRoot
+                )
+            );
+            self::assertNull(ShowroomCategoryRoute::resolve(
+                '/es/showroom/blog',
+                $routes,
+                $fixtureRoot,
+                $coreRoot
+            ));
+
+            $filesystem->dumpFile(
+                $fixtureRoot . '/composer.json',
+                json_encode([
+                    'require' => [
+                        'liquidstack/core' => '^1.0',
+                        'liquidstack/webadmin' => '*',
+                    ],
+                ], JSON_THROW_ON_ERROR)
+            );
+            self::assertNotContains(
+                'blog',
+                ShowroomCategoryRoute::availableCategories(
+                    $fixtureRoot,
+                    $coreRoot
+                )
+            );
+
+            $filesystem->dumpFile(
+                $fixtureRoot . '/composer.json',
+                json_encode([
+                    'require' => [
+                        'liquidstack/core' => '^1.0',
+                        'liquidstack/blog' => '*',
+                    ],
+                ], JSON_THROW_ON_ERROR)
+            );
+            self::assertContains(
+                'blog',
+                ShowroomCategoryRoute::availableCategories(
+                    $fixtureRoot,
+                    $coreRoot
+                )
+            );
+
+            $resolved = ShowroomCategoryRoute::resolve(
+                '/es/showroom/blog',
+                $routes,
+                $fixtureRoot,
+                $coreRoot
+            );
+            self::assertIsArray($resolved);
+            self::assertSame('blog', $resolved['showroom_category']);
+            self::assertSame('/es/showroom', $resolved['showroom_base_path']);
+        } finally {
+            $filesystem->remove($fixtureRoot);
+        }
+    }
+
+    public function testBlogCategoryIsHiddenFromTheRenderedMenuUntilEnabled(): void
+    {
+        $filesystem = new Filesystem();
+        $fixtureRoot = sys_get_temp_dir()
+            . DIRECTORY_SEPARATOR
+            . 'liquidstack-showroom-blog-menu-'
+            . bin2hex(random_bytes(8));
+        $source = dirname(__DIR__, 2) . '/stubs/App/views/_showroom.php';
+        $previousProjectRoot = Paths::projectRoot();
+        $bufferLevel = ob_get_level();
+
+        try {
+            $filesystem->mkdir([
+                $fixtureRoot . '/App/views',
+                $fixtureRoot . '/App/includes',
+            ]);
+            $filesystem->copy(
+                $source,
+                $fixtureRoot . '/App/views/_showroom.php'
+            );
+            foreach ([
+                '_globalHead.php',
+                '_globalBody.php',
+                '_nav.php',
+                '_footer.php',
+            ] as $include) {
+                $filesystem->dumpFile(
+                    $fixtureRoot . "/App/includes/{$include}",
+                    ''
+                );
+            }
+
+            $render = static function () use ($fixtureRoot): string {
+                $lang = 'es';
+                $url = '/es/showroom';
+                $rutaConfig = [];
+                ob_start();
+                require $fixtureRoot . '/App/views/_showroom.php';
+
+                return (string) ob_get_clean();
+            };
+
+            $filesystem->dumpFile(
+                $fixtureRoot . '/composer.json',
+                json_encode([
+                    'require' => ['liquidstack/core' => '^1.0'],
+                ], JSON_THROW_ON_ERROR)
+            );
+            Paths::setProjectRoot($fixtureRoot);
+            self::assertStringNotContainsString(
+                'data-showroom-link="blog"',
+                $render()
+            );
+
+            $filesystem->dumpFile(
+                $fixtureRoot . '/composer.json',
+                json_encode([
+                    'require' => [
+                        'liquidstack/core' => '^1.0',
+                        'liquidstack/blog' => '*',
+                    ],
+                ], JSON_THROW_ON_ERROR)
+            );
+            self::assertStringContainsString(
+                'data-showroom-link="blog"',
+                $render()
+            );
+        } finally {
+            while (ob_get_level() > $bufferLevel) {
+                ob_end_clean();
+            }
+            Paths::setProjectRoot($previousProjectRoot);
+            $filesystem->remove($fixtureRoot);
         }
     }
 

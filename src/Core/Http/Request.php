@@ -7,6 +7,8 @@ namespace App\Core\Http;
 final class Request
 {
     public const MAX_BODY_BYTES = 1_048_576;
+    public const MAX_UPLOAD_FILE_BYTES = 12_582_912;
+    public const MAX_MULTIPART_BODY_BYTES = 13_631_488;
     public const MAX_INPUT_ITEMS = 256;
     public const MAX_INPUT_DEPTH = 4;
     public const MAX_INPUT_VALUE_BYTES = 8_192;
@@ -22,6 +24,7 @@ final class Request
      * @param array<string|int, mixed> $form
      * @param array<string, string> $cookies
      * @param array<string, string> $headers
+     * @param array<string, UploadedFile> $uploadedFiles
      */
     private function __construct(
         private readonly string $method,
@@ -38,6 +41,9 @@ final class Request
         private readonly bool $headersValid,
         private readonly string $body,
         private readonly bool $bodyValid,
+        private readonly array $uploadedFiles,
+        private readonly bool $uploadedFilesValid,
+        private readonly bool $multipartFormData,
         private readonly bool $secureTransport,
         private readonly ?string $clientIp
     ) {
@@ -62,12 +68,17 @@ final class Request
     {
         $body = '';
         $bodyReadable = true;
+        $isMultipart = self::rawContentTypeIsMultipart(
+            $_SERVER['CONTENT_TYPE'] ?? null
+        );
         $declaredLength = $_SERVER['CONTENT_LENGTH'] ?? null;
         $declaredTooLarge = is_scalar($declaredLength)
             && preg_match('/\A[0-9]+\z/', (string) $declaredLength) === 1
-            && (int) $declaredLength > self::MAX_BODY_BYTES;
+            && (int) $declaredLength > ($isMultipart
+                ? self::MAX_MULTIPART_BODY_BYTES
+                : self::MAX_BODY_BYTES);
 
-        if (!$declaredTooLarge) {
+        if (!$isMultipart && !$declaredTooLarge) {
             $read = @file_get_contents(
                 'php://input',
                 false,
@@ -89,7 +100,9 @@ final class Request
             $_COOKIE,
             [],
             $body,
-            $bodyReadable
+            $bodyReadable,
+            $_FILES,
+            true
         );
     }
 
@@ -104,6 +117,7 @@ final class Request
      * @param array<string|int, mixed> $form
      * @param array<string, mixed> $cookies
      * @param array<string, mixed> $headers
+     * @param array<string, mixed> $files one flat PHP-style $_FILES map
      */
     public static function fromInput(
         array $server,
@@ -111,7 +125,8 @@ final class Request
         array $form = [],
         array $cookies = [],
         array $headers = [],
-        string $body = ''
+        string $body = '',
+        array $files = []
     ): self {
         return self::build(
             $server,
@@ -120,7 +135,9 @@ final class Request
             $cookies,
             $headers,
             $body,
-            true
+            true,
+            $files,
+            false
         );
     }
 
@@ -169,6 +186,27 @@ final class Request
         return $this->bodyValid;
     }
 
+    public function hasValidUploadedFiles(): bool
+    {
+        return $this->uploadedFilesValid;
+    }
+
+    /** @return array<string, UploadedFile> */
+    public function uploadedFiles(): array
+    {
+        return $this->uploadedFiles;
+    }
+
+    public function uploadedFile(string $field): ?UploadedFile
+    {
+        return $this->uploadedFiles[$field] ?? null;
+    }
+
+    public function isMultipartFormData(): bool
+    {
+        return $this->multipartFormData;
+    }
+
     public function isValid(): bool
     {
         return $this->methodValid
@@ -177,7 +215,8 @@ final class Request
             && $this->formValid
             && $this->cookiesValid
             && $this->headersValid
-            && $this->bodyValid;
+            && $this->bodyValid
+            && $this->uploadedFilesValid;
     }
 
     /** @return array<string|int, mixed> */
@@ -259,6 +298,7 @@ final class Request
      * @param array<string|int, mixed> $form
      * @param array<string, mixed> $cookies
      * @param array<string, mixed> $explicitHeaders
+     * @param array<string, mixed> $files
      */
     private static function build(
         array $server,
@@ -267,7 +307,9 @@ final class Request
         array $cookies,
         array $explicitHeaders,
         string $body,
-        bool $bodyReadable
+        bool $bodyReadable,
+        array $files,
+        bool $requireHttpUpload
     ): self {
         [$method, $methodValid] = self::normalizeMethod($server);
         [$path, $pathValid] = self::normalizePath($server);
@@ -293,6 +335,9 @@ final class Request
         if (!$headersValid) {
             $headers = [];
         }
+        $isMultipart = self::contentTypeIsMultipart(
+            $headers['content-type'] ?? null
+        );
 
         $rawCookieHeader = $headers['cookie']
             ?? (is_string($server['HTTP_COOKIE'] ?? null)
@@ -310,12 +355,20 @@ final class Request
             $cookies = [];
         }
 
+        $bodyLimit = $isMultipart
+            ? self::MAX_MULTIPART_BODY_BYTES
+            : self::MAX_BODY_BYTES;
         $bodyValid = $bodyReadable
-            && strlen($body) <= self::MAX_BODY_BYTES
-            && self::declaredBodyLengthIsValid($server);
+            && strlen($body) <= $bodyLimit
+            && self::declaredBodyLengthIsValid($server, $bodyLimit);
         if (!$bodyValid) {
             $body = '';
         }
+        [$uploadedFiles, $uploadedFilesValid] = self::normalizeUploadedFiles(
+            $files,
+            $isMultipart,
+            $requireHttpUpload
+        );
 
         return new self(
             $method,
@@ -332,6 +385,9 @@ final class Request
             $headersValid,
             $body,
             $bodyValid,
+            $uploadedFiles,
+            $uploadedFilesValid,
+            $isMultipart,
             self::secureTransportFromServer($server),
             self::clientIpFromServer($server)
         );
@@ -621,7 +677,10 @@ final class Request
     }
 
     /** @param array<string, mixed> $server */
-    private static function declaredBodyLengthIsValid(array $server): bool
+    private static function declaredBodyLengthIsValid(
+        array $server,
+        int $maximum
+    ): bool
     {
         if (!array_key_exists('CONTENT_LENGTH', $server)) {
             return true;
@@ -631,7 +690,66 @@ final class Request
 
         return is_scalar($value)
             && preg_match('/\A[0-9]+\z/', (string) $value) === 1
-            && (int) $value <= self::MAX_BODY_BYTES;
+            && (int) $value <= $maximum;
+    }
+
+    /**
+     * @param array<string, mixed> $files
+     * @return array{0: array<string, UploadedFile>, 1: bool}
+     */
+    private static function normalizeUploadedFiles(
+        array $files,
+        bool $isMultipart,
+        bool $requireHttpUpload
+    ): array {
+        if (!$isMultipart) {
+            return [$files === [] ? [] : [], $files === []];
+        }
+        if (count($files) > 1) {
+            return [[], false];
+        }
+
+        $normalized = [];
+        try {
+            foreach ($files as $field => $entry) {
+                if (
+                    !is_string($field)
+                    || preg_match('/\A[a-z][a-z0-9_]{0,63}\z/', $field) !== 1
+                    || !is_array($entry)
+                ) {
+                    return [[], false];
+                }
+                $file = $requireHttpUpload
+                    ? UploadedFile::fromGlobal($entry)
+                    : UploadedFile::fromTestInput($entry);
+                if ($file instanceof UploadedFile) {
+                    $normalized[$field] = $file;
+                }
+            }
+        } catch (\Throwable) {
+            return [[], false];
+        }
+
+        return [$normalized, true];
+    }
+
+    private static function rawContentTypeIsMultipart(mixed $value): bool
+    {
+        return is_string($value) && self::contentTypeIsMultipart($value);
+    }
+
+    private static function contentTypeIsMultipart(?string $value): bool
+    {
+        if ($value === null) {
+            return false;
+        }
+
+        return preg_match(
+            '/\Amultipart\/form-data\s*;\s*boundary=(?:'
+                . '"[A-Za-z0-9\'()+_,.\/:=? -]{1,70}"'
+                . '|[A-Za-z0-9\'()+_,.\/:=?-]{1,70})\s*\z/i',
+            trim($value)
+        ) === 1;
     }
 
     /** @param array<string, mixed> $server */

@@ -67,13 +67,43 @@ final class WebAdminMutationActorGate
         #[\SensitiveParameter] string $csrfToken,
         string $capability
     ): ?WebAdminAuthorizedActor {
+        return $this->authorizeAll(
+            $sessionToken,
+            $csrfToken,
+            [$capability]
+        );
+    }
+
+    /**
+     * Revalidates one actor and every requested capability under the same
+     * identity/session locks and caller-owned transaction.
+     *
+     * @param list<string> $capabilities
+     */
+    public function authorizeAll(
+        #[\SensitiveParameter] string $sessionToken,
+        #[\SensitiveParameter] string $csrfToken,
+        array $capabilities
+    ): ?WebAdminAuthorizedActor {
         $this->assertActiveTransaction();
         if (
             !$this->tokenGenerator->hasValidFormat($sessionToken)
             || !$this->tokenGenerator->hasValidFormat($csrfToken)
-            || preg_match(self::CAPABILITY_PATTERN, $capability) !== 1
+            || $capabilities === []
+            || !array_is_list($capabilities)
         ) {
             return null;
+        }
+        $required = [];
+        foreach ($capabilities as $capability) {
+            if (
+                !is_string($capability)
+                || preg_match(self::CAPABILITY_PATTERN, $capability) !== 1
+                || isset($required[$capability])
+            ) {
+                return null;
+            }
+            $required[$capability] = true;
         }
 
         try {
@@ -123,8 +153,10 @@ final class WebAdminMutationActorGate
             if ($absolute === null) {
                 return null;
             }
-            if (!$this->hasEffectiveCapability($userId, $capability)) {
-                return null;
+            foreach (array_keys($required) as $capability) {
+                if (!$this->hasEffectiveCapability($userId, $capability)) {
+                    return null;
+                }
             }
 
             $nextIdle = $now->modify(

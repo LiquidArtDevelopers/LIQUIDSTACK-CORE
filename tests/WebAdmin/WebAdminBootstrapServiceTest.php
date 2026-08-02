@@ -115,8 +115,8 @@ final class WebAdminBootstrapServiceTest extends TestCase
         )->fetchAll(PDO::FETCH_ASSOC));
 
         self::assertSame([
-            'client@example.test' => 7,
-            'system@example.test' => 8,
+            'client@example.test' => 9,
+            'system@example.test' => 10,
         ], array_map('intval', $pdo->query(
             'SELECT u.email_canonical, COUNT(rc.capability_id) AS total '
             . 'FROM ls_webadmin_users u '
@@ -190,8 +190,8 @@ final class WebAdminBootstrapServiceTest extends TestCase
 
         self::assertSame(BootstrapResult::COMPLETED, $result->status());
         self::assertSame([
-            'site@example.test' => 10,
-            'system@example.test' => 11,
+            'site@example.test' => 12,
+            'system@example.test' => 13,
         ], array_map('intval', $pdo->query(
             'SELECT u.email_canonical, COUNT(rc.capability_id) AS total '
             . 'FROM ls_webadmin_users u '
@@ -1278,14 +1278,20 @@ final class WebAdminBootstrapServiceTest extends TestCase
 
     private function applySchema(PDO $pdo, string $prefix = 'ls_webadmin_'): void
     {
-        $migrations = iterator_to_array(
-            WebAdminMigrationProvider::migrations(),
-            false
-        );
-        self::assertCount(1, $migrations);
+        $migrations = [];
+        foreach (WebAdminMigrationProvider::migrations() as $migration) {
+            $migrations[$migration->id()] = $migration;
+        }
         $scope = MigrationScope::forTablePrefix('webadmin', $prefix);
-        foreach ($migrations[0]->statementsFor('sqlite', $scope) as $sql) {
-            $pdo->exec($sql);
+        foreach ([
+            '0001_webadmin_identity_and_access',
+            '0002_webadmin_media_library',
+        ] as $migrationId) {
+            self::assertArrayHasKey($migrationId, $migrations);
+            $migration = $migrations[$migrationId];
+            foreach ($migration->statementsFor('sqlite', $scope) as $sql) {
+                $pdo->exec($sql);
+            }
         }
     }
 

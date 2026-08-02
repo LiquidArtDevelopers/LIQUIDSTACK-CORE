@@ -158,6 +158,41 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
         self::assertSame('https://example.test', $runtime->origin()->value());
         self::assertSame([], $runtime->service()->listPosts());
         self::assertSame('liquidstack', $receivedConnection);
+
+        $pdo->exec(
+            'CREATE TRIGGER ls_blog_corrupt_structured_gate '
+            . 'AFTER INSERT ON ls_blog_content_docs BEGIN SELECT 1; END'
+        );
+        try {
+            $factory->create(new ModuleRuntimeContext($this->root, [
+                BlogPublicOrigin::ENV => 'https://example.test',
+            ]));
+            self::fail('An applied but invalid 0005 schema must fail closed.');
+        } catch (BlogPublicHttpRuntimeException $exception) {
+            self::assertSame(
+                'blog.structured_schema_not_ready',
+                $exception->issueCode()
+            );
+        }
+
+        $pdo->exec('DROP TRIGGER ls_blog_corrupt_structured_gate');
+        $pdo->exec(
+            "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
+            . "AND migration_id = '0005_blog_structured_content'"
+        );
+        foreach ([
+            'ls_blog_revision_media',
+            'ls_blog_content_media',
+            'ls_blog_content_revisions',
+            'ls_blog_content_docs',
+        ] as $table) {
+            $pdo->exec('DROP TABLE ' . $table);
+        }
+        $legacyRuntime = $factory->create(new ModuleRuntimeContext(
+            $this->root,
+            [BlogPublicOrigin::ENV => 'https://example.test']
+        ));
+        self::assertSame([], $legacyRuntime->service()->listPosts());
     }
 
     public function testDatabaseConnectionMismatchFailsBeforeResolverAndConnector(): void

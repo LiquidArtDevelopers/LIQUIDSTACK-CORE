@@ -206,6 +206,32 @@ try {
         );
     }
 
+    $publishedAssets = [
+        'modules/webadmin/published/assets/webadmin.css'
+            => 'public/assets/modules/webadmin/webadmin.css',
+        'modules/webadmin/published/assets/webadmin.js'
+            => 'public/assets/modules/webadmin/webadmin.js',
+        'modules/blog/published/assets/blog-admin.css'
+            => 'public/assets/modules/blog/blog-admin.css',
+        'modules/blog/published/assets/blog-editor.js'
+            => 'public/assets/modules/blog/blog-editor.js',
+    ];
+    foreach ($publishedAssets as $source => $target) {
+        $sourcePath = $coreRoot . '/' . $source;
+        $targetPath = $temporaryRoot . '/' . $target;
+        if (
+            !is_file($sourcePath)
+            || !is_file($targetPath)
+            || hash_file('sha256', $sourcePath)
+                !== hash_file('sha256', $targetPath)
+        ) {
+            throw new RuntimeException(sprintf(
+                'El asset modular %s no llegó íntegro al consumidor.',
+                $target
+            ));
+        }
+    }
+
     $commandList = json_decode(
         trim($runComposer([
             'list',
@@ -309,23 +335,33 @@ try {
         512,
         JSON_THROW_ON_ERROR
     );
+    $expectedMigrations = [
+        ['module' => 'webadmin', 'id' => '0001_webadmin_identity_and_access'],
+        ['module' => 'webadmin', 'id' => '0002_webadmin_media_library'],
+        ['module' => 'blog', 'id' => '0001_blog_posts'],
+        ['module' => 'blog', 'id' => '0002_blog_capabilities'],
+        ['module' => 'blog', 'id' => '0003_blog_categories'],
+        ['module' => 'blog', 'id' => '0004_blog_category_capabilities'],
+        ['module' => 'blog', 'id' => '0005_blog_structured_content'],
+    ];
+    $plannedMigrations = array_map(
+        static fn (array $entry): array => [
+            'module' => $entry['module'] ?? null,
+            'id' => $entry['id'] ?? null,
+        ],
+        is_array($migrationPlan['migrations']['entries'] ?? null)
+            ? $migrationPlan['migrations']['entries']
+            : []
+    );
     if (
         ($migrationPlan['ok'] ?? false) !== true
         || ($migrationPlan['operation'] ?? null) !== 'migrate-plan'
         || ($migrationPlan['migrations']['read_only'] ?? false) !== true
         || ($migrationPlan['migrations']['database_state'] ?? null)
             !== 'not_evaluated'
-        || ($migrationPlan['migrations']['count'] ?? null) !== 3
-        || ($migrationPlan['migrations']['entries'][0]['module'] ?? null)
-            !== 'webadmin'
-        || ($migrationPlan['migrations']['entries'][1]['module'] ?? null)
-            !== 'blog'
-        || ($migrationPlan['migrations']['entries'][1]['id'] ?? null)
-            !== '0001_blog_posts'
-        || ($migrationPlan['migrations']['entries'][2]['module'] ?? null)
-            !== 'blog'
-        || ($migrationPlan['migrations']['entries'][2]['id'] ?? null)
-            !== '0002_blog_capabilities'
+        || ($migrationPlan['migrations']['count'] ?? null)
+            !== count($expectedMigrations)
+        || $plannedMigrations !== $expectedMigrations
         || str_contains($migrationOutput, $e2eSecurityKey)
     ) {
         throw new RuntimeException(
@@ -386,6 +422,20 @@ try {
         throw new RuntimeException(
             'Retirar Blog no conservó el contrato de CORE.'
         );
+    }
+    foreach ($publishedAssets as $source => $target) {
+        $sourcePath = $coreRoot . '/' . $source;
+        $targetPath = $temporaryRoot . '/' . $target;
+        if (
+            !is_file($targetPath)
+            || hash_file('sha256', $sourcePath)
+                !== hash_file('sha256', $targetPath)
+        ) {
+            throw new RuntimeException(sprintf(
+                'Retirar Blog eliminó o alteró el asset conservado %s.',
+                $target
+            ));
+        }
     }
 
     $coreOnlyDoctor = json_decode(

@@ -1,0 +1,17 @@
+{
+    "schema": 1,
+    "frozen_through": "v1.13.0",
+    "modules": {
+        "webadmin": {
+            "0001_webadmin_identity_and_access": "8ae682db1275f779938b247a2bddbe20ecc01bc2e972499fef60104d4d141d27",
+            "0002_webadmin_media_library": "2c3595970aa0adfc618dc0437806d955d26dfd05a1e4466d69a44c036524c52e"
+        },
+        "blog": {
+            "0001_blog_posts": "51cb25e2bc0029ee61decac1810f055543591589a2026fffbe2c04dbc45f9d77",
+            "0002_blog_capabilities": "09e727d09bce7f0c60306099a15df21b882766f878eb0be4c40aca546791d2e7",
+            "0003_blog_categories": "6a78d00acae0d13d175f2632ccb1598b4f1d53ba9c09f5840ea3f73c88661e97",
+            "0004_blog_category_capabilities": "c8b6f45611a344342b16f147d0edbe62e765ed6e1a70ebead8793dbc9b846345",
+            "0005_blog_structured_content": "4aca1e340d1a818940173feebeeaf67b5c319b464f8ec67e9b5691542753a4bd"
+        }
+    }
+}

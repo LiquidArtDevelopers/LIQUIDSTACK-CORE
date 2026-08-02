@@ -786,6 +786,64 @@ PHP
         );
     }
 
+    public function testMediaReadinessIsDetailedButNeverBlocksBaseWebAdmin(): void
+    {
+        $mediaRoot = $this->fixtureRoot
+            . '/storage/liquidstack/webadmin/media';
+        $orphan = 'aa/aa345678-1234-4234-8234-123456789abc';
+        $this->filesystem->mkdir($mediaRoot . '/' . $orphan);
+        $environment = $this->databaseEnvironment() + [
+            WebAdminConfig::SECURITY_KEY_ENV => $this->securityKey(),
+            'DEV_MODE' => '1',
+            'RAIZ' => 'http://localhost:1309',
+        ];
+
+        $report = (new WebAdminDiagnosticService())->inspect(
+            $this->fixtureRoot,
+            $environment,
+            [],
+            $this->readyDatabaseDiagnostic(),
+            []
+        );
+        $data = $report->toArray();
+
+        self::assertTrue($report->isRuntimeReady());
+        self::assertFalse($data['readiness']['media_ready']);
+        self::assertSame(
+            'catalog_missing',
+            $data['media']['schema']['status']
+        );
+        self::assertTrue($data['media']['storage']['ready']);
+        self::assertSame(1, $data['media']['storage']['orphan_count']);
+        self::assertSame(
+            'checked',
+            $data['media']['storage']['orphan_scan_status']
+        );
+        self::assertContains(
+            'database.media_schema_not_ready',
+            $data['media']['blockers']
+        );
+        self::assertArrayNotHasKey(
+            'database.media_schema_not_ready',
+            array_flip($data['readiness']['blockers'])
+        );
+
+        $applied = (new WebAdminDiagnosticService())->inspect(
+            $this->fixtureRoot,
+            $environment,
+            [],
+            $this->readyMediaDatabaseDiagnostic(),
+            ['aa345678-1234-4234-8234-123456789abc']
+        )->toArray();
+        self::assertTrue($applied['media']['schema']['ready']);
+        self::assertSame(0, $applied['media']['storage']['orphan_count']);
+        self::assertSame(
+            $applied['media']['runtime']['ready']
+                && $applied['media']['uploads']['ready'],
+            $applied['readiness']['media_ready']
+        );
+    }
+
     /**
      * @param array<string, mixed> $environment
      * @param list<string> $requiredAssets
@@ -822,6 +880,37 @@ PHP
                     'destructive' => false,
                     'status' => 'applied',
                 ]],
+                []
+            )
+        );
+    }
+
+    private function readyMediaDatabaseDiagnostic(): WebAdminDatabaseDiagnostic
+    {
+        return WebAdminDatabaseDiagnostic::fromPlan(
+            new MigrationDatabasePlan(
+                'sqlite',
+                true,
+                [
+                    [
+                        'module' => 'webadmin',
+                        'id' => '0001_webadmin_identity_and_access',
+                        'description' => 'not exposed',
+                        'checksum' => str_repeat('a', 64),
+                        'scope_hash' => str_repeat('b', 64),
+                        'destructive' => false,
+                        'status' => 'applied',
+                    ],
+                    [
+                        'module' => 'webadmin',
+                        'id' => '0002_webadmin_media_library',
+                        'description' => 'not exposed',
+                        'checksum' => str_repeat('c', 64),
+                        'scope_hash' => str_repeat('d', 64),
+                        'destructive' => false,
+                        'status' => 'applied',
+                    ],
+                ],
                 []
             )
         );

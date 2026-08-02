@@ -51,10 +51,6 @@ final class BlogAdminHttpController
         if (!$this->accepts($request, 'index')) {
             return $this->plain(400, 'Bad request');
         }
-        if ($request->method() === 'HEAD') {
-            return $this->html(200, '');
-        }
-
         $context = $this->authorizedContext(
             $request,
             self::VIEW_CAPABILITY
@@ -73,7 +69,7 @@ final class BlogAdminHttpController
             && $offset <= BlogService::MAX_LIST_OFFSET
                 - BlogService::DEFAULT_LIST_LIMIT;
 
-        return $this->html(200, $this->renderer->index(
+        return $this->htmlForRequest($request, 200, $this->renderer->index(
             $this->basePath(),
             array_slice($summaries, 0, BlogService::DEFAULT_LIST_LIMIT),
             $this->runtime->authorization()->hasCapability(
@@ -90,10 +86,6 @@ final class BlogAdminHttpController
         if (!$this->accepts($request, 'new')) {
             return $this->plain(400, 'Bad request');
         }
-        if ($request->method() === 'HEAD') {
-            return $this->html(200, '');
-        }
-
         $context = $this->authorizedContext(
             $request,
             self::EDIT_CAPABILITY
@@ -103,7 +95,7 @@ final class BlogAdminHttpController
         }
         $post = $request->query('post');
 
-        return $this->html(200, $this->renderer->createForm(
+        return $this->htmlForRequest($request, 200, $this->renderer->createForm(
             $this->basePath(),
             $context['csrf'],
             $this->activeLanguages(),
@@ -138,13 +130,13 @@ final class BlogAdminHttpController
             $draft = $this->draft($request);
             $post = (string) $request->form('post');
             if ($post === '') {
-                $this->runtime->service()->createPost(
+                $created = $this->runtime->service()->createPost(
                     $gate,
                     $locale,
                     $draft
                 );
             } else {
-                $this->runtime->service()->addLocalization(
+                $created = $this->runtime->service()->addLocalization(
                     $gate,
                     $post,
                     $locale,
@@ -152,7 +144,13 @@ final class BlogAdminHttpController
                 );
             }
 
-            return $this->updatedRedirect();
+            return $this->redirect(
+                $this->basePath() . '/editor?'
+                    . http_build_query([
+                        'post' => $created->postPublicId(),
+                        'locale' => $created->locale(),
+                    ], '', '&', PHP_QUERY_RFC3986)
+            );
         } catch (BlogException $exception) {
             return $this->domainFailure($exception);
         }
@@ -163,10 +161,6 @@ final class BlogAdminHttpController
         if (!$this->accepts($request, 'edit')) {
             return $this->plain(400, 'Bad request');
         }
-        if ($request->method() === 'HEAD') {
-            return $this->html(200, '');
-        }
-
         $context = $this->authorizedContext(
             $request,
             self::EDIT_CAPABILITY
@@ -181,7 +175,7 @@ final class BlogAdminHttpController
                 (string) $request->query('locale')
             );
 
-            return $this->html(200, $this->renderer->editForm(
+            return $this->htmlForRequest($request, 200, $this->renderer->editForm(
                 $this->basePath(),
                 $context['csrf'],
                 $variant,
@@ -200,10 +194,6 @@ final class BlogAdminHttpController
         if (!$this->accepts($request, 'preview')) {
             return $this->plain(400, 'Bad request');
         }
-        if ($request->method() === 'HEAD') {
-            return $this->html(200, '');
-        }
-
         $context = $this->authorizedContext(
             $request,
             self::VIEW_CAPABILITY
@@ -218,7 +208,7 @@ final class BlogAdminHttpController
                 (string) $request->query('locale')
             );
 
-            return $this->html(200, $this->renderer->preview(
+            return $this->htmlForRequest($request, 200, $this->renderer->preview(
                 $this->basePath(),
                 $variant,
                 $this->runtime->authorization()->hasCapability(
@@ -349,10 +339,6 @@ final class BlogAdminHttpController
         if (!$this->accepts($request, 'updated')) {
             return $this->plain(400, 'Bad request');
         }
-        if ($request->method() === 'HEAD') {
-            return $this->html(200, '');
-        }
-
         $context = $this->authorizedContext(
             $request,
             self::VIEW_CAPABILITY
@@ -361,7 +347,8 @@ final class BlogAdminHttpController
             return $context;
         }
 
-        return $this->html(
+        return $this->htmlForRequest(
+            $request,
             200,
             $this->renderer->operationCompleted($this->basePath())
         );
@@ -544,6 +531,20 @@ final class BlogAdminHttpController
             'Content-Type' => 'text/html; charset=utf-8',
             'Content-Language' => 'es',
         ]);
+    }
+
+    /** @param array<string, string> $headers */
+    private function htmlForRequest(
+        Request $request,
+        int $status,
+        string $body,
+        array $headers = []
+    ): Response {
+        return $this->html(
+            $status,
+            $request->method() === 'HEAD' ? '' : $body,
+            $headers
+        );
     }
 
     /** @param array<string, string> $headers */

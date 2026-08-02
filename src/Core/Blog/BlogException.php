@@ -7,7 +7,8 @@ namespace App\Core\Blog;
 use RuntimeException;
 
 /** Stable, non-sensitive errors exposed by the Blog domain boundary. */
-final class BlogException extends RuntimeException
+final class BlogException extends RuntimeException implements
+    BlogTransactionalExceptionInterface
 {
     public const INVALID_INPUT = 'blog.invalid_input';
     public const ACTOR_GATE_FAILED = 'blog.actor_gate_failed';

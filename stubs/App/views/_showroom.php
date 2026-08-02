@@ -25,6 +25,8 @@
  * data-lang="showroom_catalog_category_forms_interactive_description"
  * data-lang="showroom_catalog_category_modules_sections_label"
  * data-lang="showroom_catalog_category_modules_sections_description"
+ * data-lang="showroom_catalog_category_blog_label"
+ * data-lang="showroom_catalog_category_blog_description"
  */
 $showroomCategories = [
     'heroes' => [
@@ -115,7 +117,27 @@ $showroomCategories = [
             'eu' => 'Atomo berrerabilgarriak eta sekzio konposizioak.',
         ],
     ],
+    'blog' => [
+        'key' => 'showroom_catalog_category_blog',
+        'es' => 'Blog',
+        'en' => 'Blog',
+        'eu' => 'Bloga',
+        'description' => [
+            'es' => 'Recursos dinámicos para índices y entradas del blog.',
+            'en' => 'Dynamic resources for blog indexes and posts.',
+            'eu' => 'Blogaren aurkibide eta sarreretarako baliabide dinamikoak.',
+        ],
+    ],
 ];
+
+$availableShowroomCategories = array_fill_keys(
+    \App\Core\Routing\ShowroomCategoryRoute::availableCategories(),
+    true
+);
+$showroomCategories = array_intersect_key(
+    $showroomCategories,
+    $availableShowroomCategories
+);
 
 $showroomLanguage = isset($lang) && is_string($lang) ? $lang : 'es';
 $showroomCategory = $rutaConfig['showroom_category'] ?? null;
@@ -320,6 +342,9 @@ $showroomCategoryDescription = static function (
                         break;
                     case 'modules-sections':
                         require __DIR__ . '/showroom/_modules-sections.php';
+                        break;
+                    case 'blog':
+                        require __DIR__ . '/showroom/_blog.php';
                         break;
                 }
 

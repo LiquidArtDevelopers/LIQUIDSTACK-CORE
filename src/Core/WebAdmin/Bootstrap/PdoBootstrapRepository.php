@@ -161,6 +161,24 @@ final class PdoBootstrapRepository
         return $value;
     }
 
+    public function mediaFeatureIsApplied(): bool
+    {
+        $statement = $this->prepare(
+            'SELECT value_text FROM ' . $this->tables->table('state')
+            . ' WHERE state_key = :state_key'
+        );
+        $this->execute($statement, ['state_key' => 'media.quota_lock']);
+        $values = $statement->fetchAll(PDO::FETCH_COLUMN);
+        if ($values === []) {
+            return false;
+        }
+        if ($values !== ['v1']) {
+            throw new BootstrapException('bootstrap.schema_not_ready');
+        }
+
+        return true;
+    }
+
     /** @return array<string, mixed>|null */
     public function roleByCode(string $code): ?array
     {

@@ -9,30 +9,31 @@ use App\Core\Blog\Configuration\BlogConfigLoader;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Routing\BlogRoutePolicy;
 use App\Core\Modules\Migrations\MigrationDatabasePlan;
+use App\Core\Modules\Migrations\MigrationFeatureReadiness;
+use App\Core\Modules\Blog\BlogMigrationRequirements;
+use App\Core\Modules\Diagnostics\ProjectAssetInspector;
 use App\Core\WebAdmin\Configuration\WebAdminConfigException;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
 use Throwable;
 
 final class BlogDiagnosticService
 {
-    private const REQUIRED_MIGRATIONS = [
-        '0001_blog_posts',
-        '0002_blog_capabilities',
-    ];
-
     public function __construct(
         private readonly BlogConfigLoader $configLoader =
             new BlogConfigLoader(),
         private readonly BlogRoutePolicy $routePolicy =
             new BlogRoutePolicy(),
         private readonly WebAdminConfigLoader $webAdminConfigLoader =
-            new WebAdminConfigLoader()
+            new WebAdminConfigLoader(),
+        private readonly ProjectAssetInspector $assetInspector =
+            new ProjectAssetInspector()
     ) {
     }
 
     /**
      * @param list<string> $languages
      * @param array<string, mixed> $environment
+     * @param list<string> $requiredAssets project-relative module assets
      */
     public function inspect(
         string $projectRoot,
@@ -41,7 +42,8 @@ final class BlogDiagnosticService
         ?string $webAdminPrefix,
         ?bool $webAdminRuntimeReady,
         ?MigrationDatabasePlan $databasePlan = null,
-        bool $inspectDatabase = true
+        bool $inspectDatabase = true,
+        array $requiredAssets = []
     ): BlogDiagnosticReport {
         $configurationReady = false;
         $configurationIssues = [];
@@ -128,6 +130,10 @@ final class BlogDiagnosticService
             $databasePlan,
             $inspectDatabase
         );
+        $assets = $this->assetInspector->inspect(
+            $projectRoot,
+            $requiredAssets
+        );
         $blockers = [];
         if (!$configurationReady) {
             $blockers[] = 'configuration.invalid';
@@ -148,6 +154,9 @@ final class BlogDiagnosticService
                 ? 'database.migrations_not_ready'
                 : 'database.not_checked';
         }
+        if (!$assets['ready']) {
+            $blockers[] = 'assets.missing_or_invalid';
+        }
 
         return new BlogDiagnosticReport([
             'configuration' => [
@@ -167,6 +176,7 @@ final class BlogDiagnosticService
                 ],
             ],
             'routing' => $routing,
+            'assets' => $assets,
             'dependency' => [
                 'webadmin_runtime_ready' =>
                     $webAdminRuntimeReady === true,
@@ -190,47 +200,66 @@ final class BlogDiagnosticService
         bool $inspectDatabase
     ): array {
         if (!$inspectDatabase) {
-            return [
-                'ready' => false,
-                'status' => 'not_checked',
-                'required_migrations' => self::REQUIRED_MIGRATIONS,
-                'pending' => [],
-            ];
+            return $this->uncheckedDatabaseStatus();
         }
         if (!$plan instanceof MigrationDatabasePlan) {
-            return [
-                'ready' => false,
-                'status' => 'not_checked',
-                'required_migrations' => self::REQUIRED_MIGRATIONS,
-                'pending' => [],
-            ];
+            return $this->uncheckedDatabaseStatus();
         }
 
-        $states = [];
-        foreach ($plan->entries() as $entry) {
-            if (
-                ($entry['module'] ?? null) === 'blog'
-                && is_string($entry['id'] ?? null)
-                && is_string($entry['status'] ?? null)
-            ) {
-                $states[$entry['id']] = $entry['status'];
-            }
-        }
-        $pending = [];
-        foreach (self::REQUIRED_MIGRATIONS as $migration) {
-            if (($states[$migration] ?? null) !== 'applied') {
-                $pending[] = $migration;
-            }
-        }
-        $blocked = !$plan->isApplicable();
+        $publicContent = MigrationFeatureReadiness::fromPlan(
+            $plan,
+            BlogMigrationRequirements::publicContent()
+        );
+        $administration = MigrationFeatureReadiness::fromPlan(
+            $plan,
+            BlogMigrationRequirements::administration()
+        );
+        $administrationBase = $administration->base();
 
         return [
-            'ready' => $pending === [] && !$blocked,
-            'status' => $blocked
-                ? 'blocked'
-                : ($pending === [] ? 'applied' : 'pending'),
-            'required_migrations' => self::REQUIRED_MIGRATIONS,
-            'pending' => $pending,
+            'ready' => $administration->baseReady(),
+            'status' => $administration->baseStatus(),
+            'required_migrations' =>
+                $administrationBase['required'],
+            'pending' => $administrationBase['pending'],
+            'public_content' => $publicContent->base(),
+            'administration' => $administrationBase,
+            'features' => $administration->features(),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function uncheckedDatabaseStatus(): array
+    {
+        $publicRequirement = BlogMigrationRequirements::publicContent();
+        $adminRequirement = BlogMigrationRequirements::administration();
+        $base = static fn (array $required): array => [
+            'ready' => false,
+            'status' => 'not_checked',
+            'required' => $required,
+            'pending' => [],
+            'missing' => [],
+            'blockers' => [],
+        ];
+
+        return [
+            'ready' => false,
+            'status' => 'not_checked',
+            'required_migrations' => $adminRequirement->migrationIds(),
+            'pending' => [],
+            'public_content' => $base(
+                $publicRequirement->migrationIds()
+            ),
+            'administration' => $base(
+                $adminRequirement->migrationIds()
+            ),
+            'features' => [
+                'ready' => false,
+                'status' => 'not_checked',
+                'known' => [],
+                'pending' => [],
+                'blockers' => [],
+            ],
         ];
     }
 }

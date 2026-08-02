@@ -1,15 +1,17 @@
 # Biblioteca de medios de WebAdmin
 
-## Objetivo del siguiente corte
+> Estado (2026-08-02): biblioteca y vinculación con el editor estructurado Blog
+> implementadas en CORE. El comando operativo de inicialización, la gestión del
+> ciclo de vida y otros formatos siguen pendientes. La adopción en consumidores
+> exige migración y preparación de storage explícitas; Composer no realiza
+> ninguna de las dos.
 
-WebAdmin incorporará una biblioteca privada compartida por los módulos que lo
-necesiten. El primer corte permitirá subir una imagen JPEG, PNG o WebP,
-validarla, normalizarla y generar variantes AVIF responsive. Blog la consumirá
-en un corte posterior; la biblioteca no pertenecerá al dominio Blog.
+## Contrato implementado
 
-Este trabajo debe comenzar después de publicar y adoptar el corte de
-laboratorio local, correo capturado y preview Blog. No se mezclará con esa
-release porque añade esquema y almacenamiento persistente nuevos.
+WebAdmin incorpora una biblioteca privada compartida por los módulos que la
+necesiten. Permite subir una imagen JPEG, PNG o WebP, validarla, normalizarla y
+generar variantes AVIF responsive. Blog la consume mediante una frontera
+cross-scope; la biblioteca sigue perteneciendo a WebAdmin.
 
 ## Ownership y actualización segura
 
@@ -23,30 +25,30 @@ release porque añade esquema y almacenamiento persistente nuevos.
   de `/admin`. Solo `/admin/media` puede responder como no preparado hasta
   aplicar su migración explícita.
 
-La migración propuesta será `0002_webadmin_media_library`. Debe sustituir la
+La migración implementada es `0002_webadmin_media_library`. Sustituye la
 postcondición exacta de `0001_webadmin_identity_and_access` únicamente después
 de quedar aplicada y verificar el contrato combinado 0001 + 0002. El gate base
-de WebAdmin exigirá siempre la fundacional 0001, validará checksum y scope de
-lo ya aplicado y tolerará migraciones conocidas pendientes. El gate específico
-de medios exigirá también 0002.
+de WebAdmin exige siempre la fundacional 0001, valida checksum y scope de lo ya
+aplicado y tolera migraciones conocidas pendientes. El gate específico de
+medios exige también 0002.
 
 ## Persistencia mínima
 
-`{prefix}media_assets` conservará UUID público, etiqueta interna, MIME y
-dimensiones de origen, bytes, SHA-256, autor y fecha. No guardará el nombre
+`{prefix}media_assets` conserva UUID público, etiqueta interna, MIME y
+dimensiones de origen, bytes, SHA-256, autor y fecha. No guarda el nombre
 original del fichero.
 
-`{prefix}media_variants` conservará asset, ancho, alto, bytes, SHA-256, clave
+`{prefix}media_variants` conserva asset, ancho, alto, bytes, SHA-256, clave
 relativa opaca, MIME AVIF y fecha. La combinación asset + ancho y cada clave de
-storage serán únicas.
+storage son únicas.
 
-ALT, title y pie no pertenecen al asset compartido: serán datos localizados de
+ALT, title y pie no pertenecen al asset compartido: son datos localizados de
 cada uso de la imagen dentro de Blog u otro editor.
 
 ## Storage
 
-La raíz será privada y quedará fuera de `public`, `vendor`, `.git` y cualquier
-directorio reemplazable por deploy. El layout canónico será:
+La raíz es privada y queda fuera de `public`, `vendor`, `.git` y cualquier
+directorio reemplazable por deploy. El layout canónico es:
 
 ```text
 storage/liquidstack/webadmin/media/{shard}/{uuid}/480.avif
@@ -62,7 +64,7 @@ el directorio privado por defecto del proyecto.
 
 DB y storage se respaldan y restauran como una unidad. Cambiar credenciales o
 la raíz no mueve datos. Una promoción selectiva local → producción mediante
-exportación e importación con hashes queda fuera del primer corte.
+exportación e importación con hashes continúa pendiente.
 
 ## Contrato de imagen
 
@@ -76,27 +78,27 @@ exportación e importación con hashes queda fuera del primer corte.
 - Anchos 480, 900, 1800 y ancho real del master, eliminando duplicados.
 - AVIF de calidad fija inicial 74; cada salida se reabre y verifica.
 
-Imagick y soporte AVIF se comprobarán mediante `doctor` y una suite opt-in; no
-se convertirán en requisito duro de Composer para no romper consumidores que
-no activen medios. El helper legacy `imgConvert()` no cumple este contrato y no
-se reutilizará.
+Imagick y soporte AVIF se comprueban mediante `doctor` y una suite opt-in; no
+son un requisito duro de Composer, para no romper consumidores que no activen
+medios. El helper legacy `imgConvert()` no cumple este contrato y no se
+reutiliza.
 
 ## Seguridad y escritura atómica
 
-Las capacidades iniciales serán `webadmin.media.view` y
-`webadmin.media.upload`. La subida revalidará sesión, CSRF, lifecycle,
+Las capacidades son `webadmin.media.view` y
+`webadmin.media.upload`. La subida revalida sesión, CSRF, lifecycle,
 `auth_version` y ambas capacidades dentro de la transacción.
 
-El procesado ocurrirá en staging aleatorio dentro del mismo storage. Solo tras
-verificar todas las variantes se renombrará al directorio UUID definitivo; a
-continuación se insertarán asset, variantes y auditoría en una transacción. Un
-fallo DB eliminará el directorio definitivo. `doctor` detectará directorios
+El procesado ocurre en staging aleatorio dentro del mismo storage. Solo tras
+verificar todas las variantes se renombra al directorio UUID definitivo; a
+continuación se insertan asset, variantes y auditoría en una transacción. Un
+fallo DB elimina el directorio definitivo. `doctor` detecta directorios
 huérfanos derivados de un crash entre rename y commit.
 
-La auditoría registrará `webadmin.media.created` y el UUID, nunca nombre de
+La auditoría registra `webadmin.media.created` y el UUID, nunca nombre de
 origen, path, hash, contenido o metadatos privados.
 
-## Superficie HTTP y UI del MVP
+## Superficie HTTP y UI
 
 Rutas bajo el prefijo WebAdmin configurable:
 
@@ -105,25 +107,51 @@ Rutas bajo el prefijo WebAdmin configurable:
 - `GET|HEAD /admin/media/updated`;
 - `GET|HEAD /admin/media/file?asset={uuid}&width={width}`.
 
-La UI será SSR y accesible, sin dependencia JS: navegación “Biblioteca de
+La UI es SSR y accesible: navegación “Biblioteca de
 medios”, listado paginado, cards con miniatura privada, etiqueta, dimensiones y
-fecha, y formulario de una imagen. Explicará formatos, límites, conversión
+fecha, y formulario de una imagen. Explica formatos, límites, conversión
 automática y que ALT/title se asignan al usar el asset. Las respuestas privadas
-mantendrán `no-store`, `noindex`, `nosniff` y CSP con `img-src 'self'`.
+mantienen `no-store`, `noindex`, `nosniff` y CSP con `img-src 'self'`.
 
-El objeto `Request` necesitará soporte multipart acotado mediante un value
+El objeto `Request` ofrece soporte multipart acotado mediante un value
 object `UploadedFile`, sin elevar el límite de 1 MiB de formularios normales ni
-leer indiscriminadamente `php://input`. Este MVP rechazará árboles `$_FILES`
+leer indiscriminadamente `php://input`. El contrato rechaza árboles `$_FILES`
 anidados, múltiples o corruptos.
 
-## Fuera del primer corte
+Los assets administrativos canónicos viven en
+`modules/webadmin/published/assets` y el manifiesto los sincroniza como
+module-managed hacia `public/assets/modules/webadmin`.
 
-- Vinculación de portada o bloques Blog, ALT/title/pie por idioma y entrega
-  pública mediante `<picture>`.
-- Editor por bloques, borrado, reemplazo y garbage collection.
+## Integración actual con Liquid Blog
+
+El editor `/admin/blog/editor` requiere `webadmin.media.view` además de la
+capacidad Blog de lectura o edición correspondiente. Selecciona assets ya
+procesados; subir uno nuevo sigue ocurriendo en `/admin/media` y exige también
+`webadmin.media.upload`.
+
+Cada bloque de imagen guarda su UUID de asset junto a ALT, title, caption,
+estado decorativo y modo de presentación localizados por uso. El guardado
+revalida bajo la misma transacción que el asset existe y dispone de variantes.
+El documento actual y cada revisión conservan sus propias referencias.
+
+La entrega pública utiliza
+`/_liquidstack/blog-media/{uuid}/{width}.avif`. Solo es elegible un asset
+referenciado por el documento actual de una variante publicada; un borrador o
+una revisión aislada no lo hacen público. La lectura verifica bytes y hash en el
+storage privado y responde `404` uniforme ante cualquier fallo.
+
+## Pendientes reales
+
+- Borrado, reemplazo y garbage collection con protección de referencias.
 - Crop, focal point, vídeo, audio, SVG, S3/CDN o procesamiento asíncrono.
 - Carpetas, etiquetas, buscador, deduplicación y promoción automática entre
   entornos.
+
+Hasta que exista ese comando, el operador debe crear la raíz persistente con
+permisos exclusivos del proceso PHP y declarar su ruta absoluta mediante
+`LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT`. En desarrollo local tipado
+(`DEV_MODE=1` y `RAIZ` loopback) puede utilizarse el default privado
+`storage/liquidstack/webadmin/media`; producción no admite ese fallback.
 
 ## Pruebas de aceptación
 

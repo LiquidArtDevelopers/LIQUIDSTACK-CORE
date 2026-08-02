@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Core\WebAdmin\Diagnostics;
 
 use App\Core\Modules\Migrations\MigrationDatabasePlan;
+use App\Core\Modules\Migrations\MigrationFeatureReadiness;
+use App\Core\Modules\WebAdmin\WebAdminMigrationRequirements;
 
 /**
  * Secret-free projection of the read-only migration probe used by doctor.
@@ -29,6 +31,9 @@ final class WebAdminDatabaseDiagnostic
             'migrations' => [
                 'ready' => false,
                 'status' => 'not_checked',
+                'base' => self::uncheckedBase(),
+                'features' => self::uncheckedFeatures(),
+                'media' => self::uncheckedMedia(),
                 'registry_exists' => null,
                 'counts' => [
                     'catalog' => 0,
@@ -54,6 +59,9 @@ final class WebAdminDatabaseDiagnostic
             'migrations' => [
                 'ready' => false,
                 'status' => 'not_checked',
+                'base' => self::uncheckedBase(),
+                'features' => self::uncheckedFeatures(),
+                'media' => self::uncheckedMedia(),
                 'registry_exists' => null,
                 'counts' => [
                     'catalog' => 0,
@@ -120,21 +128,21 @@ final class WebAdminDatabaseDiagnostic
             static fn (array $entry): bool => $entry['status'] === 'pending'
         ));
         $notReady = count($entries) - $applied;
+        $featureReadiness = MigrationFeatureReadiness::fromPlan(
+            $plan,
+            WebAdminMigrationRequirements::runtime()
+        );
+        $mediaReadiness = MigrationFeatureReadiness::fromPlan(
+            $plan,
+            WebAdminMigrationRequirements::media()
+        );
+        $base = $featureReadiness->base();
+        $features = $featureReadiness->features();
         $ready = $connectionContractReady
-            && $plan->isApplicable()
-            && $entries !== []
-            && $notReady === 0;
-
-        $status = 'not_ready';
-        if ($entries === []) {
-            $status = 'catalog_missing';
-        } elseif ($blockers !== []) {
-            $status = 'blocked';
-        } elseif ($ready) {
-            $status = 'applied';
-        } elseif ($pending === count($entries)) {
-            $status = 'pending';
-        }
+            && $featureReadiness->baseReady();
+        $status = $connectionContractReady
+            ? $featureReadiness->baseStatus()
+            : 'blocked';
 
         return new self([
             'connection' => [
@@ -147,6 +155,9 @@ final class WebAdminDatabaseDiagnostic
             'migrations' => [
                 'ready' => $ready,
                 'status' => $status,
+                'base' => $base,
+                'features' => $features,
+                'media' => $mediaReadiness->base(),
                 'registry_exists' => $plan->registryExists(),
                 'counts' => [
                     'catalog' => count($entries),
@@ -182,8 +193,56 @@ final class WebAdminDatabaseDiagnostic
     }
 
     /** @return array<string, mixed> */
+    public function mediaMigrations(): array
+    {
+        $media = $this->payload['migrations']['media'] ?? null;
+
+        return is_array($media) ? $media : self::uncheckedMedia();
+    }
+
+    /** @return array<string, mixed> */
     public function toArray(): array
     {
         return $this->payload;
+    }
+
+    /** @return array<string, mixed> */
+    private static function uncheckedBase(): array
+    {
+        return [
+            'ready' => false,
+            'status' => 'not_checked',
+            'required' => WebAdminMigrationRequirements::runtime()
+                ->migrationIds(),
+            'pending' => [],
+            'missing' => [],
+            'blockers' => [],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private static function uncheckedFeatures(): array
+    {
+        return [
+            'ready' => false,
+            'status' => 'not_checked',
+            'known' => [],
+            'pending' => [],
+            'blockers' => [],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private static function uncheckedMedia(): array
+    {
+        return [
+            'ready' => false,
+            'status' => 'not_checked',
+            'required' => WebAdminMigrationRequirements::media()
+                ->migrationIds(),
+            'pending' => [],
+            'missing' => [],
+            'blockers' => [],
+        ];
     }
 }

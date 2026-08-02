@@ -6,18 +6,40 @@ zona privada legacy ni sus tablas. El runtime desplegable usa el perfil
 MySQL/MariaDB configurado (`shared` o `liquidstack`); SQLite se conserva para
 pruebas e inyección explícita.
 
+`WebAdminHttpController` es la fachada estable consumida por el provider de
+rutas. La orquestación interna se mantiene separada en coordinadores de
+autenticación, acciones de credencial y gestión de editores; todos comparten
+una única frontera de respuestas, cabeceras y cookies. Esta separación no
+cambia las rutas ni permite que una pantalla eluda la política común.
+
 Este corte incluye login, panel mínimo, logout, solicitud no enumerable de
 recuperación, activación inicial mediante invitación y restablecimiento de
 contraseña. La entrega asíncrona se describe en
 [Correo y outbox de WebAdmin](webadmin-mail-outbox.md).
+
+Las pantallas de credenciales usan la familia canónica de recursos
+`artAuth01`, `moduleFormAuthLogin01`, `moduleFormAuthRecover01` y
+`moduleFormAuthPassword01`. El showroom y las vistas LiquidStack pueden
+componer esos recursos con sus controladores hidratables; el runtime privado
+renderiza las mismas plantillas estructurales desde CORE, sin `data-lang`,
+editor inline ni endpoints codificados en el recurso. De este modo el contrato
+visual es reutilizable, mientras CSRF, acciones y feedback continúan bajo el
+control del backend.
+
+WebAdmin publica exclusivamente
+`/assets/modules/webadmin/webadmin.css` y `webadmin.js` mediante el manifiesto
+del módulo. El documento no contiene CSS o JavaScript inline y su CSP permite
+`style-src 'self'` y `script-src 'self'`, manteniendo bloqueados el resto de
+orígenes. El JavaScript solo controla la visibilidad de contraseñas; nunca
+intercepta el envío ni replica validación de servidor.
 
 ## Preflight operativo
 
 Antes de crear el runtime HTTP, WebAdmin exige:
 
 - el selector `liquidstack/webadmin` activo y una configuración válida;
-- la ruta neutral libre, la conexión PDO estricta y todas las migraciones
-  WebAdmin aplicadas sin deriva;
+- la ruta neutral libre, la conexión PDO estricta y las migraciones
+  fundacionales requeridas por autenticación aplicadas sin deriva;
 - `LIQUIDSTACK_WEBADMIN_SECURITY_KEY` con 32 bytes aleatorios como base64url
   canónico de 43 caracteres;
 - `zend.exception_ignore_args=On` en CLI y en el SAPI web, para impedir que
@@ -31,6 +53,12 @@ comprueba estos requisitos sin revelar valores. Un fallo deja el prefijo en
 request valida solo el contrato operativo acotado; la auditoría completa del
 esquema corresponde a `doctor` y a
 `composer liquidstack:migrate --dry-run`.
+
+Las migraciones de funcionalidades posteriores se comprueban mediante gates
+independientes. Que una versión nueva de CORE conozca, por ejemplo, la
+biblioteca de medios sin que el proyecto haya aplicado aún esa migración no
+inutiliza login, logout o gestión de editores: `doctor` lo informa como
+ampliación pendiente y solo la ruta de esa funcionalidad permanece no lista.
 
 HTTP y CLI comparten `ProjectEnvironmentLoader`. Las variables inyectadas por
 el proceso prevalecen sobre `.env`, incluso si `variables_order` omite `E`. Un

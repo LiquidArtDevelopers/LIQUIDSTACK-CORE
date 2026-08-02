@@ -459,10 +459,14 @@ SQL);
     public function testTwoSQLiteScopesCanCoexistWithoutAuxiliaryNameCollision(): void
     {
         $pdo = $this->sqlite();
-        $migration = iterator_to_array(
-            WebAdminMigrationProvider::migrations(),
-            false
-        )[0];
+        $migration = null;
+        foreach (WebAdminMigrationProvider::migrations() as $candidate) {
+            if ($candidate->id() === '0001_webadmin_identity_and_access') {
+                $migration = $candidate;
+                break;
+            }
+        }
+        self::assertNotNull($migration);
         $first = MigrationScope::forTablePrefix('webadmin', 'tenant_a_');
         $second = MigrationScope::forTablePrefix('webadmin', 'tenant_b_');
         foreach ([$first, $second] as $scope) {

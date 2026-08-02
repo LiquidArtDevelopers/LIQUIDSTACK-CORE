@@ -55,6 +55,14 @@ final class BlogOperationalDoctorTest extends TestCase
             $this->projectRoot . '/App/config',
             $this->projectRoot . '/src/scss',
         ]);
+        $this->filesystem->mirror(
+            $this->coreRoot . '/modules/webadmin/published/assets',
+            $this->projectRoot . '/public/assets/modules/webadmin'
+        );
+        $this->filesystem->mirror(
+            $this->coreRoot . '/modules/blog/published/assets',
+            $this->projectRoot . '/public/assets/modules/blog'
+        );
         $this->filesystem->dumpFile(
             $this->projectRoot . '/composer.json',
             json_encode([
@@ -193,6 +201,39 @@ final class BlogOperationalDoctorTest extends TestCase
             'database.migrations_not_ready',
             $blog['readiness']['blockers']
         );
+    }
+
+    public function testMissingBlogAssetsBlockReadinessWithoutAWrite(): void
+    {
+        $this->filesystem->remove(
+            $this->projectRoot . '/public/assets/modules/blog'
+        );
+        $before = $this->databaseSnapshot();
+
+        $report = (new ModuleDoctor(
+            migrationRuntimeFactory:
+                new BlogOperationalDoctorRuntimeFactoryFixture(
+                    new MigrationCommandRuntime(
+                        $this->pdo,
+                        $this->catalog,
+                        $this->scopes
+                    )
+                )
+        ))->inspect($this->projectRoot, $this->coreRoot);
+        $payload = $report->toArray();
+        $blog = $payload['module_diagnostics']['blog'];
+
+        self::assertFalse($report->isHealthy());
+        self::assertFalse($blog['readiness']['blog_ready']);
+        self::assertContains(
+            'assets.missing_or_invalid',
+            $blog['readiness']['blockers']
+        );
+        self::assertSame(
+            ['public/assets/modules/blog'],
+            $blog['assets']['missing']
+        );
+        self::assertSame($before, $this->databaseSnapshot());
     }
 
     private function securityKey(): string

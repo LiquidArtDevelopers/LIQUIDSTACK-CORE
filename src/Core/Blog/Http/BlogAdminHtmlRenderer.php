@@ -39,7 +39,7 @@ final class BlogAdminHtmlRenderer
             }
             $preview = $this->pathWithQuery(
                 $basePath,
-                '/posts/preview',
+                '/editor/preview',
                 [
                     'post' => $summary->postPublicId(),
                     'locale' => $summary->locale(),
@@ -49,7 +49,7 @@ final class BlogAdminHtmlRenderer
                 . '" target="_blank" rel="noopener">Vista previa '
                 . 'guardada</a>';
             if ($canEdit) {
-                $edit = $this->pathWithQuery($basePath, '/posts/edit', [
+                $edit = $this->pathWithQuery($basePath, '/editor', [
                     'post' => $summary->postPublicId(),
                     'locale' => $summary->locale(),
                 ]);
@@ -222,7 +222,7 @@ final class BlogAdminHtmlRenderer
         $edit = $canEdit
             ? '<li><a href="' . $this->pathWithQuery(
                 $basePath,
-                '/posts/edit',
+                '/editor',
                 [
                     'post' => $variant->postPublicId(),
                     'locale' => $variant->locale(),

@@ -224,6 +224,37 @@ final class BlogDiagnosticServiceTest extends TestCase
             'database.migrations_not_ready',
             $data['readiness']['blockers']
         );
+        self::assertTrue($data['database']['public_content']['ready']);
+        self::assertFalse($data['database']['administration']['ready']);
+    }
+
+    public function testFuturePendingMigrationDoesNotBlockCurrentBlogRuntime(): void
+    {
+        $plan = new MigrationDatabasePlan(
+            'sqlite',
+            true,
+            [
+                $this->entry('0001_blog_posts', 'applied', null),
+                $this->entry(
+                    '0002_blog_capabilities',
+                    'applied',
+                    'webadmin'
+                ),
+                $this->entry('0003_future_feature', 'pending', null),
+            ],
+            []
+        );
+        $data = $this->inspect($plan)->toArray();
+
+        self::assertTrue($data['readiness']['blog_ready']);
+        self::assertSame('applied', $data['database']['status']);
+        self::assertTrue($data['database']['public_content']['ready']);
+        self::assertTrue($data['database']['administration']['ready']);
+        self::assertFalse($data['database']['features']['ready']);
+        self::assertSame(
+            ['0003_future_feature'],
+            $data['database']['features']['pending']
+        );
     }
 
     public function testConfigurationOriginDependencyAndDatabaseFailIndependently(): void
@@ -269,6 +300,44 @@ final class BlogDiagnosticServiceTest extends TestCase
         self::assertSame('not_checked', $data['database']['status']);
         self::assertContains(
             'database.not_checked',
+            $data['readiness']['blockers']
+        );
+    }
+
+    public function testRequiredAssetsAreValidatedInsideProject(): void
+    {
+        $this->filesystem->dumpFile(
+            $this->root . '/public/blog-admin.css',
+            '/* fixture */'
+        );
+
+        $report = (new BlogDiagnosticService())->inspect(
+            $this->root,
+            ['es', 'en'],
+            [BlogPublicOrigin::ENV => 'https://example.test'],
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true,
+            [
+                'public/blog-admin.css',
+                'public/missing.js',
+                '../outside-project.txt',
+            ]
+        );
+        $data = $report->toArray();
+
+        self::assertFalse($report->isReady());
+        self::assertSame(
+            ['public/missing.js'],
+            $data['assets']['missing']
+        );
+        self::assertSame(
+            ['../outside-project.txt'],
+            $data['assets']['invalid']
+        );
+        self::assertContains(
+            'assets.missing_or_invalid',
             $data['readiness']['blockers']
         );
     }

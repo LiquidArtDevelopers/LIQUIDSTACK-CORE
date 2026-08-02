@@ -29,6 +29,23 @@ final class WebAdminMigrationProvider implements MigrationProviderInterface
             postconditionVerifier: new WebAdminMigrationPostconditionVerifier(),
             preconditionVerifier: new WebAdminInitialNamespacePrecondition()
         );
+
+        yield MigrationDefinition::sql(
+            id: '0002_webadmin_media_library',
+            description: 'Anade la biblioteca privada de medios de WebAdmin.',
+            statementsByDriver: [
+                'mysql' => self::mysqlMediaStatements(),
+                'sqlite' => self::sqliteMediaStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new WebAdminMediaMigrationPostconditionVerifier(),
+            supersedesPostconditions: [
+                '0001_webadmin_identity_and_access',
+            ]
+        );
     }
 
     /** @return list<string> */
@@ -633,6 +650,162 @@ SQL,
             <<<'SQL'
 INSERT INTO {{table:state}} ("state_key", "value_text")
 VALUES ('bootstrap.initial_accounts', 'pending')
+ON CONFLICT("state_key") DO NOTHING
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlMediaStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:media_assets}} (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `label` VARCHAR(120) NOT NULL,
+    `source_mime` VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `source_width` INT UNSIGNED NOT NULL,
+    `source_height` INT UNSIGNED NOT NULL,
+    `source_bytes` BIGINT UNSIGNED NOT NULL,
+    `source_sha256` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `created_by_user_id` BIGINT UNSIGNED NOT NULL,
+    `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_wa_media_assets_public` (`public_id`),
+    KEY `idx_wa_media_assets_created` (`created_at`, `id`),
+    KEY `idx_wa_media_assets_author` (`created_by_user_id`),
+    CONSTRAINT {{table:f_ma_author}} FOREIGN KEY (`created_by_user_id`)
+        REFERENCES {{table:users}} (`id`) ON DELETE RESTRICT,
+    CONSTRAINT {{table:c_ma_public}} CHECK (CHAR_LENGTH(`public_id`) = 36),
+    CONSTRAINT {{table:c_ma_label}} CHECK (CHAR_LENGTH(`label`) BETWEEN 1 AND 120),
+    CONSTRAINT {{table:c_ma_mime}} CHECK (`source_mime` IN ('image/jpeg', 'image/png', 'image/webp')),
+    CONSTRAINT {{table:c_ma_dims}} CHECK (`source_width` BETWEEN 1 AND 12000 AND `source_height` BETWEEN 1 AND 12000 AND (`source_width` * `source_height`) <= 40000000),
+    CONSTRAINT {{table:c_ma_bytes}} CHECK (`source_bytes` BETWEEN 1 AND 12582912),
+    CONSTRAINT {{table:c_ma_hash}} CHECK (CHAR_LENGTH(`source_sha256`) = 64)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:media_variants}} (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `asset_id` BIGINT UNSIGNED NOT NULL,
+    `width` INT UNSIGNED NOT NULL,
+    `height` INT UNSIGNED NOT NULL,
+    `bytes` BIGINT UNSIGNED NOT NULL,
+    `sha256` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `storage_key` VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `mime` VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_wa_media_variants_asset_width` (`asset_id`, `width`),
+    UNIQUE KEY `uq_wa_media_variants_storage` (`storage_key`),
+    KEY `idx_wa_media_variants_asset` (`asset_id`),
+    CONSTRAINT {{table:f_mv_asset}} FOREIGN KEY (`asset_id`)
+        REFERENCES {{table:media_assets}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:c_mv_dims}} CHECK (`width` BETWEEN 1 AND 2560 AND `height` BETWEEN 1 AND 2560),
+    CONSTRAINT {{table:c_mv_bytes}} CHECK (`bytes` > 0),
+    CONSTRAINT {{table:c_mv_hash}} CHECK (CHAR_LENGTH(`sha256`) = 64),
+    CONSTRAINT {{table:c_mv_mime}} CHECK (`mime` = 'image/avif'),
+    CONSTRAINT {{table:c_mv_storage}} CHECK (CHAR_LENGTH(`storage_key`) BETWEEN 1 AND 255)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+            <<<'SQL'
+INSERT IGNORE INTO {{table:capabilities}}
+    (`module_id`, `code`, `label_key`, `is_delegable`)
+VALUES
+    ('webadmin', 'webadmin.media.view', 'webadmin.capabilities.media_view', 1),
+    ('webadmin', 'webadmin.media.upload', 'webadmin.capabilities.media_upload', 1)
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:role_capabilities}} (`role_id`, `capability_id`)
+SELECT `r`.`id`, `c`.`id`
+FROM {{table:roles}} AS `r`
+CROSS JOIN {{table:capabilities}} AS `c`
+WHERE `r`.`code` IN ('system_superadmin', 'site_admin')
+  AND `c`.`code` IN ('webadmin.media.view', 'webadmin.media.upload')
+  AND `c`.`module_id` = 'webadmin'
+  AND `c`.`is_delegable` = 1
+  AND (
+      (`c`.`code` = 'webadmin.media.view'
+       AND `c`.`label_key` = 'webadmin.capabilities.media_view')
+      OR
+      (`c`.`code` = 'webadmin.media.upload'
+       AND `c`.`label_key` = 'webadmin.capabilities.media_upload')
+  )
+ON DUPLICATE KEY UPDATE `role_id` = VALUES(`role_id`)
+SQL,
+            <<<'SQL'
+INSERT IGNORE INTO {{table:state}} (`state_key`, `value_text`)
+VALUES ('media.quota_lock', 'v1')
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteMediaStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:media_assets}} (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "public_id" TEXT COLLATE BINARY NOT NULL UNIQUE CHECK (length("public_id") = 36),
+    "label" TEXT NOT NULL CHECK (length("label") BETWEEN 1 AND 120),
+    "source_mime" TEXT COLLATE BINARY NOT NULL CHECK ("source_mime" IN ('image/jpeg', 'image/png', 'image/webp')),
+    "source_width" INTEGER NOT NULL CHECK ("source_width" BETWEEN 1 AND 12000),
+    "source_height" INTEGER NOT NULL CHECK ("source_height" BETWEEN 1 AND 12000),
+    "source_bytes" INTEGER NOT NULL CHECK ("source_bytes" BETWEEN 1 AND 12582912),
+    "source_sha256" TEXT COLLATE BINARY NOT NULL CHECK (length("source_sha256") = 64),
+    "created_by_user_id" INTEGER NOT NULL REFERENCES {{table:users}} ("id") ON DELETE RESTRICT,
+    "created_at" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f000', 'now')),
+    CHECK (("source_width" * "source_height") <= 40000000)
+)
+SQL,
+            'CREATE INDEX IF NOT EXISTS {{table:ix_ma_created}} ON {{table:media_assets}} ("created_at", "id")',
+            'CREATE INDEX IF NOT EXISTS {{table:ix_ma_author}} ON {{table:media_assets}} ("created_by_user_id")',
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:media_variants}} (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "asset_id" INTEGER NOT NULL REFERENCES {{table:media_assets}} ("id") ON DELETE CASCADE,
+    "width" INTEGER NOT NULL CHECK ("width" BETWEEN 1 AND 2560),
+    "height" INTEGER NOT NULL CHECK ("height" BETWEEN 1 AND 2560),
+    "bytes" INTEGER NOT NULL CHECK ("bytes" > 0),
+    "sha256" TEXT COLLATE BINARY NOT NULL CHECK (length("sha256") = 64),
+    "storage_key" TEXT COLLATE BINARY NOT NULL UNIQUE CHECK (length("storage_key") BETWEEN 1 AND 255),
+    "mime" TEXT COLLATE BINARY NOT NULL CHECK ("mime" = 'image/avif'),
+    "created_at" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f000', 'now')),
+    UNIQUE ("asset_id", "width")
+)
+SQL,
+            'CREATE INDEX IF NOT EXISTS {{table:ix_mv_asset}} ON {{table:media_variants}} ("asset_id")',
+            <<<'SQL'
+INSERT INTO {{table:capabilities}}
+    ("module_id", "code", "label_key", "is_delegable")
+VALUES
+    ('webadmin', 'webadmin.media.view', 'webadmin.capabilities.media_view', 1),
+    ('webadmin', 'webadmin.media.upload', 'webadmin.capabilities.media_upload', 1)
+ON CONFLICT("code") DO NOTHING
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:role_capabilities}} ("role_id", "capability_id")
+SELECT "r"."id", "c"."id"
+FROM {{table:roles}} AS "r"
+CROSS JOIN {{table:capabilities}} AS "c"
+WHERE "r"."code" IN ('system_superadmin', 'site_admin')
+  AND "c"."code" IN ('webadmin.media.view', 'webadmin.media.upload')
+  AND "c"."module_id" = 'webadmin'
+  AND "c"."is_delegable" = 1
+  AND (
+      ("c"."code" = 'webadmin.media.view'
+       AND "c"."label_key" = 'webadmin.capabilities.media_view')
+      OR
+      ("c"."code" = 'webadmin.media.upload'
+       AND "c"."label_key" = 'webadmin.capabilities.media_upload')
+  )
+ON CONFLICT("role_id", "capability_id") DO NOTHING
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:state}} ("state_key", "value_text")
+VALUES ('media.quota_lock', 'v1')
 ON CONFLICT("state_key") DO NOTHING
 SQL,
         ];

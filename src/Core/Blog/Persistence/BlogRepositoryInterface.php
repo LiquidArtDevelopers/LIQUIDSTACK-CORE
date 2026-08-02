@@ -8,6 +8,7 @@ use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogPostSummary;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogSitemapEntry;
+use App\Core\Blog\PublishedPostCard;
 use DateTimeImmutable;
 use PDO;
 
@@ -88,6 +89,13 @@ interface BlogRepositoryInterface
         string $locale,
         string $slug
     ): ?BlogPostVariant;
+
+    /** @return list<PublishedPostCard> */
+    public function listPublishedCards(
+        string $locale,
+        int $limit,
+        int $offset
+    ): array;
 
     /** @return list<BlogSitemapEntry> */
     public function sitemapEntries(int $limit): array;
