@@ -229,6 +229,66 @@ final class BlogMigrationPostconditionVerifierTest extends TestCase
         ));
     }
 
+    public function testSqliteCheckExtractorIgnoresCommentDecoysAndPreservesLiterals(): void
+    {
+        $verifier = $this->blogMigrations()[0]->postconditionVerifier();
+        self::assertNotNull($verifier);
+        $method = new \ReflectionMethod(
+            $verifier,
+            'extractCheckExpressions'
+        );
+        $expressions = $method->invoke($verifier, <<<'SQL'
+CREATE TABLE sample (
+    "note" TEXT CHECK(note IN ('--keep-literal', '/*keep-literal*/')),
+    "CHECK(quoted_decoy = 1)" TEXT,
+    /* CHECK(block_decoy = 1) */
+    -- CHECK(line_decoy = 1)
+    "value" INTEGER CHECK(value > 0)
+)
+SQL);
+
+        self::assertCount(2, $expressions);
+        $actual = implode("\n", $expressions);
+        self::assertStringContainsString("'--keep-literal'", $actual);
+        self::assertStringContainsString("'/*keep-literal*/'", $actual);
+        self::assertStringNotContainsString('quoted_decoy', $actual);
+        self::assertStringNotContainsString('block_decoy', $actual);
+        self::assertStringNotContainsString('line_decoy', $actual);
+    }
+
+    public function testSqliteDefaultStringLiteralCaseIsSignificant(): void
+    {
+        $postDefaults = [];
+        foreach (BlogInitialSchemaContract::sqliteColumns()['posts'] as $column) {
+            $postDefaults[$column['name']] = $column['default'];
+        }
+        self::assertSame(
+            "strftime('%Y-%m-%d %H:%M:%f000','now')",
+            $postDefaults['created_at']
+        );
+
+        $pdo = $this->sqlite();
+        $scope = MigrationScope::forTablePrefix('blog', 'case_blog_');
+        $migration = $this->blogMigrations()[0];
+        $replacements = 0;
+        foreach ($migration->statementsFor('sqlite', $scope) as $statement) {
+            $statement = str_replace(
+                "DEFAULT 'draft'",
+                "DEFAULT 'DRAFT'",
+                $statement,
+                $count
+            );
+            $replacements += $count;
+            $pdo->exec($statement);
+        }
+
+        self::assertSame(1, $replacements);
+        self::assertFalse($migration->postconditionVerifier()?->verify(
+            $pdo,
+            $scope
+        ));
+    }
+
     public function testPartialNamespaceFailsBothPreAndPostconditions(): void
     {
         $pdo = $this->sqlite();
@@ -260,7 +320,38 @@ SQL);
 
         self::assertTrue($verifier?->verify($pdo, $scope));
 
+        $mySql = $this->mysqlMetadataPdo($scope);
+        $mySql->version = '8.0.36';
+        foreach ($mySql->columns as &$column) {
+            if (
+                strtolower((string) ($column['COLUMN_DEFAULT'] ?? ''))
+                    === 'current_timestamp(6)'
+            ) {
+                $column['EXTRA'] = 'DEFAULT_GENERATED';
+            }
+        }
+        unset($column);
+        foreach ($mySql->checks as &$check) {
+            $constraint = (string) $check['CONSTRAINT_NAME'];
+            if (str_ends_with($constraint, 'c_pl_locale')) {
+                $check['CHECK_CLAUSE'] = '((char_length(`locale`) '
+                    . 'between 2 and 16) and (`locale` = lcase(`locale`)) '
+                    . 'and (`locale` = trim(`locale`)))';
+            } elseif (str_ends_with($constraint, 'c_pl_slug')) {
+                $check['CHECK_CLAUSE'] = '(isnull(`slug`) or '
+                    . '((char_length(trim(`slug`)) > 0) '
+                    . 'and (`slug` = lcase(`slug`)) '
+                    . 'and (`slug` = trim(`slug`))))';
+            }
+        }
+        unset($check);
+        self::assertTrue($verifier?->verify($mySql, $scope));
+
         $pdo->columns[0]['DATA_TYPE'] = 'int';
+        self::assertFalse($verifier?->verify($pdo, $scope));
+        $pdo = $this->mysqlMetadataPdo($scope);
+        $pdo->columns[array_key_last($pdo->columns)]['EXTRA'] =
+            'on update CURRENT_TIMESTAMP(6)';
         self::assertFalse($verifier?->verify($pdo, $scope));
         $pdo = $this->mysqlMetadataPdo($scope);
         $pdo->indexes[] = [
@@ -269,16 +360,27 @@ SQL);
             'NON_UNIQUE' => 1,
             'SEQ_IN_INDEX' => 1,
             'COLUMN_NAME' => 'updated_at',
+            'INDEX_TYPE' => 'BTREE',
+            'SUB_PART' => null,
+            'COLLATION' => 'A',
+            'IGNORED' => 'NO',
         ];
         self::assertFalse($verifier?->verify($pdo, $scope));
         $pdo = $this->mysqlMetadataPdo($scope);
         $pdo->checks[0]['CHECK_CLAUSE'] = 'char_length(public_id) = 35';
         self::assertFalse($verifier?->verify($pdo, $scope));
         $pdo = $this->mysqlMetadataPdo($scope);
+        $pdo->version = '8.0.36';
+        $pdo->checks[0]['ENFORCED'] = 'NO';
+        self::assertFalse($verifier?->verify($pdo, $scope));
+        $pdo = $this->mysqlMetadataPdo($scope);
         $pdo->integrityViolations = 1;
         self::assertFalse($verifier?->verify($pdo, $scope));
         $pdo = $this->mysqlMetadataPdo($scope);
         $pdo->foreignKeyChecks = '0';
+        self::assertFalse($verifier?->verify($pdo, $scope));
+        $pdo = $this->mysqlMetadataPdo($scope);
+        $pdo->foreignKeys[0]['SAME_SCHEMA'] = 0;
         self::assertFalse($verifier?->verify($pdo, $scope));
         $pdo = $this->mysqlMetadataPdo($scope);
         $pdo->sqlMode = '';
@@ -431,6 +533,9 @@ SQL);
                 'NON_UNIQUE' => 0,
                     'SEQ_IN_INDEX' => 1,
                     'COLUMN_NAME' => 'id',
+                    'INDEX_TYPE' => 'BTREE',
+                    'SUB_PART' => null,
+                    'COLLATION' => 'A',
                     'IGNORED' => 'NO',
             ];
             foreach (
@@ -445,6 +550,9 @@ SQL);
                         'NON_UNIQUE' => $index['unique'] ? 0 : 1,
                         'SEQ_IN_INDEX' => $columnPosition + 1,
                         'COLUMN_NAME' => $column,
+                        'INDEX_TYPE' => 'BTREE',
+                        'SUB_PART' => null,
+                        'COLLATION' => 'A',
                         'IGNORED' => 'NO',
                     ];
                 }
@@ -457,6 +565,7 @@ SQL);
                     'TABLE_NAME' => $table,
                     'CONSTRAINT_NAME' => $scope->tableName($constraintSuffix),
                     'CHECK_CLAUSE' => $expression,
+                    'ENFORCED' => 'YES',
                 ];
             }
         }
@@ -466,6 +575,7 @@ SQL);
             'REFERENCED_TABLE_NAME' => $scope->tableName('posts'),
             'REFERENCED_COLUMN_NAME' => 'id',
             'ORDINAL_POSITION' => 1,
+            'SAME_SCHEMA' => 1,
             'UPDATE_RULE' => 'RESTRICT',
             'DELETE_RULE' => 'CASCADE',
         ];

@@ -205,6 +205,23 @@ SQL);
         $this->assertDrift($pdo, 'index collation and direction');
     }
 
+    public function testAppliedSQLiteDriftRejectsUniqueConstantExpressionIndex(): void
+    {
+        $pdo = $this->sqliteWithSchema();
+        self::assertTrue(
+            (new WebAdminMigrationPostconditionVerifier())->verify(
+                $pdo,
+                $this->scope()
+            ),
+            'El esquema canónico debe seguir siendo válido.'
+        );
+        $pdo->exec(
+            'CREATE UNIQUE INDEX injected_unique_expression '
+            . 'ON ls_webadmin_users ((1))'
+        );
+        $this->assertDrift($pdo, 'unique expression index');
+    }
+
     public function testAppliedSQLiteDriftDetectsEveryCanonicalSeedFamily(): void
     {
         $mutations = [
@@ -533,6 +550,16 @@ SQL);
 
         self::assertTrue($verifier->validateMetadata('mysql', $mysql));
         self::assertTrue($verifier->validateMetadata('mysql', $mariaDb));
+        $mySqlFunctions = $mysql;
+        $mySqlFunctions['checks']['credentials'][
+            'chk_wa_credentials_password'
+        ] = '(isnull(`password_hash`) and isnull(`password_set_at`)) '
+            . 'or (isnotnull(`password_hash`) '
+            . 'and isnotnull(`password_set_at`))';
+        self::assertTrue($verifier->validateMetadata(
+            'mysql',
+            $mySqlFunctions
+        ));
         self::assertTrue($verifier->validateMetadata(
             'mysql',
             $this->mysqlFixture('5.5.5-10.11.8-MariaDB')

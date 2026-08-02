@@ -6,6 +6,8 @@ namespace App\Core\Modules\Blog;
 
 use App\Core\Database\MySqlColumnDefaultNormalizer;
 use App\Core\Database\MySqlServerCapabilities;
+use App\Core\Database\SqlCheckExpressionCanonicalizer;
+use App\Core\Database\SqliteIndexSignature;
 use App\Core\Modules\Migrations\MigrationDatabaseDriver;
 use App\Core\Modules\Migrations\MigrationPostconditionVerifierInterface;
 use App\Core\Modules\Migrations\MigrationScope;
@@ -241,6 +243,7 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
         }
         foreach ($rows as $position => $row) {
             $contract = $expected[$position];
+            $column = self::COLUMNS[$suffix][$position] ?? '';
             $type = strtolower((string) ($row['DATA_TYPE'] ?? ''));
             $extra = strtolower((string) ($row['EXTRA'] ?? ''));
             $default = $this->defaultNormalizer->normalizeMetadata(
@@ -251,6 +254,14 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
                 $extra,
                 $isMariaDb
             );
+            if (!$this->validMySqlExtra(
+                $column,
+                $extra,
+                $contract['default'] ?? null,
+                (string) ($contract['extra'] ?? '')
+            )) {
+                return false;
+            }
             $actual = [
                 'type' => $type,
                 'unsigned' => str_contains(
@@ -278,6 +289,25 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
         }
 
         return true;
+    }
+
+    private function validMySqlExtra(
+        string $column,
+        string $actual,
+        ?string $expectedDefault,
+        string $expectedExtra
+    ): bool {
+        $normalized = strtolower(trim($actual));
+        if ($expectedExtra === 'auto_increment') {
+            return $column === 'id' && $normalized === 'auto_increment';
+        }
+        if ($normalized === '') {
+            return true;
+        }
+
+        return $expectedExtra === ''
+            && $expectedDefault === 'current_timestamp(6)'
+            && $normalized === 'default_generated';
     }
 
     /** @return list<array<string, mixed>> */
@@ -416,28 +446,41 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
         $expected = [
             'content_docs' => [
                 '0:updated_at',
-                '1:id',
+                'p:id',
                 '1:localization_id',
                 '1:public_id',
             ],
             'content_revisions' => [
                 '0:created_at',
-                '1:id',
+                'p:id',
                 '1:localization_id,revision_number',
                 '1:localization_id,variant_lock_version',
                 '1:public_id',
             ],
             'content_media' => [
                 '0:media_asset_public_id',
-                '1:document_id,block_public_id,role',
+                'p:document_id,block_public_id,role',
             ],
             'revision_media' => [
                 '0:media_asset_public_id',
-                '1:revision_id,block_public_id,role',
+                'p:revision_id,block_public_id,role',
             ],
         ];
+        $serverVersion = null;
+        if ($driver === 'mysql') {
+            $serverVersion = $pdo->query('SELECT VERSION()')->fetchColumn();
+            if (!is_string($serverVersion)) {
+                return false;
+            }
+        }
         foreach ($expected as $suffix => $contracts) {
-            $actual = $this->indexSignatures($pdo, $scope, $driver, $suffix);
+            $actual = $this->indexSignatures(
+                $pdo,
+                $scope,
+                $driver,
+                $suffix,
+                $serverVersion
+            );
             sort($actual, SORT_STRING);
             sort($contracts, SORT_STRING);
             if ($actual !== $contracts) {
@@ -453,7 +496,8 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
         PDO $pdo,
         MigrationScope $scope,
         string $driver,
-        string $suffix
+        string $suffix,
+        ?string $serverVersion = null
     ): array {
         if ($driver === 'sqlite') {
             $rows = $pdo->query(
@@ -462,52 +506,94 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
             )->fetchAll(PDO::FETCH_ASSOC);
             $result = [];
             foreach ($rows as $row) {
-                if (!in_array(($row['origin'] ?? null), ['c', 'pk'], true)) {
+                $signature = SqliteIndexSignature::fromPragmaRow(
+                    $pdo,
+                    $row,
+                    ['c', 'pk']
+                );
+                if (!is_string($signature)) {
                     return ['invalid'];
                 }
-                $name = str_replace('"', '""', (string) $row['name']);
-                $columns = $pdo->query(
-                    'PRAGMA index_info("' . $name . '")'
-                )->fetchAll(PDO::FETCH_ASSOC);
-                usort(
-                    $columns,
-                    static fn (array $left, array $right): int =>
-                        ((int) $left['seqno']) <=> ((int) $right['seqno'])
-                );
-                $result[] = ((int) $row['unique'] === 1 ? '1:' : '0:')
-                    . implode(',', array_map(
-                        static fn (array $column): string =>
-                            strtolower((string) $column['name']),
-                        $columns
-                    ));
+                $result[] = $signature;
             }
             if (
                 in_array($suffix, ['content_docs', 'content_revisions'], true)
             ) {
-                $result[] = '1:id';
+                $result[] = 'p:id';
             }
 
             return $result;
         }
 
+        if (!is_string($serverVersion)) {
+            return ['invalid'];
+        }
+        $ignoredExpression = MySqlServerCapabilities::isMariaDb($serverVersion)
+            ? (MySqlServerCapabilities::supportsIgnoredIndexes($serverVersion)
+                ? 'IGNORED'
+                : "'NO' AS IGNORED")
+            : "CASE WHEN IS_VISIBLE = 'YES' THEN 'NO' "
+                . "ELSE 'YES' END AS IGNORED";
         $statement = $pdo->prepare(
-            'SELECT INDEX_NAME, NON_UNIQUE, SEQ_IN_INDEX, COLUMN_NAME '
+            'SELECT INDEX_NAME, NON_UNIQUE, SEQ_IN_INDEX, COLUMN_NAME, '
+            . 'INDEX_TYPE, SUB_PART, COLLATION, ' . $ignoredExpression . ' '
             . 'FROM information_schema.STATISTICS '
             . 'WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table '
             . 'ORDER BY INDEX_NAME, SEQ_IN_INDEX'
         );
         $statement->execute(['table' => $scope->tableName($suffix)]);
+        return $this->mysqlIndexSignaturesFromRows(
+            $statement->fetchAll(PDO::FETCH_ASSOC)
+        );
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @return list<string>
+     */
+    private function mysqlIndexSignaturesFromRows(array $rows): array
+    {
         $grouped = [];
-        foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $name = (string) $row['INDEX_NAME'];
-            $grouped[$name]['unique'] = (int) $row['NON_UNIQUE'] === 0;
-            $grouped[$name]['columns'][(int) $row['SEQ_IN_INDEX']] =
-                strtolower((string) $row['COLUMN_NAME']);
+        foreach ($rows as $row) {
+            $name = (string) ($row['INDEX_NAME'] ?? '');
+            $column = (string) ($row['COLUMN_NAME'] ?? '');
+            $sequence = (int) ($row['SEQ_IN_INDEX'] ?? 0);
+            $nonUnique = $row['NON_UNIQUE'] ?? null;
+            $primary = strtoupper($name) === 'PRIMARY';
+            if (
+                $name === ''
+                || $column === ''
+                || $sequence < 1
+                || !in_array($nonUnique, [0, '0', 1, '1'], true)
+                || strtoupper((string) ($row['INDEX_TYPE'] ?? '')) !== 'BTREE'
+                || ($row['SUB_PART'] ?? null) !== null
+                || strtoupper((string) ($row['COLLATION'] ?? '')) !== 'A'
+                || strtoupper((string) ($row['IGNORED'] ?? '')) !== 'NO'
+                || ($primary && (int) $nonUnique !== 0)
+                || isset($grouped[$name]['columns'][$sequence])
+                || (isset($grouped[$name]['unique'])
+                    && $grouped[$name]['unique'] !== ((int) $nonUnique === 0))
+                || (isset($grouped[$name]['primary'])
+                    && $grouped[$name]['primary'] !== $primary)
+            ) {
+                return ['invalid'];
+            }
+            $grouped[$name]['unique'] = (int) $nonUnique === 0;
+            $grouped[$name]['primary'] = $primary;
+            $grouped[$name]['columns'][$sequence] = strtolower($column);
         }
         $result = [];
         foreach ($grouped as $index) {
             ksort($index['columns'], SORT_NUMERIC);
-            $result[] = ($index['unique'] ? '1:' : '0:')
+            if (
+                array_keys($index['columns'])
+                    !== range(1, count($index['columns']))
+            ) {
+                return ['invalid'];
+            }
+            $result[] = ($index['primary']
+                ? 'p:'
+                : ($index['unique'] ? '1:' : '0:'))
                 . implode(',', $index['columns']);
         }
 
@@ -521,16 +607,16 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
     ): bool {
         $expected = [
             'content_docs' => [
-                'localization_id>post_localizations.id>CASCADE',
+                'localization_id>post_localizations.id>NO ACTION>CASCADE',
             ],
             'content_revisions' => [
-                'localization_id>post_localizations.id>CASCADE',
+                'localization_id>post_localizations.id>NO ACTION>CASCADE',
             ],
             'content_media' => [
-                'document_id>content_docs.id>CASCADE',
+                'document_id>content_docs.id>NO ACTION>CASCADE',
             ],
             'revision_media' => [
-                'revision_id>content_revisions.id>CASCADE',
+                'revision_id>content_revisions.id>NO ACTION>CASCADE',
             ],
         ];
         foreach ($expected as $suffix => $contracts) {
@@ -547,7 +633,10 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
             } else {
                 $statement = $pdo->prepare(
                     'SELECT k.COLUMN_NAME, k.REFERENCED_TABLE_NAME, '
-                    . 'k.REFERENCED_COLUMN_NAME, r.DELETE_RULE FROM '
+                    . 'k.REFERENCED_COLUMN_NAME, '
+                    . 'k.REFERENCED_TABLE_SCHEMA = DATABASE() AS SAME_SCHEMA, '
+                    . 'r.UPDATE_RULE, '
+                    . 'r.DELETE_RULE FROM '
                     . 'information_schema.KEY_COLUMN_USAGE k JOIN '
                     . 'information_schema.REFERENTIAL_CONSTRAINTS r ON '
                     . 'r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA AND '
@@ -579,6 +668,16 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
         MigrationScope $scope,
         bool $sqlite
     ): string {
+        if (
+            !$sqlite
+            && !in_array(
+                $row['SAME_SCHEMA'] ?? null,
+                [1, '1', true],
+                true
+            )
+        ) {
+            return 'invalid';
+        }
         $target = (string) ($sqlite
             ? ($row['table'] ?? '')
             : ($row['REFERENCED_TABLE_NAME'] ?? ''));
@@ -587,6 +686,12 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
             $scope->tableName('content_docs') => 'content_docs',
             $scope->tableName('content_revisions') => 'content_revisions',
         ];
+        $updateRule = strtoupper((string) ($sqlite
+            ? ($row['on_update'] ?? '')
+            : ($row['UPDATE_RULE'] ?? '')));
+        if ($updateRule === 'RESTRICT') {
+            $updateRule = 'NO ACTION';
+        }
 
         return strtolower((string) ($sqlite
             ? ($row['from'] ?? '')
@@ -595,6 +700,7 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
             . strtolower((string) ($sqlite
                 ? ($row['to'] ?? '')
                 : ($row['REFERENCED_COLUMN_NAME'] ?? '')))
+            . '>' . $updateRule
             . '>' . strtoupper((string) ($sqlite
                 ? ($row['on_delete'] ?? '')
                 : ($row['DELETE_RULE'] ?? '')));
@@ -608,23 +714,35 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
         if ($driver === 'sqlite') {
             return true;
         }
+        $serverVersion = $pdo->query('SELECT VERSION()')->fetchColumn();
+        if (!is_string($serverVersion)) {
+            return false;
+        }
+        $isMariaDb = MySqlServerCapabilities::isMariaDb($serverVersion);
         $expected = $this->mysqlChecks();
         foreach (array_keys(self::COLUMNS) as $suffix) {
             $statement = $pdo->prepare(
-                'SELECT cc.CHECK_CLAUSE FROM information_schema.TABLE_CONSTRAINTS '
+                'SELECT cc.CHECK_CLAUSE, '
+                . ($isMariaDb ? "'YES'" : 'tc.ENFORCED')
+                . ' AS ENFORCED FROM information_schema.TABLE_CONSTRAINTS '
                 . 'tc JOIN information_schema.CHECK_CONSTRAINTS cc ON '
                 . 'cc.CONSTRAINT_SCHEMA = tc.CONSTRAINT_SCHEMA AND '
-                . 'cc.CONSTRAINT_NAME = tc.CONSTRAINT_NAME WHERE '
+                . 'cc.CONSTRAINT_NAME = tc.CONSTRAINT_NAME '
+                . ($isMariaDb ? 'AND cc.TABLE_NAME = tc.TABLE_NAME ' : '')
+                . 'WHERE '
                 . 'tc.TABLE_SCHEMA = DATABASE() AND tc.TABLE_NAME = :table '
                 . "AND tc.CONSTRAINT_TYPE = 'CHECK'"
             );
             $statement->execute(['table' => $scope->tableName($suffix)]);
-            $actual = array_map(
-                fn (array $row): string => $this->canonicalSql(
+            $actual = [];
+            foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                if (strtoupper((string) ($row['ENFORCED'] ?? '')) !== 'YES') {
+                    return false;
+                }
+                $actual[] = $this->canonicalCheckExpression(
                     (string) ($row['CHECK_CLAUSE'] ?? '')
-                ),
-                $statement->fetchAll(PDO::FETCH_ASSOC)
-            );
+                );
+            }
             sort($actual, SORT_STRING);
             $contracts = $expected[$suffix];
             sort($contracts, SORT_STRING);
@@ -675,6 +793,9 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
             'post_localizations',
             $driver
         );
+        if (!$this->relationshipsAreValid($pdo, $scope, $driver)) {
+            return false;
+        }
 
         $documentRows = $pdo->query(
             'SELECT d.*, l.h1 AS localization_h1, '
@@ -721,6 +842,32 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
                 ) {
                     return false;
                 }
+            }
+        }
+
+        return true;
+    }
+
+    private function relationshipsAreValid(
+        PDO $pdo,
+        MigrationScope $scope,
+        string $driver
+    ): bool {
+        foreach ([
+            ['content_docs', 'localization_id', 'post_localizations'],
+            ['content_revisions', 'localization_id', 'post_localizations'],
+            ['content_media', 'document_id', 'content_docs'],
+            ['revision_media', 'revision_id', 'content_revisions'],
+        ] as [$childSuffix, $foreignColumn, $parentSuffix]) {
+            $child = $scope->quotedTable($childSuffix, $driver);
+            $parent = $scope->quotedTable($parentSuffix, $driver);
+            $orphans = (int) $pdo->query(
+                'SELECT COUNT(*) FROM ' . $child . ' AS child '
+                . 'LEFT JOIN ' . $parent . ' AS parent ON parent.id = child.'
+                . $foreignColumn . ' WHERE parent.id IS NULL'
+            )->fetchColumn();
+            if ($orphans !== 0) {
+                return false;
             }
         }
 
@@ -896,11 +1043,18 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
             'content_docs' => [
                 'length(public_id)=36',
                 'schema_version=1',
-                "length(template_key)between1and64andtemplate_key=lower(template_key)andtemplate_key=trim(template_key)andsubstr(template_key,1,1)glob'[a-z]'andtemplate_keynotglob'*[^a-z0-9_-]*'",
-                'document_bytesbetween1and300000',
-                "length(document_sha256)=64anddocument_sha256notglob'*[^0-9a-f]*'",
-                "length(body_text_sha256)=64andbody_text_sha256notglob'*[^0-9a-f]*'",
-                "length(snapshot_sha256)=64andsnapshot_sha256notglob'*[^0-9a-f]*'",
+                'length(template_key) BETWEEN 1 AND 64 '
+                    . 'AND template_key = lower(template_key) '
+                    . 'AND template_key = trim(template_key) '
+                    . "AND substr(template_key, 1, 1) GLOB '[a-z]' "
+                    . "AND template_key NOT GLOB '*[^a-z0-9_-]*'",
+                'document_bytes BETWEEN 1 AND 300000',
+                "length(document_sha256) = 64 "
+                    . "AND document_sha256 NOT GLOB '*[^0-9a-f]*'",
+                "length(body_text_sha256) = 64 "
+                    . "AND body_text_sha256 NOT GLOB '*[^0-9a-f]*'",
+                "length(snapshot_sha256) = 64 "
+                    . "AND snapshot_sha256 NOT GLOB '*[^0-9a-f]*'",
                 'length(created_by_user_public_id)=36',
                 'length(updated_by_user_public_id)=36',
             ],
@@ -909,28 +1063,39 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
                 'revision_number>0',
                 'variant_lock_version>0',
                 'schema_version=1',
-                "length(template_key)between1and64andtemplate_key=lower(template_key)andtemplate_key=trim(template_key)andsubstr(template_key,1,1)glob'[a-z]'andtemplate_keynotglob'*[^a-z0-9_-]*'",
-                'document_bytesbetween1and300000',
-                "length(document_sha256)=64anddocument_sha256notglob'*[^0-9a-f]*'",
-                "length(body_text_sha256)=64andbody_text_sha256notglob'*[^0-9a-f]*'",
-                "length(snapshot_sha256)=64andsnapshot_sha256notglob'*[^0-9a-f]*'",
+                'length(template_key) BETWEEN 1 AND 64 '
+                    . 'AND template_key = lower(template_key) '
+                    . 'AND template_key = trim(template_key) '
+                    . "AND substr(template_key, 1, 1) GLOB '[a-z]' "
+                    . "AND template_key NOT GLOB '*[^a-z0-9_-]*'",
+                'document_bytes BETWEEN 1 AND 300000',
+                "length(document_sha256) = 64 "
+                    . "AND document_sha256 NOT GLOB '*[^0-9a-f]*'",
+                "length(body_text_sha256) = 64 "
+                    . "AND body_text_sha256 NOT GLOB '*[^0-9a-f]*'",
+                "length(snapshot_sha256) = 64 "
+                    . "AND snapshot_sha256 NOT GLOB '*[^0-9a-f]*'",
                 'length(trim(h1))>0',
-                'slugisnullor(length(trim(slug))>0andslug=lower(slug)andslug=trim(slug))',
+                'slug IS NULL OR (length(trim(slug)) > 0 '
+                    . 'AND slug = lower(slug) AND slug = trim(slug))',
                 'length(created_by_user_public_id)=36',
             ],
             'content_media' => [
                 'length(block_public_id)=36',
                 'length(media_asset_public_id)=36',
-                "rolein('image','cover','poster')",
+                "role IN ('image', 'cover', 'poster')",
             ],
             'revision_media' => [
                 'length(block_public_id)=36',
                 'length(media_asset_public_id)=36',
-                "rolein('image','cover','poster')",
+                "role IN ('image', 'cover', 'poster')",
             ],
         ];
         foreach ($checks as &$expressions) {
-            $expressions = array_map([$this, 'canonicalSql'], $expressions);
+            $expressions = array_map(
+                [$this, 'canonicalCheckExpression'],
+                $expressions
+            );
         }
         unset($expressions);
 
@@ -944,11 +1109,14 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
             'content_docs' => [
                 'char_length(public_id)=36',
                 'schema_version=1',
-                "char_length(template_key)between1and64andtemplate_key=lower(template_key)andtemplate_key=trim(template_key)andtemplate_keyregexp'^[a-z][a-z0-9_-]{0,63}$'",
-                'document_bytesbetween1and300000',
-                "document_sha256regexp'^[0-9a-f]{64}$'",
-                "body_text_sha256regexp'^[0-9a-f]{64}$'",
-                "snapshot_sha256regexp'^[0-9a-f]{64}$'",
+                'char_length(template_key) BETWEEN 1 AND 64 '
+                    . 'AND template_key = lower(template_key) '
+                    . 'AND template_key = trim(template_key) '
+                    . "AND template_key REGEXP '^[a-z][a-z0-9_-]{0,63}$'",
+                'document_bytes BETWEEN 1 AND 300000',
+                "document_sha256 REGEXP '^[0-9a-f]{64}$'",
+                "body_text_sha256 REGEXP '^[0-9a-f]{64}$'",
+                "snapshot_sha256 REGEXP '^[0-9a-f]{64}$'",
                 'char_length(created_by_user_public_id)=36',
                 'char_length(updated_by_user_public_id)=36',
             ],
@@ -957,28 +1125,35 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
                 'revision_number>0',
                 'variant_lock_version>0',
                 'schema_version=1',
-                "char_length(template_key)between1and64andtemplate_key=lower(template_key)andtemplate_key=trim(template_key)andtemplate_keyregexp'^[a-z][a-z0-9_-]{0,63}$'",
-                'document_bytesbetween1and300000',
-                "document_sha256regexp'^[0-9a-f]{64}$'",
-                "body_text_sha256regexp'^[0-9a-f]{64}$'",
-                "snapshot_sha256regexp'^[0-9a-f]{64}$'",
+                'char_length(template_key) BETWEEN 1 AND 64 '
+                    . 'AND template_key = lower(template_key) '
+                    . 'AND template_key = trim(template_key) '
+                    . "AND template_key REGEXP '^[a-z][a-z0-9_-]{0,63}$'",
+                'document_bytes BETWEEN 1 AND 300000',
+                "document_sha256 REGEXP '^[0-9a-f]{64}$'",
+                "body_text_sha256 REGEXP '^[0-9a-f]{64}$'",
+                "snapshot_sha256 REGEXP '^[0-9a-f]{64}$'",
                 'char_length(trim(h1))>0',
-                'slugisnullor(char_length(trim(slug))>0andslug=lower(slug)andslug=trim(slug))',
+                'slug IS NULL OR (char_length(trim(slug)) > 0 '
+                    . 'AND slug = lower(slug) AND slug = trim(slug))',
                 'char_length(created_by_user_public_id)=36',
             ],
             'content_media' => [
                 'char_length(block_public_id)=36',
                 'char_length(media_asset_public_id)=36',
-                "rolein('image','cover','poster')",
+                "role IN ('image', 'cover', 'poster')",
             ],
             'revision_media' => [
                 'char_length(block_public_id)=36',
                 'char_length(media_asset_public_id)=36',
-                "rolein('image','cover','poster')",
+                "role IN ('image', 'cover', 'poster')",
             ],
         ];
         foreach ($checks as &$expressions) {
-            $expressions = array_map([$this, 'canonicalSql'], $expressions);
+            $expressions = array_map(
+                [$this, 'canonicalCheckExpression'],
+                $expressions
+            );
         }
         unset($expressions);
 
@@ -988,40 +1163,126 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
     /** @return list<string> */
     private function checkExpressions(string $sql): array
     {
+        $sql = $this->stripSqlComments($sql);
         $expressions = [];
-        $offset = 0;
-        while (preg_match('/\bCHECK\s*\(/i', $sql, $match, PREG_OFFSET_CAPTURE, $offset)) {
-            $start = $match[0][1] + strlen($match[0][0]);
-            $depth = 1;
-            $quote = false;
-            $length = strlen($sql);
-            for ($position = $start; $position < $length; $position++) {
-                $character = $sql[$position];
-                if ($character === "'") {
-                    if ($quote && ($sql[$position + 1] ?? '') === "'") {
-                        $position++;
-                        continue;
-                    }
-                    $quote = !$quote;
-                    continue;
-                }
-                if ($quote) {
-                    continue;
-                }
-                if ($character === '(') {
-                    $depth++;
-                } elseif ($character === ')' && --$depth === 0) {
-                    $expressions[] = $this->canonicalSql(
-                        substr($sql, $start, $position - $start)
-                    );
-                    $offset = $position + 1;
-                    continue 2;
-                }
+        $length = strlen($sql);
+        for ($index = 0; $index < $length;) {
+            if (in_array($sql[$index], ["'", '"', '`', '['], true)) {
+                $this->skipQuotedToken($sql, $index);
+                continue;
             }
-            return ['invalid'];
+            if (
+                strncasecmp(substr($sql, $index, 5), 'check', 5) !== 0
+                || ($index > 0
+                    && preg_match('/[a-z0-9_]/i', $sql[$index - 1]) === 1)
+                || preg_match('/[a-z0-9_]/i', $sql[$index + 5] ?? '') === 1
+            ) {
+                $index++;
+                continue;
+            }
+            $cursor = $index + 5;
+            while ($cursor < $length && ctype_space($sql[$cursor])) {
+                $cursor++;
+            }
+            if (($sql[$cursor] ?? '') !== '(') {
+                $index += 5;
+                continue;
+            }
+            $start = ++$cursor;
+            $depth = 1;
+            while ($cursor < $length && $depth > 0) {
+                if (in_array($sql[$cursor], ["'", '"', '`', '['], true)) {
+                    $this->skipQuotedToken($sql, $cursor);
+                    continue;
+                }
+                if ($sql[$cursor] === '(') {
+                    $depth++;
+                } elseif ($sql[$cursor] === ')') {
+                    $depth--;
+                }
+                $cursor++;
+            }
+            if ($depth !== 0) {
+                return ['invalid'];
+            }
+            $expressions[] = $this->canonicalCheckExpression(
+                substr($sql, $start, $cursor - $start - 1)
+            );
+            $index = $cursor;
         }
 
         return $expressions;
+    }
+
+    private function stripSqlComments(string $sql): string
+    {
+        $withoutComments = '';
+        $length = strlen($sql);
+        for ($index = 0; $index < $length;) {
+            if (in_array($sql[$index], ["'", '"', '`', '['], true)) {
+                $start = $index;
+                $this->skipQuotedToken($sql, $index);
+                $withoutComments .= substr($sql, $start, $index - $start);
+                continue;
+            }
+            if (
+                $sql[$index] === '-'
+                && ($sql[$index + 1] ?? '') === '-'
+            ) {
+                $withoutComments .= ' ';
+                $index += 2;
+                while (
+                    $index < $length
+                    && !in_array($sql[$index], ["\r", "\n"], true)
+                ) {
+                    $index++;
+                }
+                continue;
+            }
+            if (
+                $sql[$index] === '/'
+                && ($sql[$index + 1] ?? '') === '*'
+            ) {
+                $withoutComments .= ' ';
+                $index += 2;
+                while (
+                    $index < $length
+                    && !(
+                        $sql[$index] === '*'
+                        && ($sql[$index + 1] ?? '') === '/'
+                    )
+                ) {
+                    $index++;
+                }
+                if ($index < $length) {
+                    $index += 2;
+                }
+                continue;
+            }
+            $withoutComments .= $sql[$index++];
+        }
+
+        return $withoutComments;
+    }
+
+    private function skipQuotedToken(string $sql, int &$index): void
+    {
+        $opening = $sql[$index];
+        $closing = $opening === '[' ? ']' : $opening;
+        $length = strlen($sql);
+        $index++;
+        while ($index < $length) {
+            if ($sql[$index] !== $closing) {
+                $index++;
+                continue;
+            }
+            if (($sql[$index + 1] ?? '') === $closing) {
+                $index += 2;
+                continue;
+            }
+            $index++;
+            return;
+        }
     }
 
     private function canonicalDefault(mixed $value): ?string
@@ -1035,17 +1296,11 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
 
     private function canonicalSql(string $sql): string
     {
-        $sql = strtolower(trim($sql));
-        $sql = str_replace(['`', '"', '[', ']'], '', $sql);
-        $sql = (string) preg_replace('/\s+/', '', $sql);
-        while (
-            strlen($sql) > 1
-            && $sql[0] === '('
-            && str_ends_with($sql, ')')
-        ) {
-            $sql = substr($sql, 1, -1);
-        }
+        return SqlCheckExpressionCanonicalizer::compact($sql);
+    }
 
-        return $sql;
+    private function canonicalCheckExpression(string $sql): string
+    {
+        return SqlCheckExpressionCanonicalizer::canonicalize($sql);
     }
 }

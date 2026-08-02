@@ -6,6 +6,8 @@ namespace App\Core\Modules\WebAdmin;
 
 use App\Core\Database\MySqlColumnDefaultNormalizer;
 use App\Core\Database\MySqlServerCapabilities;
+use App\Core\Database\SqlCheckExpressionCanonicalizer;
+use App\Core\Database\SqliteIndexSignature;
 use App\Core\Modules\Migrations\MigrationDatabaseDriver;
 use App\Core\Modules\Migrations\MigrationPostconditionVerifierInterface;
 use App\Core\Modules\Migrations\MigrationScope;
@@ -159,41 +161,32 @@ final class WebAdminMigrationPostconditionVerifier implements
                 $indexRow = array_change_key_case($indexRow, CASE_LOWER);
                 $indexName = (string) ($indexRow['name'] ?? '');
                 if ($indexName === '') {
+                    $metadata['indexes'][$suffix][''] = [
+                        'portable' => false,
+                    ];
                     continue;
                 }
-                $indexColumns = $pdo->query(
-                    'PRAGMA index_xinfo(' . $this->quoteSqliteIdentifier($indexName) . ')'
-                )->fetchAll(PDO::FETCH_ASSOC);
-                $indexColumns = array_values(array_filter(
-                    $indexColumns,
-                    static fn (array $entry): bool =>
-                        (int) ($entry['key'] ?? 1) === 1
-                ));
-                usort(
-                    $indexColumns,
-                    static fn (array $a, array $b): int =>
-                        (int) ($a['seqno'] ?? 0) <=> (int) ($b['seqno'] ?? 0)
+                $signature = SqliteIndexSignature::fromPragmaRow(
+                    $pdo,
+                    $indexRow,
+                    ['c', 'u', 'pk']
                 );
+                if (!is_string($signature)) {
+                    $metadata['indexes'][$suffix][$indexName] = [
+                        'portable' => false,
+                    ];
+                    continue;
+                }
+                [$kind, $columnList] = explode(':', $signature, 2);
+                $columns = explode(',', $columnList);
                 $metadata['indexes'][$suffix][$indexName] = [
-                    'unique' => (int) ($indexRow['unique'] ?? 0) === 1,
+                    'portable' => true,
+                    'unique' => $kind !== '0',
                     'origin' => strtolower((string) ($indexRow['origin'] ?? '')),
-                    'columns' => array_values(array_map(
-                        static fn (array $entry): string =>
-                            (string) ($entry['name'] ?? ''),
-                        $indexColumns
-                    )),
-                    'directions' => array_values(array_map(
-                        static fn (array $entry): string =>
-                            (int) ($entry['desc'] ?? 0) === 1 ? 'D' : 'A',
-                        $indexColumns
-                    )),
-                    'collations' => array_values(array_map(
-                        static fn (array $entry): string => strtoupper(
-                            (string) ($entry['coll'] ?? '')
-                        ),
-                        $indexColumns
-                    )),
-                    'partial' => (int) ($indexRow['partial'] ?? 0) === 1,
+                    'columns' => $columns,
+                    'directions' => array_fill(0, count($columns), 'A'),
+                    'collations' => array_fill(0, count($columns), 'BINARY'),
+                    'partial' => false,
                 ];
             }
 
@@ -847,6 +840,13 @@ final class WebAdminMigrationPostconditionVerifier implements
             $primary = WebAdminInitialSchemaContract::primaryKeys()[$suffix];
             foreach ($actualIndexes as $name => $actual) {
                 if (!is_array($actual)) {
+                    return false;
+                }
+                if (
+                    $driver === 'sqlite'
+                    && array_key_exists('portable', $actual)
+                    && $actual['portable'] !== true
+                ) {
                     return false;
                 }
                 $columns = array_values($actual['columns'] ?? []);
@@ -1815,188 +1815,7 @@ final class WebAdminMigrationPostconditionVerifier implements
 
     private function canonicalCheckExpression(string $expression): string
     {
-        $tokens = $this->checkExpressionTokens($expression);
-
-        return $tokens === []
-            ? ''
-            : $this->canonicalBooleanTokens($tokens);
-    }
-
-    /** @return list<string> */
-    private function checkExpressionTokens(string $expression): array
-    {
-        $tokens = [];
-        $length = strlen($expression);
-        for ($index = 0; $index < $length;) {
-            $character = $expression[$index];
-            if (ctype_space($character)) {
-                $index++;
-                continue;
-            }
-            if ($character === "'") {
-                $start = $index++;
-                while ($index < $length) {
-                    if ($expression[$index] !== "'") {
-                        $index++;
-                        continue;
-                    }
-                    if (
-                        $index + 1 < $length
-                        && $expression[$index + 1] === "'"
-                    ) {
-                        $index += 2;
-                        continue;
-                    }
-                    $index++;
-                    break;
-                }
-                $tokens[] = substr($expression, $start, $index - $start);
-                continue;
-            }
-            if ($character === '`' || $character === '"' || $character === '[') {
-                $close = $character === '[' ? ']' : $character;
-                $index++;
-                $identifier = '';
-                while ($index < $length) {
-                    if ($expression[$index] !== $close) {
-                        $identifier .= strtolower($expression[$index++]);
-                        continue;
-                    }
-                    if (
-                        $index + 1 < $length
-                        && $expression[$index + 1] === $close
-                    ) {
-                        $identifier .= strtolower($close);
-                        $index += 2;
-                        continue;
-                    }
-                    $index++;
-                    break;
-                }
-                $tokens[] = $identifier;
-                continue;
-            }
-            if (
-                preg_match('/[A-Za-z_]/', $character) === 1
-            ) {
-                $start = $index++;
-                while (
-                    $index < $length
-                    && preg_match('/[A-Za-z0-9_]/', $expression[$index]) === 1
-                ) {
-                    $index++;
-                }
-                $identifier = strtolower(substr(
-                    $expression,
-                    $start,
-                    $index - $start
-                ));
-                $lookahead = $index;
-                while (
-                    $lookahead < $length
-                    && ctype_space($expression[$lookahead])
-                ) {
-                    $lookahead++;
-                }
-                if (
-                    str_starts_with($identifier, '_')
-                    && ($expression[$lookahead] ?? '') === "'"
-                ) {
-                    continue;
-                }
-                $tokens[] = $identifier === 'lcase' ? 'lower' : $identifier;
-                continue;
-            }
-            $pair = substr($expression, $index, 2);
-            if (in_array($pair, ['!=', '<=', '>=', '<>'], true)) {
-                $tokens[] = $pair === '!=' ? '<>' : $pair;
-                $index += 2;
-                continue;
-            }
-            $tokens[] = strtolower($character);
-            $index++;
-        }
-
-        return $tokens;
-    }
-
-    /** @param list<string> $tokens */
-    private function canonicalBooleanTokens(array $tokens): string
-    {
-        while (
-            count($tokens) >= 2
-            && $tokens[0] === '('
-            && $this->matchingClosingParenthesis($tokens, 0)
-                === count($tokens) - 1
-        ) {
-            $tokens = array_slice($tokens, 1, -1);
-        }
-
-        foreach (['or', 'and'] as $operator) {
-            $parts = $this->splitTopLevelBoolean($tokens, $operator);
-            if (count($parts) > 1) {
-                return $operator . '(' . implode(',', array_map(
-                    fn (array $part): string =>
-                        $this->canonicalBooleanTokens($part),
-                    $parts
-                )) . ')';
-            }
-        }
-
-        return implode('', $tokens);
-    }
-
-    /**
-     * @param list<string> $tokens
-     * @return list<list<string>>
-     */
-    private function splitTopLevelBoolean(
-        array $tokens,
-        string $operator
-    ): array {
-        $parts = [];
-        $start = 0;
-        $depth = 0;
-        foreach ($tokens as $position => $token) {
-            if ($token === '(') {
-                $depth++;
-            } elseif ($token === ')') {
-                $depth--;
-            } elseif ($depth === 0 && $token === $operator) {
-                $parts[] = array_slice($tokens, $start, $position - $start);
-                $start = $position + 1;
-            }
-        }
-        if ($parts === []) {
-            return [$tokens];
-        }
-        $parts[] = array_slice($tokens, $start);
-
-        return $parts;
-    }
-
-    /** @param list<string> $tokens */
-    private function matchingClosingParenthesis(
-        array $tokens,
-        int $openingPosition
-    ): ?int {
-        $depth = 0;
-        for (
-            $position = $openingPosition;
-            $position < count($tokens);
-            $position++
-        ) {
-            if ($tokens[$position] === '(') {
-                $depth++;
-            } elseif ($tokens[$position] === ')') {
-                $depth--;
-                if ($depth === 0) {
-                    return $position;
-                }
-            }
-        }
-
-        return null;
+        return SqlCheckExpressionCanonicalizer::canonicalize($expression);
     }
 
     private function stripOuterParentheses(string $expression): string

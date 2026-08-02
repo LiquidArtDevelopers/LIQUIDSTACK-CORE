@@ -108,6 +108,18 @@ final class BlogMigrationProviderTest extends TestCase
             '09e727d09bce7f0c60306099a15df21b882766f878eb0be4c40aca546791d2e7',
             $migrations[1]->checksum()
         );
+        self::assertSame(
+            '6a78d00acae0d13d175f2632ccb1598b4f1d53ba9c09f5840ea3f73c88661e97',
+            $migrations[2]->checksum()
+        );
+        self::assertSame(
+            'c8b6f45611a344342b16f147d0edbe62e765ed6e1a70ebead8793dbc9b846345',
+            $migrations[3]->checksum()
+        );
+        self::assertSame(
+            '4aca1e340d1a818940173feebeeaf67b5c319b464f8ec67e9b5691542753a4bd',
+            $migrations[4]->checksum()
+        );
     }
 
     public function testSchemaSqlIsExactAndContainsNoDeferredDomains(): void

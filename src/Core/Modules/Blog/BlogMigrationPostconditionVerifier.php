@@ -6,6 +6,8 @@ namespace App\Core\Modules\Blog;
 
 use App\Core\Database\MySqlColumnDefaultNormalizer;
 use App\Core\Database\MySqlServerCapabilities;
+use App\Core\Database\SqlCheckExpressionCanonicalizer;
+use App\Core\Database\SqliteIndexSignature;
 use App\Core\Modules\Migrations\MigrationDatabaseDriver;
 use App\Core\Modules\Migrations\MigrationPostconditionVerifierInterface;
 use App\Core\Modules\Migrations\MigrationRegistry;
@@ -217,30 +219,18 @@ final class BlogMigrationPostconditionVerifier implements
         )->fetchAll(PDO::FETCH_ASSOC);
         $actual = [];
         foreach ($rows as $row) {
-            if ((string) ($row['origin'] ?? '') !== 'c') {
-                return false;
-            }
-            $name = (string) ($row['name'] ?? '');
-            if ($name === '') {
-                return false;
-            }
-            $columns = $pdo->query(
-                'PRAGMA index_info('
-                . $this->quoteSqliteIdentifier($name)
-                . ')'
-            )->fetchAll(PDO::FETCH_ASSOC);
-            usort(
-                $columns,
-                static fn (array $left, array $right): int =>
-                    ((int) $left['seqno']) <=> ((int) $right['seqno'])
+            $signature = SqliteIndexSignature::fromPragmaRow(
+                $pdo,
+                $row,
+                ['c']
             );
+            if (!is_string($signature)) {
+                return false;
+            }
+            [$unique, $columns] = explode(':', $signature, 2);
             $actual[] = [
-                'unique' => (int) ($row['unique'] ?? 0) === 1,
-                'columns' => array_map(
-                    static fn (array $column): string =>
-                        strtolower((string) $column['name']),
-                    $columns
-                ),
+                'unique' => $unique === '1',
+                'columns' => explode(',', $columns),
             ];
         }
         $this->sortIndexContracts($actual);
@@ -349,7 +339,7 @@ final class BlogMigrationPostconditionVerifier implements
             || !$this->mysqlColumnsAreExact($pdo, $scope, $version)
             || !$this->mysqlIndexesAreExact($pdo, $scope, $version)
             || !$this->mysqlForeignKeysAreExact($pdo, $scope)
-            || !$this->mysqlChecksAreExact($pdo, $scope)
+            || !$this->mysqlChecksAreExact($pdo, $scope, $version)
             || !$this->mysqlHasNoTriggers($pdo, $scope)
         ) {
             return false;
@@ -485,6 +475,21 @@ final class BlogMigrationPostconditionVerifier implements
                 $extra,
                 $isMariaDb
             );
+            $position = count($actual[$suffix]);
+            $contract = BlogInitialSchemaContract::mysqlColumns()[$suffix][
+                $position
+            ] ?? null;
+            if (
+                !is_array($contract)
+                || !$this->mysqlExtraIsExact(
+                    $extra,
+                    (string) ($contract['extra'] ?? ''),
+                    isset($contract['default'])
+                        ? (string) $contract['default'] : null
+                )
+            ) {
+                return false;
+            }
             if ($default !== null && str_starts_with($default, "'")) {
                 // Preserve literal case; only SQL expressions are canonicalized.
             } elseif ($default !== null) {
@@ -521,6 +526,35 @@ final class BlogMigrationPostconditionVerifier implements
         return $actual === BlogInitialSchemaContract::mysqlColumns();
     }
 
+    private function mysqlExtraIsExact(
+        string $actual,
+        string $expected,
+        ?string $default
+    ): bool {
+        $normalized = strtolower(trim($actual));
+        $tokens = $normalized === ''
+            ? []
+            : (preg_split('/\s+/', $normalized) ?: []);
+        $expectsAutoIncrement = $expected === 'auto_increment';
+        if (
+            in_array('auto_increment', $tokens, true)
+                !== $expectsAutoIncrement
+        ) {
+            return false;
+        }
+        $allowed = $expectsAutoIncrement ? ['auto_increment'] : [];
+        if (strtolower((string) $default) === 'current_timestamp(6)') {
+            $allowed[] = 'default_generated';
+        }
+        foreach ($tokens as $token) {
+            if (!in_array($token, $allowed, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private function mysqlIndexesAreExact(
         PDO $pdo,
         MigrationScope $scope,
@@ -536,7 +570,8 @@ final class BlogMigrationPostconditionVerifier implements
                 . "ELSE 'YES' END AS IGNORED";
         $statement = $pdo->prepare(
             'SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, SEQ_IN_INDEX, '
-            . 'COLUMN_NAME, ' . $ignoredExpression . ' '
+            . 'COLUMN_NAME, INDEX_TYPE, SUB_PART, COLLATION, '
+            . $ignoredExpression . ' '
             . 'FROM information_schema.STATISTICS '
             . 'WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (' . $in . ') '
             . 'ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX'
@@ -549,27 +584,53 @@ final class BlogMigrationPostconditionVerifier implements
         );
         $grouped = [];
         foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            if (strtoupper((string) ($row['IGNORED'] ?? 'YES')) !== 'NO') {
-                return false;
-            }
             $suffix = $nameToSuffix[(string) $row['TABLE_NAME']] ?? null;
             if (!is_string($suffix)) {
                 return false;
             }
-            $indexName = (string) $row['INDEX_NAME'];
+            $indexName = (string) ($row['INDEX_NAME'] ?? '');
+            $column = (string) ($row['COLUMN_NAME'] ?? '');
+            $sequence = (int) ($row['SEQ_IN_INDEX'] ?? 0);
+            $nonUnique = $row['NON_UNIQUE'] ?? null;
+            if (
+                $indexName === ''
+                || $column === ''
+                || $sequence < 1
+                || !in_array($nonUnique, [0, '0', 1, '1'], true)
+                || strtoupper((string) ($row['INDEX_TYPE'] ?? '')) !== 'BTREE'
+                || ($row['SUB_PART'] ?? null) !== null
+                || strtoupper((string) ($row['COLLATION'] ?? '')) !== 'A'
+                || strtoupper((string) ($row['IGNORED'] ?? 'YES')) !== 'NO'
+            ) {
+                return false;
+            }
             if (strtoupper($indexName) === 'PRIMARY') {
-                $primary[$suffix][(int) $row['SEQ_IN_INDEX']] =
-                    strtolower((string) $row['COLUMN_NAME']);
+                if (
+                    (int) $nonUnique !== 0
+                    || isset($primary[$suffix][$sequence])
+                ) {
+                    return false;
+                }
+                $primary[$suffix][$sequence] = strtolower($column);
                 continue;
             }
             $key = $suffix . "\0" . $indexName;
+            if (
+                isset($grouped[$key]['columns'][$sequence])
+                || (isset($grouped[$key]['unique'])
+                    && $grouped[$key]['unique'] !== ((int) $nonUnique === 0))
+            ) {
+                return false;
+            }
             $grouped[$key]['suffix'] = $suffix;
-            $grouped[$key]['unique'] = (int) $row['NON_UNIQUE'] === 0;
-            $grouped[$key]['columns'][(int) $row['SEQ_IN_INDEX']] =
-                strtolower((string) $row['COLUMN_NAME']);
+            $grouped[$key]['unique'] = (int) $nonUnique === 0;
+            $grouped[$key]['columns'][$sequence] = strtolower($column);
         }
         foreach ($primary as &$columns) {
             ksort($columns, SORT_NUMERIC);
+            if (array_keys($columns) !== range(1, count($columns))) {
+                return false;
+            }
             $columns = array_values($columns);
         }
         unset($columns);
@@ -586,6 +647,12 @@ final class BlogMigrationPostconditionVerifier implements
         );
         foreach ($grouped as $index) {
             ksort($index['columns'], SORT_NUMERIC);
+            if (
+                array_keys($index['columns'])
+                    !== range(1, count($index['columns']))
+            ) {
+                return false;
+            }
             $actual[$index['suffix']][] = [
                 'unique' => $index['unique'],
                 'columns' => array_values($index['columns']),
@@ -613,6 +680,7 @@ final class BlogMigrationPostconditionVerifier implements
         $statement = $pdo->prepare(
             'SELECT k.TABLE_NAME, k.COLUMN_NAME, k.REFERENCED_TABLE_NAME, '
             . 'k.REFERENCED_COLUMN_NAME, k.ORDINAL_POSITION, '
+            . 'k.REFERENCED_TABLE_SCHEMA = DATABASE() AS SAME_SCHEMA, '
             . 'r.UPDATE_RULE, r.DELETE_RULE '
             . 'FROM information_schema.KEY_COLUMN_USAGE AS k '
             . 'JOIN information_schema.REFERENTIAL_CONSTRAINTS AS r '
@@ -631,7 +699,14 @@ final class BlogMigrationPostconditionVerifier implements
             []
         );
         foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            if ((int) ($row['ORDINAL_POSITION'] ?? 0) !== 1) {
+            if (
+                (int) ($row['ORDINAL_POSITION'] ?? 0) !== 1
+                || !in_array(
+                    $row['SAME_SCHEMA'] ?? null,
+                    [1, '1', true],
+                    true
+                )
+            ) {
                 return false;
             }
             $suffix = $nameToSuffix[(string) $row['TABLE_NAME']] ?? null;
@@ -663,16 +738,21 @@ final class BlogMigrationPostconditionVerifier implements
 
     private function mysqlChecksAreExact(
         PDO $pdo,
-        MigrationScope $scope
+        MigrationScope $scope,
+        string $serverVersion
     ): bool {
         $tables = $this->tableNames($scope);
         [$in, $params] = $this->inClause($tables, 'check_table');
+        $isMariaDb = MySqlServerCapabilities::isMariaDb($serverVersion);
         $statement = $pdo->prepare(
-            'SELECT tc.TABLE_NAME, tc.CONSTRAINT_NAME, cc.CHECK_CLAUSE '
+            'SELECT tc.TABLE_NAME, tc.CONSTRAINT_NAME, cc.CHECK_CLAUSE, '
+            . ($isMariaDb ? "'YES'" : 'tc.ENFORCED')
+            . ' AS ENFORCED '
             . 'FROM information_schema.TABLE_CONSTRAINTS AS tc '
             . 'JOIN information_schema.CHECK_CONSTRAINTS AS cc '
             . 'ON cc.CONSTRAINT_SCHEMA = tc.CONSTRAINT_SCHEMA '
             . 'AND cc.CONSTRAINT_NAME = tc.CONSTRAINT_NAME '
+            . ($isMariaDb ? 'AND cc.TABLE_NAME = tc.TABLE_NAME ' : '')
             . "WHERE tc.CONSTRAINT_SCHEMA = DATABASE() "
             . "AND tc.CONSTRAINT_TYPE = 'CHECK' "
             . 'AND tc.TABLE_NAME IN (' . $in . ')'
@@ -684,6 +764,9 @@ final class BlogMigrationPostconditionVerifier implements
             []
         );
         foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (strtoupper((string) ($row['ENFORCED'] ?? '')) !== 'YES') {
+                return false;
+            }
             $suffix = $nameToSuffix[(string) $row['TABLE_NAME']] ?? null;
             if (!is_string($suffix)) {
                 return false;
@@ -875,18 +958,13 @@ final class BlogMigrationPostconditionVerifier implements
         );
     }
 
-    private function quoteSqliteIdentifier(string $identifier): string
-    {
-        return '"' . str_replace('"', '""', $identifier) . '"';
-    }
-
     private function normalizeSqliteDefault(mixed $value): ?string
     {
         if ($value === null) {
             return null;
         }
 
-        return $this->canonicalExpression((string) $value);
+        return SqlCheckExpressionCanonicalizer::compact((string) $value);
     }
 
     private function canonicalExpression(string $expression): string
@@ -910,183 +988,13 @@ final class BlogMigrationPostconditionVerifier implements
 
     private function canonicalCheckExpression(string $expression): string
     {
-        $tokens = $this->checkExpressionTokens($expression);
-
-        return $tokens === [] ? '' : $this->canonicalBooleanTokens($tokens);
-    }
-
-    /** @return list<string> */
-    private function checkExpressionTokens(string $expression): array
-    {
-        $tokens = [];
-        $length = strlen($expression);
-        for ($index = 0; $index < $length;) {
-            $character = $expression[$index];
-            if (ctype_space($character)) {
-                $index++;
-                continue;
-            }
-            if ($character === "'") {
-                $start = $index++;
-                while ($index < $length) {
-                    if ($expression[$index] !== "'") {
-                        $index++;
-                        continue;
-                    }
-                    if (($expression[$index + 1] ?? '') === "'") {
-                        $index += 2;
-                        continue;
-                    }
-                    $index++;
-                    break;
-                }
-                $tokens[] = substr($expression, $start, $index - $start);
-                continue;
-            }
-            if (in_array($character, ['`', '"', '['], true)) {
-                $close = $character === '[' ? ']' : $character;
-                $index++;
-                $identifier = '';
-                while ($index < $length) {
-                    if ($expression[$index] !== $close) {
-                        $identifier .= strtolower($expression[$index++]);
-                        continue;
-                    }
-                    if (($expression[$index + 1] ?? '') === $close) {
-                        $identifier .= strtolower($close);
-                        $index += 2;
-                        continue;
-                    }
-                    $index++;
-                    break;
-                }
-                $tokens[] = $identifier;
-                continue;
-            }
-            if (preg_match('/[a-z_]/i', $character) === 1) {
-                $start = $index++;
-                while (
-                    $index < $length
-                    && preg_match('/[a-z0-9_]/i', $expression[$index]) === 1
-                ) {
-                    $index++;
-                }
-                $identifier = strtolower(substr(
-                    $expression,
-                    $start,
-                    $index - $start
-                ));
-                $lookahead = $index;
-                while (
-                    $lookahead < $length
-                    && ctype_space($expression[$lookahead])
-                ) {
-                    $lookahead++;
-                }
-                if (
-                    str_starts_with($identifier, '_')
-                    && ($expression[$lookahead] ?? '') === "'"
-                ) {
-                    continue;
-                }
-                $tokens[] = $identifier === 'lcase' ? 'lower' : $identifier;
-                continue;
-            }
-            $pair = substr($expression, $index, 2);
-            if (in_array($pair, ['!=', '<=', '>=', '<>'], true)) {
-                $tokens[] = $pair === '!=' ? '<>' : $pair;
-                $index += 2;
-                continue;
-            }
-            $tokens[] = strtolower($character);
-            $index++;
-        }
-
-        return $tokens;
-    }
-
-    /** @param list<string> $tokens */
-    private function canonicalBooleanTokens(array $tokens): string
-    {
-        while (
-            count($tokens) >= 2
-            && $tokens[0] === '('
-            && $this->matchingClosingParenthesis($tokens, 0)
-                === count($tokens) - 1
-        ) {
-            $tokens = array_slice($tokens, 1, -1);
-        }
-
-        foreach (['or', 'and'] as $operator) {
-            $parts = $this->splitTopLevelBoolean($tokens, $operator);
-            if (count($parts) > 1) {
-                return $operator . '(' . implode(',', array_map(
-                    fn (array $part): string =>
-                        $this->canonicalBooleanTokens($part),
-                    $parts
-                )) . ')';
-            }
-        }
-
-        return implode('', $tokens);
-    }
-
-    /**
-     * @param list<string> $tokens
-     * @return list<list<string>>
-     */
-    private function splitTopLevelBoolean(
-        array $tokens,
-        string $operator
-    ): array {
-        $parts = [];
-        $start = 0;
-        $depth = 0;
-        foreach ($tokens as $position => $token) {
-            if ($token === '(') {
-                $depth++;
-            } elseif ($token === ')') {
-                $depth--;
-            } elseif ($depth === 0 && $token === $operator) {
-                $parts[] = array_slice($tokens, $start, $position - $start);
-                $start = $position + 1;
-            }
-        }
-        if ($parts === []) {
-            return [$tokens];
-        }
-        $parts[] = array_slice($tokens, $start);
-
-        return $parts;
-    }
-
-    /** @param list<string> $tokens */
-    private function matchingClosingParenthesis(
-        array $tokens,
-        int $openingPosition
-    ): ?int {
-        $depth = 0;
-        for (
-            $position = $openingPosition;
-            $position < count($tokens);
-            $position++
-        ) {
-            if ($tokens[$position] === '(') {
-                $depth++;
-            } elseif ($tokens[$position] === ')') {
-                $depth--;
-                if ($depth === 0) {
-                    return $position;
-                }
-            }
-        }
-
-        return null;
+        return SqlCheckExpressionCanonicalizer::canonicalize($expression);
     }
 
     /** @return list<string> */
     private function extractCheckExpressions(string $sql): array
     {
+        $sql = $this->stripSqlComments($sql);
         $expressions = [];
         $length = strlen($sql);
         for ($index = 0; $index < $length;) {
@@ -1132,6 +1040,57 @@ final class BlogMigrationPostconditionVerifier implements
         }
 
         return $expressions;
+    }
+
+    private function stripSqlComments(string $sql): string
+    {
+        $withoutComments = '';
+        $length = strlen($sql);
+        for ($index = 0; $index < $length;) {
+            if (in_array($sql[$index], ["'", '"', '`', '['], true)) {
+                $start = $index;
+                $this->skipQuotedToken($sql, $index);
+                $withoutComments .= substr($sql, $start, $index - $start);
+                continue;
+            }
+            if (
+                $sql[$index] === '-'
+                && ($sql[$index + 1] ?? '') === '-'
+            ) {
+                $withoutComments .= ' ';
+                $index += 2;
+                while (
+                    $index < $length
+                    && !in_array($sql[$index], ["\r", "\n"], true)
+                ) {
+                    $index++;
+                }
+                continue;
+            }
+            if (
+                $sql[$index] === '/'
+                && ($sql[$index + 1] ?? '') === '*'
+            ) {
+                $withoutComments .= ' ';
+                $index += 2;
+                while (
+                    $index < $length
+                    && !(
+                        $sql[$index] === '*'
+                        && ($sql[$index + 1] ?? '') === '/'
+                    )
+                ) {
+                    $index++;
+                }
+                if ($index < $length) {
+                    $index += 2;
+                }
+                continue;
+            }
+            $withoutComments .= $sql[$index++];
+        }
+
+        return $withoutComments;
     }
 
     private function skipQuotedToken(string $sql, int &$index): void

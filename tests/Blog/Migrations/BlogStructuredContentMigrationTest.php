@@ -14,7 +14,72 @@ use App\Core\Modules\Migrations\MigrationDefinition;
 use App\Core\Modules\Migrations\MigrationScope;
 use PDO;
 use PDOException;
+use PDOStatement;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
+
+final class BlogStructuredMetadataStatement extends PDOStatement
+{
+    /** @var array<string, mixed> */
+    private array $parameters = [];
+
+    /**
+     * @param array<string, list<array<string, mixed>>> $rowsByTable
+     * @param list<array<string, mixed>>|null $fixedRows
+     */
+    public function __construct(
+        private readonly array $rowsByTable = [],
+        private readonly ?array $fixedRows = null
+    ) {
+    }
+
+    public function execute(?array $params = null): bool
+    {
+        $this->parameters = $params ?? [];
+
+        return true;
+    }
+
+    public function fetchAll(
+        int $mode = PDO::FETCH_DEFAULT,
+        mixed ...$args
+    ): array {
+        if ($this->fixedRows !== null) {
+            return $this->fixedRows;
+        }
+
+        return $this->rowsByTable[(string) ($this->parameters['table'] ?? '')]
+            ?? [];
+    }
+}
+
+final class BlogStructuredMetadataPdo extends PDO
+{
+    /** @var list<string> */
+    public array $preparedSql = [];
+
+    /**
+     * @param array<string, list<array<string, mixed>>> $rowsByTable
+     * @param list<array<string, mixed>>|null $fixedRows
+     */
+    public function __construct(
+        private readonly array $rowsByTable = [],
+        private readonly ?array $fixedRows = null
+    ) {
+    }
+
+    public function prepare(
+        string $query,
+        array $options = []
+    ): PDOStatement|false {
+        $this->preparedSql[] = $query;
+
+        return new BlogStructuredMetadataStatement(
+            $this->rowsByTable,
+            $this->fixedRows
+        );
+    }
+}
 
 final class BlogStructuredContentMigrationTest extends TestCase
 {
@@ -77,6 +142,253 @@ final class BlogStructuredContentMigrationTest extends TestCase
         );
         self::assertFalse((new BlogStructuredContentMigrationPostconditionVerifier())
             ->verify($pdo, $scope));
+    }
+
+    public function testMySqlExtraMetadataUsesAStrictPortableAllowlist(): void
+    {
+        $verifier = new BlogStructuredContentMigrationPostconditionVerifier();
+        $method = new ReflectionMethod($verifier, 'validMySqlExtra');
+
+        self::assertTrue($method->invoke(
+            $verifier,
+            'id',
+            'AUTO_INCREMENT',
+            null,
+            'auto_increment'
+        ));
+        self::assertTrue($method->invoke(
+            $verifier,
+            'created_at',
+            'DEFAULT_GENERATED',
+            'current_timestamp(6)',
+            ''
+        ));
+        self::assertTrue($method->invoke(
+            $verifier,
+            'updated_at',
+            '',
+            'current_timestamp(6)',
+            ''
+        ));
+        self::assertFalse($method->invoke(
+            $verifier,
+            'document_json',
+            'DEFAULT_GENERATED',
+            null,
+            ''
+        ));
+        self::assertFalse($method->invoke(
+            $verifier,
+            'created_at',
+            'DEFAULT_GENERATED on update CURRENT_TIMESTAMP',
+            'current_timestamp(6)',
+            ''
+        ));
+        self::assertFalse($method->invoke(
+            $verifier,
+            'id',
+            'auto_increment default_generated',
+            null,
+            'auto_increment'
+        ));
+        self::assertFalse($method->invoke(
+            $verifier,
+            'public_id',
+            'auto_increment',
+            null,
+            ''
+        ));
+    }
+
+    public function testMySqlIndexesRequirePortableExactMetadata(): void
+    {
+        $scope = MigrationScope::forTablePrefix('blog', 'index_blog_');
+        $verifier = new BlogStructuredContentMigrationPostconditionVerifier();
+        $method = new ReflectionMethod($verifier, 'indexSignatures');
+        $rows = [
+            $this->mysqlIndexRow('PRIMARY', 0, 1, 'id'),
+            $this->mysqlIndexRow('idx_updated', 1, 1, 'updated_at'),
+            $this->mysqlIndexRow('uq_local', 0, 1, 'localization_id'),
+            $this->mysqlIndexRow('uq_public', 0, 1, 'public_id'),
+        ];
+        $expected = [
+            '0:updated_at',
+            'p:id',
+            '1:localization_id',
+            '1:public_id',
+        ];
+        sort($expected, SORT_STRING);
+
+        $mysql = new BlogStructuredMetadataPdo(fixedRows: $rows);
+        $actual = $method->invoke(
+            $verifier,
+            $mysql,
+            $scope,
+            'mysql',
+            'content_docs',
+            '8.0.36'
+        );
+        sort($actual, SORT_STRING);
+        self::assertSame($expected, $actual);
+        self::assertStringContainsString(
+            'INDEX_TYPE, SUB_PART, COLLATION',
+            $mysql->preparedSql[0]
+        );
+        self::assertStringContainsString(
+            "IS_VISIBLE = 'YES'",
+            $mysql->preparedSql[0]
+        );
+
+        $mariaDb = new BlogStructuredMetadataPdo(fixedRows: $rows);
+        self::assertNotSame(['invalid'], $method->invoke(
+            $verifier,
+            $mariaDb,
+            $scope,
+            'mysql',
+            'content_docs',
+            '10.4.32-MariaDB'
+        ));
+        self::assertStringContainsString(
+            "'NO' AS IGNORED",
+            $mariaDb->preparedSql[0]
+        );
+        self::assertStringNotContainsString(
+            'IS_VISIBLE',
+            $mariaDb->preparedSql[0]
+        );
+
+        $mariaDbIgnored = new BlogStructuredMetadataPdo(fixedRows: $rows);
+        self::assertNotSame(['invalid'], $method->invoke(
+            $verifier,
+            $mariaDbIgnored,
+            $scope,
+            'mysql',
+            'content_docs',
+            '10.6.18-MariaDB'
+        ));
+        self::assertStringContainsString(
+            'SUB_PART, COLLATION, IGNORED',
+            $mariaDbIgnored->preparedSql[0]
+        );
+        self::assertStringNotContainsString(
+            "'NO' AS IGNORED",
+            $mariaDbIgnored->preparedSql[0]
+        );
+
+        foreach ([
+            ['IGNORED', 'YES'],
+            ['SUB_PART', 12],
+            ['COLLATION', 'D'],
+            ['INDEX_TYPE', 'HASH'],
+            ['SEQ_IN_INDEX', 2],
+        ] as [$field, $invalid]) {
+            $drifted = $rows;
+            $drifted[1][$field] = $invalid;
+            self::assertSame(['invalid'], $method->invoke(
+                $verifier,
+                new BlogStructuredMetadataPdo(fixedRows: $drifted),
+                $scope,
+                'mysql',
+                'content_docs',
+                '8.0.36'
+            ), (string) $field);
+        }
+
+        self::assertNotSame($expected, $method->invoke(
+            $verifier,
+            new BlogStructuredMetadataPdo(fixedRows: array_slice($rows, 1)),
+            $scope,
+            'mysql',
+            'content_docs',
+            '8.0.36'
+        ));
+
+        $swappedPrimary = $rows;
+        $swappedPrimary[0]['COLUMN_NAME'] = 'public_id';
+        $swappedPrimary[3]['COLUMN_NAME'] = 'id';
+        self::assertNotSame($expected, $method->invoke(
+            $verifier,
+            new BlogStructuredMetadataPdo(fixedRows: $swappedPrimary),
+            $scope,
+            'mysql',
+            'content_docs',
+            '8.0.36'
+        ));
+    }
+
+    public function testForeignKeysRequireTheExpectedUpdateAndDeleteRules(): void
+    {
+        $scope = MigrationScope::forTablePrefix('blog', 'foreign_blog_');
+        $rows = [
+            $scope->tableName('content_docs') => [[
+                'COLUMN_NAME' => 'localization_id',
+                'REFERENCED_TABLE_NAME' =>
+                    $scope->tableName('post_localizations'),
+                'REFERENCED_COLUMN_NAME' => 'id',
+                'SAME_SCHEMA' => 1,
+                'UPDATE_RULE' => 'RESTRICT',
+                'DELETE_RULE' => 'CASCADE',
+            ]],
+            $scope->tableName('content_revisions') => [[
+                'COLUMN_NAME' => 'localization_id',
+                'REFERENCED_TABLE_NAME' =>
+                    $scope->tableName('post_localizations'),
+                'REFERENCED_COLUMN_NAME' => 'id',
+                'SAME_SCHEMA' => 1,
+                'UPDATE_RULE' => 'RESTRICT',
+                'DELETE_RULE' => 'CASCADE',
+            ]],
+            $scope->tableName('content_media') => [[
+                'COLUMN_NAME' => 'document_id',
+                'REFERENCED_TABLE_NAME' => $scope->tableName('content_docs'),
+                'REFERENCED_COLUMN_NAME' => 'id',
+                'SAME_SCHEMA' => 1,
+                'UPDATE_RULE' => 'RESTRICT',
+                'DELETE_RULE' => 'CASCADE',
+            ]],
+            $scope->tableName('revision_media') => [[
+                'COLUMN_NAME' => 'revision_id',
+                'REFERENCED_TABLE_NAME' =>
+                    $scope->tableName('content_revisions'),
+                'REFERENCED_COLUMN_NAME' => 'id',
+                'SAME_SCHEMA' => 1,
+                'UPDATE_RULE' => 'RESTRICT',
+                'DELETE_RULE' => 'CASCADE',
+            ]],
+        ];
+        $verifier = new BlogStructuredContentMigrationPostconditionVerifier();
+        $method = new ReflectionMethod($verifier, 'foreignKeysAreExact');
+        $pdo = new BlogStructuredMetadataPdo(rowsByTable: $rows);
+
+        self::assertTrue($method->invoke(
+            $verifier,
+            $pdo,
+            $scope,
+            'mysql'
+        ));
+        foreach ($pdo->preparedSql as $sql) {
+            self::assertStringContainsString('r.UPDATE_RULE', $sql);
+            self::assertStringContainsString('r.DELETE_RULE', $sql);
+        }
+
+        $drifted = $rows;
+        $drifted[$scope->tableName('content_docs')][0]['UPDATE_RULE'] =
+            'CASCADE';
+        self::assertFalse($method->invoke(
+            $verifier,
+            new BlogStructuredMetadataPdo(rowsByTable: $drifted),
+            $scope,
+            'mysql'
+        ));
+
+        $crossSchema = $rows;
+        $crossSchema[$scope->tableName('content_docs')][0]['SAME_SCHEMA'] = 0;
+        self::assertFalse($method->invoke(
+            $verifier,
+            new BlogStructuredMetadataPdo(rowsByTable: $crossSchema),
+            $scope,
+            'mysql'
+        ));
     }
 
     public function testDatabaseConstraintsRejectInvalidBoundaries(): void
@@ -187,6 +499,51 @@ final class BlogStructuredContentMigrationTest extends TestCase
                 self::assertLessThanOrEqual(64, strlen($identifier), $identifier);
             }
         }
+    }
+
+    public function testDataVerifierRejectsRowsOrphanedWhileChecksWereOff(): void
+    {
+        [$pdo, $scope] = $this->schema('orphan_blog_');
+        $pdo->exec('PRAGMA foreign_keys = OFF');
+        $pdo->exec(
+            'INSERT INTO "orphan_blog_content_media" '
+            . '(document_id, block_public_id, media_asset_public_id, role) '
+            . "VALUES (999, '10000000-0000-4000-8000-000000000001', "
+            . "'20000000-0000-4000-8000-000000000001', 'image')"
+        );
+        $pdo->exec('PRAGMA foreign_keys = ON');
+
+        $verifier = new BlogStructuredContentMigrationPostconditionVerifier();
+        $method = new ReflectionMethod($verifier, 'dataIsValid');
+        self::assertFalse($method->invoke(
+            $verifier,
+            $pdo,
+            $scope,
+            'sqlite'
+        ));
+    }
+
+    public function testSqliteCheckExtractorIgnoresCommentDecoysAndPreservesLiterals(): void
+    {
+        $verifier = new BlogStructuredContentMigrationPostconditionVerifier();
+        $method = new ReflectionMethod($verifier, 'checkExpressions');
+        $expressions = $method->invoke($verifier, <<<'SQL'
+CREATE TABLE sample (
+    "note" TEXT CHECK(note IN ('--keep-literal', '/*keep-literal*/')),
+    "CHECK(quoted_decoy = 1)" TEXT,
+    /* CHECK(block_decoy = 1) */
+    -- CHECK(line_decoy = 1)
+    "value" INTEGER CHECK(value > 0)
+)
+SQL);
+
+        self::assertCount(2, $expressions);
+        $actual = implode("\n", $expressions);
+        self::assertStringContainsString("'--keep-literal'", $actual);
+        self::assertStringContainsString("'/*keep-literal*/'", $actual);
+        self::assertStringNotContainsString('quoted_decoy', $actual);
+        self::assertStringNotContainsString('block_decoy', $actual);
+        self::assertStringNotContainsString('line_decoy', $actual);
     }
 
     /** @return array{PDO, MigrationScope} */
@@ -366,6 +723,25 @@ final class BlogStructuredContentMigrationTest extends TestCase
     private function id(int $sequence): string
     {
         return sprintf('00000000-0000-4000-8000-%012d', $sequence);
+    }
+
+    /** @return array<string, mixed> */
+    private function mysqlIndexRow(
+        string $name,
+        int $nonUnique,
+        int $sequence,
+        string $column
+    ): array {
+        return [
+            'INDEX_NAME' => $name,
+            'NON_UNIQUE' => $nonUnique,
+            'SEQ_IN_INDEX' => $sequence,
+            'COLUMN_NAME' => $column,
+            'INDEX_TYPE' => 'BTREE',
+            'SUB_PART' => null,
+            'COLLATION' => 'A',
+            'IGNORED' => 'NO',
+        ];
     }
 
     /** @param callable(): void $operation */

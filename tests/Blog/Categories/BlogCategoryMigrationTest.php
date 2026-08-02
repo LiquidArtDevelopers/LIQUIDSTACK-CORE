@@ -114,6 +114,158 @@ final class BlogCategoryMigrationTest extends TestCase
         ));
     }
 
+    public function testDataVerifierRejectsRowsOrphanedWhileChecksWereOff(): void
+    {
+        $pdo = $this->pdo();
+        $scope = MigrationScope::forTablePrefix('blog', 'orphan_blog_');
+        $migrations = iterator_to_array(
+            BlogMigrationProvider::migrations(),
+            false
+        );
+        $this->apply($pdo, $migrations[0], $scope);
+        $this->apply($pdo, $migrations[2], $scope);
+        $pdo->exec('PRAGMA foreign_keys = OFF');
+        $pdo->exec(
+            'INSERT INTO "orphan_blog_category_locales" '
+            . '(public_id, category_id, locale, slug, name, '
+            . 'created_by_user_public_id, updated_by_user_public_id) VALUES '
+            . "('10000000-0000-4000-8000-000000000001', 999, 'es', "
+            . "'orphan', 'Orphan', "
+            . "'20000000-0000-4000-8000-000000000001', "
+            . "'30000000-0000-4000-8000-000000000001')"
+        );
+        $pdo->exec('PRAGMA foreign_keys = ON');
+
+        $method = new \ReflectionMethod(
+            new BlogCategoryMigrationPostconditionVerifier(),
+            'dataIsValid'
+        );
+        self::assertFalse($method->invoke(
+            new BlogCategoryMigrationPostconditionVerifier(),
+            $pdo,
+            $scope,
+            'sqlite'
+        ));
+    }
+
+    public function testSqliteCheckExtractorIgnoresCommentDecoysAndPreservesLiterals(): void
+    {
+        $verifier = new BlogCategoryMigrationPostconditionVerifier();
+        $method = new \ReflectionMethod($verifier, 'checkExpressions');
+        $expressions = $method->invoke($verifier, <<<'SQL'
+CREATE TABLE sample (
+    "note" TEXT CHECK(note IN ('--keep-literal', '/*keep-literal*/')),
+    "CHECK(quoted_decoy = 1)" TEXT,
+    /* CHECK(block_decoy = 1) */
+    -- CHECK(line_decoy = 1)
+    "value" INTEGER CHECK(value > 0)
+)
+SQL);
+
+        self::assertCount(2, $expressions);
+        $actual = implode("\n", $expressions);
+        self::assertStringContainsString("'--keep-literal'", $actual);
+        self::assertStringContainsString("'/*keep-literal*/'", $actual);
+        self::assertStringNotContainsString('quoted_decoy', $actual);
+        self::assertStringNotContainsString('block_decoy', $actual);
+        self::assertStringNotContainsString('line_decoy', $actual);
+    }
+
+    public function testMariaDbAndMySqlColumnMetadataAreValidatedExactly(): void
+    {
+        $verifier = new BlogCategoryMigrationPostconditionVerifier();
+        $method = new \ReflectionMethod($verifier, 'mysqlColumnsAreExact');
+        $rows = $this->mysqlCategoryColumns();
+
+        self::assertTrue($method->invoke(
+            $verifier,
+            'categories',
+            $rows,
+            true
+        ));
+
+        $mySqlRows = $rows;
+        $mySqlRows[3]['EXTRA'] = 'DEFAULT_GENERATED';
+        $mySqlRows[4]['EXTRA'] = 'DEFAULT_GENERATED';
+        self::assertTrue($method->invoke(
+            $verifier,
+            'categories',
+            $mySqlRows,
+            false
+        ));
+
+        $missingPrimary = $rows;
+        $missingPrimary[0]['COLUMN_KEY'] = '';
+        self::assertFalse($method->invoke(
+            $verifier,
+            'categories',
+            $missingPrimary,
+            true
+        ));
+
+        $unsafeExtra = $rows;
+        $unsafeExtra[4]['EXTRA'] = 'on update CURRENT_TIMESTAMP(6)';
+        self::assertFalse($method->invoke(
+            $verifier,
+            'categories',
+            $unsafeExtra,
+            true
+        ));
+    }
+
+    public function testMySqlIndexMetadataRequiresTheExactPrimaryShape(): void
+    {
+        $verifier = new BlogCategoryMigrationPostconditionVerifier();
+        $method = new \ReflectionMethod(
+            $verifier,
+            'mysqlIndexSignaturesFromRows'
+        );
+        $rows = [
+            $this->mysqlIndexRow('PRIMARY', 0, 1, 'id'),
+            $this->mysqlIndexRow('uq_public', 0, 1, 'public_id'),
+            $this->mysqlIndexRow(
+                'ix_author',
+                1,
+                1,
+                'created_by_user_public_id'
+            ),
+        ];
+        $expected = [
+            'p:id',
+            '1:public_id',
+            '0:created_by_user_public_id',
+        ];
+        sort($expected, SORT_STRING);
+        $actual = $method->invoke($verifier, $rows);
+        sort($actual, SORT_STRING);
+        self::assertSame($expected, $actual);
+
+        foreach ([
+            ['INDEX_TYPE', 'HASH'],
+            ['SUB_PART', 8],
+            ['COLLATION', 'D'],
+            ['INDEX_VISIBLE', 'NO'],
+            ['INDEX_IGNORED', 'YES'],
+            ['SEQ_IN_INDEX', 2],
+        ] as [$field, $value]) {
+            $drifted = $rows;
+            $drifted[1][$field] = $value;
+            self::assertSame(
+                ['invalid'],
+                $method->invoke($verifier, $drifted),
+                (string) $field
+            );
+        }
+
+        $swappedPrimary = $rows;
+        $swappedPrimary[0]['COLUMN_NAME'] = 'public_id';
+        $swappedPrimary[1]['COLUMN_NAME'] = 'id';
+        self::assertNotSame(
+            $expected,
+            $method->invoke($verifier, $swappedPrimary)
+        );
+    }
+
     public function testMaximumSupportedPrefixKeepsEveryIdentifierPortable(): void
     {
         $prefix = 'b' . str_repeat(
@@ -143,6 +295,98 @@ final class BlogCategoryMigrationTest extends TestCase
         $pdo->exec('PRAGMA foreign_keys = ON');
 
         return $pdo;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function mysqlCategoryColumns(): array
+    {
+        return [
+            [
+                'COLUMN_NAME' => 'id',
+                'DATA_TYPE' => 'bigint',
+                'COLUMN_TYPE' => 'bigint unsigned',
+                'IS_NULLABLE' => 'NO',
+                'COLUMN_DEFAULT' => null,
+                'CHARACTER_MAXIMUM_LENGTH' => null,
+                'DATETIME_PRECISION' => null,
+                'CHARACTER_SET_NAME' => null,
+                'COLLATION_NAME' => null,
+                'COLUMN_KEY' => 'PRI',
+                'EXTRA' => 'auto_increment',
+            ],
+            [
+                'COLUMN_NAME' => 'public_id',
+                'DATA_TYPE' => 'char',
+                'COLUMN_TYPE' => 'char(36)',
+                'IS_NULLABLE' => 'NO',
+                'COLUMN_DEFAULT' => null,
+                'CHARACTER_MAXIMUM_LENGTH' => 36,
+                'DATETIME_PRECISION' => null,
+                'CHARACTER_SET_NAME' => 'ascii',
+                'COLLATION_NAME' => 'ascii_bin',
+                'COLUMN_KEY' => 'UNI',
+                'EXTRA' => '',
+            ],
+            [
+                'COLUMN_NAME' => 'created_by_user_public_id',
+                'DATA_TYPE' => 'char',
+                'COLUMN_TYPE' => 'char(36)',
+                'IS_NULLABLE' => 'NO',
+                'COLUMN_DEFAULT' => null,
+                'CHARACTER_MAXIMUM_LENGTH' => 36,
+                'DATETIME_PRECISION' => null,
+                'CHARACTER_SET_NAME' => 'ascii',
+                'COLLATION_NAME' => 'ascii_bin',
+                'COLUMN_KEY' => 'MUL',
+                'EXTRA' => '',
+            ],
+            [
+                'COLUMN_NAME' => 'created_at',
+                'DATA_TYPE' => 'datetime',
+                'COLUMN_TYPE' => 'datetime(6)',
+                'IS_NULLABLE' => 'NO',
+                'COLUMN_DEFAULT' => 'current_timestamp(6)',
+                'CHARACTER_MAXIMUM_LENGTH' => null,
+                'DATETIME_PRECISION' => 6,
+                'CHARACTER_SET_NAME' => null,
+                'COLLATION_NAME' => null,
+                'COLUMN_KEY' => '',
+                'EXTRA' => '',
+            ],
+            [
+                'COLUMN_NAME' => 'updated_at',
+                'DATA_TYPE' => 'datetime',
+                'COLUMN_TYPE' => 'datetime(6)',
+                'IS_NULLABLE' => 'NO',
+                'COLUMN_DEFAULT' => 'current_timestamp(6)',
+                'CHARACTER_MAXIMUM_LENGTH' => null,
+                'DATETIME_PRECISION' => 6,
+                'CHARACTER_SET_NAME' => null,
+                'COLLATION_NAME' => null,
+                'COLUMN_KEY' => '',
+                'EXTRA' => '',
+            ],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function mysqlIndexRow(
+        string $name,
+        int $nonUnique,
+        int $sequence,
+        string $column
+    ): array {
+        return [
+            'INDEX_NAME' => $name,
+            'NON_UNIQUE' => $nonUnique,
+            'SEQ_IN_INDEX' => $sequence,
+            'COLUMN_NAME' => $column,
+            'INDEX_TYPE' => 'BTREE',
+            'SUB_PART' => null,
+            'COLLATION' => 'A',
+            'INDEX_VISIBLE' => 'YES',
+            'INDEX_IGNORED' => 'NO',
+        ];
     }
 
     private function apply(PDO $pdo, $migration, MigrationScope $scope): void

@@ -31,7 +31,7 @@ final class BlogInitialSchemaContract
      */
     public static function sqliteColumns(): array
     {
-        $now = "strftime('%y-%m-%d%h:%m:%f000','now')";
+        $now = "strftime('%Y-%m-%d %H:%M:%f000','now')";
 
         return [
             'posts' => [

@@ -231,6 +231,13 @@ El contrato SQL ejecutable es deliberadamente limitado en este corte:
   si coinciden exactamente con el contrato y el fallo está en el verificador o
   el runtime se publica su corrección y se repite el lote; en cualquier otro
   estado hace falta restaurar o definir una recuperación explícita.
+- Si una versión anterior del verificador falla después de que MySQL/MariaDB
+  haya confirmado el DDL de una migración posterior, no se registra esa
+  migración a mano ni se fuerza una adopción. Aunque el esquema parcial parezca
+  exacto, se restaura el backup verificado anterior al lote, se actualiza CORE
+  con el verificador corregido y solo entonces se repiten `--dry-run` y el
+  `--apply` expresamente autorizado. Así el registro y el DDL vuelven a avanzar
+  como una única operación auditable.
 
 ### Configuración y readiness de WebAdmin
 

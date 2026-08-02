@@ -158,6 +158,11 @@ composer liquidstack:migrate --dry-run
   índices, claves, semillas y datos con el contrato. Solo es seguro reintentar
   tras corregir y publicar el verificador/runtime cuando el estado real es
   exacto; si no lo es, restaurar la copia o diseñar una recuperación explícita.
+- Si el DDL de una migración posterior quedó confirmado pero sin registro por
+  un fallo demostrado del verificador, no insertar el registro ni adoptar el
+  esquema manualmente. Restaurar el backup anterior al lote, actualizar CORE
+  con la corrección publicada, repetir `--dry-run` y solicitar de nuevo la
+  autorización de `--apply`.
 - No copiar a informes credenciales, SQL ni mensajes internos de PDO.
 - Una petición insegura o malformada debe fallar con `400` antes de abrir PDO.
   Cuando el runtime, la conexión o el esquema no están listos, un `503`

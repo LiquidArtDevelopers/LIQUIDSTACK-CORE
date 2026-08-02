@@ -4,6 +4,15 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Corregido
+- Los verificadores compuestos de WebAdmin y Blog reconocen ahora las formas
+  equivalentes con las que MySQL 8 y MariaDB publican `CHECK`, `LCASE`,
+  `REGEXP_LIKE`, `IS NULL`, índices y defaults en `INFORMATION_SCHEMA`, sin
+  producir falsos `migration.postcondition_failed`. A la vez exigen checks
+  activos, claves primarias, índices completos/visibles, FKs en el mismo
+  schema y ausencia de huérfanos. El SQL, los checksums y las versiones de
+  contrato de las migraciones publicadas permanecen congelados.
+  En SQLite, la validación preserva el contenido literal de defaults y
+  `CHECK`, descarta comentarios y rechaza índices de expresión inesperados.
 - El router de desarrollo cambia al directorio `public` antes de cargar el
   front controller, preservando las rutas relativas de las vistas legacy sin
   dejar de enrutar endpoints dinámicos con extensión como el sitemap de Blog.

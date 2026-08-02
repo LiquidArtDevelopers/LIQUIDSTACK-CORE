@@ -16,6 +16,9 @@ use Symfony\Component\Filesystem\Filesystem;
 
 final class WebAdminMediaForeignKeyStatement extends PDOStatement
 {
+    /** @var array<string, mixed> */
+    private array $parameters = [];
+
     /** @param list<array<string, mixed>> $rows */
     public function __construct(private readonly array $rows)
     {
@@ -23,6 +26,8 @@ final class WebAdminMediaForeignKeyStatement extends PDOStatement
 
     public function execute(?array $params = null): bool
     {
+        $this->parameters = $params ?? [];
+
         return true;
     }
 
@@ -30,7 +35,16 @@ final class WebAdminMediaForeignKeyStatement extends PDOStatement
         int $mode = PDO::FETCH_DEFAULT,
         mixed ...$args
     ): array {
-        return $this->rows;
+        $table = $this->parameters['table'] ?? null;
+        if (!is_string($table)) {
+            return $this->rows;
+        }
+
+        return array_values(array_filter(
+            $this->rows,
+            static fn (array $row): bool =>
+                ($row['TABLE_NAME'] ?? null) === $table
+        ));
     }
 }
 
@@ -50,6 +64,34 @@ final class WebAdminMediaForeignKeyPdo extends PDO
         $this->preparedSql = $query;
 
         return new WebAdminMediaForeignKeyStatement($this->rows);
+    }
+}
+
+final class WebAdminMediaReadOnlyStatement extends PDOStatement
+{
+    public function fetchColumn(int $column = 0): mixed
+    {
+        return false;
+    }
+}
+
+final class WebAdminMediaReadOnlyPdo extends PDO
+{
+    /** @var list<string> */
+    public array $queries = [];
+
+    public function __construct()
+    {
+    }
+
+    public function query(
+        string $query,
+        ?int $fetchMode = null,
+        mixed ...$fetchModeArgs
+    ): PDOStatement|false {
+        $this->queries[] = $query;
+
+        return new WebAdminMediaReadOnlyStatement();
     }
 }
 
@@ -129,6 +171,7 @@ final class WebAdminMediaMigrationTest extends TestCase
             static fn (array $row): array => [
                 'CONSTRAINT_NAME' => $row[0],
                 'CHECK_CLAUSE' => $row[1],
+                'ENFORCED' => 'YES',
             ],
             $rows
         );
@@ -158,6 +201,14 @@ final class WebAdminMediaMigrationTest extends TestCase
             $this->mediaVerifier(),
             $scope,
             $mySqlMetadata
+        ));
+
+        $notEnforced = $metadata;
+        $notEnforced[0]['ENFORCED'] = 'NO';
+        self::assertFalse($method->invoke(
+            $this->mediaVerifier(),
+            $scope,
+            $notEnforced
         ));
 
         $metadata[1]['CHECK_CLAUSE'] = str_replace(
@@ -206,23 +257,164 @@ final class WebAdminMediaMigrationTest extends TestCase
         ));
     }
 
+    public function testMySqlColumnsRequireExactPortableTypesAndTimestamp(): void
+    {
+        $method = new ReflectionMethod(
+            WebAdminMediaMigrationPostconditionVerifier::class,
+            'validMySqlColumns'
+        );
+        $verifier = $this->mediaVerifier();
+        $mySql = $this->mysqlAssetColumnRows(false);
+        $mariaDb = $this->mysqlAssetColumnRows(true);
+
+        self::assertTrue($method->invoke(
+            $verifier,
+            'media_assets',
+            $mySql
+        ));
+        self::assertTrue($method->invoke(
+            $verifier,
+            'media_assets',
+            $mariaDb
+        ));
+
+        foreach ([
+            [0, 'COLUMN_TYPE', 'bigint unsigned zerofill'],
+            [4, 'COLUMN_TYPE', 'int(11) unsigned'],
+            [4, 'COLUMN_TYPE', 'int unsigned zerofill'],
+            [9, 'COLUMN_TYPE', 'datetime'],
+            [9, 'COLUMN_DEFAULT', 'CURRENT_TIMESTAMP'],
+            [9, 'COLUMN_DEFAULT', 'CURRENT_TIMESTAMP(3)'],
+            [9, 'COLUMN_DEFAULT', 'CURRENT_TIMESTAMP(6) + INTERVAL 0 SECOND'],
+            [9, 'DATETIME_PRECISION', 3],
+        ] as [$rowNumber, $field, $value]) {
+            $drifted = $mySql;
+            $drifted[$rowNumber][$field] = $value;
+            self::assertFalse($method->invoke(
+                $verifier,
+                'media_assets',
+                $drifted
+            ), $field . '=' . (string) $value);
+        }
+
+        $mySql[9]['COLUMN_DEFAULT'] = 'current_timestamp(6)';
+        self::assertTrue($method->invoke(
+            $verifier,
+            'media_assets',
+            $mySql
+        ));
+    }
+
+    public function testMySqlStoredLabelLengthCountsCharactersNotBytes(): void
+    {
+        $pdo = new WebAdminMediaReadOnlyPdo();
+        $method = new ReflectionMethod(
+            WebAdminMediaMigrationPostconditionVerifier::class,
+            'storedRowsAreValid'
+        );
+
+        self::assertTrue($method->invoke(
+            $this->mediaVerifier(),
+            $pdo,
+            $this->scope(),
+            'mysql'
+        ));
+        $queries = implode("\n", $pdo->queries);
+        self::assertStringContainsString(
+            'CHAR_LENGTH(TRIM(label)) < 1',
+            $queries
+        );
+        self::assertStringContainsString(
+            'CHAR_LENGTH(label) > 120',
+            $queries
+        );
+    }
+
+    public function testSqliteChecksAreExactAndCommentsCannotSpoofThem(): void
+    {
+        $pdo = $this->sqliteWithSchema();
+        $sql = $pdo->query(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' "
+            . "AND name = 'ls_webadmin_media_assets'"
+        )->fetchColumn();
+        self::assertIsString($sql);
+        $method = new ReflectionMethod(
+            WebAdminMediaMigrationPostconditionVerifier::class,
+            'validSqliteTableSql'
+        );
+        $verifier = $this->mediaVerifier();
+
+        self::assertTrue($method->invoke(
+            $verifier,
+            'media_assets',
+            $sql
+        ));
+
+        $extraCheck = preg_replace(
+            '/\)\s*\z/',
+            ', CHECK ("source_width" > 0))',
+            $sql,
+            1
+        );
+        self::assertIsString($extraCheck);
+        self::assertFalse($method->invoke(
+            $verifier,
+            'media_assets',
+            $extraCheck
+        ));
+        self::assertFalse($method->invoke(
+            $verifier,
+            'media_assets',
+            $sql . ' /* CHECK ("source_width" > 0) */'
+        ));
+        self::assertFalse($method->invoke(
+            $verifier,
+            'media_assets',
+            str_replace("'image/webp'", "'image/WEBP'", $sql)
+        ));
+
+        $extract = new ReflectionMethod(
+            WebAdminMediaMigrationPostconditionVerifier::class,
+            'sqliteCheckExpressions'
+        );
+        self::assertSame(
+            ["value='literal/*not-a-comment*/'"],
+            $extract->invoke(
+                $verifier,
+                "CREATE TABLE sample (value TEXT CHECK (value = "
+                    . "'literal/*not-a-comment*/'))"
+            )
+        );
+    }
+
     public function testMySqlForeignKeyMetadataQueryQualifiesJoinedColumns(): void
     {
         $scope = $this->scope();
-        $pdo = new WebAdminMediaForeignKeyPdo([
+        $rows = [
             [
                 'TABLE_NAME' => $scope->tableName('media_assets'),
+                'CONSTRAINT_NAME' => 'fk_media_author_original',
                 'COLUMN_NAME' => 'created_by_user_id',
                 'REFERENCED_TABLE_NAME' => $scope->tableName('users'),
+                'REFERENCED_COLUMN_NAME' => 'id',
+                'ORDINAL_POSITION' => 1,
+                'SAME_SCHEMA' => 1,
+                'UPDATE_RULE' => 'RESTRICT',
                 'DELETE_RULE' => 'RESTRICT',
             ],
             [
                 'TABLE_NAME' => $scope->tableName('media_variants'),
+                'CONSTRAINT_NAME' => 'fk_media_variant_original',
                 'COLUMN_NAME' => 'asset_id',
                 'REFERENCED_TABLE_NAME' => $scope->tableName('media_assets'),
+                'REFERENCED_COLUMN_NAME' => 'id',
+                'ORDINAL_POSITION' => 1,
+                'SAME_SCHEMA' => 1,
+                'UPDATE_RULE' => 'RESTRICT',
                 'DELETE_RULE' => 'CASCADE',
             ],
-        ]);
+        ];
+        $pdo = new WebAdminMediaForeignKeyPdo($rows);
         $method = new ReflectionMethod(
             WebAdminMediaMigrationPostconditionVerifier::class,
             'foreignKeysAreValid'
@@ -236,9 +428,186 @@ final class WebAdminMediaMigrationTest extends TestCase
         ));
         self::assertNotNull($pdo->preparedSql);
         self::assertStringContainsString(
-            'SELECT k.TABLE_NAME, k.COLUMN_NAME, '
-            . 'k.REFERENCED_TABLE_NAME, r.DELETE_RULE',
+            'k.REFERENCED_TABLE_SCHEMA = DATABASE() AS SAME_SCHEMA',
             $pdo->preparedSql
+        );
+        self::assertStringContainsString(
+            'r.UPDATE_RULE, r.DELETE_RULE',
+            $pdo->preparedSql
+        );
+
+        $renamed = $rows;
+        $renamed[0]['CONSTRAINT_NAME'] = 'fk_structurally_equivalent_author';
+        $renamed[1]['CONSTRAINT_NAME'] = 'fk_structurally_equivalent_asset';
+        self::assertTrue($method->invoke(
+            $this->mediaVerifier(),
+            new WebAdminMediaForeignKeyPdo($renamed),
+            $scope,
+            'mysql'
+        ), 'Foreign-key names are not part of the published contract.');
+
+        foreach ([
+            ['SAME_SCHEMA', 0],
+            ['UPDATE_RULE', 'CASCADE'],
+            ['DELETE_RULE', 'SET NULL'],
+            ['ORDINAL_POSITION', 2],
+        ] as [$field, $value]) {
+            $drifted = $rows;
+            $drifted[0][$field] = $value;
+            self::assertFalse($method->invoke(
+                $this->mediaVerifier(),
+                new WebAdminMediaForeignKeyPdo($drifted),
+                $scope,
+                'mysql'
+            ), (string) $field);
+        }
+    }
+
+    public function testMySqlIndexesRequireExactBtreeMetadata(): void
+    {
+        $method = new ReflectionMethod(
+            WebAdminMediaMigrationPostconditionVerifier::class,
+            'mysqlIndexSignaturesFromRows'
+        );
+        $rows = [
+            $this->mysqlIndexRow('PRIMARY', 0, 1, 'id'),
+            $this->mysqlIndexRow(
+                'uq_wa_media_assets_public',
+                0,
+                1,
+                'public_id'
+            ),
+            $this->mysqlIndexRow(
+                'idx_wa_media_assets_created',
+                1,
+                1,
+                'created_at'
+            ),
+            $this->mysqlIndexRow(
+                'idx_wa_media_assets_created',
+                1,
+                2,
+                'id'
+            ),
+            $this->mysqlIndexRow(
+                'idx_wa_media_assets_author',
+                1,
+                1,
+                'created_by_user_id'
+            ),
+        ];
+        $expected = [
+            'P:id',
+            'U:public_id',
+            'N:created_at,id',
+            'N:created_by_user_id',
+        ];
+
+        self::assertSame($expected, $method->invoke(
+            $this->mediaVerifier(),
+            $rows
+        ));
+        $renamed = $rows;
+        $renamed[1]['INDEX_NAME'] = 'uq_equivalent_public_id';
+        $renamed[2]['INDEX_NAME'] = 'ix_equivalent_created';
+        $renamed[3]['INDEX_NAME'] = 'ix_equivalent_created';
+        $renamed[4]['INDEX_NAME'] = 'ix_equivalent_author';
+        self::assertSame($expected, $method->invoke(
+            $this->mediaVerifier(),
+            $renamed
+        ), 'Index names are not part of the published contract.');
+        self::assertSame([], $method->invoke(
+            $this->mediaVerifier(),
+            []
+        ));
+
+        foreach ([
+            [0, 'INDEX_TYPE', 'HASH'],
+            [1, 'SUB_PART', 12],
+            [2, 'COLLATION', 'D'],
+            [3, 'IGNORED', 'YES'],
+            [4, 'SEQ_IN_INDEX', 2],
+        ] as [$rowNumber, $field, $value]) {
+            $drifted = $rows;
+            $drifted[$rowNumber][$field] = $value;
+            self::assertSame(['invalid'], $method->invoke(
+                $this->mediaVerifier(),
+                $drifted
+            ), (string) $field);
+        }
+
+        $wrongPrimary = $rows;
+        $wrongPrimary[0]['COLUMN_NAME'] = 'public_id';
+        self::assertNotSame($expected, $method->invoke(
+            $this->mediaVerifier(),
+            $wrongPrimary
+        ));
+    }
+
+    public function testCombinedPostconditionRejectsDescendingSqliteIndex(): void
+    {
+        $pdo = $this->sqliteWithSchema();
+        $pdo->exec('DROP INDEX "ls_webadmin_ix_ma_author"');
+        $pdo->exec(
+            'CREATE INDEX "ls_webadmin_ix_ma_author" '
+            . 'ON "ls_webadmin_media_assets" ("created_by_user_id" DESC)'
+        );
+
+        self::assertContains(
+            'webadmin.media.indexes_invalid',
+            $this->mediaVerifier()->issueCodes($pdo, $this->scope())
+        );
+    }
+
+    public function testCombinedPostconditionAcceptsRenamedStructuralSqliteIndex(): void
+    {
+        $pdo = $this->sqliteWithSchema();
+        $pdo->exec('DROP INDEX "ls_webadmin_ix_ma_author"');
+        $pdo->exec(
+            'CREATE INDEX "project_owned_equivalent_author" '
+            . 'ON "ls_webadmin_media_assets" ("created_by_user_id")'
+        );
+
+        self::assertNotContains(
+            'webadmin.media.indexes_invalid',
+            $this->mediaVerifier()->issueCodes($pdo, $this->scope())
+        );
+    }
+
+    public function testCombinedPostconditionRejectsOrphanMediaRows(): void
+    {
+        $pdo = $this->sqliteWithSchema();
+        $pdo->exec('PRAGMA foreign_keys = OFF');
+        $pdo->exec(
+            "INSERT INTO ls_webadmin_media_assets ("
+            . 'public_id, label, source_mime, source_width, source_height, '
+            . 'source_bytes, source_sha256, created_by_user_id) VALUES ('
+            . "'01234567-89ab-4cde-8f01-23456789abcd', 'Orphan', "
+            . "'image/png', 800, 600, 1024, '"
+            . str_repeat('a', 64) . "', 999999)"
+        );
+        $pdo->exec('PRAGMA foreign_keys = ON');
+
+        self::assertContains(
+            'webadmin.media.data_integrity_invalid',
+            $this->mediaVerifier()->issueCodes($pdo, $this->scope())
+        );
+
+        $pdo = $this->sqliteWithSchema();
+        $pdo->exec('PRAGMA foreign_keys = OFF');
+        $pdo->exec(
+            "INSERT INTO ls_webadmin_media_variants ("
+            . 'asset_id, width, height, bytes, sha256, storage_key, mime) '
+            . "VALUES (999999, 800, 600, 512, '"
+            . str_repeat('b', 64)
+            . "', '01/01234567-89ab-4cde-8f01-23456789abcd/800.avif', "
+            . "'image/avif')"
+        );
+        $pdo->exec('PRAGMA foreign_keys = ON');
+
+        self::assertContains(
+            'webadmin.media.data_integrity_invalid',
+            $this->mediaVerifier()->issueCodes($pdo, $this->scope())
         );
     }
 
@@ -359,6 +728,134 @@ final class WebAdminMediaMigrationTest extends TestCase
         );
 
         return $verifier;
+    }
+
+    /** @return list<array<string, int|string|null>> */
+    private function mysqlAssetColumnRows(bool $mariaDbDisplayWidths): array
+    {
+        $bigint = $mariaDbDisplayWidths
+            ? 'bigint(20) unsigned'
+            : 'bigint unsigned';
+        $int = $mariaDbDisplayWidths ? 'int(10) unsigned' : 'int unsigned';
+
+        return [
+            $this->mysqlColumnRow(
+                'id',
+                'bigint',
+                $bigint,
+                null,
+                null,
+                null,
+                'PRI',
+                'auto_increment'
+            ),
+            $this->mysqlColumnRow(
+                'public_id',
+                'char',
+                'char(36)',
+                36,
+                'ascii',
+                'ascii_bin',
+                'UNI'
+            ),
+            $this->mysqlColumnRow(
+                'label',
+                'varchar',
+                'varchar(120)',
+                120,
+                'utf8mb4',
+                'utf8mb4_unicode_ci'
+            ),
+            $this->mysqlColumnRow(
+                'source_mime',
+                'varchar',
+                'varchar(32)',
+                32,
+                'ascii',
+                'ascii_bin'
+            ),
+            $this->mysqlColumnRow('source_width', 'int', $int),
+            $this->mysqlColumnRow('source_height', 'int', $int),
+            $this->mysqlColumnRow('source_bytes', 'bigint', $bigint),
+            $this->mysqlColumnRow(
+                'source_sha256',
+                'char',
+                'char(64)',
+                64,
+                'ascii',
+                'ascii_bin'
+            ),
+            $this->mysqlColumnRow(
+                'created_by_user_id',
+                'bigint',
+                $bigint,
+                null,
+                null,
+                null,
+                'MUL'
+            ),
+            $this->mysqlColumnRow(
+                'created_at',
+                'datetime',
+                'datetime(6)',
+                null,
+                null,
+                null,
+                'MUL',
+                $mariaDbDisplayWidths ? '' : 'DEFAULT_GENERATED',
+                $mariaDbDisplayWidths
+                    ? 'current_timestamp(6)'
+                    : 'CURRENT_TIMESTAMP(6)',
+                6
+            ),
+        ];
+    }
+
+    /** @return array<string, int|string|null> */
+    private function mysqlColumnRow(
+        string $name,
+        string $dataType,
+        string $columnType,
+        ?int $length = null,
+        ?string $charset = null,
+        ?string $collation = null,
+        string $key = '',
+        string $extra = '',
+        ?string $default = null,
+        ?int $datetimePrecision = null
+    ): array {
+        return [
+            'COLUMN_NAME' => $name,
+            'DATA_TYPE' => $dataType,
+            'COLUMN_TYPE' => $columnType,
+            'IS_NULLABLE' => 'NO',
+            'COLUMN_DEFAULT' => $default,
+            'CHARACTER_MAXIMUM_LENGTH' => $length,
+            'DATETIME_PRECISION' => $datetimePrecision,
+            'CHARACTER_SET_NAME' => $charset,
+            'COLLATION_NAME' => $collation,
+            'COLUMN_KEY' => $key,
+            'EXTRA' => $extra,
+        ];
+    }
+
+    /** @return array<string, int|string|null> */
+    private function mysqlIndexRow(
+        string $name,
+        int $nonUnique,
+        int $sequence,
+        string $column
+    ): array {
+        return [
+            'INDEX_NAME' => $name,
+            'NON_UNIQUE' => $nonUnique,
+            'SEQ_IN_INDEX' => $sequence,
+            'COLUMN_NAME' => $column,
+            'INDEX_TYPE' => 'BTREE',
+            'SUB_PART' => null,
+            'COLLATION' => 'A',
+            'IGNORED' => 'NO',
+        ];
     }
 
     private function sqliteWithSchema(): PDO
