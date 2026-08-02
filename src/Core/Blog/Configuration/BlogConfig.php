@@ -29,7 +29,8 @@ final class BlogConfig
         private readonly string $source,
         private readonly string $databaseConnection =
             DatabaseConnectionProfile::SHARED,
-        ?string $defaultLocale = null
+        ?string $defaultLocale = null,
+        private readonly ?BlogPublicArticleViewPath $publicArticleView = null
     ) {
         $defaultLocale ??= array_key_first($publicPaths);
         if (
@@ -102,10 +103,20 @@ final class BlogConfig
         return $this->defaultLocale;
     }
 
+    public function publicArticleView(): ?string
+    {
+        return $this->publicArticleView?->relativePath();
+    }
+
+    public function publicArticleViewPath(): ?string
+    {
+        return $this->publicArticleView?->absolutePath();
+    }
+
     /** @return array<string, mixed> */
     public function toSafeArray(): array
     {
-        return [
+        $safe = [
             'source' => $this->source,
             'public_paths' => $this->publicPaths,
             'sitemap_path' => $this->sitemapPath,
@@ -114,5 +125,12 @@ final class BlogConfig
                 'table_prefix' => $this->tablePrefix,
             ],
         ];
+
+        if ($this->publicArticleView !== null) {
+            $safe['public_article_view'] =
+                $this->publicArticleView->relativePath();
+        }
+
+        return $safe;
     }
 }

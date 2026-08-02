@@ -90,7 +90,31 @@ HTML, clases o estilos arbitrarios del usuario.
 
 ## Siguientes cortes
 
-### 5. SEO editorial avanzado
+### 5. Entrega pública integrada y rendimiento
+
+El renderer público ya permite que el proyecto aporte de forma tipada su shell,
+head, navegación, footer, recursos de tema y CSP mediante una vista confinada a
+`App/views`. El fallback autónomo conserva SSR, metadatos, cabeceras cerradas y
+un CSS neutral responsive gestionado por el módulo. Los siguientes pasos son:
+
+- convertir `article-basic-01` y `article-cover-01` en composiciones visuales
+  reales sobre recursos LiquidStack, conservando el documento v1 y el fallback
+  SSR cuando un consumidor no haya adoptado todavía el nuevo shell;
+- ampliar de forma aditiva el runtime público de bloques sin acoplarlo al bundle
+  administrativo ni introducir dependencias en el fallback;
+- mantener el enlace externo accesible de YouTube como fallback y añadir, si
+  se activa reproducción inline, un runtime Lite YouTube que solo cree el
+  iframe después de consentimiento social válido de CookieLAD;
+- impedir que cualquier ruta HTML pública Blog —índice project-owned o detalle
+  modular— abra la sesión legacy, cree `PHPSESSID` o fuerce `no-store` sin una
+  necesidad funcional;
+- reunir, cuando sea posible, cards y categorías en una proyección pública
+  acotada para evitar runtimes PDO duplicados por petición.
+
+La integración visual seguirá siendo aditiva: actualizar CORE no sustituirá de
+forma silenciosa una vista, un head o un layout project-owned.
+
+### 6. SEO editorial avanzado
 
 - Medidor de title, description, H1, slug, longitud, densidad y keyword
   stuffing.
@@ -103,7 +127,7 @@ HTML, clases o estilos arbitrarios del usuario.
 El medidor ayudará y explicará; no publicará, reescribirá ni bloqueará sin una
 regla editorial explícita.
 
-### 6. Traducción asistida
+### 7. Traducción asistida
 
 La independencia por idioma ya existe: cada variante conserva slug,
 metadatos, documento, revisiones y estado propios. Queda pendiente una
@@ -111,7 +135,7 @@ integración IA que genere una nueva variante traducida mediante una acción
 explícita. La API y sus credenciales se configurarán por entorno y el resultado
 seguirá siendo editable y publicable de forma independiente.
 
-### 7. Descubrimiento e indexación
+### 8. Descubrimiento e indexación
 
 - Búsqueda y filtros reactivos mediante `fetch`, conservando HTML inicial
   funcional sin JavaScript.
@@ -122,25 +146,30 @@ seguirá siendo editable y publicable de forma independiente.
 El sitemap dinámico ya es la fuente técnica inmediata de URLs. Una petición a
 un buscador será complementaria y nunca condicionará la publicación.
 
-Antes de convertir el índice Blog en una superficie de alto tráfico se medirán
-dos optimizaciones sin alterar su contrato funcional: evitar que el bootstrap
-legacy abra `PHPSESSID` y fuerce `no-store` en rutas públicas project-owned, y
-reunir cards y categorías en una sola proyección para no abrir dos runtimes PDO
-por petición. Son mejoras de caché y coste, no requisitos para publicar el MVP.
-
-### 8. Plantillas y maquetador
+### 9. Plantillas, recursos y maquetador
 
 - Nuevas plantillas de artículo basadas en recursos de showroom.
 - Más recursos públicos Blog: sliders, relacionados y composiciones filtradas.
+- Hacer que controladores, templates, SCSS, JS, fixtures y catálogos propios de
+  Blog sean `module-owned` y se sincronicen únicamente con el selector
+  `liquidstack/blog`; ocultar solo la subruta de showroom no constituye
+  distribución selectiva suficiente.
 - Vídeo local servido desde una frontera Media segura.
 - Maquetador futuro de secciones, filas, columnas y módulos, construido sobre
   un esquema versionado y sin romper los documentos v1.
 
-### 9. Gestión del resto de la web
+### 10. Gestión del resto de la web
 
 La biblioteca de medios, identidades, permisos y auditoría de WebAdmin podrán
 servir a un futuro editor de contenido estático. Ese trabajo no se mezclará con
 el editor inline de desarrollo ni con la zona privada de negocio legacy.
+
+La localización de la interfaz WebAdmin será un contrato separado del locale
+del artículo: el panel podrá mostrarse en un idioma mientras se edita otro, sin
+usar el idioma de la sesión como filtro implícito de contenido. También queda
+reservado un modo HTML avanzado, saneado, auditable, restaurable y protegido por
+una capacidad específica; no sustituirá el editor estructurado como flujo
+normal.
 
 ## Reglas transversales de entrega
 

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Core\Blog\BlogDraft;
+use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogSitemapEntry;
 use App\Core\Blog\Configuration\BlogConfig;
@@ -70,6 +71,135 @@ final class BlogPublicRendererTest extends TestCase
         );
         self::assertStringNotContainsString('property="og:image"', $html);
         self::assertStringNotContainsString('name="twitter:image"', $html);
+        self::assertStringContainsString(
+            '<link rel="stylesheet" href="/assets/modules/blog/blog-public.css">',
+            $html
+        );
+    }
+
+    public function testProjectViewReceivesOnlyTheTypedSafeProjection(): void
+    {
+        $view = tempnam(sys_get_temp_dir(), 'liquidstack-blog-view-');
+        self::assertIsString($view);
+        file_put_contents($view, <<<'PHP'
+<?php
+if (!$blogArticle instanceof \App\Core\Blog\Http\BlogPublicArticleViewModel) {
+    throw new \RuntimeException('Unexpected model.');
+}
+$escape = static fn (string $value): string => htmlspecialchars(
+    $value,
+    ENT_QUOTES | ENT_SUBSTITUTE,
+    'UTF-8'
+);
+echo '<!doctype html><html lang="' . $escape($blogArticle->locale()) . '">';
+echo '<head><title>' . $escape($blogArticle->seoTitle()) . '</title></head>';
+echo '<body data-template="' . $escape($blogArticle->template()) . '"';
+echo ' data-published="' . $blogArticle->publishedAt()->format(DATE_ATOM) . '"';
+echo ' data-updated="' . $blogArticle->updatedAt()->format(DATE_ATOM) . '">';
+echo '<h1>' . $escape($blogArticle->h1()) . '</h1>';
+echo '<p>' . $escape($blogArticle->excerpt()) . '</p>';
+echo '<a rel="canonical" href="' . $escape($blogArticle->canonicalUrl()) . '">';
+echo $escape($blogArticle->xDefaultUrl()) . '</a>';
+foreach ($blogArticle->alternateUrls() as $locale => $url) {
+    echo '<a hreflang="' . $escape($locale) . '" href="' . $escape($url) . '"></a>';
+}
+foreach ($blogArticle->languageNavigationUrls() as $locale => $url) {
+    echo '<a data-language="' . $escape($locale) . '" href="' . $escape($url) . '"></a>';
+}
+echo '<div data-cover="' . ($blogArticle->coverImageUrl() ?? '') . '">';
+echo $blogArticle->bodyHtml() . '</div></body></html>';
+PHP);
+
+        try {
+            $renderer = new BlogPublicHtmlRenderer($view);
+            self::assertTrue($renderer->usesProjectArticleView());
+            $html = $renderer->render(
+                $this->variant("First & \"quoted\"\n\nSecond & final"),
+                'https://example.test/en/news/matrix',
+                [
+                    'es' => 'https://example.test/noticias/matrix',
+                    'en' => 'https://example.test/en/news/matrix',
+                ],
+                'https://example.test/noticias/matrix',
+                [
+                    'es' => 'https://example.test/noticias/matrix',
+                    'en' => 'https://example.test/en/news/matrix',
+                    'eu' => 'https://example.test/eu/albisteak',
+                ]
+            );
+
+            self::assertStringContainsString(
+                '<title>Matrix &amp; title</title>',
+                $html
+            );
+            self::assertStringContainsString(
+                '<h1>Matrix &amp; systems</h1>',
+                $html
+            );
+            self::assertStringContainsString(
+                '<p>First &amp; &quot;quoted&quot;</p>',
+                $html
+            );
+            self::assertStringContainsString(
+                '<p>Second &amp; final</p>',
+                $html
+            );
+            self::assertStringContainsString(
+                'data-template="article-basic-01"',
+                $html
+            );
+            self::assertStringContainsString(
+                'data-published="2026-01-01T00:00:00+00:00"',
+                $html
+            );
+            self::assertStringContainsString(
+                'hreflang="es" href="https://example.test/noticias/matrix"',
+                $html
+            );
+            self::assertStringNotContainsString('hreflang="eu"', $html);
+            self::assertStringContainsString(
+                'data-language="eu" href="https://example.test/eu/albisteak"',
+                $html
+            );
+            self::assertStringNotContainsString('<script>', $html);
+            self::assertStringNotContainsString(
+                BlogPublicHtmlRenderer::STANDALONE_STYLESHEET,
+                $html
+            );
+        } finally {
+            @unlink($view);
+        }
+    }
+
+    public function testProjectViewExceptionAndEmptyOutputFailWithoutLeaks(): void
+    {
+        foreach ([
+            "<?php\n",
+            "<?php echo 'partial'; throw new RuntimeException('private');\n",
+        ] as $contents) {
+            $view = tempnam(sys_get_temp_dir(), 'liquidstack-blog-view-');
+            self::assertIsString($view);
+            file_put_contents($view, $contents);
+
+            ob_start();
+            try {
+                (new BlogPublicHtmlRenderer($view))->render(
+                    $this->variant('Matrix body'),
+                    'https://example.test/en/news/matrix'
+                );
+                self::fail('An invalid project view must fail closed.');
+            } catch (BlogException $exception) {
+                self::assertSame(
+                    BlogException::INVALID_STATE,
+                    $exception->issueCode()
+                );
+            } finally {
+                $leaked = ob_get_clean();
+                @unlink($view);
+            }
+
+            self::assertSame('', $leaked);
+        }
     }
 
     public function testSitemapUsesOnlyConfiguredCanonicalOriginAndSorts(): void
@@ -215,6 +345,43 @@ final class BlogPublicRendererTest extends TestCase
             'hreflang="x-default" href="https://example.test/noticias/matrix"',
             $html
         );
+
+        $view = tempnam(sys_get_temp_dir(), 'liquidstack-blog-view-');
+        self::assertIsString($view);
+        file_put_contents($view, <<<'PHP'
+<?php
+echo '<article data-template="'
+    . htmlspecialchars($blogArticle->template(), ENT_QUOTES, 'UTF-8')
+    . '" data-cover="'
+    . htmlspecialchars((string) $blogArticle->coverImageUrl(), ENT_QUOTES, 'UTF-8')
+    . '">' . $blogArticle->bodyHtml() . '</article>';
+PHP);
+        try {
+            $projectHtml = (new BlogPublicHtmlRenderer($view))
+                ->renderStructuredFromOrigin(
+                    $this->variant('Matrix body'),
+                    $origin,
+                    '/en/news/matrix',
+                    $document,
+                    $resolver,
+                    ['en' => '/en/news/matrix'],
+                    '/en/news/matrix'
+                );
+            self::assertStringContainsString(
+                'data-template="article-cover-01"',
+                $projectHtml
+            );
+            self::assertStringContainsString(
+                'data-cover="https://example.test/media/960.avif"',
+                $projectHtml
+            );
+            self::assertStringContainsString(
+                'class="blogDocument blogDocument--cover"',
+                $projectHtml
+            );
+        } finally {
+            @unlink($view);
+        }
     }
 
     public function testTypedLoopbackOriginCanRenderInDevelopment(): void

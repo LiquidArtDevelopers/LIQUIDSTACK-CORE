@@ -429,12 +429,21 @@ return [
         'en' => '/en/news',
     ],
     'sitemap_path' => '/blog-sitemap.xml',
+    'public_article_view' => 'App/views/blog-article.php',
     'database' => [
         'connection' => 'liquidstack',
         'table_prefix' => 'ls_blog_',
     ],
 ];
 ```
+
+`public_article_view` es opcional y aditivo. Debe apuntar mediante una ruta
+relativa a un PHP regular y legible bajo `App/views`, sin traversal ni
+symlinks. La vista recibe `$blogArticle` como view model tipado para componer el
+shell, head, navegación, footer, tema y CSP del proyecto. Sus alternates SEO
+incluyen solo traducciones publicadas; la navegación de idioma separada cae al
+índice localizado cuando falta una variante. Si se omite, CORE conserva el HTML
+standalone y carga su CSS neutral responsive gestionado.
 
 Los idiomas deben coincidir exactamente con `App/config/langs.php`. Las rutas
 estáticas del proyecto conservan prioridad; Blog resuelve las URLs de artículo
@@ -479,7 +488,7 @@ durante un update. El contrato de
 rutas, categorías, editor, revisiones, medios, estados y permisos está en
 [Liquid Blog](docs/liquid-blog.md).
 
-`blog-admin.css` y `blog-editor.js` viven en
+`blog-admin.css`, `blog-editor.js` y `blog-public.css` viven en
 `modules/blog/published/assets` y se sincronizan hacia
 `public/assets/modules/blog` mediante el manifiesto del módulo. No forman parte
 del bundle general ni son configuración project-owned. `doctor` informa su

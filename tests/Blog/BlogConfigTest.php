@@ -40,6 +40,8 @@ final class BlogConfigTest extends TestCase
         self::assertSame('/blog-sitemap.xml', $config->sitemapPath());
         self::assertSame('shared', $config->databaseConnection());
         self::assertSame('ls_blog_', $config->tablePrefix());
+        self::assertNull($config->publicArticleView());
+        self::assertNull($config->publicArticleViewPath());
         self::assertSame('/eu/blog', $config->publicPath('EU'));
         self::assertNull($config->publicPath('fr'));
         self::assertLessThanOrEqual(
@@ -116,6 +118,39 @@ PHP);
             'database'
         ]['connection']);
         self::assertSame('client_blog_', $config->tablePrefix());
+    }
+
+    public function testProjectCanSelectARegularContainedPublicArticleView(): void
+    {
+        $view = $this->fixtureRoot
+            . '/App/views/blog/public-article.php';
+        $this->filesystem->dumpFile(
+            $view,
+            '<?php echo "article";' . "\n"
+        );
+        $this->writeConfig(<<<'PHP'
+<?php
+
+return [
+    'public_article_view' => 'App/views/blog/public-article.php',
+];
+PHP);
+
+        $config = $this->load(['es', 'en']);
+
+        self::assertSame(
+            'App/views/blog/public-article.php',
+            $config->publicArticleView()
+        );
+        self::assertSame(realpath($view), $config->publicArticleViewPath());
+        self::assertSame(
+            'App/views/blog/public-article.php',
+            $config->toSafeArray()['public_article_view']
+        );
+        self::assertSame(
+            'shared',
+            (new BlogConfigLoader())->databaseConnection($this->fixtureRoot)
+        );
     }
 
     public function testDefaultLocaleFollowsLanguageConfigurationOrder(): void
@@ -203,6 +238,24 @@ PHP);
             'config.unknown_key',
             'config.secret',
         ];
+        yield 'view must be relative to project root' => [[
+            'public_article_view' => '/App/views/blog/article.php',
+        ], 'config.invalid_public_article_view', 'public_article_view'];
+        yield 'view must live below App views' => [[
+            'public_article_view' => 'templates/article.php',
+        ], 'config.invalid_public_article_view', 'public_article_view'];
+        yield 'view traversal is rejected' => [[
+            'public_article_view' => 'App/views/../config/secret.php',
+        ], 'config.invalid_public_article_view', 'public_article_view'];
+        yield 'view backslashes are rejected' => [[
+            'public_article_view' => 'App\\views\\article.php',
+        ], 'config.invalid_public_article_view', 'public_article_view'];
+        yield 'missing view is rejected' => [[
+            'public_article_view' => 'App/views/blog/missing.php',
+        ], 'config.public_article_view_not_regular', 'public_article_view'];
+        yield 'null view is rejected' => [[
+            'public_article_view' => null,
+        ], 'config.invalid_public_article_view', 'public_article_view'];
         yield 'unknown locale' => [[
             'public_paths' => [
                 'es' => '/noticias',
@@ -323,6 +376,37 @@ PHP);
                     $exception->issueCode()
                 );
             }
+        }
+    }
+
+    public function testPublicArticleViewCannotContainASymlink(): void
+    {
+        $external = $this->fixtureRoot . '/external-view.php';
+        $link = $this->fixtureRoot . '/App/views/blog/article.php';
+        $this->filesystem->dumpFile($external, '<?php echo "external";');
+        $this->filesystem->mkdir(dirname($link));
+        if (!@symlink($external, $link)) {
+            self::markTestSkipped(
+                'This environment cannot create a file symlink.'
+            );
+        }
+        $this->writeConfig(<<<'PHP'
+<?php
+return ['public_article_view' => 'App/views/blog/article.php'];
+PHP);
+
+        try {
+            $this->load(['es']);
+            self::fail('A linked article view must fail closed.');
+        } catch (BlogConfigException $exception) {
+            self::assertSame(
+                'config.public_article_view_not_regular',
+                $exception->issueCode()
+            );
+            self::assertSame(
+                'public_article_view',
+                $exception->configKey()
+            );
         }
     }
 

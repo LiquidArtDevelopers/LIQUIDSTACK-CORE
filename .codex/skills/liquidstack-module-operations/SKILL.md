@@ -298,10 +298,18 @@ composer liquidstack:migrate --dry-run
   de dependencias debe activar WebAdmin antes. No registrar rutas, navegación,
   migraciones ni diagnósticos Blog en un proyecto core-only o WebAdmin-only.
 - Tratar `App/config/modules/blog.php` como configuración project-owned. Puede
-  declarar `public_paths` por cada idioma activo, `sitemap_path` y el prefijo
-  de tablas. `shared` permanece como default; si se declara `liquidstack`,
-  WebAdmin debe declararlo también. Composer no debe crear, fusionar ni
-  sobrescribir este fichero.
+  declarar `public_paths` por cada idioma activo, `sitemap_path`, el prefijo de
+  tablas y la vista opcional `public_article_view`. Esta última debe usar una
+  ruta relativa `App/views/...php`, regular, legible, contenida y sin symlinks;
+  recibe `$blogArticle` como `BlogPublicArticleViewModel`, debe escapar sus
+  escalares por contexto y puede imprimir directamente solo `bodyHtml()`.
+  `alternateUrls()` contiene únicamente variantes publicadas para SEO y
+  `languageNavigationUrls()` usa el índice localizado cuando falta traducción.
+  El
+  proyecto es dueño del head, assets y CSP de ese shell. Omitirla conserva el
+  fallback standalone y su CSS gestionado. `shared` permanece como default; si
+  se declara `liquidstack`, WebAdmin debe declararlo también. Composer no debe
+  crear, fusionar ni sobrescribir este fichero.
 - Exigir que las claves de `public_paths` coincidan exactamente con
   `App/config/langs.php`, que sus rutas sean absolutas y únicas y que no
   colisionen con rutas o ficheros del proyecto. El path base puede pertenecer a

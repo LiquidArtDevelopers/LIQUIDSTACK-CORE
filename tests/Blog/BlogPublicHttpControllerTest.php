@@ -8,6 +8,8 @@ use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Http\BlogPublicHttpController;
 use App\Core\Blog\Http\BlogPublicHttpRuntime;
+use App\Core\Blog\Http\BlogPublicHttpRuntimeException;
+use App\Core\Blog\Http\BlogPublicHtmlRenderer;
 use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Modules\Blog\BlogMigrationProvider;
 use App\Core\Modules\Migrations\MigrationDefinition;
@@ -19,6 +21,7 @@ final class BlogPublicHttpControllerTest extends TestCase
 {
     private PDO $pdo;
     private BlogService $service;
+    private BlogPublicHttpRuntime $runtime;
     private BlogPublicHttpController $controller;
 
     protected function setUp(): void
@@ -72,15 +75,14 @@ final class BlogPublicHttpControllerTest extends TestCase
             'ls_blog_',
             'fixture'
         );
-        $this->controller = new BlogPublicHttpController(
-            new BlogPublicHttpRuntime(
-                $config,
-                BlogPublicOrigin::fromEnvironment([
-                    BlogPublicOrigin::ENV => 'https://example.test',
-                ]),
-                $this->service
-            )
+        $this->runtime = new BlogPublicHttpRuntime(
+            $config,
+            BlogPublicOrigin::fromEnvironment([
+                BlogPublicOrigin::ENV => 'https://example.test',
+            ]),
+            $this->service
         );
+        $this->controller = new BlogPublicHttpController($this->runtime);
     }
 
     public function testUnknownAndDraftVariantsFallThrough(): void
@@ -125,6 +127,14 @@ final class BlogPublicHttpControllerTest extends TestCase
             $article->body()
         );
         self::assertStringNotContainsString('<script', $article->body());
+        self::assertStringContainsString(
+            "default-src 'none'",
+            $article->headers()['Content-Security-Policy']
+        );
+        self::assertStringContainsString(
+            "style-src 'self'",
+            $article->headers()['Content-Security-Policy']
+        );
 
         $sitemap = $this->controller->sitemap();
         self::assertSame(200, $sitemap->status());
@@ -148,6 +158,120 @@ final class BlogPublicHttpControllerTest extends TestCase
             '/noticias/matrix',
             $this->controller->sitemap()->body()
         );
+    }
+
+    public function testProjectShellOwnsCspWhileDefensiveHeadersRemain(): void
+    {
+        $created = $this->service->createPost(
+            $this->actorGate(),
+            'es',
+            $this->draft()
+        );
+        $this->service->publish(
+            $this->actorGate(),
+            $created->postPublicId(),
+            'es',
+            $created->lockVersion()
+        );
+        $view = tempnam(sys_get_temp_dir(), 'liquidstack-blog-shell-');
+        self::assertIsString($view);
+        file_put_contents($view, <<<'PHP'
+<?php
+echo '<!doctype html><html lang="'
+    . htmlspecialchars($blogArticle->locale(), ENT_QUOTES, 'UTF-8')
+    . '"><body><h1>'
+    . htmlspecialchars($blogArticle->h1(), ENT_QUOTES, 'UTF-8')
+    . '</h1>' . $blogArticle->bodyHtml();
+foreach ($blogArticle->alternateUrls() as $locale => $url) {
+    echo '<a data-alternate="' . htmlspecialchars($locale, ENT_QUOTES, 'UTF-8')
+        . '" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '"></a>';
+}
+foreach ($blogArticle->languageNavigationUrls() as $locale => $url) {
+    echo '<a data-language="' . htmlspecialchars($locale, ENT_QUOTES, 'UTF-8')
+        . '" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '"></a>';
+}
+echo '</body></html>';
+PHP);
+
+        try {
+            $controller = new BlogPublicHttpController(
+                $this->runtime,
+                new BlogPublicHtmlRenderer($view)
+            );
+            $article = $controller->article('es', 'matrix');
+            self::assertNotNull($article);
+            self::assertSame(200, $article->status());
+            self::assertArrayNotHasKey(
+                'Content-Security-Policy',
+                $article->headers()
+            );
+            self::assertSame(
+                'DENY',
+                $article->headers()['X-Frame-Options']
+            );
+            self::assertSame(
+                'nosniff',
+                $article->headers()['X-Content-Type-Options']
+            );
+            self::assertSame(
+                'camera=(), microphone=(), geolocation=()',
+                $article->headers()['Permissions-Policy']
+            );
+            self::assertStringContainsString(
+                '<h1>Matrix &amp; sistemas</h1>',
+                $article->body()
+            );
+            self::assertStringContainsString(
+                'data-alternate="es" href="https://example.test/noticias/matrix"',
+                $article->body()
+            );
+            self::assertStringNotContainsString(
+                'data-alternate="en"',
+                $article->body()
+            );
+            self::assertStringContainsString(
+                'data-language="en" href="https://example.test/en/news"',
+                $article->body()
+            );
+            self::assertStringContainsString(
+                'data-language="eu" href="https://example.test/eu/albisteak"',
+                $article->body()
+            );
+        } finally {
+            @unlink($view);
+        }
+    }
+
+    public function testBrokenProjectShellBecomesGenericRuntimeFailure(): void
+    {
+        $created = $this->service->createPost(
+            $this->actorGate(),
+            'es',
+            $this->draft()
+        );
+        $this->service->publish(
+            $this->actorGate(),
+            $created->postPublicId(),
+            'es',
+            $created->lockVersion()
+        );
+        $view = tempnam(sys_get_temp_dir(), 'liquidstack-blog-shell-');
+        self::assertIsString($view);
+        file_put_contents(
+            $view,
+            "<?php throw new RuntimeException('private detail');\n"
+        );
+
+        try {
+            $controller = new BlogPublicHttpController(
+                $this->runtime,
+                new BlogPublicHtmlRenderer($view)
+            );
+            $this->expectException(BlogPublicHttpRuntimeException::class);
+            $controller->article('es', 'matrix');
+        } finally {
+            @unlink($view);
+        }
     }
 
     public function testPublishedLocaleEquivalentsDriveArticleAndSitemapSeo(): void

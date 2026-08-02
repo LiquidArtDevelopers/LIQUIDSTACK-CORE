@@ -46,12 +46,20 @@ return [
         'en' => '/en/news',
     ],
     'sitemap_path' => '/blog-sitemap.xml',
+    'public_article_view' => 'App/views/blog-article.php',
     'database' => [
         'connection' => 'liquidstack',
         'table_prefix' => 'ls_blog_',
     ],
 ];
 ```
+
+`public_article_view` es opcional. Cuando se declara, debe ser una ruta PHP
+relativa a la raíz del proyecto bajo `App/views/`; el fichero y todos sus
+directorios deben existir, ser legibles y no contener symlinks. Una ruta
+absoluta, un traversal, una ruta fuera de `App/views` o un fichero ausente
+bloquean Blog de forma cerrada. Omitir la clave conserva el renderer standalone
+compatible y no exige crear una vista en proyectos existentes.
 
 Las rutas deben ser absolutas, únicas, sin query, fragmento, barras duplicadas
 ni segmentos relativos. Solo se aceptan idiomas declarados en
@@ -268,6 +276,29 @@ adoptada, conserva el renderer legacy de `body_text`; actualizar CORE no
 reescribe el artículo ni cambia por sí solo su salida. No existe fallback de
 Matrix o contenido dummy en producción.
 
+El proyecto puede componer el detalle con su shell mediante
+`public_article_view`. CORE ejecuta esa vista en un buffer aislado y le entrega
+exclusivamente `$blogArticle`, una instancia tipada de
+`BlogPublicArticleViewModel`. Expone locale, canonical, alternates y
+`x-default`, navegación localizada, title y description SEO, H1, extracto,
+cuerpo HTML ya saneado, portada opcional, plantilla y fechas inmutables de
+publicación/actualización. `alternateUrls()` contiene solo variantes publicadas
+y alimenta `hreflang`; `languageNavigationUrls()` cubre todos los idiomas
+activos y cae al índice localizado cuando el artículo aún no tiene traducción
+publicada. Ambos contratos permanecen separados para no inventar alternates
+SEO.
+Los escalares permanecen sin escapar para que el proyecto los codifique según
+su contexto; solo `bodyHtml()` se imprime como HTML prevalidado. Una excepción,
+un fichero que deje de ser regular o una salida vacía fallan de forma genérica,
+sin volver silenciosamente al fallback.
+
+La vista project-owned es responsable del documento, head, assets y CSP. CORE
+conserva el resto de cabeceras defensivas, pero no impone su CSP cerrada sobre
+ese shell. Si no se configura vista, el HTML standalone y sus metadatos siguen
+siendo el fallback compatible; enlaza el asset gestionado
+`/assets/modules/blog/blog-public.css` y usa una CSP cerrada que solo amplía
+`style-src 'self'` para cargarlo.
+
 Las imágenes estructuradas se entregan como AVIF responsive desde el namespace
 fijo `/_liquidstack/blog-media/{uuid}/{width}.avif`. La frontera pública solo
 sirve una variante si el asset está referenciado por el documento actual de un
@@ -391,6 +422,14 @@ Quedan expresamente para cortes posteriores:
 
 - etiquetas, buscador reactivo completo, archivos, relacionados, RSS y
   comentarios;
+- reproducción Lite YouTube inline gobernada por consentimiento social de
+  CookieLAD; el enlace externo accesible continúa siendo el fallback sin
+  consentimiento ni JavaScript;
+- recursos visuales Blog `module-owned`, sincronizados únicamente cuando el
+  selector `liquidstack/blog` esté activo;
+- retirada de la sesión legacy y de `no-store` innecesario en todas las rutas
+  HTML públicas Blog, junto a una proyección compartida que evite conexiones
+  PDO redundantes en índices;
 - crop, focal point, vídeo local, audio, reemplazo y garbage collection de
   medios;
 - nuevas plantillas editoriales y el maquetador libre de secciones, filas y
@@ -399,6 +438,9 @@ Quedan expresamente para cortes posteriores:
 - redirecciones automáticas por cambio de slug;
 - traducción mediante IA y generación automática de variantes;
 - medidor SEO avanzado, Search Console e Indexing API;
+- localización independiente de la interfaz WebAdmin;
+- edición HTML avanzada, saneada, auditable, restaurable y limitada a una
+  capacidad específica;
 - ampliación del catálogo de recursos Blog con sliders, relacionados y otras
   composiciones dinámicas.
 

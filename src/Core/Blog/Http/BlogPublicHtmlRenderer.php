@@ -12,15 +12,51 @@ use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
 use App\Core\Blog\StructuredContent\Rendering\BlogDocumentHtmlRenderer;
 use App\Core\Blog\StructuredContent\Rendering\BlogImageResolverInterface;
+use Throwable;
 
 final class BlogPublicHtmlRenderer
 {
-    /** @param array<string, string> $alternateUrls */
+    public const STANDALONE_STYLESHEET =
+        '/assets/modules/blog/blog-public.css';
+
+    private readonly ?string $projectArticleView;
+
+    public function __construct(?string $projectArticleView = null)
+    {
+        if ($projectArticleView === null) {
+            $this->projectArticleView = null;
+            return;
+        }
+        if (
+            !is_file($projectArticleView)
+            || is_link($projectArticleView)
+            || !is_readable($projectArticleView)
+        ) {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+        $resolved = realpath($projectArticleView);
+        if (!is_string($resolved)) {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+
+        $this->projectArticleView = $resolved;
+    }
+
+    public function usesProjectArticleView(): bool
+    {
+        return $this->projectArticleView !== null;
+    }
+
+    /**
+     * @param array<string, string> $alternateUrls
+     * @param array<string, string> $languageNavigationUrls
+     */
     public function render(
         BlogPostVariant $variant,
         string $canonicalUrl,
         array $alternateUrls = [],
-        ?string $xDefaultUrl = null
+        ?string $xDefaultUrl = null,
+        array $languageNavigationUrls = []
     ): string {
         if (
             filter_var($canonicalUrl, FILTER_VALIDATE_URL) === false
@@ -35,18 +71,23 @@ final class BlogPublicHtmlRenderer
             null,
             null,
             $alternateUrls,
-            $xDefaultUrl
+            $xDefaultUrl,
+            $languageNavigationUrls
         );
     }
 
-    /** @param array<string, string> $alternateUrls */
+    /**
+     * @param array<string, string> $alternateUrls
+     * @param array<string, string> $languageNavigationUrls
+     */
     public function renderStructured(
         BlogPostVariant $variant,
         string $canonicalUrl,
         BlogDocument $document,
         BlogImageResolverInterface $imageResolver,
         array $alternateUrls = [],
-        ?string $xDefaultUrl = null
+        ?string $xDefaultUrl = null,
+        array $languageNavigationUrls = []
     ): string {
         if (
             filter_var($canonicalUrl, FILTER_VALIDATE_URL) === false
@@ -61,17 +102,22 @@ final class BlogPublicHtmlRenderer
             $document,
             $imageResolver,
             $alternateUrls,
-            $xDefaultUrl
+            $xDefaultUrl,
+            $languageNavigationUrls
         );
     }
 
-    /** @param array<string, string> $alternatePaths */
+    /**
+     * @param array<string, string> $alternatePaths
+     * @param array<string, string> $languageNavigationPaths
+     */
     public function renderFromOrigin(
         BlogPostVariant $variant,
         BlogPublicOrigin $origin,
         string $canonicalPath,
         array $alternatePaths = [],
-        ?string $xDefaultPath = null
+        ?string $xDefaultPath = null,
+        array $languageNavigationPaths = []
     ): string {
         return $this->renderDocument(
             $variant,
@@ -81,11 +127,18 @@ final class BlogPublicHtmlRenderer
             $this->absoluteAlternates($origin, $alternatePaths),
             $xDefaultPath === null
                 ? null
-                : $origin->absoluteUrl($xDefaultPath)
+                : $origin->absoluteUrl($xDefaultPath),
+            $this->absoluteAlternates(
+                $origin,
+                $languageNavigationPaths
+            )
         );
     }
 
-    /** @param array<string, string> $alternatePaths */
+    /**
+     * @param array<string, string> $alternatePaths
+     * @param array<string, string> $languageNavigationPaths
+     */
     public function renderStructuredFromOrigin(
         BlogPostVariant $variant,
         BlogPublicOrigin $origin,
@@ -93,7 +146,8 @@ final class BlogPublicHtmlRenderer
         BlogDocument $document,
         BlogImageResolverInterface $imageResolver,
         array $alternatePaths = [],
-        ?string $xDefaultPath = null
+        ?string $xDefaultPath = null,
+        array $languageNavigationPaths = []
     ): string {
         return $this->renderDocument(
             $variant,
@@ -103,18 +157,26 @@ final class BlogPublicHtmlRenderer
             $this->absoluteAlternates($origin, $alternatePaths),
             $xDefaultPath === null
                 ? null
-                : $origin->absoluteUrl($xDefaultPath)
+                : $origin->absoluteUrl($xDefaultPath),
+            $this->absoluteAlternates(
+                $origin,
+                $languageNavigationPaths
+            )
         );
     }
 
-    /** @param array<string, string> $alternateUrls */
+    /**
+     * @param array<string, string> $alternateUrls
+     * @param array<string, string> $languageNavigationUrls
+     */
     private function renderDocument(
         BlogPostVariant $variant,
         string $canonicalUrl,
         ?BlogDocument $document = null,
         ?BlogImageResolverInterface $imageResolver = null,
         array $alternateUrls = [],
-        ?string $xDefaultUrl = null
+        ?string $xDefaultUrl = null,
+        array $languageNavigationUrls = []
     ): string {
         if (
             $variant->status() !== BlogPostVariant::PUBLISHED
@@ -140,6 +202,10 @@ final class BlogPublicHtmlRenderer
         ) {
             throw new BlogException(BlogException::INVALID_STATE);
         }
+        $languageNavigationUrls = $this->normalizeLanguageNavigationUrls(
+            $alternates,
+            $languageNavigationUrls
+        );
         $coverImageUrl = $document === null || $imageResolver === null
             ? null
             : $this->coverImageUrl(
@@ -147,45 +213,123 @@ final class BlogPublicHtmlRenderer
                 $imageResolver,
                 $canonicalUrl
             );
+        $publishedAt = $variant->publishedAt();
+        if ($publishedAt === null) {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+        $article = new BlogPublicArticleViewModel(
+            $variant->locale(),
+            $canonicalUrl,
+            $alternates,
+            $languageNavigationUrls,
+            $xDefaultUrl,
+            (string) $draft->seoTitle(),
+            (string) $draft->metaDescription(),
+            $draft->h1(),
+            (string) $draft->excerpt(),
+            $body,
+            $coverImageUrl,
+            $document?->template()
+                ?? BlogDocumentTemplateRegistry::ARTICLE_BASIC,
+            $publishedAt,
+            $variant->updatedAt()
+        );
 
+        return $this->projectArticleView === null
+            ? $this->renderStandalone($article)
+            : $this->renderProjectView($article);
+    }
+
+    private function renderStandalone(
+        BlogPublicArticleViewModel $article
+    ): string {
         return '<!doctype html><html lang="'
-            . $this->escape($variant->locale())
+            . $this->escape($article->locale())
             . '"><head><meta charset="utf-8">'
             . '<meta name="viewport" content="width=device-width,initial-scale=1">'
-            . '<title>' . $this->escape((string) $draft->seoTitle())
+            . '<title>' . $this->escape($article->seoTitle())
             . '</title><meta name="description" content="'
-            . $this->escape((string) $draft->metaDescription()) . '">'
+            . $this->escape($article->metaDescription()) . '">'
             . '<meta name="robots" content="index,follow">'
             . '<link rel="canonical" href="'
-            . $this->escape($canonicalUrl) . '">'
-            . $this->alternateHead($alternates, $xDefaultUrl)
+            . $this->escape($article->canonicalUrl()) . '">'
+            . $this->alternateHead(
+                $article->alternateUrls(),
+                $article->xDefaultUrl()
+            )
             . '<meta property="og:type" content="article">'
             . '<meta property="og:title" content="'
-            . $this->escape((string) $draft->seoTitle()) . '">'
+            . $this->escape($article->seoTitle()) . '">'
             . '<meta property="og:description" content="'
-            . $this->escape((string) $draft->metaDescription()) . '">'
+            . $this->escape($article->metaDescription()) . '">'
             . '<meta property="og:url" content="'
-            . $this->escape($canonicalUrl) . '">'
-            . ($coverImageUrl === null
+            . $this->escape($article->canonicalUrl()) . '">'
+            . ($article->coverImageUrl() === null
                 ? ''
                 : '<meta property="og:image" content="'
-                    . $this->escape($coverImageUrl) . '">')
+                    . $this->escape($article->coverImageUrl()) . '">')
             . '<meta name="twitter:card" content="'
-            . ($coverImageUrl === null ? 'summary' : 'summary_large_image')
+            . ($article->coverImageUrl() === null
+                ? 'summary'
+                : 'summary_large_image')
             . '"><meta name="twitter:title" content="'
-            . $this->escape((string) $draft->seoTitle()) . '">'
+            . $this->escape($article->seoTitle()) . '">'
             . '<meta name="twitter:description" content="'
-            . $this->escape((string) $draft->metaDescription()) . '">'
-            . ($coverImageUrl === null
+            . $this->escape($article->metaDescription()) . '">'
+            . ($article->coverImageUrl() === null
                 ? ''
                 : '<meta name="twitter:image" content="'
-                    . $this->escape($coverImageUrl) . '">')
+                    . $this->escape($article->coverImageUrl()) . '">')
+            . '<link rel="stylesheet" href="'
+            . self::STANDALONE_STYLESHEET . '">'
             . '</head><body>'
             . '<main><article><header><h1>'
-            . $this->escape($draft->h1()) . '</h1><p>'
-            . $this->escape((string) $draft->excerpt())
-            . '</p></header><div>' . $body . '</div></article></main>'
+            . $this->escape($article->h1()) . '</h1><p>'
+            . $this->escape($article->excerpt())
+            . '</p></header><div>' . $article->bodyHtml()
+            . '</div></article></main>'
             . '</body></html>';
+    }
+
+    private function renderProjectView(
+        BlogPublicArticleViewModel $blogArticle
+    ): string {
+        $view = $this->projectArticleView;
+        if (
+            $view === null
+            || !is_file($view)
+            || is_link($view)
+            || !is_readable($view)
+        ) {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+
+        $bufferLevel = ob_get_level();
+        ob_start();
+        try {
+            (static function (
+                string $_liquidstackArticleView,
+                BlogPublicArticleViewModel $blogArticle
+            ): void {
+                require $_liquidstackArticleView;
+            })($view, $blogArticle);
+
+            if (ob_get_level() !== $bufferLevel + 1) {
+                throw new BlogException(BlogException::INVALID_STATE);
+            }
+            $html = ob_get_clean();
+        } catch (Throwable) {
+            while (ob_get_level() > $bufferLevel) {
+                ob_end_clean();
+            }
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+
+        if (!is_string($html) || trim($html) === '') {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+
+        return $html;
     }
 
     private function legacyBody(string $bodyText): string
@@ -255,6 +399,46 @@ final class BlogPublicHtmlRenderer
             }
         } else {
             $normalized[$currentLocale] = $canonicalUrl;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param array<string, string> $alternates
+     * @param array<string, string> $navigationUrls
+     * @return array<string, string>
+     */
+    private function normalizeLanguageNavigationUrls(
+        array $alternates,
+        array $navigationUrls
+    ): array {
+        if ($navigationUrls === []) {
+            return $alternates;
+        }
+
+        $normalized = [];
+        foreach ($navigationUrls as $locale => $url) {
+            if (!is_string($locale) || !is_string($url)) {
+                throw new BlogException(BlogException::INVALID_STATE);
+            }
+            $locale = BlogInput::locale($locale);
+            if (
+                isset($normalized[$locale])
+                || !$this->isAbsolutePublicUrl($url)
+                || (
+                    isset($alternates[$locale])
+                    && !hash_equals($alternates[$locale], $url)
+                )
+            ) {
+                throw new BlogException(BlogException::INVALID_STATE);
+            }
+            $normalized[$locale] = $url;
+        }
+        foreach ($alternates as $locale => $url) {
+            if (!isset($normalized[$locale])) {
+                $normalized[$locale] = $url;
+            }
         }
 
         return $normalized;

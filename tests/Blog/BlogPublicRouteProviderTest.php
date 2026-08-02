@@ -2,12 +2,21 @@
 
 declare(strict_types=1);
 
+use App\Core\Blog\BlogDraft;
+use App\Core\Blog\BlogService;
+use App\Core\Blog\Configuration\BlogConfigLoader;
+use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Http\BlogPublicHttpRuntime;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeFactoryInterface;
+use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Http\Request;
+use App\Core\Modules\Blog\BlogMigrationProvider;
 use App\Core\Modules\Blog\BlogPublicRouteProvider;
+use App\Core\Modules\Migrations\MigrationDefinition;
+use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Routing\ModulePublicRouteCollection;
+use App\Core\WebAdmin\Support\UuidGeneratorInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -136,6 +145,132 @@ PHP
         self::assertSame([], BlogPublicRouteProvider::preBootstrapPublicRoutePaths(
             new ModuleRuntimeContext($this->root)
         ));
+    }
+
+    public function testProviderBuildsRendererWithConfiguredProjectView(): void
+    {
+        $view = $this->root . '/App/views/blog/public-article.php';
+        $this->filesystem->dumpFile($view, <<<'PHP'
+<?php
+echo '<!doctype html><html><body data-project-shell="true"><h1>'
+    . htmlspecialchars($blogArticle->h1(), ENT_QUOTES, 'UTF-8')
+    . '</h1>' . $blogArticle->bodyHtml();
+foreach ($blogArticle->languageNavigationUrls() as $locale => $url) {
+    echo '<a data-language="' . htmlspecialchars($locale, ENT_QUOTES, 'UTF-8')
+        . '" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '"></a>';
+}
+echo '</body></html>';
+PHP);
+        $this->filesystem->dumpFile(
+            $this->root . '/App/config/modules/blog.php',
+            <<<'PHP'
+<?php
+return [
+    'public_paths' => [
+        'es' => '/noticias',
+        'en' => '/en/news',
+    ],
+    'sitemap_path' => '/news-sitemap.xml',
+    'public_article_view' => 'App/views/blog/public-article.php',
+];
+PHP
+        );
+
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(
+            PDO::ATTR_DEFAULT_FETCH_MODE,
+            PDO::FETCH_ASSOC
+        );
+        $pdo->exec('PRAGMA foreign_keys = ON');
+        $scope = MigrationScope::forTablePrefix('blog', 'ls_blog_');
+        $migration = null;
+        foreach (BlogMigrationProvider::migrations() as $candidate) {
+            if ($candidate->id() === '0001_blog_posts') {
+                $migration = $candidate;
+                break;
+            }
+        }
+        self::assertInstanceOf(MigrationDefinition::class, $migration);
+        foreach ($migration->statementsFor('sqlite', $scope) as $sql) {
+            $pdo->exec($sql);
+        }
+        $uuids = new class implements UuidGeneratorInterface {
+            /** @var list<string> */
+            private array $values = [
+                '11111111-1111-4111-8111-111111111111',
+                '22222222-2222-4222-8222-222222222222',
+            ];
+
+            public function generateV4(): string
+            {
+                return array_shift($this->values)
+                    ?? throw new RuntimeException('UUID fixture exhausted.');
+            }
+        };
+        $service = new BlogService(
+            new PdoBlogRepository($pdo, $scope),
+            $uuids
+        );
+        $actor = static fn (PDO $connection): string =>
+            '33333333-3333-4333-8333-333333333333';
+        $created = $service->createPost($actor, 'es', new BlogDraft(
+            'Matrix & systems',
+            'Safe body.',
+            'matrix',
+            'Matrix SEO',
+            'Matrix description.',
+            'Matrix excerpt.'
+        ));
+        $service->publish(
+            $actor,
+            $created->postPublicId(),
+            'es',
+            $created->lockVersion()
+        );
+        $runtime = new BlogPublicHttpRuntime(
+            (new BlogConfigLoader())->load($this->root, ['es', 'en']),
+            BlogPublicOrigin::fromEnvironment([
+                BlogPublicOrigin::ENV => 'https://example.test',
+            ]),
+            $service
+        );
+        $factory = new CountingBlogPublicRuntimeFactoryFixture($runtime);
+        $context = new ModuleRuntimeContext($this->root);
+        $routes = new ModulePublicRouteCollection(
+            'blog',
+            BlogPublicRouteProvider::publicRoutePrefixes($context)
+        );
+        (new BlogPublicRouteProvider($factory))->registerPublicRoutes(
+            $routes,
+            $context
+        );
+
+        $response = $routes->dispatch(Request::fromServer([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/noticias/matrix',
+            'HTTPS' => 'on',
+        ]));
+
+        self::assertNotNull($response);
+        self::assertSame(200, $response->status());
+        self::assertSame(1, $factory->calls);
+        self::assertStringContainsString(
+            'data-project-shell="true"',
+            $response->body()
+        );
+        self::assertStringContainsString(
+            '<h1>Matrix &amp; systems</h1>',
+            $response->body()
+        );
+        self::assertStringContainsString(
+            'data-language="en" href="https://example.test/en/news"',
+            $response->body()
+        );
+        self::assertArrayNotHasKey(
+            'Content-Security-Policy',
+            $response->headers()
+        );
     }
 
     public function testInvalidOrTraversingMediaRequestsNeverOpenRuntime(): void

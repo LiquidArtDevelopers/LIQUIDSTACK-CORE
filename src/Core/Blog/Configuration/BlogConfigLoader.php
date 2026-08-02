@@ -12,6 +12,7 @@ final class BlogConfigLoader
     private const ROOT_KEYS = [
         'public_paths',
         'sitemap_path',
+        'public_article_view',
         'database',
     ];
     private const DATABASE_KEYS = ['connection', 'table_prefix'];
@@ -36,6 +37,12 @@ final class BlogConfigLoader
 
         $raw = $this->requireArray($path);
         $this->assertOnlyKeys($raw, self::ROOT_KEYS, 'config');
+        if (array_key_exists('public_article_view', $raw)) {
+            BlogPublicArticleViewPath::fromProject(
+                $root,
+                $raw['public_article_view']
+            );
+        }
         $database = $raw['database'] ?? [];
         if (
             !is_array($database)
@@ -93,6 +100,12 @@ final class BlogConfigLoader
         $publicPaths = $raw['public_paths'] ?? $defaults->publicPaths();
         $sitemapPath = $raw['sitemap_path'] ?? $defaults->sitemapPath();
         $database = $raw['database'] ?? [];
+        $publicArticleView = array_key_exists('public_article_view', $raw)
+            ? BlogPublicArticleViewPath::fromProject(
+                $root,
+                $raw['public_article_view']
+            )
+            : null;
 
         if (
             !is_array($publicPaths)
@@ -153,7 +166,8 @@ final class BlogConfigLoader
             $tablePrefix,
             'project',
             $connection,
-            $languages[0]
+            $languages[0],
+            $publicArticleView
         );
     }
 

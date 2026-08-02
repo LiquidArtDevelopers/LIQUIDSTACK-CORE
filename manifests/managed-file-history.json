@@ -10,6 +10,9 @@
             "sha256:56619bb9e6d39b88e36a60d9715f09b98f6612ce304ec17da0dde24aa8b95187",
             "sha256:9c9e24f13769b4c3dee66f877b3938f0bb1f296e8f8e37668a7628542ceb246d"
         ],
+        "modules/blog/published/assets/blog-public.css": [
+            "sha256:22b655580846599dd10238c3f2ccf2d7a20f571e673d9383ef521b08bc7d751a"
+        ],
         "modules/webadmin/published/assets/webadmin.css": [
             "sha256:901f1fd301f89ab0fa2d4a5377360b21e3142a33b904eb59b9b1df7c5005fff7"
         ],

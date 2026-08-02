@@ -403,6 +403,34 @@ Blog 0001 a 0005 están implementados sobre esa base: migraciones propias y
 cross-scope, capacidades delegables, artículos con variantes localizadas,
 categorías, documentos estructurados y revisiones, borrador/publicación,
 bloqueo optimista, UI privada, auditoría atómica, consumo de Media, resolución
-pública tardía y sitemap DB-backed pre-bootstrap. Siguen fuera de este corte la
-búsqueda avanzada, la traducción IA, las plantillas múltiples, los formatos de
-medios aún no admitidos y el editor de páginas.
+pública tardía y sitemap DB-backed pre-bootstrap.
+
+El detalle público conserva un renderer standalone compatible, semántico y
+seguro, con CSS responsive publicado únicamente al activar Blog. Como punto de
+extensión aditivo, el proyecto puede declarar una vista regular bajo
+`App/views` y recibir un view model tipado sin PDO, IDs internos ni secretos.
+Ese shell project-owned compone head, navegación, footer, tema, assets y CSP;
+CORE mantiene las demás cabeceras defensivas y falla cerrado si la vista emite
+una salida vacía o lanza una excepción. Omitir la clave no cambia la salida
+standalone de consumidores existentes. Las claves `article-basic-01` y
+`article-cover-01` siguen siendo contratos de documento y portada; nuevas
+composiciones visuales mediante recursos LiquidStack permanecen aditivas.
+
+El bloque YouTube conserva por ahora un enlace externo accesible y no crea un
+iframe. Un futuro runtime Lite YouTube inline deberá mantener ese fallback y
+consultar CookieLAD antes de cargar contenido social. Del mismo modo, todas las
+rutas HTML públicas Blog deberán dejar de heredar la sesión legacy,
+`PHPSESSID` y `no-store` cuando no los necesiten; esta optimización afecta tanto
+al índice project-owned como al detalle modular.
+
+`sectionBlogGrid01` es la primera frontera visual y su showroom ya se oculta
+cuando Blog no está activo, pero sus ficheros de recurso todavía viajan dentro
+del catálogo base. Antes de ampliar la familia se implementará ownership
+selectivo para que controladores, templates, SCSS, JS, fixtures y catálogos
+propios de Blog se sincronicen únicamente con `liquidstack/blog`.
+
+Siguen fuera de este corte la búsqueda avanzada, la traducción IA, las
+plantillas visuales adicionales, los formatos de medios aún no admitidos, la
+localización independiente de la interfaz WebAdmin, la edición HTML avanzada
+protegida y el editor de páginas. El detalle de estos siguientes cortes está en
+[la hoja de ruta de WebAdmin y Liquid Blog](liquid-blog-roadmap.md).

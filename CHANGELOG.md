@@ -58,6 +58,15 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   y los artículos continúan usando la resolución pública tardía.
 
 ### Añadido
+- Punto de extensión opcional `public_article_view` para integrar el detalle
+  público Blog con un shell project-owned confinado a `App/views`. La vista
+  recibe un `BlogPublicArticleViewModel` tipado con SEO, alternates publicados,
+  navegación localizada con fallback al índice, contenido saneado, portada,
+  plantilla y fechas, sin PDO ni IDs internos. El fallback
+  standalone compatible incorpora el CSS neutral y responsive gestionado
+  `blog-public.css`; conserva una CSP cerrada con `style-src 'self'`, mientras
+  el shell del proyecto es propietario de su CSP y mantiene el resto de
+  cabeceras defensivas.
 - Comando explícito e idempotente `composer liquidstack:media:init` para
   preparar el storage privado de WebAdmin después de sus migraciones. Valida
   el perfil local o la ruta persistente de producción, rechaza symlinks,

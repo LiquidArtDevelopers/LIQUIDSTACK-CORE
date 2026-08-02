@@ -28,6 +28,7 @@ final class CanonicalModuleDistributionTest extends TestCase
         self::assertSame([
             'modules/blog/published/assets/blog-admin.css',
             'modules/blog/published/assets/blog-editor.js',
+            'modules/blog/published/assets/blog-public.css',
             'modules/webadmin/published/assets/webadmin.css',
             'modules/webadmin/published/assets/webadmin.js',
         ], array_keys(

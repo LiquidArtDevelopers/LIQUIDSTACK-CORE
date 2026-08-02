@@ -36,7 +36,11 @@ final class BlogPublicHttpController
             if ($base === null) {
                 throw new BlogPublicHttpRuntimeException();
             }
-            [$alternatePaths, $xDefaultPath] = $this->articleAlternates(
+            [
+                $alternatePaths,
+                $xDefaultPath,
+                $languageNavigationPaths,
+            ] = $this->articleLinks(
                 $variant
             );
             $structured = $this->runtime->structuredDocument(
@@ -52,7 +56,8 @@ final class BlogPublicHttpController
                     $this->runtime->origin(),
                     $base . '/' . $canonicalSlug,
                     $alternatePaths,
-                    $xDefaultPath
+                    $xDefaultPath,
+                    $languageNavigationPaths
                 )
                 : $this->articleRenderer->renderStructuredFromOrigin(
                     $variant,
@@ -63,7 +68,8 @@ final class BlogPublicHttpController
                         $variant->localizationPublicId()
                     ),
                     $alternatePaths,
-                    $xDefaultPath
+                    $xDefaultPath,
+                    $languageNavigationPaths
                 );
 
             return new Response(
@@ -133,10 +139,9 @@ final class BlogPublicHttpController
     /** @return array<string, string> */
     private function articleHeaders(): array
     {
-        return [
+        $headers = [
             'Content-Type' => 'text/html; charset=utf-8',
             'Cache-Control' => 'no-cache, must-revalidate',
-            'Content-Security-Policy' => "default-src 'none'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
             'Permissions-Policy' =>
                 'camera=(), microphone=(), geolocation=()',
             'Referrer-Policy' => 'strict-origin-when-cross-origin',
@@ -145,12 +150,25 @@ final class BlogPublicHttpController
             'Cross-Origin-Opener-Policy' => 'same-origin',
             'Cross-Origin-Resource-Policy' => 'same-origin',
         ];
+
+        if (!$this->articleRenderer->usesProjectArticleView()) {
+            $headers['Content-Security-Policy'] =
+                "default-src 'none'; style-src 'self'; "
+                . "img-src 'self' data:; frame-ancestors 'none'; "
+                . "base-uri 'none'; form-action 'none'";
+        }
+
+        return $headers;
     }
 
     /**
-     * @return array{array<string, string>, string}
+     * @return array{
+     *     array<string, string>,
+     *     string,
+     *     array<string, string>
+     * }
      */
-    private function articleAlternates(BlogPostVariant $variant): array
+    private function articleLinks(BlogPostVariant $variant): array
     {
         $slugs = [];
         foreach (
@@ -190,6 +208,13 @@ final class BlogPublicHttpController
             throw new BlogPublicHttpRuntimeException();
         }
 
-        return [$paths, $xDefaultPath];
+        $languageNavigationPaths = [];
+        foreach ($this->runtime->config()->publicPaths() as $locale => $base) {
+            $languageNavigationPaths[$locale] = isset($slugs[$locale])
+                ? $base . '/' . $slugs[$locale]
+                : $base;
+        }
+
+        return [$paths, $xDefaultPath, $languageNavigationPaths];
     }
 }

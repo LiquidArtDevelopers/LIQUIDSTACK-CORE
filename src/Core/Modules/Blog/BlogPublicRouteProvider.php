@@ -6,6 +6,7 @@ namespace App\Core\Modules\Blog;
 
 use App\Core\Blog\Configuration\BlogConfigLoader;
 use App\Core\Blog\Http\BlogPublicHttpController;
+use App\Core\Blog\Http\BlogPublicHtmlRenderer;
 use App\Core\Blog\Http\BlogPublicMediaHttpResponseFactory;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeFactory;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeFactoryInterface;
@@ -160,8 +161,17 @@ final class BlogPublicRouteProvider implements
 
     private function controller(): BlogPublicHttpController
     {
-        return $this->controller ??= new BlogPublicHttpController(
-            $this->runtimeFactory->create($this->requiredContext())
+        if ($this->controller instanceof BlogPublicHttpController) {
+            return $this->controller;
+        }
+
+        $runtime = $this->runtimeFactory->create($this->requiredContext());
+
+        return $this->controller = new BlogPublicHttpController(
+            $runtime,
+            new BlogPublicHtmlRenderer(
+                $runtime->config()->publicArticleViewPath()
+            )
         );
     }
 
