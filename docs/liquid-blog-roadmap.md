@@ -54,7 +54,9 @@ Implementado mediante `0001` a `0004` del scope Blog:
 - categorías localizadas, lock optimista, asignación a artículos y proyección
   pública para filtros y cards;
 - índice project-owned por idioma y recurso Blog reutilizable, con fixtures
-  Matrix solo en showroom;
+  Matrix solo en showroom. El catálogo de demostración cubrirá las cuatro
+  películas de la saga principal para poder probar listados, paginación,
+  categorías y relacionados sin insertar fallback dummy en la DB pública;
 - sitemap dinámico respaldado por la DB del entorno, sin escribir archivos ni
   necesitar deploy al publicar o retirar una URL;
 - canonical, robots, Open Graph, Twitter Card y alternates `hreflang`/`x-default`
@@ -111,6 +113,11 @@ legacy. Los siguientes pasos son:
   iframe después de consentimiento social válido de CookieLAD;
 - reunir, cuando sea posible, cards y categorías en una proyección pública
   acotada para evitar runtimes PDO duplicados por petición.
+- definir caché condicional para el sitemap dinámico mediante `ETag` y/o
+  `Last-Modified`, con invalidación al publicar o retirar variantes. Una caída
+  temporal de DB podrá servir únicamente una última respuesta válida,
+  explícitamente acotada y observable; nunca inventará URLs ni expondrá
+  borradores.
 
 La integración visual seguirá siendo aditiva: actualizar CORE no sustituirá de
 forma silenciosa una vista, un head o un layout project-owned.
@@ -141,11 +148,20 @@ seguirá siendo editable y publicable de forma independiente.
 - Búsqueda y filtros reactivos mediante `fetch`, conservando HTML inicial
   funcional sin JavaScript.
 - Relacionados, destacados, archivos, RSS y nuevos recursos dinámicos.
-- Integración con Search Console o Indexing API para solicitar indexación tras
-  publicar, separada del sitemap y con reintentos auditables.
+- Los recursos que admitan varias categorías declararán de forma explícita si
+  el filtro usa semántica `category_mode=any` (cualquier categoría) o
+  `category_mode=all` (todas); el backend aplicará una allowlist y límites, y
+  el HTML inicial seguirá siendo navegable sin JavaScript.
+- Integración con Search Console para observación e inspección y, solo cuando
+  el tipo de contenido y la política vigente de Google lo permitan, con una
+  API de solicitud de indexación. No se tratará la Indexing API como una API
+  general para posts: antes de implementar se verificará su documentación
+  oficial y elegibilidad actual. Cualquier petición será separada del sitemap,
+  opcional y con reintentos auditables.
 
 El sitemap dinámico ya es la fuente técnica inmediata de URLs. Una petición a
-un buscador será complementaria y nunca condicionará la publicación.
+un buscador será complementaria y nunca condicionará la publicación ni se
+presentará como garantía de rastreo o indexación.
 
 ### 9. Plantillas, recursos y maquetador
 

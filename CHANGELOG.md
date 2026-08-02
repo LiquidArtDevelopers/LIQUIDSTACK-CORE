@@ -75,6 +75,11 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   y los artículos continúan usando la resolución pública tardía.
 
 ### Añadido
+- La hoja de ruta Blog conserva como requisitos explícitos los fixtures de las
+  cuatro películas Matrix, la semántica de filtros de categorías `any/all`, la
+  futura caché condicional del sitemap y los límites de elegibilidad de Google
+  Indexing API; Search Console e indexación nunca sustituyen al sitemap ni
+  garantizan que una URL sea indexada.
 - El runtime de traducción reconoce el atributo de catálogo `ariaLabel` y lo
   aplica como `aria-label` sin reemplazar el contenido interior del elemento;
   permite localizar controles iconográficos conservando su estructura.
