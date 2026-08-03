@@ -33,7 +33,6 @@
         padding: 1rem 0 0 1rem;
         display: grid;
         gap: 0.5rem;
-        border-left: 0.2rem solid c.$color03;
 
         p {
             max-width: 38rem;
@@ -45,11 +44,7 @@
         min-width: 0;
         padding: clamp(1rem, 4vw, 2rem);
         align-self: center;
-        border: 1px solid c.$color00bis1;
-        border-radius: 1.25rem;
         background: c.$color00bis1;
-        box-shadow: 0 1rem 3rem c.$color01bis4;
-        backdrop-filter: blur(0.75rem);
     }
 
     @media (min-width: c.$tablet) {

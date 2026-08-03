@@ -62,10 +62,7 @@
         min-width: 0;
         padding: clamp(1rem, 4vw, 2.5rem);
         align-self: center;
-        border: 1px solid c.$color00bis2;
-        border-radius: clamp(0.85rem, 2vw, 1.4rem);
         background: c.$color00bis;
-        box-shadow: 0 1rem 3rem c.$color01bis3;
     }
 
     @media (min-width: c.$tablet) {

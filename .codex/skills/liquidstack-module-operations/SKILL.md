@@ -540,6 +540,14 @@ composer liquidstack:migrate --dry-run
   general ni convertirlos en ficheros project-owned. Revisar `blog.assets` en
   `doctor`: un destino ausente o inválido debe bloquear con
   `assets.missing_or_invalid`, sin intentar reparar DB o storage.
+- Mantener la administración visualmente plana y funcional. No introducir por
+  defecto bordes laterales de acento (`border-left` o
+  `border-inline-start`), franjas mediante pseudoelementos, rebordes
+  decorativos ni cadenas de tarjetas anidadas con borde y radio en cada
+  nivel. Expresar jerarquía mediante espacio, tipografía, grid y fondos
+  sobrios. Reservar los bordes para controles, foco, tablas, separadores o
+  estados seleccionados donde cumplan una función perceptible; comunicar
+  estado con texto, icono y color accesible, no con una raya lateral.
 - Tratar el medidor SEO editorial v1 como una ayuda no bloqueante, sin score ni
   persistencia propia. Debe clasificar cada comprobación como `Bien`,
   `Revisar` o `Pendiente`; un error del analizador nunca impide abrir, guardar

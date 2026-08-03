@@ -48,7 +48,7 @@ body.webadmin {
     place-items: center;
 }
 
-.webadmin article {
+.webadmin main > article {
     width: 100%;
     padding: clamp(1.25rem, 4vw, 3rem);
     overflow-wrap: anywhere;
@@ -85,10 +85,7 @@ body.webadmin {
     min-width: 0;
     padding: clamp(1rem, 4vw, 2.25rem);
     align-self: center;
-    border: 1px solid var(--ls-webadmin-border);
-    border-radius: 1.25rem;
     background: rgba(255, 255, 255, 0.78);
-    box-shadow: 0 1rem 3rem rgba(7, 26, 31, 0.14);
 }
 
 .webadmin h1,
@@ -145,9 +142,8 @@ body.webadmin {
 
 .webadmin fieldset {
     margin: 0;
-    padding: 1rem;
-    border: 1px solid var(--ls-webadmin-border);
-    border-radius: 0.8rem;
+    padding: 0;
+    border: 0;
 }
 
 .webadmin legend,
@@ -254,9 +250,6 @@ body.webadmin {
 .webadmin nav a {
     display: block;
     padding: 0.85rem 1rem;
-    border: 1px solid var(--ls-webadmin-border);
-    border-radius: 0.75rem;
-    background: rgba(255, 255, 255, 0.65);
 }
 
 .webadmin table {
@@ -415,10 +408,7 @@ body.webadmin {
     padding: clamp(1rem, 4vw, 2.5rem);
     align-self: center;
     color: var(--ls-webadmin-text);
-    border: 1px solid rgba(255, 255, 255, 0.34);
-    border-radius: clamp(0.85rem, 2vw, 1.4rem);
     background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 1rem 3rem rgba(39, 39, 39, 0.48);
 }
 
 .webadmin .moduleFormAuth02 {
