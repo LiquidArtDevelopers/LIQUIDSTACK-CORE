@@ -23,7 +23,7 @@ use PHPUnit\Framework\TestCase;
 
 final class WebAdminAuthenticationServiceTest extends TestCase
 {
-    private const PASSWORD = 'Correct horse battery staple';
+    private const PASSWORD = 'Correct horse battery staple 1!';
     private const WRONG_PASSWORD = 'Incorrect password value';
 
     private PDO $pdo;
@@ -953,6 +953,31 @@ final class WebAdminAuthenticationServiceTest extends TestCase
         self::assertSame($legacyHash, $stored);
         self::assertFalse($this->hasher->isCurrentHash($stored));
         self::assertTrue($legacyHasher->verify(self::PASSWORD, $legacyHash));
+    }
+
+    public function testCurrentArgonHashWithLegacyCompositionStillLogsIn(): void
+    {
+        $legacyPassword = '123legacy123legacy';
+        $legacyHash = password_hash($legacyPassword, PASSWORD_ARGON2ID, [
+            'memory_cost' => PasswordHasher::ARGON2_MEMORY_COST,
+            'time_cost' => PasswordHasher::ARGON2_TIME_COST,
+            'threads' => PasswordHasher::ARGON2_THREADS,
+        ]);
+        self::assertIsString($legacyHash);
+        self::assertTrue($this->hasher->isCurrentHash($legacyHash));
+        $this->seedUser('composition-legacy@example.test', 'active', $legacyHash);
+        $preAuthentication = $this->service->openPreAuthenticationSession(null);
+
+        $attempt = $this->service->authenticate(
+            $preAuthentication->sessionToken(),
+            $preAuthentication->csrfToken(),
+            'composition-legacy@example.test',
+            $legacyPassword,
+            '127.0.0.1'
+        );
+
+        self::assertTrue($attempt->isSuccessful());
+        self::assertNotNull($attempt->nextSession());
     }
 
     public function testDummyCredentialIsPrecomputedForProductivePolicy(): void

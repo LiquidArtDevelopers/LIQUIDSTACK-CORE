@@ -102,7 +102,7 @@ final class PasswordHasher
     public function verify(string $password, string $hash): bool
     {
         try {
-            $password = $this->policy->validate($password);
+            $password = $this->policy->validateForVerification($password);
         } catch (InvalidPassword) {
             return false;
         }

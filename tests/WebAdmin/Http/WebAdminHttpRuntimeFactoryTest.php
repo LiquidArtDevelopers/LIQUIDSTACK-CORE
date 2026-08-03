@@ -548,7 +548,7 @@ final class WebAdminHttpRuntimeFactoryTest extends TestCase
         $credential->execute([
             'user_id' => $userId,
             'password_hash' => PasswordHasher::productive()->hash(
-                'Factory integration password'
+                'Factory integration password 1!'
             ),
             'password_set_at' => $timestamp,
             'created_at' => $timestamp,

@@ -1,0 +1,11 @@
+@use '../config' as c;
+@use 'moduleFormAuth02';
+
+.moduleFormAuthRecover02 {
+    .moduleFormAuth02-form {
+        padding: clamp(0.85rem, 3vw, 1.5rem);
+        border: 1px solid c.$color02bis3;
+        border-radius: 1rem;
+        background: c.$color00;
+    }
+}

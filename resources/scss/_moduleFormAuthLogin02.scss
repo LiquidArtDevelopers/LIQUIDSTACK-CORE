@@ -1,0 +1,9 @@
+@use '../config' as c;
+@use 'moduleFormAuth02';
+
+.moduleFormAuthLogin02 {
+    .moduleFormAuth02-form {
+        padding-top: 1rem;
+        border-top: 0.2rem solid c.$color03;
+    }
+}

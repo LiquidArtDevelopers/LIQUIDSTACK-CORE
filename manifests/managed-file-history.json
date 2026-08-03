@@ -119,9 +119,11 @@
             "sha256:8ad671c20ce95534bda20339f4baa88608368e3a4097a5aff077762ce2914e44"
         ],
         "modules/webadmin/published/assets/webadmin.css": [
+            "sha256:54f16739291ddecfef5dcbed1d6233a2965ded000ebad2009b1577bc5a48b9e0",
             "sha256:901f1fd301f89ab0fa2d4a5377360b21e3142a33b904eb59b9b1df7c5005fff7"
         ],
         "modules/webadmin/published/assets/webadmin.js": [
+            "sha256:24db76ed478c420c64ae0bcdf990908599cf8fad3184b6908900569f4dec4bfd",
             "sha256:6d6909287853cc15cc16d1cd03fe9e0cbbef2da0455fa3380500376c8ea372ec"
         ],
         "resources/img/aniBackground01/clock-bigben-guide.png": [
@@ -505,6 +507,9 @@
         "resources/js/_moduleFormAuth.js": [
             "sha256:e55aeba458aa6859e2f0028a240ce79f5e8b99a60eec8235128f422145700daa"
         ],
+        "resources/js/_moduleFormAuth02.js": [
+            "sha256:17a5a154629c0f2176922b592b53cdd0b232d27465068225d6024a1731610cad"
+        ],
         "resources/js/_moduleFormContact.js": [
             "sha256:c4f784dbe05da3724e849f2e4bece184a06e87a1aa442a0b2b89e28c19a2d774",
             "sha256:dbaab5dfbf16f26a838e205bf4076121dfd63fbf3de81b74c39d9d2693bf935c"
@@ -757,6 +762,9 @@
         "resources/scss/_artAuth01.scss": [
             "sha256:fc690a8442c523efe1c6028601a03ade9bbd019ff382a400c3d8149813a6da46"
         ],
+        "resources/scss/_artAuth02.scss": [
+            "sha256:cfad17d502905e0a0ce36f95cd6ada25a8a4a983f2375087214f53ea042780c4"
+        ],
         "resources/scss/_artForm01.scss": [
             "sha256:37bf4ce73ef5873c346f2e6fb24242758d787c526692549155180ce95f6edd68",
             "sha256:40c409c5dd3b3a3c16a3ad05fc8faf91a86aacee67b63c9266b1fd985d098067",
@@ -883,14 +891,26 @@
         "resources/scss/_moduleFormAuth.scss": [
             "sha256:f898f237ce419c3a75753c68c85d0d1f9533a4c7cc91b7b260360466eebecca6"
         ],
+        "resources/scss/_moduleFormAuth02.scss": [
+            "sha256:f5ab29a8e9fdfd026131270fedb321fa83b89550e28c065cc33e1afec43deeea"
+        ],
         "resources/scss/_moduleFormAuthLogin01.scss": [
             "sha256:e114e134b525519a215a84a48125505b491a34374fa8fa47da7d16b6ae230855"
+        ],
+        "resources/scss/_moduleFormAuthLogin02.scss": [
+            "sha256:ef847a9f3a78cdb4eb14ec16eccdb23e8cde8019a31b8b773bac36acb734cb84"
         ],
         "resources/scss/_moduleFormAuthPassword01.scss": [
             "sha256:0004d9924d886192a4563ec160ff67f591f5be19c09c0bd65f7c6c8f4906f146"
         ],
+        "resources/scss/_moduleFormAuthPassword02.scss": [
+            "sha256:7a3dccf15c33c279a6795a82090a4b074a28a3a4b417f9bb8e49b6189ba4f5ca"
+        ],
         "resources/scss/_moduleFormAuthRecover01.scss": [
             "sha256:0e3161cc40652d14ff8023a7f70c68a405be72dec57b1552b9a2d3391b3bcb02"
+        ],
+        "resources/scss/_moduleFormAuthRecover02.scss": [
+            "sha256:73eca95e392888abad8492d446596d6404a8a0ae4c3df6154b21a2d968f7b7f2"
         ],
         "resources/scss/_moduleFormContact.scss": [
             "sha256:57128090c922c024d4542382e664ca0c669d82558af3c43c8b4cf40f8961fd8f",
@@ -1072,6 +1092,7 @@
         ],
         "src/js/showroom/forms-interactive.js": [
             "sha256:04182dd758433d60faa0effd8bd56cbd3cab6f8e7b1ce3b503a4cdfe2279bfd9",
+            "sha256:7a43a9c4ddb2317add469879fa83e805af0c002f2bad77a3b89c723e710c11db",
             "sha256:c70b22812cbbed637158c3bd58d033f03b0b3ebd649c126a7493bbb949c0d091"
         ],
         "src/js/showroom/gsap-specials.js": [
@@ -1113,6 +1134,7 @@
             "sha256:e4f8441d673431f8e7b4aa1aa6bc3c955a29c4b2ed34d99511d1d88a946da0c9"
         ],
         "src/scss/showroom/forms-interactive.scss": [
+            "sha256:2fef6ea3774af891bbffab80c0dc1d110eb976f0d2be7e6915520d8ac34b3706",
             "sha256:328dbe0929dd9892c19472e86825d8e9c39d37a17cd2fdf7916a4c8186bc5522",
             "sha256:336dbdc5714055db21c50f7a73e9c41ab605c7f658d6fdbfb67eb9eb41aa000a"
         ],
@@ -1168,6 +1190,9 @@
         ],
         "stubs/App/controllers/_moduleFormAuth.php": [
             "sha256:baf2dfc56d8f05e4843a167f3fa31f4c07a6df6db762053813f1ad7728ef8035"
+        ],
+        "stubs/App/controllers/_moduleFormAuth02.php": [
+            "sha256:6e71f71da6b1b188c9e6db7df6e94f6bfc4b44071278344ad15c6aab8811b1aa"
         ],
         "stubs/App/controllers/_moduleFormContact.php": [
             "sha256:7f3b529ded372a2f404fb2ec0ab3e014ab5f759337cdb08b1701c864e7610990"
@@ -1313,6 +1338,9 @@
         "stubs/App/controllers/artAuth01.php": [
             "sha256:4c384a5829409f266e729da6d0ae4f9f0f130435968df887266f98a1298721f7"
         ],
+        "stubs/App/controllers/artAuth02.php": [
+            "sha256:7454de455dec86a45c8a7bc335e94f279a45974289368efc053f204225913ba1"
+        ],
         "stubs/App/controllers/artForm01.php": [
             "sha256:511c72cddb16ca8505e085bbfdf4219daa91879ce4e9def410d11a09239a1ee4",
             "sha256:b28ad8887839d89b20a77cd6f563f5968f56ca3f62c78cb48288521ea4dedec7"
@@ -1410,11 +1438,20 @@
         "stubs/App/controllers/moduleFormAuthLogin01.php": [
             "sha256:682e72194b4dfea3187af88203f8e2cff441b6372f45c219f1af947a99403b0f"
         ],
+        "stubs/App/controllers/moduleFormAuthLogin02.php": [
+            "sha256:530ffe51e5d2aa5a42f9c569bd0bd3a211a27904b953217cbf4ab2a63479f7e1"
+        ],
         "stubs/App/controllers/moduleFormAuthPassword01.php": [
             "sha256:6c3c53dd3787fea82b4f98d2d0fc95d7f34528164e95673b90c71baee309c104"
         ],
+        "stubs/App/controllers/moduleFormAuthPassword02.php": [
+            "sha256:3786aabc2047c1c557f48f295ece26ae647056defadd84c70eafefae0c305e4d"
+        ],
         "stubs/App/controllers/moduleFormAuthRecover01.php": [
             "sha256:1cceb00191ba084caa1645784773d6c64a38c816cb2702d7a3dcf5306988c5b8"
+        ],
+        "stubs/App/controllers/moduleFormAuthRecover02.php": [
+            "sha256:93c848ba82623bf73489294a67b8281bd9dc5bc95e768e625a2035e51bc8c946"
         ],
         "stubs/App/controllers/moduleFormContact01.php": [
             "sha256:257a61a1d3bc7bbf8e691b2ce2f150c60e7861f0ce43e22dc76bce10f2b09334"
@@ -1632,6 +1669,9 @@
         "stubs/App/templates/_artAuth01.html": [
             "sha256:57cc395efad72cb89a7446fba65d8f4c1cb943d9f8d0b47b2dcd255e1805a293"
         ],
+        "stubs/App/templates/_artAuth02.html": [
+            "sha256:db34e61b640f6a546eb5da8387fe64616dcbfdf48c46c6a7cf4686c58d2517d2"
+        ],
         "stubs/App/templates/_artForm01.html": [
             "sha256:162d36ff9f1dd47f0e102003d55a4743dc1ab10c46ce1eb0e084d54c91f32ace",
             "sha256:5fddc19d99944439d35c6e88a07e486379936ae07c4de52a83fbd01720317501",
@@ -1724,11 +1764,20 @@
         "stubs/App/templates/_moduleFormAuthLogin01.html": [
             "sha256:335b562277565a6aad7076c678c1f84800f9007ef9d9d29fef0ea545873a51a8"
         ],
+        "stubs/App/templates/_moduleFormAuthLogin02.html": [
+            "sha256:34adc38eeb7fb1530015cff8ecd4b24c5628d98ab8f53c15e01b36251301d921"
+        ],
         "stubs/App/templates/_moduleFormAuthPassword01.html": [
             "sha256:2d2ea1404afa83e3010b5e36fdb3adeecc31f9d6f5d533b7498a8833bbb302b7"
         ],
+        "stubs/App/templates/_moduleFormAuthPassword02.html": [
+            "sha256:d4a5dd958728bc58b2b77429c9e17979035f31d06ac70b0a4acbac687d7e20df"
+        ],
         "stubs/App/templates/_moduleFormAuthRecover01.html": [
             "sha256:88dc85f9feaf88ed00ca65d036332a178654b385b7487bc9b20826131d7314ee"
+        ],
+        "stubs/App/templates/_moduleFormAuthRecover02.html": [
+            "sha256:63d859fd3a2b5979d393a394750687488f412654c3b253a30ec48b2a214e460b"
         ],
         "stubs/App/templates/_moduleFormContact.html": [
             "sha256:1d6709270b0bb386f6c43ef04b385bebcd409ccfe5f40dfc7b5822dc0baeda0d",
@@ -1891,7 +1940,8 @@
         "stubs/App/views/showroom/_forms-interactive.php": [
             "sha256:13bc98764cf891c4c7ebc89cfbd632a5fae2284fd67f8880e4aee5db3b715e0a",
             "sha256:31e7255a3053c963a06c85019510e172900ac3a1b32c806c6d408b41f454436b",
-            "sha256:96413810af28851a97be58da6067d842261a2fde0815c74addc64125682534dd"
+            "sha256:96413810af28851a97be58da6067d842261a2fde0815c74addc64125682534dd",
+            "sha256:d335075a7096d2c502ab579c903eaa493f1d65eb1cd1b8b2f8aacf624c78f996"
         ],
         "stubs/App/views/showroom/_gsap-specials.php": [
             "sha256:1590383cd10966885a88df559c3355170a403e381d278c2615277fb2b5f87e4a",

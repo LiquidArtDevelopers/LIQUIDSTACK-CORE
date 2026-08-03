@@ -26,8 +26,8 @@ use PHPUnit\Framework\TestCase;
 
 final class WebAdminCredentialActionHttpTest extends TestCase
 {
-    private const OLD_PASSWORD = 'Correct horse battery staple';
-    private const NEW_PASSWORD = 'New correct horse battery staple';
+    private const OLD_PASSWORD = 'Correct horse battery staple 1!';
+    private const NEW_PASSWORD = 'Aa1!bbbb';
 
     private PDO $pdo;
     private WebAdminCredentialHttpClock $clock;
@@ -449,8 +449,8 @@ final class WebAdminCredentialActionHttpTest extends TestCase
             '/admin/password/reset',
             [
                 'csrf' => $this->hiddenCsrf($mismatch->body()),
-                'password' => 'too short',
-                'password_confirmation' => 'too short',
+                'password' => 'Aa1!bbb',
+                'password_confirmation' => 'Aa1!bbb',
             ],
             ['LS_WEBADMIN_ACTION' => $actionSession]
         ));

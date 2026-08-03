@@ -1,18 +1,21 @@
 :root {
     color-scheme: light;
-    --ls-webadmin-background: #071a1f;
-    --ls-webadmin-background-soft: #12333a;
+    --ls-webadmin-background: #272727;
+    --ls-webadmin-background-soft: #1c3557;
     --ls-webadmin-surface: rgba(255, 255, 255, 0.94);
     --ls-webadmin-surface-strong: #ffffff;
-    --ls-webadmin-text: #142326;
-    --ls-webadmin-muted: #52666b;
-    --ls-webadmin-accent: #087f8c;
-    --ls-webadmin-accent-hover: #05636d;
-    --ls-webadmin-border: #c9d7da;
+    --ls-webadmin-text: #272727;
+    --ls-webadmin-muted: #5b5b5b;
+    --ls-webadmin-accent: #1c3557;
+    --ls-webadmin-accent-hover: #102744;
+    --ls-webadmin-highlight: #caa96a;
+    --ls-webadmin-accent-soft: rgba(28, 53, 87, 0.16);
+    --ls-webadmin-highlight-soft: rgba(202, 169, 106, 0.27);
+    --ls-webadmin-border: rgba(39, 39, 39, 0.27);
     --ls-webadmin-danger: #a82626;
     --ls-webadmin-success: #176a45;
-    --ls-webadmin-focus: #f1a208;
-    --ls-webadmin-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.3);
+    --ls-webadmin-focus: #caa96a;
+    --ls-webadmin-shadow: 0 1.5rem 4rem rgba(39, 39, 39, 0.45);
 }
 
 * {
@@ -32,8 +35,8 @@ body.webadmin {
     padding: clamp(1rem, 4vw, 3rem);
     color: var(--ls-webadmin-text);
     background:
-        radial-gradient(circle at 15% 10%, rgba(8, 127, 140, 0.45), transparent 34rem),
-        radial-gradient(circle at 90% 90%, rgba(241, 162, 8, 0.18), transparent 28rem),
+        radial-gradient(circle at 15% 10%, var(--ls-webadmin-accent-soft), transparent 34rem),
+        radial-gradient(circle at 90% 90%, var(--ls-webadmin-highlight-soft), transparent 28rem),
         linear-gradient(145deg, var(--ls-webadmin-background), var(--ls-webadmin-background-soft));
 }
 
@@ -366,6 +369,305 @@ body.webadmin {
     text-align: center;
 }
 
+.webadmin .artAuth02 {
+    max-width: 74rem;
+    display: grid;
+    gap: clamp(1.75rem, 5vw, 3.5rem);
+    overflow: hidden;
+    position: relative;
+    color: var(--ls-webadmin-surface-strong);
+    border-color: rgba(255, 255, 255, 0.34);
+    background:
+        radial-gradient(circle at 12% 0, var(--ls-webadmin-accent-soft), transparent 38%),
+        linear-gradient(145deg, var(--ls-webadmin-background), var(--ls-webadmin-background-soft));
+}
+
+.webadmin .artAuth02::before {
+    content: '';
+    width: clamp(8rem, 26vw, 18rem);
+    height: 0.35rem;
+    position: absolute;
+    inset: 0 auto auto 0;
+    background: var(--ls-webadmin-highlight);
+}
+
+.webadmin .artAuth02-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.webadmin .artAuth02-copy > h1,
+.webadmin .artAuth02-copy > h2,
+.webadmin .artAuth02-copy > h3 {
+    max-width: 18ch;
+    color: var(--ls-webadmin-surface-strong);
+}
+
+.webadmin .artAuth02-intro,
+.webadmin .artAuth02-support p {
+    color: rgba(255, 255, 255, 0.86);
+}
+
+.webadmin .artAuth02-support {
+    padding: 1rem 0 0 1rem;
+    border-inline-start: 0.2rem solid var(--ls-webadmin-highlight);
+}
+
+.webadmin .artAuth02-support h2,
+.webadmin .artAuth02-support h3 {
+    color: var(--ls-webadmin-highlight);
+}
+
+.webadmin .artAuth02-panel {
+    min-width: 0;
+    padding: clamp(1rem, 4vw, 2.5rem);
+    align-self: center;
+    color: var(--ls-webadmin-text);
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: clamp(0.85rem, 2vw, 1.4rem);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 1rem 3rem rgba(39, 39, 39, 0.48);
+}
+
+.webadmin .moduleFormAuth02 {
+    width: 100%;
+    color: var(--ls-webadmin-text);
+}
+
+.webadmin .moduleFormAuth02-form {
+    width: 100%;
+    margin-top: 0;
+    display: grid;
+    gap: 1.25rem;
+}
+
+.webadmin .moduleFormAuth02-fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1.1rem;
+    border: 0;
+}
+
+.webadmin .moduleFormAuth02-legend {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    color: var(--ls-webadmin-accent);
+    font-size: clamp(1.65rem, 7vw, 2.75rem);
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+}
+
+.webadmin .moduleFormAuth02-intro,
+.webadmin .moduleFormAuth02-hint {
+    color: var(--ls-webadmin-muted);
+}
+
+.webadmin .moduleFormAuth02-field {
+    min-width: 0;
+    display: grid;
+    gap: 0.45rem;
+}
+
+.webadmin .moduleFormAuth02-field > label {
+    color: var(--ls-webadmin-text);
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+}
+
+.webadmin .moduleFormAuth02-field input {
+    min-height: 3.25rem;
+    outline: 0.18rem solid transparent;
+    outline-offset: 0.12rem;
+}
+
+.webadmin .moduleFormAuth02-field input:focus-visible {
+    border-color: var(--ls-webadmin-highlight);
+    outline-color: var(--ls-webadmin-highlight-soft);
+    box-shadow: 0 0.5rem 1.5rem rgba(39, 39, 39, 0.12);
+}
+
+.webadmin .moduleFormAuth02-field input[aria-invalid='true'] {
+    border-color: var(--ls-webadmin-danger);
+    outline-color: var(--ls-webadmin-danger);
+}
+
+.webadmin .moduleFormAuth02-passwordControl {
+    position: relative;
+}
+
+.webadmin .moduleFormAuth02-passwordControl input {
+    padding-inline-end: 3.75rem;
+}
+
+.webadmin .moduleFormAuth02-toggle {
+    width: 2.85rem;
+    min-height: 2.85rem;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-end: 0.2rem;
+    transform: translateY(-50%);
+    color: var(--ls-webadmin-accent);
+    border-radius: 50%;
+    background: transparent;
+}
+
+.webadmin .moduleFormAuth02-toggle:hover {
+    color: var(--ls-webadmin-text);
+    background: var(--ls-webadmin-highlight-soft);
+}
+
+.webadmin .moduleFormAuth02-toggleIcon {
+    width: 1.25rem;
+    height: 1.25rem;
+    position: relative;
+    display: block;
+    border: 0.12rem solid currentColor;
+    border-radius: 75% 0;
+    transform: rotate(45deg);
+}
+
+.webadmin .moduleFormAuth02-toggleIcon::after {
+    content: '';
+    width: 0.38rem;
+    height: 0.38rem;
+    position: absolute;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.webadmin .moduleFormAuth02-toggle[aria-pressed='true']
+    .moduleFormAuth02-toggleIcon::before {
+    content: '';
+    width: 1.55rem;
+    height: 0.12rem;
+    position: absolute;
+    inset: 50% auto auto 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    background: currentColor;
+}
+
+.webadmin .moduleFormAuth02-hint,
+.webadmin .moduleFormAuth02-error {
+    min-height: 1.15em;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.webadmin .moduleFormAuth02-error,
+.webadmin .moduleFormAuth02-feedback {
+    color: var(--ls-webadmin-danger);
+    font-weight: 700;
+}
+
+.webadmin .moduleFormAuth02-error:empty,
+.webadmin .moduleFormAuth02-feedback:empty,
+.webadmin .moduleFormAuth02-secondaryAction:empty {
+    display: none;
+}
+
+.webadmin .moduleFormAuth02-requirements {
+    margin: 0;
+    padding: 1rem;
+    display: grid;
+    gap: 0.55rem;
+    color: var(--ls-webadmin-muted);
+    border: 1px solid var(--ls-webadmin-accent-soft);
+    border-inline-start: 0.25rem solid var(--ls-webadmin-highlight);
+    border-radius: 0.85rem;
+    background: var(--ls-webadmin-surface-strong);
+    list-style: none;
+}
+
+.webadmin .moduleFormAuth02-requirements li {
+    display: grid;
+    grid-template-columns: 1.3rem minmax(0, 1fr);
+    align-items: start;
+    gap: 0.55rem;
+}
+
+.webadmin .moduleFormAuth02-requirements li > span:first-child {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.08rem;
+    display: grid;
+    place-items: center;
+    color: var(--ls-webadmin-text);
+    border: 1px solid var(--ls-webadmin-highlight);
+    border-radius: 50%;
+    background: var(--ls-webadmin-highlight-soft);
+}
+
+.webadmin .moduleFormAuth02-requirements li > span:first-child::before {
+    content: '·';
+    font-size: 1rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.webadmin .moduleFormAuth02-requirements li[data-state='met'] {
+    color: var(--ls-webadmin-text);
+}
+
+.webadmin .moduleFormAuth02-requirements li[data-state='met']
+    > span:first-child {
+    color: var(--ls-webadmin-surface-strong);
+    border-color: var(--ls-webadmin-success);
+    background: var(--ls-webadmin-success);
+}
+
+.webadmin .moduleFormAuth02-requirements li[data-state='met']
+    > span:first-child::before {
+    content: '✓';
+    font-size: 0.75rem;
+}
+
+.webadmin .moduleFormAuth02-submit {
+    min-height: 3.2rem;
+    border: 1px solid var(--ls-webadmin-accent);
+    border-radius: 0.75rem;
+}
+
+.webadmin .moduleFormAuth02-submit:hover:not(:disabled) {
+    color: var(--ls-webadmin-text);
+    border-color: var(--ls-webadmin-highlight);
+    background: var(--ls-webadmin-highlight);
+}
+
+.webadmin .moduleFormAuth02-submit:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.webadmin .moduleFormAuth02-secondaryAction {
+    text-align: center;
+}
+
+.webadmin .moduleFormAuth02-visuallyHidden {
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    border: 0;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+}
+
 @media (min-width: 48rem) {
     body.webadmin {
         padding: clamp(2rem, 6vw, 5rem);
@@ -381,10 +683,30 @@ body.webadmin {
         align-items: center;
         gap: 1rem;
     }
+
+    .webadmin .moduleFormAuth02-form,
+    .webadmin .moduleFormAuth02-fieldset {
+        gap: 1.5rem;
+    }
+
+    .webadmin .moduleFormAuth02-requirements {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .webadmin .moduleFormAuth02-submit {
+        width: max-content;
+        min-width: 12rem;
+        justify-self: end;
+    }
 }
 
 @media (min-width: 64rem) {
     .webadmin .artAuth01 {
+        grid-template-columns: minmax(0, 0.9fr) minmax(28rem, 1.1fr);
+        align-items: center;
+    }
+
+    .webadmin .artAuth02 {
         grid-template-columns: minmax(0, 0.9fr) minmax(28rem, 1.1fr);
         align-items: center;
     }

@@ -1,0 +1,21 @@
+<div id="{root-id}" class="moduleFormAuth02 moduleFormAuthRecover02 {classVar}">
+    <form id="{form-id}" class="moduleFormAuth02-form" action="{form-action}" method="{form-method}" aria-labelledby="{legend-id}">
+        {hidden-fields}
+
+        <fieldset class="moduleFormAuth02-fieldset">
+            <legend id="{legend-id}" class="moduleFormAuth02-legend"{legend-lang-attr}>{legend-text}</legend>
+            <p class="moduleFormAuth02-intro"{intro-lang-attr}>{intro-text}</p>
+
+            <div class="moduleFormAuth02-field">
+                <label for="{email-id}"{email-label-lang-attr}>{email-label-text}</label>
+                <input id="{email-id}" name="{email-name}" type="email" autocomplete="{email-autocomplete}" autocapitalize="none" spellcheck="false" maxlength="254" placeholder="{email-placeholder}" aria-describedby="{email-hint-id} {email-error-id}"{email-placeholder-lang-attr} required>
+                <p id="{email-hint-id}" class="moduleFormAuth02-hint"{email-hint-lang-attr}>{email-hint-text}</p>
+                <p id="{email-error-id}" class="moduleFormAuth02-error" aria-live="polite">{email-error-slot}</p>
+            </div>
+        </fieldset>
+
+        <button class="moduleFormAuth02-submit" type="submit"{submit-lang-attr}>{submit-text}</button>
+        <div class="moduleFormAuth02-feedback" aria-live="polite">{feedback-slot}</div>
+        <div class="moduleFormAuth02-secondaryAction">{secondary-action-slot}</div>
+    </form>
+</div>

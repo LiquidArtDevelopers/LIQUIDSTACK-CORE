@@ -76,6 +76,17 @@ return [
   habilitar autenticación.
 - Exigir soporte Argon2id para la política productiva fija `argon2id-v1`; no
   sustituirla automáticamente por bcrypt según el host.
+- Exigir en toda creación, activación o restablecimiento un mínimo de ocho
+  caracteres Unicode, una minúscula, una mayúscula, un número y un signo,
+  UTF-8 válido y un máximo de 1024 bytes. Mantener separada la validación de
+  login: una credencial existente usa una entrada UTF-8 no vacía y acotada,
+  sin reaplicar composición antes de verificar el hash vigente. No forzar un
+  reset ni bloquear usuarios legacy únicamente por este cambio de política.
+- Mantener sincronizados el copy, el `minlength`, los seis estados de
+  `moduleFormAuthPassword02`, el JavaScript standalone de WebAdmin y
+  `PasswordPolicy`. El checklist solo aporta feedback y no puede añadir
+  controles con `name`, exponer el token ni sustituir la validación PHP; el
+  submit debe nacer habilitado en HTML para conservar el fallback sin JS.
 - Servir WebAdmin por HTTPS fuera del laboratorio. La única excepción HTTP
   exige simultáneamente `DEV_MODE=1`, `RAIZ` con origen loopback canónico y
   coincidencia exacta de `Host` y puerto; `REMOTE_ADDR` debe representar el

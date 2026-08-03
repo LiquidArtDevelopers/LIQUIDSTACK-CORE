@@ -14,6 +14,10 @@ final class WebAdminResourceTemplateRenderer
         '_moduleFormAuthLogin01.html',
         '_moduleFormAuthRecover01.html',
         '_moduleFormAuthPassword01.html',
+        '_artAuth02.html',
+        '_moduleFormAuthLogin02.html',
+        '_moduleFormAuthRecover02.html',
+        '_moduleFormAuthPassword02.html',
     ];
 
     private readonly string $templateRoot;

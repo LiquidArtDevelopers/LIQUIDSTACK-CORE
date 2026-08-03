@@ -828,7 +828,7 @@ final class BlogAdminHttpControllerTest extends TestCase
         self::assertTrue($credential->execute([
             'user' => $userId,
             'hash' => PasswordHasher::productive()->hash(
-                'Correct horse battery staple'
+                'Correct horse battery staple 1!'
             ),
             'set_at' => '2030-01-01 09:00:00.000000',
         ]));

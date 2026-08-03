@@ -544,6 +544,10 @@
         "text": "moduleButtonType03 · moduleButtonType04"
     },
 
+    "moduleH2Type01_10_h2_text": {
+        "text": "moduleH2Type01 · Interactive forms"
+    },
+
     "moduleParrafo01_00_p_text": {
         "text": "This module injects an independent paragraph into any card."
     },
@@ -4071,5 +4075,176 @@
     "sectionBlogGrid01_00_d_publishedAt": {
         "text": "Dec 22, 2021",
         "datetime": "2021-12-22"
+    },
+    "artAuth02_00_headerPrimary": {
+        "text": "artAuth02 · Secure line to the resistance"
+    },
+    "artAuth02_00_intro": {
+        "text": "A reusable composition for entering the Matrix management area with a clear reading order, stable contrast, and a form protected by the Nebuchadnezzar's operator."
+    },
+    "artAuth02_00_headerSecondary": {
+        "text": "A clear and protected signal"
+    },
+    "artAuth02_00_support": {
+        "text": "Verify your identity, protect the secret code, and remember that every access leaves a signal inside the Matrix."
+    },
+    "artAuth02_01_headerPrimary": {
+        "text": "artAuth02 · Recover access to the Matrix"
+    },
+    "artAuth02_01_intro": {
+        "text": "This variant focuses on one action: asking the operator for a temporary link without revealing whether the supplied address belongs to a resistance account."
+    },
+    "artAuth02_01_headerSecondary": {
+        "text": "A transmission without noise"
+    },
+    "artAuth02_01_support": {
+        "text": "The message explains the next step and keeps the route back to the access form visible before choosing the pill."
+    },
+    "artAuth02_02_headerPrimary": {
+        "text": "artAuth02 · Create a secure access code"
+    },
+    "artAuth02_02_intro": {
+        "text": "The form supports creation of the new code with progressive, understandable checks; transmission to the Matrix remains blocked until every requirement is complete."
+    },
+    "artAuth02_02_headerSecondary": {
+        "text": "Requirements visible instantly"
+    },
+    "artAuth02_02_support": {
+        "text": "Each milestone changes state while typing, and confirmation is only validated when both access codes match exactly."
+    },
+    "moduleFormAuthLogin02_00_legend": {
+        "text": "moduleFormAuthLogin02 · Identify your signal"
+    },
+    "moduleFormAuthLogin02_00_intro": {
+        "text": "Enter your credentials so the operator can identify you and open a secure line to the resistance's management tools."
+    },
+    "moduleFormAuthLogin02_00_emailLabel": {
+        "text": "Email address"
+    },
+    "moduleFormAuthLogin02_00_emailPlaceholder": {
+        "placeholder": "neo@matrix.example"
+    },
+    "moduleFormAuthLogin02_00_emailHint": {
+        "text": "Use the account linked to your identity in the Matrix."
+    },
+    "moduleFormAuthLogin02_00_passwordLabel": {
+        "text": "Password"
+    },
+    "moduleFormAuthLogin02_00_passwordPlaceholder": {
+        "placeholder": "Enter your password"
+    },
+    "moduleFormAuthLogin02_00_passwordHint": {
+        "text": "The password is case-sensitive."
+    },
+    "moduleFormAuthLogin02_00_toggleShow": {
+        "text": "Show password"
+    },
+    "moduleFormAuthLogin02_00_toggleHide": {
+        "text": "Hide password"
+    },
+    "moduleFormAuthLogin02_00_submit": {
+        "text": "Enter the Matrix"
+    },
+    "moduleFormAuthLogin02_00_feedback": {
+        "text": "The operator is verifying your signal."
+    },
+    "moduleFormAuthLogin02_00_secondaryAction": {
+        "text": "Forgot your password?",
+        "href": "#artAuth02-01-heading",
+        "title": "Request a recovery link"
+    },
+    "moduleFormAuthRecover02_00_legend": {
+        "text": "moduleFormAuthRecover02 · Recover the connection"
+    },
+    "moduleFormAuthRecover02_00_intro": {
+        "text": "Enter the linked account and, if it remains active, the operator will send a temporary link for setting a new access code."
+    },
+    "moduleFormAuthRecover02_00_emailLabel": {
+        "text": "Email address"
+    },
+    "moduleFormAuthRecover02_00_emailPlaceholder": {
+        "placeholder": "trinity@matrix.example"
+    },
+    "moduleFormAuthRecover02_00_emailHint": {
+        "text": "The operator will send instructions to the registered account."
+    },
+    "moduleFormAuthRecover02_00_submit": {
+        "text": "Send secure link"
+    },
+    "moduleFormAuthRecover02_00_feedback": {
+        "text": "The transmission is ready for the operator."
+    },
+    "moduleFormAuthRecover02_00_secondaryAction": {
+        "text": "Return to sign in",
+        "href": "#artAuth02-00-heading",
+        "title": "Return to the sign-in form"
+    },
+    "moduleFormAuthPassword02_00_legend": {
+        "text": "moduleFormAuthPassword02 · Renew your code"
+    },
+    "moduleFormAuthPassword02_00_intro": {
+        "text": "Complete every requirement and repeat the exact same code before saving the new connection to the system."
+    },
+    "moduleFormAuthPassword02_00_passwordLabel": {
+        "text": "New password"
+    },
+    "moduleFormAuthPassword02_00_passwordPlaceholder": {
+        "placeholder": "Enter a secure password"
+    },
+    "moduleFormAuthPassword02_00_passwordHint": {
+        "text": "You can paste a password generated by your manager."
+    },
+    "moduleFormAuthPassword02_00_confirmationLabel": {
+        "text": "Repeat the password"
+    },
+    "moduleFormAuthPassword02_00_confirmationPlaceholder": {
+        "placeholder": "Enter it again"
+    },
+    "moduleFormAuthPassword02_00_confirmationHint": {
+        "text": "Both values must match exactly."
+    },
+    "moduleFormAuthPassword02_00_toggleShow": {
+        "text": "Show password"
+    },
+    "moduleFormAuthPassword02_00_toggleHide": {
+        "text": "Hide password"
+    },
+    "moduleFormAuthPassword02_00_requirementsLabel": {
+        "text": "New password requirements"
+    },
+    "moduleFormAuthPassword02_00_requirementLength": {
+        "text": "At least 8 characters"
+    },
+    "moduleFormAuthPassword02_00_requirementLowercase": {
+        "text": "At least one lowercase letter"
+    },
+    "moduleFormAuthPassword02_00_requirementUppercase": {
+        "text": "At least one uppercase letter"
+    },
+    "moduleFormAuthPassword02_00_requirementNumber": {
+        "text": "At least one number"
+    },
+    "moduleFormAuthPassword02_00_requirementSymbol": {
+        "text": "At least one symbol"
+    },
+    "moduleFormAuthPassword02_00_requirementMatch": {
+        "text": "Both passwords match"
+    },
+    "moduleFormAuthPassword02_00_summaryProgress": {
+        "text": "You have completed %complete% of %total% requirements."
+    },
+    "moduleFormAuthPassword02_00_summaryComplete": {
+        "text": "All password requirements are complete."
+    },
+    "moduleFormAuthPassword02_00_submit": {
+        "text": "Save password"
+    },
+    "moduleFormAuthPassword02_00_feedback": {
+        "text": "The result of renewing the access code will appear here."
+    },
+    "moduleFormAuthPassword02_00_secondaryAction": {
+        "text": "Return to sign in",
+        "href": "#artAuth02-00-heading",
+        "title": "Return to the sign-in form"
     }
 }

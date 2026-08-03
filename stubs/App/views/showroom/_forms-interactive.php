@@ -10,6 +10,7 @@ echo controller('sectTabs01', 0, [
 ?>
 <section>
 <?php
+echo controller('moduleH2Type01', 10);
 // artForm01 mantiene su flujo completo, loader, validación y bloque lateral.
 echo controller('artForm01', 0);
 // Los tres módulos reutilizan de forma asíncrona el endpoint POST /form;
@@ -26,6 +27,23 @@ echo controller('artAuth01', 0, [
 ]);
 echo controller('moduleFormAuthRecover01', 0);
 echo controller('moduleFormAuthPassword01', 0);
+
+// Auth02 muestra la misma familia backend-agnostic con composición oscura,
+// color corporativo secundario y feedback progresivo para la nueva clave.
+$auth02Login = controller('moduleFormAuthLogin02', 0);
+echo controller('artAuth02', 0, [
+    '{form-slot}' => $auth02Login,
+]);
+$auth02Recover = controller('moduleFormAuthRecover02', 0);
+echo controller('artAuth02', 1, [
+    '{form-slot}' => $auth02Recover,
+]);
+$auth02Password = controller('moduleFormAuthPassword02', 0);
+echo controller('artAuth02', 2, [
+    '{form-slot}' => $auth02Password,
+]);
+unset($auth02Login, $auth02Recover, $auth02Password);
+
 // items controla el número de entradas de cada acordeón.
 echo controller('artAccordion01', 0, ['items' => 3]);
 echo controller('artAccordion02', 0, ['items' => 6]);

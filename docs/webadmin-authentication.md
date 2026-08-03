@@ -27,8 +27,10 @@ enumeración durante un fallo; este compromiso debe reevaluarse antes de una
 producción que exija indistinguibilidad total.
 
 Las pantallas de credenciales usan la familia canónica de recursos
-`artAuth01`, `moduleFormAuthLogin01`, `moduleFormAuthRecover01` y
-`moduleFormAuthPassword01`. El showroom y las vistas LiquidStack pueden
+`artAuth02`, `moduleFormAuthLogin02`, `moduleFormAuthRecover02` y
+`moduleFormAuthPassword02`. La familia `Auth01` permanece distribuida para
+compatibilidad, pero WebAdmin compone las pantallas nuevas con `Auth02`. El
+showroom y las vistas LiquidStack pueden
 componer esos recursos con sus controladores hidratables; el runtime privado
 renderiza las mismas plantillas estructurales desde CORE, sin `data-lang`,
 editor inline ni endpoints codificados en el recurso. De este modo el contrato
@@ -39,8 +41,11 @@ WebAdmin publica exclusivamente
 `/assets/modules/webadmin/webadmin.css` y `webadmin.js` mediante el manifiesto
 del módulo. El documento no contiene CSS o JavaScript inline y su CSP permite
 `style-src 'self'` y `script-src 'self'`, manteniendo bloqueados el resto de
-orígenes. El JavaScript solo controla la visibilidad de contraseñas; nunca
-intercepta el envío ni replica validación de servidor.
+orígenes. El JavaScript controla la visibilidad y ofrece feedback progresivo
+sobre los seis hitos de la contraseña. Solo impide en el navegador un envío
+incompleto cuando está disponible; no añade campos con `name`, no procesa el
+token y la política PHP sigue siendo la autoridad. Sin JavaScript, el submit
+HTML continúa operativo y el servidor valida exactamente el mismo contrato.
 
 ## Preflight operativo
 
@@ -175,11 +180,18 @@ independencia de que el correo exista, sea elegible, esté limitado o ya tenga
 trabajo en cola. Los límites predeterminados son tres solicitudes por identidad
 y veinte por IP en una hora, con bloqueo de una hora.
 
-La contraseña se valida sobre su secuencia UTF-8 exacta: entre **15 y 1024
-bytes**, UTF-8 válido, sin trim, normalización, truncado ni reglas de
-composición. La contraseña puede contener emojis u otros caracteres
-multibyte, por lo que el límite no equivale necesariamente a 15–1024
-caracteres.
+Toda contraseña nueva se valida sobre su secuencia UTF-8 exacta: mínimo
+**ocho caracteres Unicode**, al menos una letra minúscula, una letra mayúscula,
+un número y un carácter de puntuación o símbolo, con un máximo de **1024
+bytes**. No se aplica trim, normalización ni truncado. El mínimo se cuenta en
+puntos de código Unicode y el máximo en bytes UTF-8, por lo que ambas medidas
+no son equivalentes para caracteres multibyte.
+
+La verificación de login mantiene un contrato separado: exige una secuencia
+UTF-8 no vacía y acotada a 1024 bytes, pero no vuelve a imponer la composición
+actual antes de `password_verify()`. Así, un hash Argon2id vigente generado con
+la política anterior puede seguir autenticando; cualquier contraseña creada o
+restablecida a partir de esta versión sí pasa siempre por la política nueva.
 
 Una activación correcta establece la credencial, activa la identidad e invalida
 acciones y sesiones incompatibles. Un restablecimiento incrementa

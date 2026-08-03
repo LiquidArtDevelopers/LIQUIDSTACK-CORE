@@ -1,0 +1,34 @@
+<div id="{root-id}" class="moduleFormAuth02 moduleFormAuthLogin02 {classVar}">
+    <form id="{form-id}" class="moduleFormAuth02-form" action="{form-action}" method="{form-method}" aria-labelledby="{legend-id}">
+        {hidden-fields}
+
+        <fieldset class="moduleFormAuth02-fieldset">
+            <legend id="{legend-id}" class="moduleFormAuth02-legend"{legend-lang-attr}>{legend-text}</legend>
+            <p class="moduleFormAuth02-intro"{intro-lang-attr}>{intro-text}</p>
+
+            <div class="moduleFormAuth02-field">
+                <label for="{email-id}"{email-label-lang-attr}>{email-label-text}</label>
+                <input id="{email-id}" name="{email-name}" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254" placeholder="{email-placeholder}" aria-describedby="{email-hint-id} {email-error-id}"{email-placeholder-lang-attr} required>
+                <p id="{email-hint-id}" class="moduleFormAuth02-hint"{email-hint-lang-attr}>{email-hint-text}</p>
+                <p id="{email-error-id}" class="moduleFormAuth02-error" aria-live="polite">{email-error-slot}</p>
+            </div>
+
+            <div class="moduleFormAuth02-field moduleFormAuth02-field--password">
+                <label for="{password-id}"{password-label-lang-attr}>{password-label-text}</label>
+                <div class="moduleFormAuth02-passwordControl">
+                    <input id="{password-id}" name="{password-name}" type="password" autocomplete="current-password" placeholder="{password-placeholder}" aria-describedby="{password-hint-id} {password-error-id}" data-auth02-password-input{password-placeholder-lang-attr} required>
+                    <button class="moduleFormAuth02-toggle" type="button" aria-controls="{password-id}" aria-pressed="false" aria-label="{toggle-show-text}" data-auth02-password-toggle data-auth-label-show="{toggle-show-text}" data-auth-label-hide="{toggle-hide-text}">
+                        <span class="moduleFormAuth02-toggleIcon" aria-hidden="true"></span>
+                        <span class="moduleFormAuth02-visuallyHidden" data-auth02-password-toggle-text{toggle-show-lang-attr}>{toggle-show-text}</span>
+                    </button>
+                </div>
+                <p id="{password-hint-id}" class="moduleFormAuth02-hint"{password-hint-lang-attr}>{password-hint-text}</p>
+                <p id="{password-error-id}" class="moduleFormAuth02-error" aria-live="polite">{password-error-slot}</p>
+            </div>
+        </fieldset>
+
+        <button class="moduleFormAuth02-submit" type="submit"{submit-lang-attr}>{submit-text}</button>
+        <div class="moduleFormAuth02-feedback" aria-live="polite">{feedback-slot}</div>
+        <div class="moduleFormAuth02-secondaryAction">{secondary-action-slot}</div>
+    </form>
+</div>

@@ -27,13 +27,13 @@ final class PasswordHasherTest extends TestCase
 
     public function testProductivePolicyIsFixedToArgon2id(): void
     {
-        $password = 'correct horse battery staple';
+        $password = 'Correct horse battery staple 1!';
         $hasher = PasswordHasher::productive();
         $hash = $hasher->hash($password);
 
         self::assertTrue($hasher->verify($password, $hash));
         self::assertFalse($hasher->verify(
-            'different horse battery staple',
+            'Different horse battery staple 2!',
             $hash
         ));
         self::assertFalse($hasher->needsRehash($hash));
@@ -58,7 +58,7 @@ final class PasswordHasherTest extends TestCase
         }
 
         $hasher = PasswordHasher::productive();
-        $hash = $hasher->hash('argon parameters test password');
+        $hash = $hasher->hash('Argon parameters test password 1!');
         $info = password_get_info($hash);
 
         self::assertSame('argon2id', $info['algoName']);
@@ -79,7 +79,8 @@ final class PasswordHasherTest extends TestCase
     public function testBcryptFallbackUsesCostTwelveAndNeverTruncates(): void
     {
         $hasher = PasswordHasher::bcryptFallback();
-        $maximum = str_repeat('m', PasswordHasher::BCRYPT_MAX_BYTES);
+        $maximum = 'Aa1!'
+            . str_repeat('m', PasswordHasher::BCRYPT_MAX_BYTES - 4);
         $hash = $hasher->hash($maximum);
         $info = password_get_info($hash);
 
@@ -115,8 +116,8 @@ final class PasswordHasherTest extends TestCase
 
     public function testBcryptLimitIsInBytesAndOnlyAffectsBcryptHashes(): void
     {
-        $password = str_repeat('€', 25);
-        self::assertSame(75, strlen($password));
+        $password = 'Aa1!' . str_repeat('€', 23);
+        self::assertSame(73, strlen($password));
 
         $fallback = PasswordHasher::bcryptFallback();
         $this->expectException(InvalidPassword::class);
@@ -125,7 +126,7 @@ final class PasswordHasherTest extends TestCase
 
     public function testNeedsRehashDetectsWeakerBcryptCost(): void
     {
-        $password = 'rehash decision password';
+        $password = 'Rehash decision password 1!';
         $weakHash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 10]);
         self::assertIsString($weakHash);
 
@@ -137,18 +138,50 @@ final class PasswordHasherTest extends TestCase
     public function testWhitespaceAndUnicodeNormalizationRemainSignificant(): void
     {
         $hasher = PasswordHasher::productive();
-        $withWhitespace = '  exact password value  ';
+        $withWhitespace = '  Exact password value 1!  ';
         $whitespaceHash = $hasher->hash($withWhitespace);
 
         self::assertTrue($hasher->verify($withWhitespace, $whitespaceHash));
         self::assertFalse($hasher->verify(trim($withWhitespace), $whitespaceHash));
 
-        $composed = str_repeat('é', 8);
-        $decomposed = str_repeat("e\u{0301}", 8);
+        $composed = 'Aa1!' . str_repeat('é', 4);
+        $decomposed = 'Aa1!' . str_repeat("e\u{0301}", 4);
         $unicodeHash = $hasher->hash($composed);
 
         self::assertTrue($hasher->verify($composed, $unicodeHash));
         self::assertFalse($hasher->verify($decomposed, $unicodeHash));
+    }
+
+    public function testHashRejectsPasswordsThatOnlyMeetLegacyPolicy(): void
+    {
+        $this->expectException(InvalidPassword::class);
+
+        PasswordHasher::productive()->hash(
+            'legacy lowercase password without composition'
+        );
+    }
+
+    public function testVerificationAcceptsCurrentHashWithLegacyComposition(): void
+    {
+        $password = 'legacy lowercase password without composition';
+        $hash = password_hash($password, PASSWORD_ARGON2ID, [
+            'memory_cost' => PasswordHasher::ARGON2_MEMORY_COST,
+            'time_cost' => PasswordHasher::ARGON2_TIME_COST,
+            'threads' => PasswordHasher::ARGON2_THREADS,
+        ]);
+
+        self::assertIsString($hash);
+        self::assertTrue(PasswordHasher::productive()->verify($password, $hash));
+    }
+
+    public function testVerificationRejectsUnsafeInputWithoutThrowing(): void
+    {
+        $hasher = PasswordHasher::productive();
+        $hash = $hasher->hash('Current password value 1!');
+
+        self::assertFalse($hasher->verify('', $hash));
+        self::assertFalse($hasher->verify(str_repeat('a', 1025), $hash));
+        self::assertFalse($hasher->verify("Aa1!valid\xC3\x28", $hash));
     }
 
     public function testMalformedHashAndInvalidPasswordFailClosed(): void

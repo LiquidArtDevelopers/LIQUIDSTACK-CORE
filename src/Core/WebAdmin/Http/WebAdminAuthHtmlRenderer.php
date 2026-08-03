@@ -40,7 +40,7 @@ final class WebAdminAuthHtmlRenderer
         }
 
         $form = $this->resources->render(
-            '_moduleFormAuthLogin01.html',
+            '_moduleFormAuthLogin02.html',
             $this->loginValues($basePath, $csrf, $feedback)
         );
 
@@ -60,12 +60,12 @@ final class WebAdminAuthHtmlRenderer
     {
         $prefix = 'webadmin-forgot';
         $form = $this->resources->render(
-            '_moduleFormAuthRecover01.html',
+            '_moduleFormAuthRecover02.html',
             [
                 '{root-id}' => $prefix . '-root',
                 '{form-id}' => $prefix . '-form',
                 '{legend-id}' => $prefix . '-legend',
-                '{classVar}' => 'moduleFormAuthRecover01--webadmin',
+                '{classVar}' => 'moduleFormAuthRecover02--webadmin',
                 '{form-action}' => $this->path($basePath, '/password/forgot'),
                 '{form-method}' => 'post',
                 '{hidden-fields}' => $this->csrfInput($csrf),
@@ -142,7 +142,7 @@ final class WebAdminAuthHtmlRenderer
                 . 'int&eacute;ntalo de nuevo.</p>'
             : '';
         $form = $this->resources->render(
-            '_moduleFormAuthPassword01.html',
+            '_moduleFormAuthPassword02.html',
             $this->passwordValues(
                 $basePath,
                 $csrf,
@@ -158,7 +158,8 @@ final class WebAdminAuthHtmlRenderer
             $presentation['title'],
             $presentation['intro'],
             'Contrase&ntilde;a segura',
-            'La contrase&ntilde;a debe tener entre 15 y 1024 bytes en UTF-8.',
+            'Usa al menos 8 caracteres, con min&uacute;scula, may&uacute;scula, '
+                . 'n&uacute;mero y signo.',
             $form
         );
     }
@@ -175,7 +176,7 @@ final class WebAdminAuthHtmlRenderer
             '{root-id}' => $prefix . '-root',
             '{form-id}' => $prefix . '-form',
             '{legend-id}' => $prefix . '-legend',
-            '{classVar}' => 'moduleFormAuthLogin01--webadmin',
+            '{classVar}' => 'moduleFormAuthLogin02--webadmin',
             '{form-action}' => $this->path($basePath, '/login'),
             '{form-method}' => 'post',
             '{hidden-fields}' => $this->csrfInput($csrf),
@@ -232,7 +233,7 @@ final class WebAdminAuthHtmlRenderer
             '{root-id}' => $prefix . '-root',
             '{form-id}' => $prefix . '-form',
             '{legend-id}' => $prefix . '-legend',
-            '{classVar}' => 'moduleFormAuthPassword01--webadmin',
+            '{classVar}' => 'moduleFormAuthPassword02--webadmin',
             '{form-action}' => $this->path($basePath, $action),
             '{form-method}' => 'post',
             '{hidden-fields}' => $this->csrfInput($csrf),
@@ -242,7 +243,20 @@ final class WebAdminAuthHtmlRenderer
             '{intro-text}' => 'Completa y confirma la nueva contrase&ntilde;a.',
             '{requirements-label}' => 'Requisitos de la contrase&ntilde;a',
             '{requirement-length-lang-attr}' => '',
-            '{requirement-length-text}' => 'Entre 15 y 1024 bytes en UTF-8.',
+            '{requirement-length-text}' => 'M&iacute;nimo 8 caracteres',
+            '{requirement-lowercase-lang-attr}' => '',
+            '{requirement-lowercase-text}' => 'Al menos una min&uacute;scula',
+            '{requirement-uppercase-lang-attr}' => '',
+            '{requirement-uppercase-text}' => 'Al menos una may&uacute;scula',
+            '{requirement-number-lang-attr}' => '',
+            '{requirement-number-text}' => 'Al menos un n&uacute;mero',
+            '{requirement-symbol-lang-attr}' => '',
+            '{requirement-symbol-text}' => 'Al menos un signo',
+            '{requirement-match-lang-attr}' => '',
+            '{requirement-match-text}' => 'Las dos contrase&ntilde;as coinciden',
+            '{summary-progress}' => 'Has completado %complete% de %total% '
+                . 'requisitos.',
+            '{summary-complete}' => 'Todos los requisitos est&aacute;n completos.',
             '{password-id}' => 'webadmin-new-password',
             '{password-name}' => 'password',
             '{password-hint-id}' => 'webadmin-new-password-description',
@@ -252,7 +266,8 @@ final class WebAdminAuthHtmlRenderer
             '{password-placeholder-lang-attr}' => '',
             '{password-placeholder}' => 'Nueva contrase&ntilde;a',
             '{password-hint-lang-attr}' => '',
-            '{password-hint-text}' => 'Debe tener entre 15 y 1024 bytes en UTF-8.',
+            '{password-hint-text}' => 'Debe cumplir todos los requisitos '
+                . 'indicados.',
             '{password-error-slot}' => '',
             '{confirmation-id}' => 'webadmin-password-confirmation',
             '{confirmation-name}' => 'password_confirmation',
@@ -287,11 +302,11 @@ final class WebAdminAuthHtmlRenderer
         string $form
     ): string {
         $body = '<main>' . $this->resources->render(
-            '_artAuth01.html',
+            '_artAuth02.html',
             [
                 '{article-id}' => $prefix . '-article',
                 '{heading-id}' => $prefix . '-title',
-                '{classVar}' => 'artAuth01--webadmin',
+                '{classVar}' => 'artAuth02--webadmin',
                 '{header-primary}' => '<h1 id="' . $prefix . '-title">'
                     . $heading . '</h1>',
                 '{intro-lang-attr}' => '',

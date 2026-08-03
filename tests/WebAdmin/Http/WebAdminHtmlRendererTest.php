@@ -48,14 +48,14 @@ final class WebAdminHtmlRendererTest extends TestCase
             false
         );
 
-        self::assertStringContainsString('class="artAuth01 ', $login);
-        self::assertStringContainsString('moduleFormAuthLogin01', $login);
-        self::assertStringContainsString('data-auth-password-toggle', $login);
-        self::assertStringContainsString('moduleFormAuthRecover01', $recover);
-        self::assertStringContainsString('moduleFormAuthPassword01', $password);
+        self::assertStringContainsString('class="artAuth02 ', $login);
+        self::assertStringContainsString('moduleFormAuthLogin02', $login);
+        self::assertStringContainsString('data-auth02-password-toggle', $login);
+        self::assertStringContainsString('moduleFormAuthRecover02', $recover);
+        self::assertStringContainsString('moduleFormAuthPassword02', $password);
         self::assertSame(2, substr_count(
             $password,
-            'data-auth-password-toggle data-auth-label-show='
+            'data-auth02-password-toggle data-auth-label-show='
         ));
         foreach ([$login, $recover, $password] as $html) {
             self::assertDoesNotMatchRegularExpression(
@@ -63,6 +63,45 @@ final class WebAdminHtmlRendererTest extends TestCase
                 $html
             );
             self::assertStringNotContainsString('data-lang=', $html);
+        }
+    }
+
+    public function testPublishedAssetsSupportTheAuth02PasswordExperience(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $javascript = file_get_contents(
+            $root . '/modules/webadmin/published/assets/webadmin.js'
+        );
+        $css = file_get_contents(
+            $root . '/modules/webadmin/published/assets/webadmin.css'
+        );
+
+        self::assertIsString($javascript);
+        self::assertIsString($css);
+
+        foreach ([
+            'auth02LengthOf(password) >= 8',
+            '/\\p{Ll}/u',
+            '/\\p{Lu}/u',
+            '/\\p{N}/u',
+            '/[\\p{P}\\p{S}]/u',
+            'submit.disabled = !allMet',
+            'resetAuth02PasswordToggles(root)',
+            '[data-auth02-password-policy]',
+        ] as $contract) {
+            self::assertStringContainsString($contract, $javascript);
+        }
+
+        foreach ([
+            '--ls-webadmin-background: #272727',
+            '--ls-webadmin-background-soft: #1c3557',
+            '--ls-webadmin-highlight: #caa96a',
+            '.webadmin .artAuth02',
+            '.webadmin .moduleFormAuth02-requirements',
+            "li[data-state='met']",
+            'overflow-wrap: anywhere',
+        ] as $contract) {
+            self::assertStringContainsString($contract, $css);
         }
     }
 
@@ -179,7 +218,7 @@ final class WebAdminHtmlRendererTest extends TestCase
             $html
         );
         self::assertStringContainsString(
-            'class="moduleFormAuth-feedback" aria-live="polite"',
+            'class="moduleFormAuth02-feedback" aria-live="polite"',
             $html
         );
     }
@@ -646,9 +685,27 @@ final class WebAdminHtmlRendererTest extends TestCase
         self::assertStringContainsString($heading, $html);
         self::assertStringContainsString($button, $html);
         self::assertSame(2, substr_count($html, 'autocomplete="new-password"'));
-        self::assertStringContainsString('15 y 1024 bytes en UTF-8', $html);
-        self::assertStringNotContainsString('minlength=', $html);
+        self::assertStringNotContainsString('1024 bytes', $html);
+        self::assertStringNotContainsString('15 caracteres', $html);
+        self::assertSame(2, substr_count($html, 'minlength="8"'));
         self::assertStringNotContainsString('maxlength="1024"', $html);
+        self::assertSame(6, substr_count($html, 'data-auth02-rule='));
+        self::assertStringContainsString(
+            'data-auth02-rule="lowercase"',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-auth02-rule="uppercase"',
+            $html
+        );
+        self::assertStringContainsString('data-auth02-rule="number"', $html);
+        self::assertStringContainsString('data-auth02-rule="symbol"', $html);
+        self::assertStringContainsString('data-auth02-rule="match"', $html);
+        self::assertDoesNotMatchRegularExpression(
+            '/<button[^>]+type="submit"[^>]+disabled/',
+            $html,
+            'El submit debe seguir disponible sin JavaScript'
+        );
         self::assertStringContainsString(
             'name="password_confirmation"',
             $html

@@ -26,8 +26,8 @@ use PHPUnit\Framework\TestCase;
 
 final class CredentialActionServiceTest extends TestCase
 {
-    private const OLD_PASSWORD = 'Correct horse battery staple';
-    private const NEW_PASSWORD = 'New correct horse battery staple';
+    private const OLD_PASSWORD = 'Correct horse battery staple 1!';
+    private const NEW_PASSWORD = 'Aa1!bbbb';
 
     private PDO $pdo;
     private CredentialActionTestClock $clock;
@@ -720,7 +720,7 @@ final class CredentialActionServiceTest extends TestCase
         self::assertFalse($this->service->completePasswordReset(
             $second->sessionToken(),
             $second->csrfToken(),
-            'Another sufficiently long replacement password'
+            'Another sufficiently long replacement password 3!'
         )->isCompleted());
         self::assertSame(2, $this->userById($userId)['auth_version']);
         self::assertNotNull($this->actionById($actionId)['used_at']);
@@ -781,7 +781,7 @@ final class CredentialActionServiceTest extends TestCase
             $this->service->completePasswordReset(
                 $session->sessionToken(),
                 $session->csrfToken(),
-                'too short'
+                'Aa1!bbb'
             );
             self::fail('The password policy must reject the completion.');
         } catch (InvalidPassword) {
@@ -789,6 +789,41 @@ final class CredentialActionServiceTest extends TestCase
                 $userId
             )['password_hash']);
             self::assertSame(1, $this->userById($userId)['auth_version']);
+            self::assertNull($this->actionById($actionId)['used_at']);
+            self::assertNull($this->sessionByToken(
+                $session->sessionToken()
+            )['revoked_at']);
+        }
+    }
+
+    public function testInvalidInvitationPasswordDoesNotActivateAccount(): void
+    {
+        $userId = $this->seedUser('invalid-invite@example.test', 'invited');
+        $raw = $this->tokens->generate();
+        $actionId = $this->seedAction(
+            $userId,
+            CredentialActionService::INVITATION,
+            $raw
+        );
+        $session = $this->service->bindActionToken(
+            $raw,
+            CredentialActionService::INVITATION
+        );
+        self::assertNotNull($session);
+
+        try {
+            $this->service->completeInvitation(
+                $session->sessionToken(),
+                $session->csrfToken(),
+                'aa1!bbbb',
+                '127.0.0.1'
+            );
+            self::fail('The invitation must enforce the creation policy.');
+        } catch (InvalidPassword) {
+            self::assertSame('invited', $this->userById($userId)['status']);
+            self::assertNull(
+                $this->credentialByUserId($userId)['password_hash']
+            );
             self::assertNull($this->actionById($actionId)['used_at']);
             self::assertNull($this->sessionByToken(
                 $session->sessionToken()

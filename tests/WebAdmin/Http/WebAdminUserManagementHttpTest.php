@@ -28,7 +28,7 @@ use PHPUnit\Framework\TestCase;
 final class WebAdminUserManagementHttpTest extends TestCase
 {
     private const NOW = '2026-08-01 08:00:00.000000';
-    private const PASSWORD = 'Correct horse battery staple';
+    private const PASSWORD = 'Correct horse battery staple 1!';
     private const VIEW = 'webadmin.users.view';
     private const INVITE = 'webadmin.users.invite';
     private const SUSPEND = 'webadmin.users.suspend';

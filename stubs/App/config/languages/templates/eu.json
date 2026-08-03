@@ -541,6 +541,10 @@
         "text": "moduleButtonType03 · moduleButtonType04"
     },
 
+    "moduleH2Type01_10_h2_text": {
+        "text": "moduleH2Type01 · Inprimaki interaktiboak"
+    },
+
     "moduleParrafo01_00_p_text": {
         "text": "Modulu honek paragrafo independente bat edozein txarteletan txertatzeko aukera ematen du."
     },
@@ -4055,5 +4059,176 @@
     "sectionBlogGrid01_00_d_publishedAt": {
         "text": "2021/12/22",
         "datetime": "2021-12-22"
+    },
+    "artAuth02_00_headerPrimary": {
+        "text": "artAuth02 · Erresistentziarekin linea segurua"
+    },
+    "artAuth02_00_intro": {
+        "text": "Konposizio berrerabilgarri honek Matrixeko kudeaketa-eremura sartzeko bidea antolatzen du, irakurketa argiarekin, kontraste sendoarekin eta Nabukodonosorreko operadoreak babestutako formularioarekin."
+    },
+    "artAuth02_00_headerSecondary": {
+        "text": "Seinale argia eta babestua"
+    },
+    "artAuth02_00_support": {
+        "text": "Egiaztatu zure identitatea, babestu kode sekretua eta gogoratu sarbide bakoitzak arrasto bat uzten duela Matrixen barruan."
+    },
+    "artAuth02_01_headerPrimary": {
+        "text": "artAuth02 · Matrixerako sarbidea berreskuratzea"
+    },
+    "artAuth02_01_intro": {
+        "text": "Aldaera honek ekintza bakarrean jartzen du arreta: operadoreari behin-behineko lotura eskatzea, adierazitako helbidea erresistentziako kontu bati dagokion jakinarazi gabe."
+    },
+    "artAuth02_01_headerSecondary": {
+        "text": "Zaratarik gabeko transmisioa"
+    },
+    "artAuth02_01_support": {
+        "text": "Mezuak hurrengo urratsa azaltzen du, eta pilula aukeratu aurreko sarbide-formulariora itzultzeko bidea ikusgai mantentzen du."
+    },
+    "artAuth02_02_headerPrimary": {
+        "text": "artAuth02 · Sarbide-kode segurua"
+    },
+    "artAuth02_02_intro": {
+        "text": "Formularioak kode berria sortzen laguntzen du egiaztapen ulergarri eta progresiboekin; baldintza guztiak bete arte, Matrixera itzultzeko bidalketa blokeatuta geratzen da."
+    },
+    "artAuth02_02_headerSecondary": {
+        "text": "Baldintzak berehala ikusgai"
+    },
+    "artAuth02_02_support": {
+        "text": "Mugarri bakoitza idaztean aldatzen da, eta baieztapena bi sarbide-kodeak zehazki berdinak direnean baino ez da baliozkotzen."
+    },
+    "moduleFormAuthLogin02_00_legend": {
+        "text": "moduleFormAuthLogin02 · Identifikatu zure seinalea"
+    },
+    "moduleFormAuthLogin02_00_intro": {
+        "text": "Sartu zure kredentzialak, operadoreak nortasuna egiaztatu eta erresistentziaren kudeaketa-tresnetarako linea segurua ireki dezan."
+    },
+    "moduleFormAuthLogin02_00_emailLabel": {
+        "text": "Sarbideko helbide elektronikoa"
+    },
+    "moduleFormAuthLogin02_00_emailPlaceholder": {
+        "placeholder": "neo@matrix.example"
+    },
+    "moduleFormAuthLogin02_00_emailHint": {
+        "text": "Erabili zure Matrixeko identitateari lotutako kontua."
+    },
+    "moduleFormAuthLogin02_00_passwordLabel": {
+        "text": "Pasahitza"
+    },
+    "moduleFormAuthLogin02_00_passwordPlaceholder": {
+        "placeholder": "Idatzi zure sarbide-kodea"
+    },
+    "moduleFormAuthLogin02_00_passwordHint": {
+        "text": "Pasahitzak letra larriak eta xeheak bereizten ditu."
+    },
+    "moduleFormAuthLogin02_00_toggleShow": {
+        "text": "Erakutsi pasahitza"
+    },
+    "moduleFormAuthLogin02_00_toggleHide": {
+        "text": "Ezkutatu pasahitza"
+    },
+    "moduleFormAuthLogin02_00_submit": {
+        "text": "Sartu Matrixen"
+    },
+    "moduleFormAuthLogin02_00_feedback": {
+        "text": "Operadorea zure seinalea egiaztatzen ari da."
+    },
+    "moduleFormAuthLogin02_00_secondaryAction": {
+        "text": "Pasahitza ahaztu duzu?",
+        "href": "#artAuth02-01-heading",
+        "title": "Eskatu sarbidea berreskuratzeko lotura"
+    },
+    "moduleFormAuthRecover02_00_legend": {
+        "text": "moduleFormAuthRecover02 · Berreskuratu konexioa"
+    },
+    "moduleFormAuthRecover02_00_intro": {
+        "text": "Adierazi lotutako helbidea eta, kontua aktibo badago, operadoreak sarbide-kode berria ezartzeko behin-behineko lotura bidaliko dizu."
+    },
+    "moduleFormAuthRecover02_00_emailLabel": {
+        "text": "Lotutako helbide elektronikoa"
+    },
+    "moduleFormAuthRecover02_00_emailPlaceholder": {
+        "placeholder": "trinity@matrix.example"
+    },
+    "moduleFormAuthRecover02_00_emailHint": {
+        "text": "Argibideak erregistratutako kontura bidaliko dira."
+    },
+    "moduleFormAuthRecover02_00_submit": {
+        "text": "Bidali lotura segurua"
+    },
+    "moduleFormAuthRecover02_00_feedback": {
+        "text": "Transmisioa operadoreari bidaltzeko prest dago."
+    },
+    "moduleFormAuthRecover02_00_secondaryAction": {
+        "text": "Itzuli sarbidera",
+        "href": "#artAuth02-00-heading",
+        "title": "Itzuli sarbide-formulariora"
+    },
+    "moduleFormAuthPassword02_00_legend": {
+        "text": "moduleFormAuthPassword02 · Berritu zure kodea"
+    },
+    "moduleFormAuthPassword02_00_intro": {
+        "text": "Bete baldintza guztiak eta errepikatu sarbide-kode bera konexio berria gorde eta sistemara itzuli aurretik."
+    },
+    "moduleFormAuthPassword02_00_passwordLabel": {
+        "text": "Pasahitz berria"
+    },
+    "moduleFormAuthPassword02_00_passwordPlaceholder": {
+        "placeholder": "Idatzi pasahitz segurua"
+    },
+    "moduleFormAuthPassword02_00_passwordHint": {
+        "text": "Pasahitz-kudeatzaileak sortutako kode bat itsats dezakezu."
+    },
+    "moduleFormAuthPassword02_00_confirmationLabel": {
+        "text": "Errepikatu pasahitza"
+    },
+    "moduleFormAuthPassword02_00_confirmationPlaceholder": {
+        "placeholder": "Idatzi berriro"
+    },
+    "moduleFormAuthPassword02_00_confirmationHint": {
+        "text": "Bi balioek zehazki bat etorri behar dute."
+    },
+    "moduleFormAuthPassword02_00_toggleShow": {
+        "text": "Erakutsi pasahitza"
+    },
+    "moduleFormAuthPassword02_00_toggleHide": {
+        "text": "Ezkutatu pasahitza"
+    },
+    "moduleFormAuthPassword02_00_requirementsLabel": {
+        "text": "Pasahitz berriaren baldintzak"
+    },
+    "moduleFormAuthPassword02_00_requirementLength": {
+        "text": "Gutxienez 8 karaktere"
+    },
+    "moduleFormAuthPassword02_00_requirementLowercase": {
+        "text": "Gutxienez letra xehe bat"
+    },
+    "moduleFormAuthPassword02_00_requirementUppercase": {
+        "text": "Gutxienez letra larri bat"
+    },
+    "moduleFormAuthPassword02_00_requirementNumber": {
+        "text": "Gutxienez zenbaki bat"
+    },
+    "moduleFormAuthPassword02_00_requirementSymbol": {
+        "text": "Gutxienez ikur bat"
+    },
+    "moduleFormAuthPassword02_00_requirementMatch": {
+        "text": "Bi pasahitzak bat datoz"
+    },
+    "moduleFormAuthPassword02_00_summaryProgress": {
+        "text": "%total% baldintzetatik %complete% bete dituzu."
+    },
+    "moduleFormAuthPassword02_00_summaryComplete": {
+        "text": "Pasahitzaren baldintza guztiak bete dira."
+    },
+    "moduleFormAuthPassword02_00_submit": {
+        "text": "Gorde pasahitza"
+    },
+    "moduleFormAuthPassword02_00_feedback": {
+        "text": "Kode-aldaketaren emaitza hemen agertuko da."
+    },
+    "moduleFormAuthPassword02_00_secondaryAction": {
+        "text": "Itzuli sarbidera",
+        "href": "#artAuth02-00-heading",
+        "title": "Itzuli sarbide-formulariora"
     }
 }

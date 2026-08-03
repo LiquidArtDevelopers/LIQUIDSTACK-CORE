@@ -388,8 +388,15 @@ El acceso usa cookies separadas por propósito: la autenticada
 `LS_WEBADMIN_PREAUTH` (`Lax`) y las acciones de credencial
 `LS_WEBADMIN_ACTION` (`Lax`). Invitación y recuperación vinculan el token en
 el primer `GET` y redirigen con `303` a una URL limpia; no crean login
-automático. La política de contraseña valida UTF-8 y entre 15 y 1024 bytes. El
-contrato completo está en
+automático. La política actual exige para las contraseñas nuevas un mínimo de
+ocho caracteres
+Unicode, con minúscula, mayúscula, número y signo, y conserva el máximo de 1024
+bytes. El login no reaplica esas reglas de composición a hashes Argon2id
+vigentes creados antes del cambio, por lo que las credenciales existentes no
+quedan bloqueadas. Login, recuperación, activación y reset se componen con la
+familia `artAuth02`/`moduleFormAuth*02`; el checklist del navegador refleja la
+política y mantiene el backend como autoridad, con fallback HTML sin
+JavaScript. El contrato completo está en
 [autenticación de WebAdmin](docs/webadmin-authentication.md) y la operación
 inicial en [bootstrap de WebAdmin](docs/webadmin-bootstrap.md).
 

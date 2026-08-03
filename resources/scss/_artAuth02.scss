@@ -1,0 +1,106 @@
+@use '../config' as c;
+
+.artAuth02 {
+    width: min(calc(100% - (2 * c.$padMin)), c.$textMax);
+    margin-inline: auto;
+    padding: clamp(1.5rem, 7vw, 4.5rem);
+    display: grid;
+    gap: clamp(2rem, 6vw, 4rem);
+    overflow: hidden;
+    position: relative;
+    color: c.$color00;
+    border: 1px solid c.$color02bis2;
+    border-radius: clamp(1rem, 3vw, 2rem);
+    background:
+        radial-gradient(circle at 12% 0, c.$color02bis, transparent 38%),
+        linear-gradient(145deg, c.$color01, c.$color02);
+    box-shadow: c.$sombraMax;
+
+    &::before {
+        content: '';
+        width: clamp(8rem, 26vw, 18rem);
+        height: 0.35rem;
+        position: absolute;
+        inset: 0 auto auto 0;
+        background: c.$color03;
+    }
+
+    .artAuth02-copy {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 1rem;
+
+        > h2,
+        > h3,
+        > h4,
+        > h5,
+        > h6 {
+            max-width: 18ch;
+            color: c.$color00;
+        }
+    }
+
+    .artAuth02-intro {
+        max-width: 42rem;
+        color: c.$color00bis1;
+    }
+
+    .artAuth02-support {
+        margin-top: 0.5rem;
+        padding: 1rem 0 0 1rem;
+        display: grid;
+        gap: 0.5rem;
+        border-left: 0.2rem solid c.$color03;
+
+        h3,
+        h4,
+        h5,
+        h6 {
+            color: c.$color03;
+        }
+
+        p {
+            max-width: 36rem;
+            color: c.$color00bis1;
+        }
+    }
+
+    .artAuth02-panel {
+        min-width: 0;
+        padding: clamp(1rem, 4vw, 2.5rem);
+        align-self: center;
+        border: 1px solid c.$color00bis2;
+        border-radius: clamp(0.85rem, 2vw, 1.4rem);
+        background: c.$color00bis;
+        box-shadow: 0 1rem 3rem c.$color01bis3;
+    }
+
+    @media (min-width: c.$tablet) {
+        width: min(90%, c.$textMax);
+
+        .artAuth02-support {
+            padding-left: 1.5rem;
+        }
+    }
+
+    @media (min-width: c.$desktop) {
+        grid-template-columns: minmax(0, 0.9fr) minmax(30rem, 1.1fr);
+        align-items: center;
+
+        &.artAuth02--reverse {
+            grid-template-columns: minmax(30rem, 1.1fr) minmax(0, 0.9fr);
+
+            .artAuth02-copy {
+                grid-column: 2;
+            }
+
+            .artAuth02-panel {
+                grid-column: 1;
+                grid-row: 1;
+            }
+        }
+    }
+}

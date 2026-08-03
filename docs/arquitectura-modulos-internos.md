@@ -344,6 +344,13 @@ soportar además la política productiva fija `argon2id-v1`; no se degrada a
 bcrypt según el host. La clave se genera una vez, se guarda fuera del
 repositorio y no se rota mediante Composer.
 
+Las contraseñas nuevas exigen ocho caracteres Unicode, minúscula, mayúscula,
+número y signo, además de UTF-8 válido y un máximo de 1024 bytes. Esa
+validación de creación permanece separada de la verificación de login: las
+credenciales existentes se comprueban con entrada UTF-8 no vacía y acotada,
+sin reaplicar composición, para que un cambio de política no invalide hashes
+Argon2id vigentes.
+
 El informe distingue readiness independientes:
 
 - `runtime_ready` exige selección, configuración, ruta, assets, DB modular,

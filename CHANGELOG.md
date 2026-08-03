@@ -4,6 +4,18 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Cambiado
+- WebAdmin exige para toda contraseña nueva un mínimo de ocho caracteres
+  Unicode y al menos una minúscula, una mayúscula, un número y un signo,
+  conservando UTF-8 válido y un máximo de 1024 bytes. El login separa esa
+  política de creación de la comprobación acotada de credenciales existentes,
+  de modo que los hashes Argon2id vigentes creados con la política anterior
+  continúan autenticando hasta que el usuario cambie su contraseña.
+  Las pantallas de acceso, recuperación, activación y reset pasan a la familia
+  reutilizable `artAuth02`/`moduleFormAuth*02`: fondo oscuro basado en la
+  paleta estándar `color01..03`, formulario claro y un checklist accesible que
+  confirma en directo longitud, minúscula, mayúscula, número, signo y
+  coincidencia. El JavaScript no añade campos ni sustituye la validación del
+  servidor, y el submit permanece disponible como fallback sin JavaScript.
 - Blog incorpora un medidor SEO editorial advisory en el editor estructurado:
   renderiza el estado guardado por SSR y reanaliza el payload actual mediante
   `POST /admin/blog/editor/seo-analysis`, con CSRF, capacidades, `no-store`,

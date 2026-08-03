@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 
 final class WebAdminHttpControllerTest extends TestCase
 {
-    private const PASSWORD = 'Correct horse battery staple';
+    private const PASSWORD = 'Correct horse battery staple 1!';
 
     private PDO $pdo;
     private WebAdminHttpController $controller;
