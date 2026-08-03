@@ -16,11 +16,36 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   confirma en directo longitud, minúscula, mayúscula, número, signo y
   coincidencia. El JavaScript no añade campos ni sustituye la validación del
   servidor, y el submit permanece disponible como fallback sin JavaScript.
+- WebAdmin y Blog unifican sus pantallas administrativas de gestión en un shell
+  responsive de ancho completo, con navegación lateral filtrada por capacidades, un único
+  `main` e inspector contextual opcional. La mejora progresiva solo convierte
+  navegación e inspector en drawers después de enlazar el JavaScript y mantiene
+  sincronizados `aria-expanded`, foco e `inert`; sin JavaScript todo permanece
+  accesible en el flujo normal. La UI administrativa pasa a una composición
+  plana basada en espacio, tipografía, grid y fondos, sin franjas,
+  pseudoelementos o bordes laterales de acento decorativos. La preview privada
+  conserva su documento aislado para representar el `header` y el `main`.
+- El editor Blog pasa a un lienzo visual que proyecta `header`, H1 y el futuro
+  `main` sin anidar landmarks ni duplicar el H1 en la página administrativa.
+  Los encabezados admiten H2-H6 sin saltos: H2 abre `section`, H3 abre
+  `article` y mover o retirar un encabezado conserva todo su subárbol
+  semántico. La creación exige elegir expresamente un locale activo todavía
+  libre y muestra su `public_paths`; ese locale queda estable y nunca se
+  sustituye por un prefijo inferido. El inspector integra asignación de
+  categorías del mismo idioma y un catálogo de medios que conserva todos los
+  assets ya referenciados aunque no estén entre los recientes.
+  El guardado progresivo conserva campos y documento ante `409`, `422`, pérdida
+  de autorización o red, solo acepta la redirección esperada al mismo editor y
+  avisa antes de abandonar cambios pendientes. Para la salida SSR,
+  `bodyHtml()` permanece como compatibilidad histórica, mientras las vistas
+  nuevas separan `headerMediaHtml()` y `mainHtml()` sin duplicar la portada.
+  La traducción asistida por IA continúa diferida y no crea variantes de forma
+  implícita.
 - Blog incorpora un medidor SEO editorial advisory en el editor estructurado:
   renderiza el estado guardado por SSR y reanaliza el payload actual mediante
   `POST /admin/blog/editor/seo-analysis`, con CSRF, capacidades, `no-store`,
   debounce y `AbortController`. Sus checks Unicode cubren metadatos, coherencia
-  title/H1, primeras 100 palabras, H2/H3, ALT, repetición, concentración y
+  title/H1, primeras 100 palabras, H2-H6, ALT, repetición, concentración y
   canibalización same-locale contra publicaciones e inventario project-owned.
   No crea score, migración ni llamadas IA, y cualquier fallo degrada el panel
   sin bloquear editor, guardado o publicación.
@@ -35,7 +60,7 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   con `artBlogArticle01`, se distribuyen selectivamente con Blog, se registran
   en showroom y conservan grupos `managed_hash` independientes.
   `artBlogArticle01` protege sus placeholders internos y desplaza también los
-  H2/H3 del cuerpo cuando el encabezado externo cambia de rango; las filas
+  H2-H6 del cuerpo cuando el encabezado externo cambia de rango; las filas
   incompletas de relacionados se centran y el archivo identifica el periodo
   vigente mediante `aria-current="date"`.
 - Blog incorpora una caché privada last-known-good del sitemap, opcional y

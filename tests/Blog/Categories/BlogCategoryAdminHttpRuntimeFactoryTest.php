@@ -101,6 +101,13 @@ final class BlogCategoryAdminHttpRuntimeFactoryTest extends TestCase
         self::assertSame(['es'], $runtime->languages());
         self::assertSame([], $runtime->categoryService()->list());
         self::assertSame([], $runtime->blogService()->listPosts());
+        self::assertSame(
+            ['/blog', '/blog/categories', '/media'],
+            array_map(
+                static fn ($item): string => $item->suffix(),
+                $runtime->navigation()->items()
+            )
+        );
     }
 
     public function testPendingCategoryMigrationsDoNotDisableBaseAdminRuntime(): void

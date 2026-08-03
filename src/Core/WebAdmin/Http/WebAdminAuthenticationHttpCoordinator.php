@@ -7,7 +7,6 @@ namespace App\Core\WebAdmin\Http;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\WebAdmin\Authentication\PreAuthenticationRateLimited;
-use App\Core\WebAdmin\Navigation\WebAdminNavigationItem;
 
 /**
  * Coordinates the authenticated shell, login and logout HTTP flows.
@@ -18,13 +17,12 @@ use App\Core\WebAdmin\Navigation\WebAdminNavigationItem;
  */
 final class WebAdminAuthenticationHttpCoordinator
 {
-    private const USERS_VIEW = 'webadmin.users.view';
-
     public function __construct(
         private readonly WebAdminHttpRuntime $runtime,
         private readonly WebAdminHttpRequestPolicy $requestPolicy,
         private readonly WebAdminHtmlRenderer $renderer,
-        private readonly WebAdminHttpResponseFactory $responses
+        private readonly WebAdminHttpResponseFactory $responses,
+        private readonly WebAdminShellContextFactory $shells
     ) {
     }
 
@@ -65,13 +63,13 @@ final class WebAdminAuthenticationHttpCoordinator
         }
 
         return $this->responses->html(200, $this->renderer->dashboard(
-            $this->responses->rootPath(),
-            $csrf->csrfToken(),
-            $this->runtime->authorization()->hasCapability(
+            basePath: $this->responses->rootPath(),
+            csrf: $csrf->csrfToken(),
+            shell: $this->shells->create(
                 $token,
-                self::USERS_VIEW
-            ),
-            $this->visibleModuleNavigation($token)
+                $csrf->csrfToken(),
+                ''
+            )
         ));
     }
 
@@ -247,23 +245,6 @@ final class WebAdminAuthenticationHttpCoordinator
             $request,
             'Tu contraseña se ha actualizado. Ya puedes iniciar sesión.'
         );
-    }
-
-    /** @return list<WebAdminNavigationItem> */
-    private function visibleModuleNavigation(string $token): array
-    {
-        $visible = [];
-
-        foreach ($this->runtime->navigation()->items() as $item) {
-            if ($this->runtime->authorization()->hasCapability(
-                $token,
-                $item->requiredCapability()
-            )) {
-                $visible[] = $item;
-            }
-        }
-
-        return $visible;
     }
 
     private function loginFormWithNotice(

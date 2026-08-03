@@ -12,7 +12,7 @@ use PDO;
 use PDOStatement;
 use Throwable;
 
-final class PdoMediaRepository implements MediaRepositoryInterface
+final class PdoMediaRepository implements MediaCatalogRepositoryInterface
 {
     public function __construct(
         private readonly PDO $pdo,
@@ -102,6 +102,80 @@ final class PdoMediaRepository implements MediaRepositoryInterface
             throw $exception;
         } catch (Throwable) {
             throw new MediaException('webadmin.media.list_failed');
+        }
+    }
+
+    public function catalogAssetsByPublicIds(array $publicIds): array
+    {
+        if (
+            !array_is_list($publicIds)
+            || count($publicIds) > self::MAX_LOOKUP_ITEMS
+        ) {
+            throw new MediaException(
+                'webadmin.media.catalog_lookup_invalid'
+            );
+        }
+        if ($publicIds === []) {
+            return [];
+        }
+
+        $parameters = ['mime' => 'image/avif'];
+        $placeholders = [];
+        $seen = [];
+        foreach ($publicIds as $index => $publicId) {
+            if (!is_string($publicId)) {
+                throw new MediaException(
+                    'webadmin.media.catalog_lookup_invalid'
+                );
+            }
+            $publicId = $this->uuid($publicId);
+            if (isset($seen[$publicId])) {
+                throw new MediaException(
+                    'webadmin.media.catalog_lookup_invalid'
+                );
+            }
+            $seen[$publicId] = true;
+            $name = 'public_id_' . $index;
+            $placeholders[] = ':' . $name;
+            $parameters[$name] = $publicId;
+        }
+
+        try {
+            $statement = $this->pdo->prepare(
+                'SELECT a.public_id, a.label, '
+                . 'MIN(v.width) AS thumbnail_width FROM '
+                . $this->tables->table('media_assets') . ' a JOIN '
+                . $this->tables->table('media_variants') . ' v '
+                . 'ON v.asset_id = a.id WHERE v.mime = :mime '
+                . 'AND a.public_id IN (' . implode(', ', $placeholders) . ') '
+                . 'GROUP BY a.id, a.public_id, a.label'
+            );
+            $statement->execute($parameters);
+            $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+            $byPublicId = [];
+            foreach ($rows as $row) {
+                $asset = new MediaCatalogAsset(
+                    $this->uuid($row['public_id'] ?? null),
+                    $this->label($row['label'] ?? null),
+                    $this->positiveInt($row['thumbnail_width'] ?? null)
+                );
+                $byPublicId[$asset->publicId()] = $asset;
+            }
+
+            $result = [];
+            foreach ($publicIds as $publicId) {
+                if (isset($byPublicId[$publicId])) {
+                    $result[] = $byPublicId[$publicId];
+                }
+            }
+
+            return $result;
+        } catch (MediaException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new MediaException(
+                'webadmin.media.catalog_lookup_failed'
+            );
         }
     }
 

@@ -227,7 +227,7 @@
         }
 
         var seen = new Set();
-        var hasH2 = false;
+        var lastHeadingLevel = 1;
         var coverPositions = [];
         var valid = documentValue.blocks.every(function (block, blockIndex) {
             if (
@@ -248,13 +248,13 @@
             if (block.type === 'heading') {
                 if (
                     !exactKeys(block, ['id', 'type', 'level', 'content'])
-                    || ![2, 3].includes(block.level)
+                    || ![2, 3, 4, 5, 6].includes(block.level)
                     || !validInline(block.content, false)
-                    || (block.level === 3 && !hasH2)
+                    || block.level > lastHeadingLevel + 1
                 ) {
                     return false;
                 }
-                hasH2 = hasH2 || block.level === 2;
+                lastHeadingLevel = block.level;
                 return true;
             }
             if (block.type === 'list') {
@@ -417,16 +417,28 @@
     function focusAfterRender(context, target) {
         var candidates = [];
         var match = function () { return false; };
+        var collect = function (selector) {
+            var found = Array.from(
+                context.blockList.querySelectorAll(selector)
+            );
+            if (
+                context.blockInspector
+                && typeof context.blockInspector.querySelectorAll === 'function'
+            ) {
+                found = found.concat(Array.from(
+                    context.blockInspector.querySelectorAll(selector)
+                ));
+            }
+            return found;
+        };
 
         if (target && target.kind === 'block') {
-            candidates = context.blockList.querySelectorAll(
-                '[data-blog-block-title]'
-            );
+            candidates = collect('[data-blog-block-title]');
             match = function (candidate) {
                 return candidate.dataset.blogBlockTitle === target.id;
             };
         } else if (target && target.kind === 'inline') {
-            candidates = context.blockList.querySelectorAll(
+            candidates = collect(
                 '[data-blog-inline-owner][data-blog-inline-index]'
             );
             match = function (candidate) {
@@ -435,9 +447,7 @@
                         === String(target.index);
             };
         } else if (target && target.kind === 'list-item') {
-            candidates = context.blockList.querySelectorAll(
-                '[data-blog-list-item-id]'
-            );
+            candidates = collect('[data-blog-list-item-id]');
             match = function (candidate) {
                 return candidate.dataset.blogListItemId === target.id;
             };
@@ -479,6 +489,9 @@
         control.value = value === null || value === undefined
             ? ''
             : String(value);
+        if (context.form.id) {
+            control.setAttribute('form', context.form.id);
+        }
         if (settings.maxLength) {
             control.maxLength = settings.maxLength;
         }
@@ -498,6 +511,7 @@
         control.addEventListener('input', function () {
             update(control.value);
             sync(context);
+            refreshVisualCanvas(context);
         });
         return control;
     }
@@ -506,6 +520,9 @@
         var select = document.createElement('select');
         select.id = controlId(context, fieldName);
         select.dataset.blogField = fieldName;
+        if (context.form.id) {
+            select.setAttribute('form', context.form.id);
+        }
         options.forEach(function (optionDefinition) {
             var option = document.createElement('option');
             option.value = optionDefinition.value;
@@ -518,6 +535,7 @@
         select.addEventListener('change', function () {
             update(select.value);
             sync(context);
+            refreshVisualCanvas(context);
         });
         return select;
     }
@@ -527,11 +545,15 @@
         checkbox.type = 'checkbox';
         checkbox.id = controlId(context, fieldName);
         checkbox.dataset.blogField = fieldName;
+        if (context.form.id) {
+            checkbox.setAttribute('form', context.form.id);
+        }
         checkbox.checked = Boolean(checked);
         checkbox.disabled = context.readOnly || Boolean(disabled);
         checkbox.addEventListener('change', function () {
             update(checkbox.checked);
             sync(context);
+            refreshVisualCanvas(context);
         });
         return checkbox;
     }
@@ -545,11 +567,20 @@
         return wrapper;
     }
 
-    function actionButton(context, label, attribute, action, callback, disabled) {
+    function actionButton(
+        context,
+        label,
+        attribute,
+        action,
+        callback,
+        disabled,
+        allowReadOnly
+    ) {
         var button = element('button', '', label);
         button.type = 'button';
         button.setAttribute(attribute, action);
-        button.disabled = context.readOnly || Boolean(disabled);
+        button.disabled = (!allowReadOnly && context.readOnly)
+            || Boolean(disabled);
         button.addEventListener('click', callback);
         return button;
     }
@@ -721,17 +752,6 @@
             }
         });
 
-        var hasH2 = false;
-        value.blocks.forEach(function (block) {
-            if (block.type !== 'heading') {
-                return;
-            }
-            if (block.level === 3 && !hasH2) {
-                block.level = 2;
-                changed = true;
-            }
-            hasH2 = hasH2 || block.level === 2;
-        });
         context.templateSelect.value = value.template;
 
         return changed;
@@ -1032,11 +1052,10 @@
         return fragment;
     }
 
-    function hasPreviousH2(context, blockIndex) {
-        return context.documentValue.blocks.slice(0, blockIndex)
-            .some(function (block) {
-                return block.type === 'heading' && block.level === 2;
-            });
+    function headingLevelAllowed(context, blockIndex, level) {
+        var candidate = JSON.parse(JSON.stringify(context.documentValue));
+        candidate.blocks[blockIndex].level = level;
+        return validDocument(candidate);
     }
 
     function renderListEditor(context, block) {
@@ -1255,16 +1274,24 @@
                     context,
                     'heading-level',
                     String(block.level),
-                    [
-                        { value: '2', label: 'H2' },
-                        {
-                            value: '3',
-                            label: 'H3',
-                            disabled: !hasPreviousH2(context, blockIndex)
-                        }
-                    ],
+                    [2, 3, 4, 5, 6].map(function (level) {
+                        return {
+                            value: String(level),
+                            label: 'H' + level,
+                            disabled: !headingLevelAllowed(
+                                context,
+                                blockIndex,
+                                level
+                            )
+                        };
+                    }),
                     function (value) {
-                        block.level = value === '3' ? 3 : 2;
+                        var level = Number(value);
+                        block.level = Number.isInteger(level)
+                            && level >= 2
+                            && level <= 6
+                            ? level
+                            : 2;
                     }
                 )
             ));
@@ -1360,99 +1387,556 @@
         return fragment;
     }
 
+    function appendInlinePreview(container, content) {
+        content.forEach(function (nodeValue) {
+            if (nodeValue.type === 'break') {
+                container.append(document.createElement('br'));
+                return;
+            }
+
+            var child = document.createTextNode(nodeValue.text);
+            (nodeValue.marks || []).slice().reverse().forEach(function (mark) {
+                var wrapper = document.createElement(mark === 'strong' ? 'strong' : 'em');
+                wrapper.append(child);
+                child = wrapper;
+            });
+            if (nodeValue.type === 'link') {
+                var link = document.createElement('a');
+                link.href = nodeValue.href;
+                if (nodeValue.title) {
+                    link.title = nodeValue.title;
+                }
+                if (nodeValue.target === 'new') {
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                }
+                link.addEventListener('click', function (event) {
+                    event.preventDefault();
+                });
+                link.append(child);
+                child = link;
+            }
+            container.append(child);
+        });
+    }
+
+    function mediaOption(context, publicId) {
+        return context.media.find(function (option) {
+            return option.publicId === publicId;
+        }) || null;
+    }
+
+    function blockPreview(context, block) {
+        var preview;
+        if (block.type === 'paragraph') {
+            preview = element('p', 'blogEditor__previewParagraph');
+            appendInlinePreview(preview, block.content);
+            return preview;
+        }
+        if (block.type === 'heading') {
+            preview = element('div', 'blogEditor__previewHeading');
+            preview.setAttribute('role', 'heading');
+            preview.setAttribute('aria-level', String(block.level));
+            preview.dataset.semanticTag = 'h' + block.level;
+            appendInlinePreview(preview, block.content);
+            return preview;
+        }
+        if (block.type === 'list') {
+            preview = element(block.ordered ? 'ol' : 'ul', 'blogEditor__previewList');
+            block.items.forEach(function (itemValue) {
+                var item = document.createElement('li');
+                appendInlinePreview(item, itemValue.content);
+                preview.append(item);
+            });
+            return preview;
+        }
+        if (block.type === 'callout') {
+            preview = element(
+                'aside',
+                'blogEditor__previewCallout blogEditor__previewCallout--' + block.tone
+            );
+            appendInlinePreview(preview, block.content);
+            return preview;
+        }
+        if (block.type === 'link' || block.type === 'cta') {
+            preview = element(
+                'a',
+                block.type === 'cta'
+                    ? 'blogEditor__previewCta blogEditor__previewCta--' + block.variant
+                    : 'blogEditor__previewLink',
+                block.label
+            );
+            preview.href = block.href;
+            if (block.title) {
+                preview.title = block.title;
+            }
+            preview.addEventListener('click', function (event) {
+                event.preventDefault();
+            });
+            return preview;
+        }
+        if (block.type === 'image') {
+            preview = element('figure', 'blogEditor__previewImage');
+            preview.dataset.display = block.display;
+            var media = mediaOption(context, block.media_asset_public_id);
+            if (media && media.thumbnailUrl) {
+                var image = document.createElement('img');
+                image.src = media.thumbnailUrl;
+                image.alt = block.decorative ? '' : block.alt;
+                image.loading = block.display === 'cover' ? 'eager' : 'lazy';
+                preview.append(image);
+            } else {
+                preview.append(element(
+                    'div',
+                    'blogEditor__mediaPlaceholder',
+                    media ? media.label : 'Imagen de la biblioteca'
+                ));
+            }
+            if (block.caption) {
+                preview.append(element('figcaption', '', block.caption));
+            }
+            return preview;
+        }
+        if (block.type === 'video') {
+            preview = element('figure', 'blogEditor__previewVideo');
+            var frame = element('div', 'blogEditor__videoPlaceholder');
+            frame.append(
+                element('span', '', 'YouTube'),
+                element('strong', '', block.title)
+            );
+            preview.append(frame);
+            return preview;
+        }
+
+        return element('p', '', BLOCK_LABELS[block.type] || 'Bloque');
+    }
+
+    function semanticBlockLabel(block) {
+        if (block.type === 'heading' && block.level === 2) {
+            return 'sección';
+        }
+        if (block.type === 'heading' && block.level === 3) {
+            return 'artículo';
+        }
+        if (block.type === 'heading') {
+            return 'apartado H' + block.level;
+        }
+        return 'bloque';
+    }
+
+    function semanticRange(blocks, blockIndex) {
+        var block = blocks[blockIndex];
+        var end = blockIndex + 1;
+        if (block && block.type === 'heading') {
+            while (end < blocks.length) {
+                var candidate = blocks[end];
+                if (
+                    candidate.type === 'heading'
+                    && candidate.level <= block.level
+                ) {
+                    break;
+                }
+                end += 1;
+            }
+        }
+        return { start: blockIndex, end: end };
+    }
+
+    function semanticOwner(blocks, blockIndex) {
+        var headings = [];
+        blocks.slice(0, blockIndex).forEach(function (block) {
+            if (block.type === 'heading') {
+                headings = headings.filter(function (heading) {
+                    return heading.level < block.level;
+                });
+                headings.push({ id: block.id, level: block.level });
+            }
+        });
+        return headings.map(function (heading) {
+            return heading.level + ':' + heading.id;
+        }).join('|');
+    }
+
+    function semanticMoveTarget(blocks, blockIndex, direction) {
+        var block = blocks[blockIndex];
+        if (block.type === 'heading') {
+            var parentStart = -1;
+            var parentLevel = 1;
+            for (var previous = blockIndex - 1; previous >= 0; previous -= 1) {
+                if (
+                    blocks[previous].type === 'heading'
+                    && blocks[previous].level < block.level
+                ) {
+                    parentStart = previous;
+                    parentLevel = blocks[previous].level;
+                    break;
+                }
+            }
+            var scopeEnd = blocks.length;
+            for (var next = blockIndex + 1; next < blocks.length; next += 1) {
+                if (
+                    blocks[next].type === 'heading'
+                    && blocks[next].level <= parentLevel
+                ) {
+                    scopeEnd = next;
+                    break;
+                }
+            }
+            var peers = [];
+            for (
+                var headingIndex = parentStart + 1;
+                headingIndex < scopeEnd;
+                headingIndex += 1
+            ) {
+                if (
+                    blocks[headingIndex].type === 'heading'
+                    && blocks[headingIndex].level === block.level
+                ) {
+                    peers.push(headingIndex);
+                }
+            }
+            var peerPosition = peers.indexOf(blockIndex);
+            var peerTarget = peers[peerPosition + direction];
+            return peerTarget === undefined
+                ? null
+                : semanticRange(blocks, peerTarget);
+        }
+
+        var targetIndex = blockIndex + direction;
+        if (
+            targetIndex < 0
+            || targetIndex >= blocks.length
+            || semanticOwner(blocks, targetIndex)
+                !== semanticOwner(blocks, blockIndex)
+            || blocks[targetIndex].type === 'heading'
+        ) {
+            return null;
+        }
+        return { start: targetIndex, end: targetIndex + 1 };
+    }
+
+    function moveSemanticGroup(context, blockIndex, direction) {
+        var blocks = context.documentValue.blocks;
+        var current = semanticRange(blocks, blockIndex);
+        var target = semanticMoveTarget(blocks, blockIndex, direction);
+        if (!target) {
+            return false;
+        }
+        var reordered;
+        if (direction < 0) {
+            reordered = blocks.slice(0, target.start)
+                .concat(
+                    blocks.slice(current.start, current.end),
+                    blocks.slice(target.end, current.start),
+                    blocks.slice(target.start, target.end),
+                    blocks.slice(current.end)
+                );
+        } else {
+            reordered = blocks.slice(0, current.start)
+                .concat(
+                    blocks.slice(target.start, target.end),
+                    blocks.slice(current.end, target.start),
+                    blocks.slice(current.start, current.end),
+                    blocks.slice(target.end)
+                );
+        }
+        blocks.splice(0, blocks.length);
+        Array.prototype.push.apply(blocks, reordered);
+        return true;
+    }
+
+    function activateInspectorTab(context, tabName) {
+        if (!context.inspectorRoot) {
+            return;
+        }
+        context.inspectorRoot.querySelectorAll('[data-blog-inspector-tab]')
+            .forEach(function (button) {
+                var active = button.dataset.blogInspectorTab === tabName;
+                button.setAttribute('aria-selected', active ? 'true' : 'false');
+                button.tabIndex = active ? 0 : -1;
+            });
+        context.inspectorRoot.querySelectorAll('[data-blog-inspector-panel]')
+            .forEach(function (panel) {
+                panel.hidden = panel.dataset.blogInspectorPanel !== tabName;
+            });
+    }
+
+    function openInspector(context) {
+        var shell = document.querySelector('[data-webadmin-shell]');
+        if (shell instanceof HTMLElement) {
+            if (
+                shell.dataset.webadminShellBound === 'true'
+                && typeof window.CustomEvent === 'function'
+            ) {
+                shell.dispatchEvent(new window.CustomEvent(
+                    'webadmin:open-inspector',
+                    { bubbles: false }
+                ));
+                return;
+            }
+            shell.dataset.webadminInspectorOpen = 'true';
+            var inspector = shell.querySelector('[data-webadmin-shell-inspector]');
+            if (inspector instanceof HTMLElement) {
+                inspector.removeAttribute('inert');
+                inspector.setAttribute('aria-hidden', 'false');
+            }
+            var toggle = shell.querySelector('[data-webadmin-inspector-toggle]');
+            if (toggle instanceof HTMLButtonElement) {
+                toggle.setAttribute('aria-expanded', 'true');
+            }
+        }
+    }
+
+    function focusSelectedInspector(context) {
+        if (!context.blockInspector) {
+            return;
+        }
+        window.requestAnimationFrame(function () {
+            var target = context.blockInspector.querySelector(
+                '[data-blog-field]:not([disabled])'
+            ) || context.blockInspector.querySelector(
+                '.blogEditor__inspectorTitle'
+            );
+            if (target instanceof HTMLElement) {
+                if (!target.hasAttribute('tabindex') && !target.matches(
+                    'input, select, textarea, button, a[href]'
+                )) {
+                    target.tabIndex = -1;
+                }
+                target.focus();
+            }
+        });
+    }
+
+    function selectBlock(context, blockId) {
+        context.selectedBlockId = blockId;
+        renderInspector(context);
+        refreshVisualCanvas(context);
+        activateInspectorTab(context, 'block');
+        openInspector(context);
+        focusSelectedInspector(context);
+    }
+
+    function visualActions(context, block, blockIndex) {
+        var label = semanticBlockLabel(block);
+        var positionLabel = label + ' ' + (blockIndex + 1);
+        var actions = element('div', 'blogEditor__visualActions');
+        actions.setAttribute('role', 'group');
+        actions.setAttribute('aria-label', 'Acciones de ' + positionLabel);
+        actions.append(
+            actionButton(
+                context,
+                'Editar ' + positionLabel,
+                'data-blog-action',
+                'edit',
+                function () {
+                    selectBlock(context, block.id);
+                },
+                false,
+                true
+            ),
+            actionButton(
+                context,
+                'Subir ' + positionLabel,
+                'data-blog-action',
+                'up',
+                function () {
+                    if (moveSemanticGroup(context, blockIndex, -1)) {
+                        normalizeContracts(context, true);
+                        render(context);
+                        focusAfterRender(context, { kind: 'block', id: block.id });
+                    }
+                },
+                semanticMoveTarget(context.documentValue.blocks, blockIndex, -1) === null
+            ),
+            actionButton(
+                context,
+                'Bajar ' + positionLabel,
+                'data-blog-action',
+                'down',
+                function () {
+                    if (moveSemanticGroup(context, blockIndex, 1)) {
+                        normalizeContracts(context, true);
+                        render(context);
+                        focusAfterRender(context, { kind: 'block', id: block.id });
+                    }
+                },
+                semanticMoveTarget(context.documentValue.blocks, blockIndex, 1) === null
+            ),
+            actionButton(
+                context,
+                'Eliminar ' + positionLabel,
+                'data-blog-action',
+                'remove',
+                function () {
+                    if (!window.confirm('¿Eliminar este ' + label + ' y su contenido?')) {
+                        return;
+                    }
+                    var range = semanticRange(context.documentValue.blocks, blockIndex);
+                    var adjacent = context.documentValue.blocks[range.end]
+                        || context.documentValue.blocks[range.start - 1];
+                    context.documentValue.blocks.splice(
+                        range.start,
+                        range.end - range.start
+                    );
+                    context.selectedBlockId = adjacent ? adjacent.id : null;
+                    normalizeContracts(context, true);
+                    render(context);
+                    if (adjacent) {
+                        focusAfterRender(context, { kind: 'block', id: adjacent.id });
+                    }
+                    announce(context, 'Contenido eliminado.', false);
+                },
+                false
+            )
+        );
+        return actions;
+    }
+
+    function visualBlock(context, block, blockIndex) {
+        var item = element(
+            'div',
+            'blogEditor__visualBlock blogEditor__visualBlock--' + block.type
+        );
+        item.dataset.blockId = block.id;
+        item.dataset.blockType = block.type;
+        item.dataset.selected = context.selectedBlockId === block.id
+            ? 'true'
+            : 'false';
+        if (block.type === 'heading') {
+            item.dataset.headingLevel = String(block.level);
+        }
+        var label = element(
+            'span',
+            'blogEditor__visualLabel',
+            block.type === 'heading'
+                ? 'H' + block.level + ' · ' + semanticBlockLabel(block)
+                : BLOCK_LABELS[block.type]
+        );
+        var edit = visualActions(context, block, blockIndex);
+        var preview = element('div', 'blogEditor__visualContent');
+        preview.append(blockPreview(context, block));
+        item.append(label, preview, edit);
+        var editButton = edit.querySelector('[data-blog-action="edit"]');
+        if (editButton instanceof HTMLButtonElement) {
+            editButton.dataset.blogBlockTitle = block.id;
+        }
+        return item;
+    }
+
+    function refreshVisualCanvas(context) {
+        var blocks = context.documentValue.blocks;
+        context.blockList.replaceChildren();
+        var post = element('div', 'blogEditor__postPreview');
+        post.setAttribute('role', 'document');
+        var header = element('div', 'blogEditor__postHeader');
+        header.dataset.semanticTag = 'header';
+        var locale = element(
+            'p',
+            'blogEditor__localeBadge',
+            'Idioma: ' + context.locale.toUpperCase()
+        );
+        var h1 = element(
+            'div',
+            'blogEditor__postTitle',
+            context.h1Input ? context.h1Input.value : 'Título del artículo'
+        );
+        h1.setAttribute('role', 'heading');
+        h1.setAttribute('aria-level', '1');
+        h1.dataset.semanticTag = 'h1';
+        header.append(locale, h1);
+
+        var firstContentIndex = 0;
+        if (
+            context.documentValue.template === TEMPLATE_COVER
+            && blocks[0]
+            && blocks[0].type === 'image'
+        ) {
+            header.append(visualBlock(context, blocks[0], 0));
+            firstContentIndex = 1;
+        }
+        post.append(header);
+
+        var main = element('div', 'blogEditor__postMain');
+        main.dataset.semanticTag = 'main';
+        var currentSection = null;
+        var currentArticle = null;
+        for (var index = firstContentIndex; index < blocks.length; index += 1) {
+            var block = blocks[index];
+            if (block.type === 'heading' && block.level === 2) {
+                currentSection = element('div', 'blogEditor__previewSection');
+                currentSection.dataset.semanticTag = 'section';
+                currentArticle = null;
+                main.append(currentSection);
+                currentSection.append(visualBlock(context, block, index));
+                continue;
+            }
+            if (block.type === 'heading' && block.level === 3) {
+                currentSection = currentSection || main;
+                currentArticle = element('div', 'blogEditor__previewArticle');
+                currentArticle.dataset.semanticTag = 'article';
+                currentSection.append(currentArticle);
+                currentArticle.append(visualBlock(context, block, index));
+                continue;
+            }
+            (currentArticle || currentSection || main).append(
+                visualBlock(context, block, index)
+            );
+        }
+        if (blocks.length === firstContentIndex) {
+            main.append(element(
+                'p',
+                'blogEditor__empty',
+                'Añade una sección H2 o contenido para empezar a construir.'
+            ));
+        }
+        post.append(main);
+        context.blockList.append(post);
+    }
+
+    function renderInspector(context) {
+        if (!context.blockInspector) {
+            return;
+        }
+        context.blockInspector.replaceChildren();
+        var blockIndex = context.documentValue.blocks.findIndex(function (block) {
+            return block.id === context.selectedBlockId;
+        });
+        if (blockIndex < 0) {
+            context.blockInspector.append(element(
+                'p',
+                'blogEditor__inspectorEmpty',
+                'Selecciona Editar en un bloque de la vista para cambiarlo.'
+            ));
+            return;
+        }
+        var block = context.documentValue.blocks[blockIndex];
+        var heading = element(
+            'h3',
+            'blogEditor__inspectorTitle',
+            'Editar ' + semanticBlockLabel(block)
+        );
+        heading.id = 'blog-editor-selected-block-' + context.instance;
+        var fieldset = document.createElement('fieldset');
+        fieldset.disabled = context.readOnly;
+        fieldset.setAttribute('aria-labelledby', heading.id);
+        fieldset.append(renderBlockFields(context, block, blockIndex));
+        context.blockInspector.append(heading, fieldset);
+    }
+
     function render(context) {
         normalizeContracts(context, false);
         context.controlNumber = 0;
-        context.blockList.replaceChildren();
-        if (context.documentValue.blocks.length === 0) {
-            context.blockList.append(element(
-                'li',
-                'blogEditor__empty',
-                'El documento todavía no contiene bloques.'
-            ));
-            sync(context);
-            return;
+        if (
+            context.selectedBlockId
+            && !context.documentValue.blocks.some(function (block) {
+                return block.id === context.selectedBlockId;
+            })
+        ) {
+            context.selectedBlockId = null;
         }
-
-        context.documentValue.blocks.forEach(function (block, blockIndex) {
-            var item = element('li', 'blogEditor__block');
-            item.dataset.blockId = block.id;
-            item.dataset.blockType = block.type;
-            var titleId = 'blog-editor-block-title-'
-                + context.instance + '-' + (blockIndex + 1);
-            var title = element(
-                'h3',
-                'blogEditor__blockTitle',
-                'Bloque ' + (blockIndex + 1) + ': ' + BLOCK_LABELS[block.type]
-            );
-            title.id = titleId;
-            title.dataset.blogBlockTitle = block.id;
-            title.tabIndex = -1;
-            var fieldset = document.createElement('fieldset');
-            fieldset.disabled = context.readOnly;
-            fieldset.setAttribute('aria-labelledby', titleId);
-            var actions = element('div', 'blogEditor__actions');
-            actions.append(
-                actionButton(
-                    context,
-                    'Subir bloque',
-                    'data-blog-action',
-                    'up',
-                    function () {
-                        move(context.documentValue.blocks, blockIndex, blockIndex - 1);
-                        normalizeContracts(context, true);
-                        render(context);
-                        focusAfterRender(context, {
-                            kind: 'block',
-                            id: block.id
-                        });
-                    },
-                    blockIndex === 0
-                ),
-                actionButton(
-                    context,
-                    'Bajar bloque',
-                    'data-blog-action',
-                    'down',
-                    function () {
-                        move(context.documentValue.blocks, blockIndex, blockIndex + 1);
-                        normalizeContracts(context, true);
-                        render(context);
-                        focusAfterRender(context, {
-                            kind: 'block',
-                            id: block.id
-                        });
-                    },
-                    blockIndex === context.documentValue.blocks.length - 1
-                ),
-                actionButton(
-                    context,
-                    'Eliminar bloque',
-                    'data-blog-action',
-                    'remove',
-                    function () {
-                        if (!window.confirm('¿Eliminar este bloque?')) {
-                            return;
-                        }
-                        var adjacent = context.documentValue.blocks[
-                            blockIndex + 1
-                        ] || context.documentValue.blocks[blockIndex - 1];
-                        context.documentValue.blocks.splice(blockIndex, 1);
-                        normalizeContracts(context, true);
-                        render(context);
-                        focusAfterRender(context, adjacent
-                            ? { kind: 'block', id: adjacent.id }
-                            : { kind: 'add-block' });
-                        announce(context, 'Bloque eliminado.', false);
-                    },
-                    false
-                )
-            );
-            fieldset.append(actions);
-            fieldset.append(renderBlockFields(context, block, blockIndex));
-            item.append(title, fieldset);
-            context.blockList.append(item);
-        });
+        refreshVisualCanvas(context);
+        renderInspector(context);
         sync(context);
     }
 
@@ -1470,7 +1954,10 @@
             seen.add(publicId);
             media.push({
                 publicId: publicId,
-                label: String(option.textContent || 'Imagen')
+                label: String(option.textContent || 'Imagen'),
+                thumbnailUrl: safeRootRelativeUrl(
+                    option.dataset.thumbnailUrl || ''
+                ) ? option.dataset.thumbnailUrl : null
             });
         });
         return media;
@@ -1597,7 +2084,10 @@
     }
 
     function initSeoAnalysis(context) {
-        var panel = context.form.querySelector('[data-blog-seo-panel]');
+        var panel = document.querySelector(
+            '[data-blog-seo-panel][data-blog-editor-form="'
+                + context.form.id + '"]'
+        );
         if (!(panel instanceof HTMLElement) || context.readOnly) {
             return;
         }
@@ -1668,12 +2158,15 @@
 
         function schedule() {
             window.clearTimeout(timer);
+            requestVersion += 1;
+            if (activeController) {
+                activeController.abort();
+                activeController = null;
+            }
             live.textContent = 'Cambios pendientes de analizar…';
             timer = window.setTimeout(run, 650);
         }
-        context.form.addEventListener('input', schedule);
-        context.form.addEventListener('change', schedule);
-        context.form.addEventListener('click', function (event) {
+        function scheduleFromAction(event) {
             if (
                 event.target instanceof Element
                 && event.target.closest(
@@ -1684,14 +2177,151 @@
             ) {
                 schedule();
             }
-        });
+        }
+        context.form.addEventListener('input', schedule);
+        context.form.addEventListener('change', schedule);
+        if (context.inspectorRoot) {
+            context.inspectorRoot.addEventListener('input', schedule);
+            context.inspectorRoot.addEventListener('change', schedule);
+            context.inspectorRoot.addEventListener('click', scheduleFromAction);
+        }
+        context.form.addEventListener('click', scheduleFromAction);
     }
 
     function disableSubmission(form, status, message) {
-        form.querySelectorAll('button, select, textarea, input:not([type="hidden"])')
-            .forEach(function (control) { control.disabled = true; });
+        Array.from(form.elements).forEach(function (control) {
+            if (
+                'disabled' in control
+                && !(control instanceof HTMLInputElement && control.type === 'hidden')
+            ) {
+                control.disabled = true;
+            }
+        });
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+        }, { capture: true });
         status.textContent = message;
         status.dataset.state = 'error';
+    }
+
+    function formBody(form) {
+        var body = new URLSearchParams();
+        new FormData(form).forEach(function (value, key) {
+            if (typeof value === 'string') {
+                body.append(key, value);
+            }
+        });
+        return body;
+    }
+
+    function formFingerprint(form) {
+        return formBody(form).toString();
+    }
+
+    function isExpectedEditorRedirect(form, response) {
+        try {
+            var submitted = new URL(form.action, window.location.href);
+            var destination = new URL(response.url, window.location.href);
+            var post = form.elements.namedItem('post');
+            var locale = form.elements.namedItem('locale');
+            var destinationKeys = Array.from(
+                destination.searchParams.keys()
+            ).sort();
+            return response.redirected === true
+                && response.ok === true
+                && destination.origin === submitted.origin
+                && destination.pathname
+                    === submitted.pathname.replace(/\/save$/u, '')
+                && destination.hash === ''
+                && destinationKeys.join(',') === 'locale,post'
+                && destination.searchParams.get('post')
+                    === (post instanceof HTMLInputElement ? post.value : '')
+                && destination.searchParams.get('locale')
+                    === (locale instanceof HTMLInputElement ? locale.value : '');
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function isExpectedCategoryRedirect(form, response) {
+        try {
+            var submitted = new URL(form.action, window.location.href);
+            var destination = new URL(response.url, window.location.href);
+            return response.redirected === true
+                && response.ok === true
+                && destination.origin === submitted.origin
+                && destination.pathname
+                    === submitted.pathname.replace(/\/assign$/u, '/updated')
+                && destination.search === ''
+                && destination.hash === '';
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function initCategoryAssignment(context) {
+        if (!context.inspectorRoot) {
+            return;
+        }
+        var form = context.inspectorRoot.querySelector(
+            '[data-blog-category-assignment-form]'
+        );
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+        var status = form.querySelector(
+            '[data-blog-category-assignment-status]'
+        );
+        var submit = form.querySelector('button[type="submit"]');
+        if (!(status instanceof HTMLElement)) {
+            return;
+        }
+        form.addEventListener('submit', function (event) {
+            if (typeof window.fetch !== 'function') {
+                return;
+            }
+            event.preventDefault();
+            if (form.getAttribute('aria-busy') === 'true') {
+                return;
+            }
+            form.setAttribute('aria-busy', 'true');
+            if (submit instanceof HTMLButtonElement) {
+                submit.disabled = true;
+            }
+            status.textContent = 'Guardando categorías…';
+            status.dataset.state = 'pending';
+
+            window.fetch(form.action, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'text/html',
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                body: formBody(form).toString(),
+                redirect: 'follow'
+            }).then(function (response) {
+                if (!isExpectedCategoryRedirect(form, response)) {
+                    throw new Error('category-save-failed');
+                }
+                status.textContent = '';
+                window.requestAnimationFrame(function () {
+                    status.textContent = 'Categorías guardadas.';
+                    status.dataset.state = 'ok';
+                });
+            }).catch(function () {
+                status.textContent = '';
+                window.requestAnimationFrame(function () {
+                    status.textContent = 'No se pudieron guardar las categorías. La selección sigue disponible para reintentar.';
+                    status.dataset.state = 'error';
+                });
+            }).finally(function () {
+                form.removeAttribute('aria-busy');
+                if (submit instanceof HTMLButtonElement) {
+                    submit.disabled = false;
+                }
+            });
+        });
     }
 
     function initEditor(form) {
@@ -1702,14 +2332,28 @@
 
         var documentInput = form.querySelector('input[name="document_json"]');
         var blockList = form.querySelector('[data-blog-block-list]');
-        var templateSelect = form.querySelector('[data-blog-template-select]');
+        var inspectorRoot = document.querySelector(
+            '[data-blog-inspector][data-blog-editor-form="' + form.id + '"]'
+        );
+        var templateSelect = document.querySelector(
+            '[data-blog-template-select][form="' + form.id + '"]'
+        ) || form.querySelector('[data-blog-template-select]');
         var mediaCatalog = form.querySelector('[data-blog-media-catalog]');
         var status = form.querySelector('[data-blog-editor-status]');
+        var blockInspector = inspectorRoot
+            ? inspectorRoot.querySelector('[data-blog-block-inspector]')
+            : form.querySelector('[data-blog-block-inspector]');
+        var h1Input = document.getElementById('blog-editor-h1');
+        var slugInput = document.getElementById('blog-editor-slug');
+        var entryIdentity = document.querySelector('[data-blog-entry-identity]');
+        var publicUrl = document.querySelector('[data-blog-public-url]');
+        var localeInput = form.querySelector('input[name="locale"]');
         if (
             !(documentInput instanceof HTMLInputElement)
-            || !(blockList instanceof HTMLOListElement)
+            || !(blockList instanceof HTMLElement)
             || !(templateSelect instanceof HTMLSelectElement)
             || !(status instanceof HTMLElement)
+            || !(localeInput instanceof HTMLInputElement)
         ) {
             return;
         }
@@ -1738,8 +2382,85 @@
             media: readMedia(mediaCatalog),
             documentValue: documentValue,
             readOnly: form.dataset.blogEditorReadonly === 'true',
-            announcementVersion: 0
+            announcementVersion: 0,
+            selectedBlockId: null,
+            blockInspector: blockInspector instanceof HTMLElement
+                ? blockInspector
+                : null,
+            inspectorRoot: inspectorRoot instanceof HTMLElement
+                ? inspectorRoot
+                : null,
+            h1Input: h1Input instanceof HTMLInputElement ? h1Input : null,
+            locale: localeInput.value,
+            initialFingerprint: '',
+            allowNavigation: false,
+            savePending: false,
+            invalidFocusPending: false
         };
+
+        function updatePublicUrl() {
+            if (
+                !(slugInput instanceof HTMLInputElement)
+                || !(entryIdentity instanceof HTMLElement)
+                || !(publicUrl instanceof HTMLElement)
+            ) {
+                return;
+            }
+            var base = entryIdentity.dataset.blogPublicBase || '';
+            publicUrl.textContent = base === ''
+                ? 'Se completará al guardar un slug.'
+                : base + '/' + (slugInput.value || '…');
+        }
+
+        if (context.inspectorRoot) {
+            var inspectorTabs = Array.from(
+                context.inspectorRoot.querySelectorAll(
+                    '[data-blog-inspector-tab]'
+                )
+            );
+            inspectorTabs.forEach(function (button, tabIndex) {
+                    button.addEventListener('click', function () {
+                        activateInspectorTab(
+                            context,
+                            button.dataset.blogInspectorTab || 'entry'
+                        );
+                    });
+                    button.addEventListener('keydown', function (event) {
+                        var nextIndex = null;
+                        if (event.key === 'ArrowRight') {
+                            nextIndex = (tabIndex + 1) % inspectorTabs.length;
+                        } else if (event.key === 'ArrowLeft') {
+                            nextIndex = (
+                                tabIndex - 1 + inspectorTabs.length
+                            ) % inspectorTabs.length;
+                        } else if (event.key === 'Home') {
+                            nextIndex = 0;
+                        } else if (event.key === 'End') {
+                            nextIndex = inspectorTabs.length - 1;
+                        }
+                        if (nextIndex === null) {
+                            return;
+                        }
+                        event.preventDefault();
+                        var nextTab = inspectorTabs[nextIndex];
+                        activateInspectorTab(
+                            context,
+                            nextTab.dataset.blogInspectorTab || 'entry'
+                        );
+                        nextTab.focus();
+                    });
+                });
+            activateInspectorTab(context, 'entry');
+        }
+        if (context.h1Input) {
+            context.h1Input.addEventListener('input', function () {
+                refreshVisualCanvas(context);
+            });
+        }
+        if (slugInput instanceof HTMLInputElement) {
+            slugInput.addEventListener('input', updatePublicUrl);
+            updatePublicUrl();
+        }
 
         form.querySelectorAll('[data-blog-add-block]').forEach(function (button) {
             var type = button.getAttribute('data-blog-add-block') || '';
@@ -1755,14 +2476,61 @@
                     return;
                 }
                 try {
+                    var hasSection = context.documentValue.blocks.some(
+                        function (block) {
+                            return block.type === 'heading' && block.level === 2;
+                        }
+                    );
+                    var createsInitialCover = type === 'image'
+                        && context.documentValue.blocks.length === 0;
+                    if (
+                        type !== 'heading'
+                        && !hasSection
+                        && !createsInitialCover
+                    ) {
+                        announce(
+                            context,
+                            'Añade primero una sección H2. El contenido nuevo debe pertenecer a una sección.',
+                            true
+                        );
+                        return;
+                    }
                     var addedBlock = makeBlock(context, type);
+                    var requestedHeadingLevel = Number(
+                        button.dataset.blogHeadingLevel || 0
+                    );
+                    if (
+                        type === 'heading'
+                        && [2, 3, 4, 5, 6].includes(requestedHeadingLevel)
+                    ) {
+                        addedBlock.level = requestedHeadingLevel;
+                        var candidate = JSON.parse(JSON.stringify(
+                            context.documentValue
+                        ));
+                        candidate.blocks.push(addedBlock);
+                        if (!validDocument(candidate)) {
+                            announce(
+                                context,
+                                requestedHeadingLevel === 3
+                                    ? 'Añade primero una sección H2 para incluir un artículo H3.'
+                                    : 'Completa antes la jerarquía de encabezados hasta H'
+                                        + (requestedHeadingLevel - 1) + '.',
+                                true
+                            );
+                            return;
+                        }
+                    }
+                    if (createsInitialCover) {
+                        context.documentValue.template = TEMPLATE_COVER;
+                        addedBlock.display = 'cover';
+                    }
                     context.documentValue.blocks.push(addedBlock);
+                    context.selectedBlockId = addedBlock.id;
                     normalizeContracts(context, true);
                     render(context);
-                    focusAfterRender(context, {
-                        kind: 'block',
-                        id: addedBlock.id
-                    });
+                    activateInspectorTab(context, 'block');
+                    openInspector(context);
+                    focusSelectedInspector(context);
                     announce(context, 'Bloque añadido.', false);
                 } catch (error) {
                     announce(context, 'No se pudo añadir el bloque.', true);
@@ -1779,10 +2547,98 @@
                 templateSelect.value = context.documentValue.template;
                 return;
             }
+            var previous = context.documentValue.template;
+            if (requested === previous) {
+                return;
+            }
+            if (requested === TEMPLATE_BASIC && previous === TEMPLATE_COVER) {
+                var firstSection = context.documentValue.blocks.findIndex(
+                    function (block) {
+                        return block.type === 'heading' && block.level === 2;
+                    }
+                );
+                if (firstSection < 0) {
+                    templateSelect.value = previous;
+                    announce(
+                        context,
+                        'Añade una sección H2 antes de retirar la portada.',
+                        true
+                    );
+                    return;
+                }
+                var formerCover = context.documentValue.blocks.shift();
+                if (!formerCover || formerCover.type !== 'image') {
+                    templateSelect.value = previous;
+                    announce(context, 'La portada no está disponible.', true);
+                    return;
+                }
+                formerCover.display = 'content';
+                firstSection -= 1;
+                context.documentValue.blocks.splice(
+                    firstSection + 1,
+                    0,
+                    formerCover
+                );
+            } else if (
+                requested === TEMPLATE_COVER
+                && previous === TEMPLATE_BASIC
+            ) {
+                var coverCandidate = context.documentValue.blocks.findIndex(
+                    function (block) { return block.type === 'image'; }
+                );
+                if (coverCandidate < 0) {
+                    templateSelect.value = previous;
+                    announce(
+                        context,
+                        'Añade primero una imagen al artículo para usarla como portada.',
+                        true
+                    );
+                    return;
+                }
+                var promotedCover = context.documentValue.blocks.splice(
+                    coverCandidate,
+                    1
+                )[0];
+                promotedCover.display = 'cover';
+                context.documentValue.blocks.unshift(promotedCover);
+            }
             context.documentValue.template = requested;
             normalizeContracts(context, true);
             render(context);
+            announce(context, 'Plantilla actualizada.', false);
         });
+
+        document.addEventListener('invalid', function (event) {
+            var control = event.target;
+            if (
+                !(control instanceof HTMLElement)
+                || !('form' in control)
+                || control.form !== form
+            ) {
+                return;
+            }
+            event.preventDefault();
+            var panel = control.closest('[data-blog-inspector-panel]');
+            activateInspectorTab(
+                context,
+                panel && panel.dataset.blogInspectorPanel === 'block'
+                    ? 'block'
+                    : 'entry'
+            );
+            openInspector(context);
+            if (!context.invalidFocusPending) {
+                context.invalidFocusPending = true;
+                window.requestAnimationFrame(function () {
+                    context.invalidFocusPending = false;
+                    focusElement(control);
+                });
+            }
+            announce(
+                context,
+                'Revisa el campo indicado antes de guardar.',
+                true
+            );
+        }, true);
 
         form.addEventListener('submit', function (event) {
             normalizeContracts(context, true);
@@ -1798,11 +2654,91 @@
                     'El documento contiene campos incompletos o no válidos.',
                     true
                 );
+                return;
             }
+
+            if (typeof window.fetch !== 'function') {
+                context.allowNavigation = true;
+                return;
+            }
+
+            event.preventDefault();
+            if (context.savePending) {
+                return;
+            }
+            context.savePending = true;
+            form.setAttribute('aria-busy', 'true');
+            var submitters = Array.from(form.elements).filter(function (control) {
+                return control instanceof HTMLButtonElement
+                    && control.type === 'submit';
+            });
+            submitters.forEach(function (button) { button.disabled = true; });
+            announce(context, 'Guardando cambios…', false);
+
+            window.fetch(form.action, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'text/html',
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                body: formBody(form).toString(),
+                redirect: 'follow'
+            }).then(function (response) {
+                if (isExpectedEditorRedirect(form, response)) {
+                    context.initialFingerprint = formFingerprint(form);
+                    context.allowNavigation = true;
+                    window.location.assign(response.url);
+                    return;
+                }
+                if (response.redirected) {
+                    throw new Error('save-forbidden');
+                }
+                if (response.status === 409) {
+                    throw new Error('save-conflict');
+                }
+                if (response.status === 422) {
+                    throw new Error('save-invalid');
+                }
+                if (response.status === 403) {
+                    throw new Error('save-forbidden');
+                }
+                throw new Error('save-unavailable');
+            }).catch(function (error) {
+                var message = 'No se pudo guardar ahora. Tus cambios siguen en el editor.';
+                if (error && error.message === 'save-conflict') {
+                    message = 'El artículo cambió en otra sesión. Tus cambios siguen aquí; abre otra pestaña para revisar la versión guardada.';
+                } else if (error && error.message === 'save-invalid') {
+                    message = 'Revisa el contenido indicado. Tus cambios siguen en el editor.';
+                } else if (error && error.message === 'save-forbidden') {
+                    message = 'No se pudo validar la sesión. Tus cambios siguen en el editor.';
+                }
+                announce(context, message, true);
+            }).finally(function () {
+                context.savePending = false;
+                form.removeAttribute('aria-busy');
+                submitters.forEach(function (button) {
+                    button.disabled = context.readOnly;
+                });
+            });
         });
 
         render(context);
+        sync(context);
+        context.initialFingerprint = formFingerprint(form);
+        window.addEventListener('beforeunload', function (event) {
+            if (
+                context.allowNavigation
+                || context.readOnly
+                || formFingerprint(form) === context.initialFingerprint
+            ) {
+                return;
+            }
+            event.preventDefault();
+            event.returnValue = '';
+        });
         initSeoAnalysis(context);
+        initCategoryAssignment(context);
         form.dataset.blogEditorEnhanced = 'true';
     }
 

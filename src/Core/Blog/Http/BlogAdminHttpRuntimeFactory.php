@@ -6,6 +6,8 @@ namespace App\Core\Blog\Http;
 
 use App\Core\Blog\Audit\WebAdminBlogMutationAuditAdapter;
 use App\Core\Blog\BlogService;
+use App\Core\Blog\Categories\BlogCategoryService;
+use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogConfigLoader;
 use App\Core\Blog\Persistence\PdoBlogRepository;
@@ -16,6 +18,7 @@ use App\Core\Blog\Seo\BlogSeoAnalyzer;
 use App\Core\Blog\Seo\BlogSeoStaticPageInventory;
 use App\Core\Blog\Seo\PdoBlogSeoCandidateRepository;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredEditorService;
+use App\Core\Blog\StructuredContent\Categories\BlogCategoryEditorCatalogAdapter;
 use App\Core\Blog\StructuredContent\Media\PdoWebAdminMediaAvailabilityAdapter;
 use App\Core\Blog\StructuredContent\Media\PdoBlogEditorImageResolver;
 use App\Core\Blog\StructuredContent\Media\WebAdminMediaCatalogAdapter;
@@ -24,6 +27,7 @@ use App\Core\Blog\StructuredContent\Persistence\PdoBlogStructuredContentReposito
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Modules\Blog\BlogHttpSchemaGate;
+use App\Core\Modules\Blog\BlogCategoryHttpSchemaGate;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
@@ -36,6 +40,7 @@ use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
 use App\Core\WebAdmin\Authorization\WebAdminMutationActorGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalogFactory;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Media\PdoMediaRepository;
 use App\Core\WebAdmin\Security\ExceptionTraceGuard;
@@ -62,6 +67,7 @@ final class BlogAdminHttpRuntimeFactory implements
     private readonly WebAdminConfigLoader $webAdminConfigLoader;
     private readonly ConfiguredMigrationScopeFactory $scopeFactory;
     private readonly BlogHttpSchemaGate $blogSchemaGate;
+    private readonly BlogCategoryHttpSchemaGate $categorySchemaGate;
     private readonly WebAdminHttpSchemaGate $webAdminSchemaGate;
     private readonly WebAdminMediaHttpSchemaGate $webAdminMediaSchemaGate;
     private readonly ClockInterface $clock;
@@ -86,7 +92,8 @@ final class BlogAdminHttpRuntimeFactory implements
         ?UuidGeneratorInterface $uuidGenerator = null,
         ?SecureTokenGenerator $tokenGenerator = null,
         ?BlogSitemapPublicationCoordinatorFactory
-            $sitemapCoordinatorFactory = null
+            $sitemapCoordinatorFactory = null,
+        ?BlogCategoryHttpSchemaGate $categorySchemaGate = null
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
             ? static fn (
@@ -120,6 +127,8 @@ final class BlogAdminHttpRuntimeFactory implements
             ?? new SecureTokenGenerator();
         $this->sitemapCoordinatorFactory = $sitemapCoordinatorFactory
             ?? new BlogSitemapPublicationCoordinatorFactory();
+        $this->categorySchemaGate = $categorySchemaGate
+            ?? new BlogCategoryHttpSchemaGate();
     }
 
     public function create(
@@ -315,6 +324,16 @@ final class BlogAdminHttpRuntimeFactory implements
             $editorMediaCatalog = new WebAdminMediaCatalogAdapter(
                 new PdoMediaRepository($pdo, $tables)
             );
+            $editorCategoryCatalog = $this->categorySchemaGate
+                ->isAdministrationReady($pdo, $registry, $scopes)
+                    ? new BlogCategoryEditorCatalogAdapter(
+                        new BlogCategoryService(
+                            new PdoBlogCategoryRepository($pdo, $blogScope),
+                            $this->uuidGenerator,
+                            $this->clock
+                        )
+                    )
+                    : null;
 
             return new BlogAdminHttpRuntime(
                 $projectRoot,
@@ -341,7 +360,9 @@ final class BlogAdminHttpRuntimeFactory implements
                         $blogConfig->publicPaths()
                     ),
                     new BlogSeoStaticPageInventory($projectRoot)
-                )
+                ),
+                WebAdminNavigationCatalogFactory::fromRegistry($registry),
+                $editorCategoryCatalog
             );
         } catch (BlogAdminHttpRuntimeException $exception) {
             throw $exception;

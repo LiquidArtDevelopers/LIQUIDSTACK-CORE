@@ -28,6 +28,7 @@ use App\Core\WebAdmin\Authorization\WebAdminMutationActorGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalogFactory;
 use App\Core\WebAdmin\Security\ExceptionTraceGuard;
 use App\Core\WebAdmin\Security\InvalidSecurityKey;
 use App\Core\WebAdmin\Security\PasswordHasher;
@@ -263,7 +264,8 @@ final class BlogCategoryAdminHttpRuntimeFactory implements
                 $authentication,
                 $authorization,
                 $pdo,
-                $actorGate
+                $actorGate,
+                WebAdminNavigationCatalogFactory::fromRegistry($registry)
             );
         } catch (BlogAdminHttpRuntimeException $exception) {
             throw $exception;

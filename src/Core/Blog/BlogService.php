@@ -10,6 +10,7 @@ use App\Core\Blog\Editing\BlogDraftMutationCoordinator;
 use App\Core\Blog\Editing\BlogPlainDraftWriteGuardInterface;
 use App\Core\Blog\Persistence\BlogPersistenceConflict;
 use App\Core\Blog\Persistence\BlogPersistenceException;
+use App\Core\Blog\Persistence\BlogPostLocaleCatalogRepositoryInterface;
 use App\Core\Blog\Persistence\BlogPublishedSitemapRepositoryInterface;
 use App\Core\Blog\Persistence\BlogRepositoryInterface;
 use App\Core\Blog\Sitemap\BlogSitemapPublicationCoordinator;
@@ -389,6 +390,47 @@ final class BlogService
         return $this->read(
             fn (): array => $this->repository->listSummaries($limit, $offset)
         );
+    }
+
+    /** @return list<string> */
+    public function localesForPost(string $postPublicId): array
+    {
+        $postPublicId = BlogInput::publicId($postPublicId);
+
+        return $this->read(function () use ($postPublicId): array {
+            if (
+                !$this->repository instanceof
+                    BlogPostLocaleCatalogRepositoryInterface
+            ) {
+                throw new BlogPersistenceException();
+            }
+
+            $locales = $this->repository->localesForPost(
+                $postPublicId,
+                BlogSitemapEntry::ALTERNATES_OVERFLOW_QUERY_LIMIT
+            );
+            if ($locales === null) {
+                throw new BlogException(BlogException::POST_NOT_FOUND);
+            }
+            if (count($locales) > BlogSitemapEntry::MAX_LANGUAGE_ALTERNATES) {
+                throw new BlogPersistenceException();
+            }
+
+            $unique = [];
+            foreach ($locales as $locale) {
+                try {
+                    $locale = BlogInput::locale($locale);
+                } catch (BlogException) {
+                    throw new BlogPersistenceException();
+                }
+                if (isset($unique[$locale])) {
+                    throw new BlogPersistenceException();
+                }
+                $unique[$locale] = true;
+            }
+
+            return array_keys($unique);
+        });
     }
 
     public function loadPost(

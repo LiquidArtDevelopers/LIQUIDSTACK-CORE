@@ -424,25 +424,59 @@ final class BlogDocumentContractTest extends TestCase
         );
     }
 
-    public function testHeadingHierarchyAllowsH2ThenH3AndRejectsOrphanH3(): void
+    public function testHeadingHierarchyAllowsH2ThroughH6WithoutLevelJumps(): void
     {
-        BlogDocument::fromArray($this->document([
+        $document = BlogDocument::fromArray($this->document([
             $this->paragraph(1),
             $this->heading(2, 2, 'Section'),
             $this->paragraph(3),
-            $this->heading(4, 3, 'Subsection'),
+            $this->heading(4, 3, 'Article'),
+            $this->heading(5, 4, 'Detail'),
+            $this->heading(6, 5, 'Deep detail'),
+            $this->heading(7, 6, 'Deepest detail'),
+            $this->heading(8, 4, 'Sibling detail'),
+            $this->heading(9, 3, 'Sibling article'),
+            $this->heading(10, 4, 'Sibling article detail'),
         ]));
-
-        $orphan = $this->document([
-            $this->paragraph(1),
-            $this->heading(2, 3, 'Orphan'),
-        ]);
-        $this->assertIssue(
-            BlogDocumentException::INVALID_HEADING_HIERARCHY,
-            static fn (): BlogDocument => BlogDocument::fromArray($orphan)
+        self::assertSame(
+            [2, 3, 4, 5, 6, 4, 3, 4],
+            array_column(
+                array_values(array_filter(
+                    $document->blocks(),
+                    static fn (array $block): bool =>
+                        $block['type'] === 'heading'
+                )),
+                'level'
+            )
         );
 
-        foreach ([1, 4, '2'] as $level) {
+        foreach ([
+            [$this->heading(1, 3, 'Orphan H3')],
+            [
+                $this->heading(1, 2, 'H2'),
+                $this->heading(2, 4, 'Skipped H3'),
+            ],
+            [
+                $this->heading(1, 2, 'H2'),
+                $this->heading(2, 3, 'H3'),
+                $this->heading(3, 5, 'Skipped H4'),
+            ],
+            [
+                $this->heading(1, 2, 'First H2'),
+                $this->heading(2, 3, 'First H3'),
+                $this->heading(3, 4, 'First H4'),
+                $this->heading(4, 2, 'Second H2'),
+                $this->heading(5, 4, 'Orphan after reset'),
+            ],
+        ] as $blocks) {
+            $invalid = $this->document($blocks);
+            $this->assertIssue(
+                BlogDocumentException::INVALID_HEADING_HIERARCHY,
+                static fn (): BlogDocument => BlogDocument::fromArray($invalid)
+            );
+        }
+
+        foreach ([1, 7, '2'] as $level) {
             $invalid = $this->document([$this->heading(1, 2, 'Heading')]);
             $invalid['blocks'][0]['level'] = $level;
             $this->assertIssue(
@@ -450,6 +484,28 @@ final class BlogDocumentContractTest extends TestCase
                 static fn (): BlogDocument => BlogDocument::fromArray($invalid)
             );
         }
+    }
+
+    public function testExistingSchemaV1H2H3DocumentsRemainCanonical(): void
+    {
+        $codec = new BlogDocumentCodec();
+        $legacy = $this->document([
+            $this->heading(1, 2, 'First section'),
+            $this->heading(2, 3, 'First article'),
+            $this->paragraph(3),
+            $this->heading(4, 3, 'Second article'),
+            $this->heading(5, 2, 'Second section'),
+            $this->heading(6, 3, 'Third article'),
+        ]);
+        $json = json_encode(
+            $legacy,
+            JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+                | JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame($json, $codec->encode($codec->decode($json)));
+        self::assertSame(1, $codec->decode($json)->version());
     }
 
     public function testHeadingRejectsBreakWhileRichBlocksAcceptIt(): void

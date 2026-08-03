@@ -4,17 +4,20 @@
     "files": {
         "modules/blog/published/assets/blog-admin.css": [
             "sha256:24a1a32d47ab2b9d87d6eb1b078a1b06b7a3b1c66b75c65a8beac5a83ecd56a2",
+            "sha256:4428ade23ed73ad06fb0c348998976eaab146bb61a85ca4530ed7a86cae95b85",
             "sha256:7bc4b30a678c219d583d0cfb25e3868347e7b1fa6db518b0ec4773158e8c3123",
             "sha256:baff29cfa103fe8c11ba4b2295c643985abcdce09e59e1360858549f9b6f7070",
             "sha256:eeeec6d2ad12033dab68ae3192f8aadb8317bca9a892cb9d896ca324b7417802"
         ],
         "modules/blog/published/assets/blog-editor.js": [
+            "sha256:040555fa754a9e6a7ecc29be65cf9a9b7128aa04a5a2958b58092705d3da2ece",
             "sha256:56619bb9e6d39b88e36a60d9715f09b98f6612ce304ec17da0dde24aa8b95187",
             "sha256:9c9e24f13769b4c3dee66f877b3938f0bb1f296e8f8e37668a7628542ceb246d",
             "sha256:a2b6e19ff593063a25858dca1e716d25a486244f371de236deaa9a5fb95c6075"
         ],
         "modules/blog/published/assets/blog-public.css": [
             "sha256:22b655580846599dd10238c3f2ccf2d7a20f571e673d9383ef521b08bc7d751a",
+            "sha256:2b368f0fa584c817afcc3987a5fdd31051146d16bb00c97f1e4d7520cc401362",
             "sha256:af4e43bf33fc453ec61812415bfbfbfc513331f76d607a58a1331a63c9ad6bec"
         ],
         "modules/blog/published/assets/blog-public.js": [
@@ -24,7 +27,8 @@
             "sha256:6f0984b2ba817226b7018da5c0c276a7b6bb68a2304d808dcc9f25565312fd35"
         ],
         "modules/blog/resources/project/App/controllers/artBlogArticle01.php": [
-            "sha256:49eb33a37c0f6871d9d353de9a159f5b874d5060c1ce9452cba440d268782102"
+            "sha256:49eb33a37c0f6871d9d353de9a159f5b874d5060c1ce9452cba440d268782102",
+            "sha256:859ded7fea8558a261c81865c4b2f45c6d5484ebc21070b854a04aaace9e3ce2"
         ],
         "modules/blog/resources/project/App/controllers/moduleBlogArchive01.php": [
             "sha256:705a8abad83375cce2b88854d40f88e8e44a7af46f37f03ba47b942050925e42"
@@ -49,6 +53,7 @@
             "sha256:6e3aac167cc6749bb3ab51f28a620520ce728ef1ae540ad12042679965f36842"
         ],
         "modules/blog/resources/project/App/templates/_artBlogArticle01.html": [
+            "sha256:72724277224ab93256f8e75e440622ca26f8b517c6807bf1c3b891b9dfd2cdb1",
             "sha256:c381f1f79596208ce9629f822678c19cc90f2063a3b453eecd2d3ac6a36d4257"
         ],
         "modules/blog/resources/project/App/templates/_moduleBlogArchive01.html": [
@@ -73,6 +78,7 @@
             "sha256:0c2b061e3da0de147dad3ee268f8c1c98815d7c9d8db192095d924c6ee020af1"
         ],
         "modules/blog/resources/project/App/views/showroom/_blog.php": [
+            "sha256:151fe9cb0344c58573a73dd067f7dccdcb8845c47c2f404aeb5469723875019a",
             "sha256:5e52cfd9a8d96503e209cce2dbdd6241475d1966454f957ddcd8d5d01679129c",
             "sha256:749c18ee6f4233eb819d68e9dc77dfed59b74f585e4366f1c76d8ecffa6be848",
             "sha256:d31b36f2431c4d97efcd97f1456a9eabebf93739f5021b34e75e764ab677c7b0",
@@ -89,7 +95,8 @@
             "sha256:3cccfd0606cec03147953483d303b09410aff8b9c4b4784c00a13e45c33f2151"
         ],
         "modules/blog/resources/project/src/scss/resources/_artBlogArticle01.scss": [
-            "sha256:5fac98ea5b515f29172e191ccac4e45653927c9efd69fd630950326be9dfc0b4"
+            "sha256:5fac98ea5b515f29172e191ccac4e45653927c9efd69fd630950326be9dfc0b4",
+            "sha256:961ff478b3adafd119576e71196004b74348704601d1cad298732fd9decfef16"
         ],
         "modules/blog/resources/project/src/scss/resources/_moduleBlogArchive01.scss": [
             "sha256:ef2904fefa442d07e772ccf0657e26ecd3fbdc3ea2d57de2a781251bc595eda8"
@@ -123,10 +130,12 @@
             "sha256:1c6938f47c4236d7867ac1a164dc3fd127eed9592320b48fb2f401bf696c4656",
             "sha256:431167fe8533720c79e99bf2d35742f7d15148c41665affecb6e286736bd8dc3",
             "sha256:54f16739291ddecfef5dcbed1d6233a2965ded000ebad2009b1577bc5a48b9e0",
-            "sha256:901f1fd301f89ab0fa2d4a5377360b21e3142a33b904eb59b9b1df7c5005fff7"
+            "sha256:901f1fd301f89ab0fa2d4a5377360b21e3142a33b904eb59b9b1df7c5005fff7",
+            "sha256:d5d0c7d0bdb71dbbf686c9302aa384a6d4c46fa25265d76f69b04a6012ec14d3"
         ],
         "modules/webadmin/published/assets/webadmin.js": [
             "sha256:24db76ed478c420c64ae0bcdf990908599cf8fad3184b6908900569f4dec4bfd",
+            "sha256:555bd74ab851add438fda8d1b55f30424ef819e46ccbd573c1afcde04da1bdb6",
             "sha256:6d6909287853cc15cc16d1cd03fe9e0cbbef2da0455fa3380500376c8ea372ec"
         ],
         "resources/img/aniBackground01/clock-bigben-guide.png": [

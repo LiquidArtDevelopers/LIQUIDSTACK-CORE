@@ -23,6 +23,7 @@ use App\Core\WebAdmin\Media\MediaStorageInterface;
 use App\Core\WebAdmin\Media\PdoMediaRepository;
 use App\Core\WebAdmin\Media\PrivateMediaStorage;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalogFactory;
 use App\Core\WebAdmin\Security\ExceptionTraceGuard;
 use App\Core\WebAdmin\Security\InvalidSecurityKey;
 use App\Core\WebAdmin\Security\PasswordHasher;
@@ -186,7 +187,8 @@ final class WebAdminMediaHttpRuntimeFactory implements
                 $config,
                 $authentication,
                 $authorization,
-                $media
+                $media,
+                WebAdminNavigationCatalogFactory::fromRegistry($registry)
             );
         } catch (WebAdminMediaHttpRuntimeException $exception) {
             throw $exception;

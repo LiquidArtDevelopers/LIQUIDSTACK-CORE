@@ -6,6 +6,8 @@ namespace Tests\Blog;
 
 use App\Core\Blog\Audit\WebAdminBlogMutationAuditAdapter;
 use App\Core\Blog\BlogService;
+use App\Core\Blog\Categories\BlogCategoryService;
+use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Http\BlogAdminHttpController;
 use App\Core\Blog\Http\BlogAdminHttpRuntime;
@@ -16,7 +18,9 @@ use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentCodec;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
+use App\Core\Blog\StructuredContent\Categories\BlogCategoryEditorCatalogAdapter;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredEditorService;
+use App\Core\Blog\StructuredContent\Media\BlogEditorMediaAsset;
 use App\Core\Blog\StructuredContent\Media\BlogEditorMediaCatalogInterface;
 use App\Core\Blog\StructuredContent\Media\PdoBlogEditorImageResolver;
 use App\Core\Blog\StructuredContent\Media\PdoWebAdminMediaAvailabilityAdapter;
@@ -64,7 +68,8 @@ final class CapabilityRaceBlogStructuredRuntime implements
 
     public function __construct(
         private readonly BlogAdminHttpRuntime $inner,
-        private readonly Closure $beforeMutationGate
+        private readonly Closure $beforeMutationGate,
+        private readonly ?BlogEditorMediaCatalogInterface $mediaCatalog = null
     ) {
     }
 
@@ -110,7 +115,7 @@ final class CapabilityRaceBlogStructuredRuntime implements
 
     public function editorMediaCatalog(): BlogEditorMediaCatalogInterface
     {
-        return $this->inner->editorMediaCatalog();
+        return $this->mediaCatalog ?? $this->inner->editorMediaCatalog();
     }
 
     public function editorImageResolver(): BlogImageResolverInterface
@@ -155,6 +160,10 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
     private const POST = '20000000-0000-4000-8000-000000000001';
     private const LOCALIZATION = '21000000-0000-4000-8000-000000000001';
     private const MEDIA = '30000000-0000-4000-8000-000000000001';
+    private const ASSIGNED_CATEGORY =
+        '70000000-0000-4000-8000-000000000001';
+    private const AVAILABLE_CATEGORY =
+        '70000000-0000-4000-8000-000000000002';
     private const MISSING_MEDIA =
         '30000000-0000-4000-8000-000000000099';
 
@@ -212,6 +221,7 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         $this->seedActor($tokens);
         $this->seedLegacyVariant();
         $this->seedMedia();
+        $this->seedCategories();
 
         $tables = WebAdminTableNames::fromPdo(
             $this->pdo,
@@ -290,6 +300,11 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
                 $this->pdo,
                 $webAdminScope,
                 '/admin'
+            ),
+            editorCategoryCatalog: new BlogCategoryEditorCatalogAdapter(
+                new BlogCategoryService(
+                    new PdoBlogCategoryRepository($this->pdo, $blogScope)
+                )
             )
         );
         $this->controller = new BlogStructuredEditorHttpController(
@@ -306,7 +321,7 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         ));
         self::assertSame(200, $editor->status());
         self::assertStringContainsString(
-            '<h1 id="blog-editor-title">Editor estructurado del Blog</h1>',
+            '<h1 id="blog-editor-title">Construir art&iacute;culo</h1>',
             $editor->body()
         );
         self::assertStringContainsString('Legacy first paragraph.', $editor->body());
@@ -318,6 +333,20 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         self::assertStringContainsString(
             '/admin/blog/categories/assign?post=' . self::POST
                 . '&amp;locale=es',
+            $editor->body()
+        );
+        self::assertStringContainsString(
+            'data-blog-category-assignment-form '
+                . 'data-blog-category-locale="es"',
+            $editor->body()
+        );
+        self::assertStringContainsString(
+            'name="categories[]" value="' . self::ASSIGNED_CATEGORY
+                . '" checked',
+            $editor->body()
+        );
+        self::assertStringContainsString(
+            'name="categories[]" value="' . self::AVAILABLE_CATEGORY . '"',
             $editor->body()
         );
         self::assertStringContainsString(
@@ -390,6 +419,11 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
             'No hay revisiones guardadas.',
             $revisions->body()
         );
+        self::assertStringContainsString(
+            'data-webadmin-shell',
+            $revisions->body()
+        );
+        self::assertSame(1, substr_count($revisions->body(), '<main'));
         $this->assertPrivateHtml($revisions);
         $revisionsHead = $this->controller->revisions($this->head(
             '/admin/blog/editor/revisions',
@@ -452,6 +486,122 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
             '/admin/blog/editor/preview',
             $query
         ))->status());
+    }
+
+    public function testDraftEditorOmitsCategoriesWithoutEditCapability(): void
+    {
+        $this->removeCapability(
+            BlogCategoryAdminHttpController::EDIT_CAPABILITY
+        );
+
+        $editor = $this->controller->edit($this->get(
+            '/admin/blog/editor',
+            ['post' => self::POST, 'locale' => 'es']
+        ));
+
+        self::assertSame(200, $editor->status());
+        self::assertStringContainsString(
+            'action="/admin/blog/editor/save"',
+            $editor->body()
+        );
+        self::assertStringNotContainsString(
+            'data-blog-category-assignment-form',
+            $editor->body()
+        );
+        self::assertStringNotContainsString(
+            '/admin/blog/categories/assign',
+            $editor->body()
+        );
+    }
+
+    public function testEditorKeepsReferencedMediaOutsideRecentCatalog(): void
+    {
+        $saved = $this->controller->save($this->post(
+            '/admin/blog/editor/save',
+            $this->saveForm(
+                $this->documentJson(
+                    'The referenced poster remains selectable.',
+                    self::MEDIA
+                ),
+                1,
+                'Referenced Matrix poster'
+            )
+        ));
+        $this->assertEditorRedirect($saved);
+
+        $this->seedNewerMedia(48);
+        $tables = WebAdminTableNames::fromPdo(
+            $this->pdo,
+            'ls_webadmin_'
+        );
+        $recent = (new PdoMediaRepository($this->pdo, $tables))
+            ->listPage(1, 48)
+            ->items();
+        self::assertNotContains(
+            self::MEDIA,
+            array_column($recent, 'public_id'),
+            'The fixture must prove the referenced asset is older than page 1.'
+        );
+
+        $editor = $this->controller->edit($this->get(
+            '/admin/blog/editor',
+            ['post' => self::POST, 'locale' => 'es']
+        ));
+
+        self::assertSame(200, $editor->status());
+        self::assertStringContainsString(
+            'value="' . self::MEDIA . '" data-thumbnail-url="'
+                . '/admin/media/file?asset=' . self::MEDIA
+                . '&amp;width=480"',
+            $editor->body()
+        );
+        self::assertStringNotContainsString('storage_key', $editor->body());
+        $this->assertPrivateHtml($editor);
+    }
+
+    public function testLegacyMediaCatalogRuntimeUsesCompatibleFallback(): void
+    {
+        $saved = $this->controller->save($this->post(
+            '/admin/blog/editor/save',
+            $this->saveForm(
+                $this->documentJson('Legacy catalog compatibility.', self::MEDIA),
+                1,
+                'Legacy catalog compatibility'
+            )
+        ));
+        $this->assertEditorRedirect($saved);
+
+        $legacyCatalog = new class implements BlogEditorMediaCatalogInterface {
+            public function recent(int $limit): array
+            {
+                return [new BlogEditorMediaAsset(
+                    '30000000-0000-4000-8000-000000000002',
+                    'Legacy runtime recent media'
+                )];
+            }
+        };
+        $legacyRuntime = new CapabilityRaceBlogStructuredRuntime(
+            $this->runtime,
+            static function (): void {
+            },
+            $legacyCatalog
+        );
+        $editor = (new BlogStructuredEditorHttpController($legacyRuntime))
+            ->edit($this->get(
+                '/admin/blog/editor',
+                ['post' => self::POST, 'locale' => 'es']
+            ));
+
+        self::assertSame(200, $editor->status());
+        self::assertStringContainsString(
+            'Legacy runtime recent media',
+            $editor->body()
+        );
+        self::assertStringNotContainsString(
+            'data-blog-category-assignment-form',
+            $editor->body()
+        );
+        $this->assertPrivateHtml($editor);
     }
 
     public function testSeoAnalysisIsAuthenticatedAdvisoryJsonAndReadOnly(): void
@@ -567,6 +717,8 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         ));
         self::assertSame(200, $detail->status());
         self::assertStringContainsString('First structured body.', $detail->body());
+        self::assertStringContainsString('data-webadmin-shell', $detail->body());
+        self::assertSame(1, substr_count($detail->body(), '<main'));
         $this->assertPrivateHtml($detail);
         $detailHead = $this->controller->revisions($this->head(
             '/admin/blog/editor/revisions',
@@ -891,6 +1043,105 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
                 'blog/matrix-' . $width . '.avif',
                 'image/avif',
                 '2030-01-01 09:30:00.000000',
+            ]));
+        }
+    }
+
+    private function seedCategories(): void
+    {
+        $postId = (int) $this->pdo->query(
+            "SELECT id FROM ls_blog_posts WHERE public_id = '" . self::POST . "'"
+        )->fetchColumn();
+        $insertCategory = $this->pdo->prepare(
+            'INSERT INTO ls_blog_categories '
+                . '(public_id, created_by_user_public_id) VALUES (?, ?)'
+        );
+        $insertLocale = $this->pdo->prepare(
+            'INSERT INTO ls_blog_category_locales '
+                . '(public_id, category_id, locale, slug, name, '
+                . 'created_by_user_public_id, updated_by_user_public_id) '
+                . 'VALUES (?, ?, ?, ?, ?, ?, ?)'
+        );
+
+        foreach ([
+            [self::ASSIGNED_CATEGORY, 1, 'noticias', 'Noticias'],
+            [self::AVAILABLE_CATEGORY, 2, 'fiscalidad', 'Fiscalidad'],
+        ] as [$categoryId, $seed, $slug, $name]) {
+            self::assertTrue($insertCategory->execute([
+                $categoryId,
+                self::ACTOR,
+            ]));
+            $internalId = (int) $this->pdo->lastInsertId();
+            self::assertTrue($insertLocale->execute([
+                sprintf('71000000-0000-4000-8000-%012d', $seed),
+                $internalId,
+                'es',
+                $slug,
+                $name,
+                self::ACTOR,
+                self::ACTOR,
+            ]));
+
+            if ($categoryId === self::ASSIGNED_CATEGORY) {
+                $assignment = $this->pdo->prepare(
+                    'INSERT INTO ls_blog_post_categories '
+                        . '(public_id, post_id, category_id, '
+                        . 'assigned_by_user_public_id) VALUES (?, ?, ?, ?)'
+                );
+                self::assertTrue($assignment->execute([
+                    '72000000-0000-4000-8000-000000000001',
+                    $postId,
+                    $internalId,
+                    self::ACTOR,
+                ]));
+            }
+        }
+    }
+
+    private function seedNewerMedia(int $count): void
+    {
+        $asset = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_media_assets '
+                . '(public_id, label, source_mime, source_width, '
+                . 'source_height, source_bytes, source_sha256, '
+                . 'created_by_user_id, created_at) VALUES '
+                . '(?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        $variant = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_media_variants '
+                . '(asset_id, width, height, bytes, sha256, storage_key, '
+                . 'mime, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        for ($index = 1; $index <= $count; ++$index) {
+            $publicId = sprintf(
+                '31000000-0000-4000-8000-%012d',
+                $index
+            );
+            $createdAt = sprintf(
+                '2030-01-02 09:30:%02d.000000',
+                $index % 60
+            );
+            self::assertTrue($asset->execute([
+                $publicId,
+                'Recent Matrix media ' . $index,
+                'image/jpeg',
+                900,
+                506,
+                500,
+                hash('sha256', 'source-' . $index),
+                $this->actorId,
+                $createdAt,
+            ]));
+            $assetId = (int) $this->pdo->lastInsertId();
+            self::assertTrue($variant->execute([
+                $assetId,
+                480,
+                270,
+                200,
+                hash('sha256', 'variant-' . $index),
+                'blog/recent-' . $index . '-480.avif',
+                'image/avif',
+                $createdAt,
             ]));
         }
     }

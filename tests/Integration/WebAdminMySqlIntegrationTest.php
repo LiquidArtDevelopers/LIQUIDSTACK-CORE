@@ -23,6 +23,7 @@ use App\Core\WebAdmin\CredentialAction\CredentialActionRepository;
 use App\Core\WebAdmin\CredentialAction\CredentialActionService;
 use App\Core\WebAdmin\CredentialAction\PasswordResetDelivery;
 use App\Core\WebAdmin\Mail\PasswordResetMailSenderInterface;
+use App\Core\WebAdmin\Media\MediaService;
 use App\Core\WebAdmin\Outbox\WebAdminOutboxRepository;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Security\PasswordHasher;
@@ -525,6 +526,8 @@ final class WebAdminMySqlIntegrationTest extends TestCase
         $expectedCapabilities = array_keys(
             WebAdminInitialSchemaContract::capabilities()
         );
+        $expectedCapabilities[] = MediaService::VIEW_CAPABILITY;
+        $expectedCapabilities[] = MediaService::UPLOAD_CAPABILITY;
         sort($expectedCapabilities, SORT_STRING);
         self::assertSame(
             $expectedCapabilities,
@@ -534,6 +537,10 @@ final class WebAdminMySqlIntegrationTest extends TestCase
         );
 
         $expectedGrants = WebAdminInitialSchemaContract::roleCapabilities();
+        foreach (['system_superadmin', 'site_admin'] as $role) {
+            $expectedGrants[$role][] = MediaService::VIEW_CAPABILITY;
+            $expectedGrants[$role][] = MediaService::UPLOAD_CAPABILITY;
+        }
         ksort($expectedGrants, SORT_STRING);
         foreach ($expectedGrants as &$capabilities) {
             sort($capabilities, SORT_STRING);
@@ -1153,7 +1160,11 @@ final class WebAdminMySqlIntegrationTest extends TestCase
         $catalog = $service->delegableCapabilities($actorSessionToken);
         self::assertNotNull($catalog);
         self::assertSame(
-            ['webadmin.users.view'],
+            [
+                MediaService::UPLOAD_CAPABILITY,
+                MediaService::VIEW_CAPABILITY,
+                'webadmin.users.view',
+            ],
             $catalog->codes()
         );
 
@@ -1884,6 +1895,9 @@ final class WebAdminMySqlIntegrationTest extends TestCase
     {
         $tables = [MigrationRegistry::TABLE];
         foreach (WebAdminInitialSchemaContract::tableSuffixes() as $suffix) {
+            $tables[] = self::TABLE_PREFIX . $suffix;
+        }
+        foreach (['media_assets', 'media_variants'] as $suffix) {
             $tables[] = self::TABLE_PREFIX . $suffix;
         }
         sort($tables, SORT_STRING);

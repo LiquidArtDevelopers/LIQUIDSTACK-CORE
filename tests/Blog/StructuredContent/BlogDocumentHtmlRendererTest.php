@@ -11,6 +11,8 @@ use App\Core\Blog\StructuredContent\Rendering\BlogImageResolverInterface;
 use App\Core\Blog\StructuredContent\Rendering\BlogRenderingException;
 use App\Core\Blog\StructuredContent\Rendering\BlogResolvedImage;
 use App\Core\Blog\StructuredContent\Rendering\BlogResolvedImageCandidate;
+use DOMDocument;
+use DOMXPath;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -175,6 +177,69 @@ final class BlogDocumentHtmlRendererTest extends TestCase
         self::assertSame($html, $renderer->render($document));
     }
 
+    public function testHeadingsProjectTheFlatDocumentIntoSectionsAndArticles(): void
+    {
+        $document = BlogDocument::fromArray($this->document([
+            $this->paragraph(1, [$this->text('Preamble')]),
+            $this->heading(2, 2, 'First section'),
+            $this->paragraph(3, [$this->text('Direct section content')]),
+            $this->heading(4, 3, 'First article'),
+            $this->paragraph(5, [$this->text('Article content')]),
+            $this->heading(6, 4, 'Article detail'),
+            $this->heading(7, 5, 'Deep detail'),
+            $this->heading(8, 6, 'Deepest detail'),
+            $this->heading(9, 3, 'Second article'),
+            $this->paragraph(10, [$this->text('Second article content')]),
+            $this->heading(11, 2, 'Second section'),
+            $this->paragraph(12, [$this->text('Second section content')]),
+        ]));
+        $html = (new BlogDocumentHtmlRenderer($this->resolver([])))
+            ->render($document);
+        $xpath = $this->xpath($html);
+
+        self::assertCount(1, $xpath->query('/html/body/div'));
+        self::assertCount(1, $xpath->query('/html/body/div/*[1][self::p]'));
+        self::assertCount(2, $xpath->query('/html/body/div/section'));
+        self::assertCount(1, $xpath->query('/html/body/div/section[1]/h2'));
+        self::assertCount(1, $xpath->query('/html/body/div/section[1]/p'));
+        self::assertCount(2, $xpath->query('/html/body/div/section[1]/article'));
+        self::assertCount(
+            1,
+            $xpath->query('/html/body/div/section[1]/article[1]/h3')
+        );
+        foreach ([4, 5, 6] as $level) {
+            self::assertCount(
+                1,
+                $xpath->query(
+                    "/html/body/div/section[1]/article[1]/h{$level}"
+                )
+            );
+        }
+        self::assertCount(
+            1,
+            $xpath->query('/html/body/div/section[2]/p')
+        );
+        self::assertCount(
+            0,
+            $xpath->query('/html/body/div/section[2]/article')
+        );
+        self::assertCount(0, $xpath->query('//article/section'));
+        self::assertCount(
+            1,
+            $xpath->query(
+                '/html/body/div/section[@aria-labelledby="blog-block-'
+                    . $this->id(2) . '"]'
+            )
+        );
+        self::assertCount(
+            1,
+            $xpath->query(
+                '//article[@aria-labelledby="blog-block-'
+                    . $this->id(4) . '"]'
+            )
+        );
+    }
+
     public function testOutputIsCspNeutralAndNeverContainsDocumentChromeOrH1(): void
     {
         $document = BlogDocument::fromArray($this->document([
@@ -239,12 +304,19 @@ final class BlogDocumentHtmlRendererTest extends TestCase
     {
         $imageId = $this->id(900_001);
         $document = BlogDocument::fromArray($this->document(
-            [$this->image(1, $imageId, 'cover')],
+            [
+                $this->image(1, $imageId, 'cover'),
+                $this->heading(2, 2, 'Cover section'),
+                $this->paragraph(3),
+            ],
             BlogDocumentTemplateRegistry::ARTICLE_COVER
         ));
-        $html = (new BlogDocumentHtmlRenderer($this->resolver([
+        $renderer = new BlogDocumentHtmlRenderer($this->resolver([
             $imageId => $this->resolvedImage($imageId, '/media/cover'),
-        ])))->render($document);
+        ]));
+        $html = $renderer->render($document);
+        $mainHtml = $renderer->renderMain($document);
+        $headerMedia = $renderer->renderHeaderMedia($document);
 
         self::assertStringStartsWith(
             '<div class="blogDocument blogDocument--cover">',
@@ -254,12 +326,30 @@ final class BlogDocumentHtmlRendererTest extends TestCase
             'class="blogDocument__image blogDocument__image--cover"',
             $html
         );
-        self::assertStringContainsString('sizes="100vw"', $html);
+        self::assertStringNotContainsString(
+            'class="blogDocument__image blogDocument__image--cover"',
+            $mainHtml
+        );
+        self::assertStringContainsString(
+            'class="blogDocument__image blogDocument__image--cover"',
+            $headerMedia
+        );
+        self::assertStringContainsString('sizes="100vw"', $headerMedia);
         self::assertStringContainsString(
             'loading="eager" fetchpriority="high" decoding="async"',
-            $html
+            $headerMedia
         );
-        self::assertStringNotContainsString('loading="lazy"', $html);
+        self::assertStringNotContainsString('loading="lazy"', $headerMedia);
+        $xpath = $this->xpath($mainHtml);
+        self::assertCount(
+            0,
+            $xpath->query('/html/body/div/*[1][self::figure]')
+        );
+        self::assertCount(1, $xpath->query('/html/body/div/section'));
+        self::assertSame(1, substr_count($headerMedia, '<figure'));
+        self::assertSame('', (new BlogDocumentHtmlRenderer(
+            $this->resolver([])
+        ))->renderHeaderMedia(BlogDocument::fromArray($this->document([]))));
     }
 
     public function testEmptyBasicDocumentRendersAnEmptyBodyContainer(): void
@@ -686,6 +776,21 @@ final class BlogDocumentHtmlRendererTest extends TestCase
     private function id(int $number): string
     {
         return sprintf('00000000-0000-4000-8000-%012d', $number);
+    }
+
+    private function xpath(string $html): DOMXPath
+    {
+        $previous = libxml_use_internal_errors(true);
+        $document = new DOMDocument('1.0', 'UTF-8');
+        $loaded = $document->loadHTML(
+            '<!doctype html><html><body>' . $html . '</body></html>',
+            LIBXML_HTML_NODEFDTD
+        );
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        self::assertTrue($loaded);
+
+        return new DOMXPath($document);
     }
 
     /** @param callable(): mixed $operation */

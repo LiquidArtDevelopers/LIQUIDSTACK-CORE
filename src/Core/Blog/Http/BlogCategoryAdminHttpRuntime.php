@@ -12,6 +12,7 @@ use App\Core\WebAdmin\Authentication\WebAdminAuthenticationService;
 use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
 use App\Core\WebAdmin\Authorization\WebAdminMutationActorGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
 use App\Core\WebAdmin\Security\OpaqueSecret;
 use Closure;
 use PDO;
@@ -20,6 +21,8 @@ use Throwable;
 final class BlogCategoryAdminHttpRuntime implements
     BlogCategoryAdminHttpRuntimeInterface
 {
+    private readonly WebAdminNavigationCatalog $navigation;
+
     /** @param list<string> $languages */
     public function __construct(
         private readonly array $languages,
@@ -30,8 +33,10 @@ final class BlogCategoryAdminHttpRuntime implements
         private readonly WebAdminAuthenticationService $authentication,
         private readonly WebAdminAuthorizationService $authorization,
         private readonly PDO $pdo,
-        private readonly WebAdminMutationActorGate $actorGate
+        private readonly WebAdminMutationActorGate $actorGate,
+        ?WebAdminNavigationCatalog $navigation = null
     ) {
+        $this->navigation = $navigation ?? new WebAdminNavigationCatalog();
     }
 
     public function languages(): array { return $this->languages; }
@@ -41,6 +46,7 @@ final class BlogCategoryAdminHttpRuntime implements
     public function categoryService(): BlogCategoryService { return $this->categoryService; }
     public function authentication(): WebAdminAuthenticationService { return $this->authentication; }
     public function authorization(): WebAdminAuthorizationService { return $this->authorization; }
+    public function navigation(): WebAdminNavigationCatalog { return $this->navigation; }
 
     public function mutationGate(
         #[\SensitiveParameter] string $sessionToken,

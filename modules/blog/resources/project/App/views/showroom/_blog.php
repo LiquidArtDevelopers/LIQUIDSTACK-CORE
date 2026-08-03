@@ -201,8 +201,8 @@ $blogArticleFixtures = [
         'published_label' => 'Publicado',
         'published_text' => '22/04/2026',
         'published_at' => '2026-04-22T09:00:00+00:00',
+        'header_media_html' => '<figure class="blogDocument__image blogDocument__image--cover"><picture class="blogDocument__picture"><img class="blogDocument__imageElement" src="/assets/img/dummy/dummy_1800.avif" width="1800" height="1200" loading="eager" fetchpriority="high" alt="Trinity observa el código de Matrix" title="Portada de artBlogArticle01"></picture><figcaption class="blogDocument__imageCaption">Una portada amplia introduce el relato sin duplicar la imagen social del artículo.</figcaption></figure>',
         'body_html' => '<div class="blogDocument blogDocument--cover">'
-            . '<figure class="blogDocument__image blogDocument__image--cover"><picture class="blogDocument__picture"><img class="blogDocument__imageElement" src="/assets/img/dummy/dummy_1800.avif" width="1800" height="1200" loading="eager" fetchpriority="high" alt="Trinity observa el código de Matrix" title="Portada de artBlogArticle01"></picture><figcaption class="blogDocument__imageCaption">Una portada amplia introduce el relato sin duplicar la imagen social del artículo.</figcaption></figure>'
             . '<h2>La memoria también construye la realidad</h2>'
             . '<p class="blogDocument__paragraph">La composición permite que la primera imagen respire a todo el ancho disponible y devuelve los párrafos posteriores a una medida contenida. Así conserva impacto visual sin convertir cada bloque en una excepción de CSS.</p>'
             . '<aside class="blogDocument__callout"><p class="blogDocument__calloutContent">Matrix puede alterar el escenario, pero la estructura semántica y el orden de lectura permanecen estables.</p></aside>'

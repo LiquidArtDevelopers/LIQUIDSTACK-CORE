@@ -11,7 +11,9 @@ use App\Core\Blog\StructuredContent\Document\BlogDocumentCodec;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentException;
 use App\Core\Blog\StructuredContent\Document\BlogLegacyDocumentFactory;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredDraft;
+use App\Core\Blog\StructuredContent\Media\BlogEditorReferencedMediaCatalogInterface;
 use App\Core\Blog\StructuredContent\Rendering\BlogDocumentHtmlRenderer;
+use App\Core\Blog\StructuredContent\Rendering\BlogEditorCategoryOption;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorMediaOption;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorRevisionSummary;
 use App\Core\Blog\StructuredContent\Rendering\BlogRenderingException;
@@ -26,6 +28,9 @@ use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\WebAdmin\Media\MediaService;
+use App\Core\WebAdmin\Http\WebAdminPageAssets;
+use App\Core\WebAdmin\Http\WebAdminShellContextFactory;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
 use App\Core\WebAdmin\Security\ConstantTime;
 use Throwable;
 
@@ -34,6 +39,7 @@ final class BlogStructuredEditorHttpController
 {
     private readonly BlogStructuredEditorHttpResponseFactory $responses;
     private readonly BlogStructuredPrivateHtmlRenderer $privateRenderer;
+    private readonly WebAdminShellContextFactory $shells;
 
     /** @var array<string, mixed> */
     private readonly array $environment;
@@ -63,6 +69,13 @@ final class BlogStructuredEditorHttpController
             ?? new BlogStructuredEditorHttpResponseFactory(
                 $runtime->webAdminConfig()
             );
+        $this->shells = new WebAdminShellContextFactory(
+            $runtime->webAdminConfig()->basePath(),
+            $runtime->authorization(),
+            method_exists($runtime, 'navigation')
+                ? $runtime->navigation()
+                : new WebAdminNavigationCatalog()
+        );
         $this->environment = $environment;
     }
 
@@ -251,6 +264,14 @@ final class BlogStructuredEditorHttpController
                 $post,
                 $locale
             );
+            $shell = $this->shells->create(
+                $context['session'],
+                $context['csrf'],
+                '/blog/editor',
+                assets: new WebAdminPageAssets([
+                    BlogStructuredEditorHtmlRenderer::STYLESHEET_PATH,
+                ])
+            );
             $revisionId = $request->query('revision');
             if (is_string($revisionId)) {
                 $html = $this->privateRenderer->revision(
@@ -260,13 +281,15 @@ final class BlogStructuredEditorHttpController
                         $post,
                         $locale,
                         $revisionId
-                    )
+                    ),
+                    $shell
                 );
             } else {
                 $html = $this->privateRenderer->revisions(
                     $this->basePath(),
                     $state->variant(),
-                    $this->revisionOptions($post, $locale)
+                    $this->revisionOptions($post, $locale),
+                    $shell
                 );
             }
 
@@ -356,6 +379,11 @@ final class BlogStructuredEditorHttpController
             // SEO is additive: its failure never takes the editor down.
             $analysis = null;
         }
+        $categoryPresentation = $this->categoryPresentation(
+            $sessionToken,
+            $postPublicId,
+            $locale
+        );
 
         return $this->editorRenderer->render(
             $this->basePath(),
@@ -363,19 +391,57 @@ final class BlogStructuredEditorHttpController
             $state->variant(),
             $document,
             $canonicalJson,
-            $this->mediaOptions(),
+            $this->mediaOptions($analysisDraft->mediaAssetPublicIds()),
             $this->revisionOptions($postPublicId, $locale),
             canPublish: $this->runtime->authorization()->hasCapability(
                 $sessionToken,
                 BlogAdminHttpController::PUBLISH_CAPABILITY
             ),
-            canAssignCategories:
-                $this->runtime->authorization()->hasCapability(
-                    $sessionToken,
-                    BlogCategoryAdminHttpController::EDIT_CAPABILITY
-                ),
-            seoAnalysis: $analysis
+            canAssignCategories: $categoryPresentation['enabled'],
+            seoAnalysis: $analysis,
+            publicPath: $this->runtime->blogConfig()->publicPath($locale),
+            shellFactory: $this->shells,
+            sessionToken: $sessionToken,
+            categoryOptions: $categoryPresentation['options']
         );
+    }
+
+    /**
+     * @return array{
+     *   enabled: bool,
+     *   options: list<BlogEditorCategoryOption>
+     * }
+     */
+    private function categoryPresentation(
+        #[\SensitiveParameter] string $sessionToken,
+        string $postPublicId,
+        string $locale
+    ): array {
+        if (
+            !$this->runtime->authorization()->hasCapability(
+                $sessionToken,
+                BlogCategoryAdminHttpController::EDIT_CAPABILITY
+            )
+            || !$this->runtime instanceof
+                BlogStructuredEditorCategoryHttpRuntimeInterface
+        ) {
+            return ['enabled' => false, 'options' => []];
+        }
+
+        try {
+            $catalog = $this->runtime->editorCategoryCatalog();
+            if ($catalog === null) {
+                return ['enabled' => false, 'options' => []];
+            }
+
+            return [
+                'enabled' => true,
+                'options' => $catalog->forPost($postPublicId, $locale),
+            ];
+        } catch (Throwable) {
+            // Categories are additive: a failed projection keeps editing safe.
+            return ['enabled' => false, 'options' => []];
+        }
     }
 
     private function draftFromRequest(Request $request): BlogStructuredDraft
@@ -421,16 +487,39 @@ final class BlogStructuredEditorHttpController
         );
     }
 
-    /** @return list<BlogEditorMediaOption> */
-    private function mediaOptions(): array
+    /**
+     * @param list<string> $requiredPublicIds
+     * @return list<BlogEditorMediaOption>
+     */
+    private function mediaOptions(array $requiredPublicIds): array
     {
+        $mediaFilePath = rtrim(
+            $this->runtime->webAdminConfig()->basePath(),
+            '/'
+        ) . '/media/file';
+
+        $catalog = $this->runtime->editorMediaCatalog();
+        $assets = $catalog instanceof BlogEditorReferencedMediaCatalogInterface
+            ? $catalog->recentIncluding(48, $requiredPublicIds)
+            : $catalog->recent(48);
+
         return array_map(
-            static fn ($asset): BlogEditorMediaOption =>
-                new BlogEditorMediaOption(
+            static function ($asset) use ($mediaFilePath): BlogEditorMediaOption {
+                $thumbnailWidth = $asset->thumbnailWidth();
+                $thumbnailUrl = $thumbnailWidth === null
+                    ? null
+                    : $mediaFilePath . '?' . http_build_query([
+                        'asset' => $asset->publicId(),
+                        'width' => (string) $thumbnailWidth,
+                    ], '', '&', PHP_QUERY_RFC3986);
+
+                return new BlogEditorMediaOption(
                     $asset->publicId(),
-                    $asset->label()
-                ),
-            $this->runtime->editorMediaCatalog()->recent(48)
+                    $asset->label(),
+                    $thumbnailUrl
+                );
+            },
+            $assets
         );
     }
 

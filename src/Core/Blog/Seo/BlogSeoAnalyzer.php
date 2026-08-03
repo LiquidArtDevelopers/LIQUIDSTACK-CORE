@@ -284,21 +284,30 @@ final class BlogSeoAnalyzer
             return new BlogSeoCheck(
                 'content.heading_structure',
                 'content',
-                'Jerarquía H2/H3',
+                'Jerarquía H2-H6',
                 $status,
                 $status === BlogSeoStatus::REVIEW
-                    ? 'Segrega el contenido extenso con H2 y H3 cuando aporte claridad.'
+                    ? 'Segrega el contenido extenso con encabezados interiores cuando aporte claridad.'
                     : 'Todavía no hay encabezados interiores que revisar.',
-                ['h2' => 0, 'h3' => 0, 'empty' => 0, 'repeated' => 0]
+                [
+                    'h2' => 0,
+                    'h3' => 0,
+                    'h4' => 0,
+                    'h5' => 0,
+                    'h6' => 0,
+                    'empty' => 0,
+                    'repeated' => 0,
+                    'hierarchy_issues' => 0,
+                ]
             );
         }
         $seen = [];
         $repeated = 0;
         $empty = 0;
         $hierarchyIssues = 0;
-        $hasH2 = false;
-        $h2 = 0;
-        $h3 = 0;
+        $counts = array_fill_keys([2, 3, 4, 5, 6], 0);
+        /** @var array<int, true> $activeLevels */
+        $activeLevels = [];
         foreach ($headings as $heading) {
             $text = trim($heading['text']);
             if ($text === '') {
@@ -309,14 +318,22 @@ final class BlogSeoAnalyzer
                 ++$repeated;
             }
             $seen[$signature] = true;
-            if ($heading['level'] === 2) {
-                ++$h2;
-                $hasH2 = true;
+            $level = (int) $heading['level'];
+            if (isset($counts[$level])) {
+                ++$counts[$level];
+            }
+            if ($level === 2) {
+                $activeLevels = [2 => true];
             } else {
-                ++$h3;
-                if (!$hasH2) {
+                if (!isset($activeLevels[$level - 1])) {
                     ++$hierarchyIssues;
                 }
+                foreach (array_keys($activeLevels) as $activeLevel) {
+                    if ($activeLevel >= $level) {
+                        unset($activeLevels[$activeLevel]);
+                    }
+                }
+                $activeLevels[$level] = true;
             }
         }
         $issues = $empty + $repeated + $hierarchyIssues;
@@ -324,13 +341,21 @@ final class BlogSeoAnalyzer
         return new BlogSeoCheck(
             'content.heading_structure',
             'content',
-            'Jerarquía H2/H3',
+            'Jerarquía H2-H6',
             $issues === 0 ? BlogSeoStatus::GOOD : BlogSeoStatus::REVIEW,
             $issues === 0
                 ? 'Los encabezados interiores son únicos y respetan la jerarquía.'
-                : 'Revisa encabezados vacíos, repetidos o H3 sin un H2 previo.',
-            ['h2' => $h2, 'h3' => $h3, 'empty' => $empty,
-                'repeated' => $repeated, 'hierarchy_issues' => $hierarchyIssues]
+                : 'Revisa encabezados vacíos, repetidos o niveles sin su padre inmediato.',
+            [
+                'h2' => $counts[2],
+                'h3' => $counts[3],
+                'h4' => $counts[4],
+                'h5' => $counts[5],
+                'h6' => $counts[6],
+                'empty' => $empty,
+                'repeated' => $repeated,
+                'hierarchy_issues' => $hierarchyIssues,
+            ]
         );
     }
 

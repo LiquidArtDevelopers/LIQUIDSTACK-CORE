@@ -9,6 +9,7 @@ use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentCodec;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTextProjector;
+use App\Core\Blog\StructuredContent\Rendering\BlogEditorCategoryOption;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorMediaOption;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorRevisionSummary;
 use App\Core\Blog\StructuredContent\Rendering\BlogStructuredEditorHtmlRenderer;
@@ -60,9 +61,14 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
         );
         self::assertSame(1, substr_count($html, '<h1'));
         self::assertStringContainsString(
-            '<form class="blogEditor__form" method="post" action="/admin/blog/editor/save" data-blog-editor data-blog-editor-readonly="false">',
+            '<form id="blog-editor-form" class="blogEditor__form" method="post" action="/admin/blog/editor/save" data-blog-editor data-blog-editor-readonly="false">',
             $html
         );
+        self::assertStringContainsString('data-webadmin-shell', $html);
+        self::assertStringContainsString('data-blog-inspector-tab="entry"', $html);
+        self::assertStringContainsString('data-blog-inspector-tab="block"', $html);
+        self::assertStringContainsString('data-blog-inspector-tab="seo"', $html);
+        self::assertStringContainsString('data-blog-block-list', $html);
         self::assertStringContainsString(
             'data-blog-seo-endpoint="/admin/blog/editor/seo-analysis"',
             $html
@@ -125,6 +131,21 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             );
         }
         self::assertStringContainsString(
+            'data-blog-heading-level="2">A&ntilde;adir secci&oacute;n H2',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-heading-level="3">A&ntilde;adir art&iacute;culo H3',
+            $html
+        );
+        foreach ([4, 5, 6] as $level) {
+            self::assertStringContainsString(
+                'data-blog-heading-level="' . $level
+                    . '">A&ntilde;adir subapartado H' . $level,
+                $html
+            );
+        }
+        self::assertStringContainsString(
             '>A&ntilde;adir v&iacute;deo de YouTube</button>',
             $html
         );
@@ -154,7 +175,7 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
         );
         self::assertStringContainsString(
             'href="/admin/blog/posts/new?post=' . $variant->postPublicId()
-                . '">A&ntilde;adir otro idioma</a>',
+                . '">Otro idioma</a>',
             $html
         );
         self::assertStringNotContainsString('/categories/assign', $html);
@@ -231,6 +252,89 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
         );
         self::assertStringContainsString('>Retirar</button>', $publishedHtml);
         self::assertStringNotContainsString('/categories/assign', $publishedHtml);
+    }
+
+    public function testCategoryAssignmentIsLocalizedTypedAndSeparate(): void
+    {
+        $document = $this->document();
+        $variant = $this->variant($document);
+        $assignedId = $this->id(700_001);
+        $availableId = $this->id(700_002);
+        $html = (new BlogStructuredEditorHtmlRenderer())->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $variant,
+            $document,
+            (new BlogDocumentCodec())->encode($document),
+            canAssignCategories: true,
+            categoryOptions: [
+                new BlogEditorCategoryOption(
+                    $assignedId,
+                    'Noticias & actualidad',
+                    true
+                ),
+                new BlogEditorCategoryOption(
+                    $availableId,
+                    'Fiscalidad',
+                    false
+                ),
+            ]
+        );
+
+        self::assertStringContainsString(
+            '<form method="post" action="/admin/blog/categories/assign" '
+                . 'data-blog-category-assignment-form '
+                . 'data-blog-category-locale="es">',
+            $html
+        );
+        self::assertStringContainsString(
+            '<input type="hidden" name="csrf" value="csrf-token-safe">',
+            $html
+        );
+        self::assertStringContainsString(
+            '<input type="hidden" name="post" value="'
+                . $variant->postPublicId() . '">',
+            $html
+        );
+        self::assertMatchesRegularExpression(
+            '/name="categories\[\]" value="' . preg_quote($assignedId, '/')
+                . '" checked> Noticias &amp; actualidad/',
+            $html
+        );
+        self::assertMatchesRegularExpression(
+            '/name="categories\[\]" value="' . preg_quote($availableId, '/')
+                . '"> Fiscalidad/',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-category-assignment-status role="status" '
+                . 'aria-live="polite"',
+            $html
+        );
+        self::assertStringContainsString(
+            'href="/admin/blog/categories/new" target="_blank" '
+                . 'rel="noopener noreferrer">Crear categor&iacute;a '
+                . '(se abre aparte)</a>',
+            $html
+        );
+        self::assertStringContainsString(
+            'href="/admin/blog/categories/assign?post='
+                . $variant->postPublicId() . '&amp;locale=es" '
+                . 'target="_blank" rel="noopener noreferrer"',
+            $html
+        );
+
+        preg_match(
+            '/<form method="post" action="\/admin\/blog\/categories\/assign"'
+                . '[\s\S]+?<\/form>/',
+            $html,
+            $categoryForm
+        );
+        self::assertArrayHasKey(0, $categoryForm);
+        self::assertStringNotContainsString(
+            'name="locale"',
+            $categoryForm[0]
+        );
     }
 
     public function testPublishedVariantKeepsPresentationReadOnly(): void
@@ -500,14 +604,26 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             1,
             new DateTimeImmutable('2026-08-02T10:00:00Z')
         );
+        $category = new BlogEditorCategoryOption(
+            $this->id(700_001),
+            'Noticias',
+            false
+        );
         $invalidCollections = [
-            [[$media, $media], []],
-            [['not-an-option'], []],
-            [[], [$revision, $revision]],
-            [[], ['not-a-summary']],
-            [[2 => $media], []],
+            [[$media, $media], [], []],
+            [['not-an-option'], [], []],
+            [[], [$revision, $revision], []],
+            [[], ['not-a-summary'], []],
+            [[2 => $media], [], []],
+            [[], [], [$category, $category]],
+            [[], [], ['not-a-category']],
+            [[], [], [2 => $category]],
         ];
-        foreach ($invalidCollections as [$mediaOptions, $summaries]) {
+        foreach ($invalidCollections as [
+            $mediaOptions,
+            $summaries,
+            $categoryOptions,
+        ]) {
             $this->assertInvalidPresentation(fn (): string =>
                 (new BlogStructuredEditorHtmlRenderer())->render(
                     '/admin/blog',
@@ -516,10 +632,107 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
                     $document,
                     $canonical,
                     $mediaOptions,
-                    $summaries
+                    $summaries,
+                    categoryOptions: $categoryOptions
                 )
             );
         }
+    }
+
+    public function testCategoryOptionsRespectTheBoundedCatalogLimit(): void
+    {
+        $document = $this->document();
+        $variant = $this->variant($document);
+        $canonical = (new BlogDocumentCodec())->encode($document);
+        $categories = [];
+        for (
+            $index = 1;
+            $index <= BlogStructuredEditorHtmlRenderer::MAX_CATEGORY_OPTIONS;
+            ++$index
+        ) {
+            $categories[] = new BlogEditorCategoryOption(
+                $this->id(700_000 + $index),
+                'Category ' . $index,
+                false
+            );
+        }
+
+        $html = (new BlogStructuredEditorHtmlRenderer())->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $variant,
+            $document,
+            $canonical,
+            canAssignCategories: true,
+            categoryOptions: $categories
+        );
+        self::assertStringContainsString(
+            'value="' . $this->id(700_100) . '"',
+            $html
+        );
+
+        $categories[] = new BlogEditorCategoryOption(
+            $this->id(700_101),
+            'One category too many',
+            false
+        );
+        $this->assertInvalidPresentation(fn (): string =>
+            (new BlogStructuredEditorHtmlRenderer())->render(
+                '/admin/blog',
+                'csrf-token-safe',
+                $variant,
+                $document,
+                $canonical,
+                canAssignCategories: true,
+                categoryOptions: $categories
+            )
+        );
+    }
+
+    public function testMediaCatalogFitsRecentAndMaximumDocumentReferences(): void
+    {
+        $document = $this->document();
+        $variant = $this->variant($document);
+        $canonical = (new BlogDocumentCodec())->encode($document);
+        $mediaOptions = [];
+        for (
+            $index = 1;
+            $index <= BlogStructuredEditorHtmlRenderer::MAX_MEDIA_OPTIONS;
+            ++$index
+        ) {
+            $mediaOptions[] = new BlogEditorMediaOption(
+                $this->id(900_000 + $index),
+                'Matrix media ' . $index
+            );
+        }
+
+        $html = (new BlogStructuredEditorHtmlRenderer())->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $variant,
+            $document,
+            $canonical,
+            $mediaOptions
+        );
+
+        self::assertStringContainsString(
+            'value="' . $this->id(900_248) . '"',
+            $html
+        );
+        $mediaOptions[] = new BlogEditorMediaOption(
+            $this->id(900_249),
+            'One media too many'
+        );
+        $this->assertInvalidPresentation(fn (): string =>
+            (new BlogStructuredEditorHtmlRenderer())->render(
+                '/admin/blog',
+                'csrf-token-safe',
+                $variant,
+                $document,
+                $canonical,
+                $mediaOptions
+            )
+        );
     }
 
     private function document(): BlogDocument

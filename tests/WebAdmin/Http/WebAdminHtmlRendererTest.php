@@ -164,7 +164,8 @@ final class WebAdminHtmlRendererTest extends TestCase
                 $html
             );
             self::assertStringContainsString('<title>', $html);
-            self::assertStringContainsString('<main><article ', $html);
+            self::assertSame(1, substr_count($html, '<main'));
+            self::assertStringContainsString('<article', $html);
             self::assertStringContainsString('aria-labelledby="', $html);
             self::assertStringContainsString('<h1 id="', $html);
             self::assertStringEndsWith(
@@ -259,7 +260,7 @@ final class WebAdminHtmlRendererTest extends TestCase
         $html = $this->renderer->dashboard('/gestion', 'csrf-dashboard');
 
         self::assertStringContainsString(
-            '<form method="post" action="/gestion/logout"',
+            'method="post" action="/gestion/logout"',
             $html
         );
         self::assertStringContainsString(
@@ -277,11 +278,11 @@ final class WebAdminHtmlRendererTest extends TestCase
         self::assertStringNotContainsString('/admin/users', $withoutUsers);
         self::assertStringNotContainsString('Gestionar editores', $withoutUsers);
         self::assertStringContainsString(
-            '<nav aria-label="Administraci&oacute;n">',
+            'aria-label="Administraci&oacute;n"',
             $withUsers
         );
         self::assertStringContainsString(
-            '<a href="/admin/users">Gestionar editores</a>',
+            'href="/admin/users">Editores</a>',
             $withUsers
         );
     }
@@ -302,14 +303,14 @@ final class WebAdminHtmlRendererTest extends TestCase
 
         self::assertSame(1, substr_count(
             $html,
-            '<nav aria-label="Administraci&oacute;n">'
+            'aria-label="Administraci&oacute;n"'
         ));
         self::assertStringContainsString(
-            '<a href="/admin/users">Gestionar editores</a>',
+            'href="/admin/users">Editores</a>',
             $html
         );
         self::assertStringContainsString(
-            '<a href="/admin/blog">Noticias &amp; '
+            'href="/admin/blog">Noticias &amp; '
                 . '&quot;publicaciones&quot;</a>',
             $html
         );

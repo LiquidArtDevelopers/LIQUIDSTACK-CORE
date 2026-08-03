@@ -159,7 +159,7 @@ final class WebAdminUserManagementHttpTest extends TestCase
         );
         self::assertSame(200, $adminDashboard->status());
         self::assertStringContainsString(
-            '<a href="/admin/users">Gestionar editores</a>',
+            'href="/admin/users">Editores</a>',
             $adminDashboard->body()
         );
         $this->assertHtmlResponse($adminDashboard);
@@ -225,7 +225,7 @@ final class WebAdminUserManagementHttpTest extends TestCase
             $this->get('/admin', $adminToken)
         );
         self::assertStringContainsString(
-            '<a href="/admin/feature">Funcionalidad privada</a>',
+            'href="/admin/feature">Funcionalidad privada</a>',
             $visible->body()
         );
 
@@ -839,7 +839,14 @@ final class WebAdminUserManagementHttpTest extends TestCase
             'No tienes acciones disponibles para este editor.',
             $selfDetail->body()
         );
-        self::assertStringNotContainsString('<form', $selfDetail->body());
+        self::assertStringNotContainsString(
+            'action="/admin/users/capabilities"',
+            $selfDetail->body()
+        );
+        self::assertStringNotContainsString(
+            'action="/admin/users/suspend"',
+            $selfDetail->body()
+        );
         self::assertStringNotContainsString('name="target"', $selfDetail->body());
 
         $selfReplace = $this->controller->replaceEditorCapabilities($this->post(

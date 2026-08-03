@@ -456,13 +456,45 @@ capacidades separadas. La UI vive bajo el prefijo WebAdmin efectivo
 (`/admin/blog` por defecto), no permite borrado y exige retirar una variante
 publicada antes de volver a editarla.
 
+Las pantallas administrativas de gestión de WebAdmin y Blog comparten un shell
+de ancho completo con navegación lateral filtrada por capacidades, un único `main` y un
+inspector derecho opcional para herramientas contextuales. Los controles de
+apertura y cierre solo sustituyen el flujo normal cuando el JavaScript ha
+enlazado el shell; entonces mantienen `aria-expanded`, foco e `inert`
+sincronizados. Sin JavaScript, navegación, contenido y formularios permanecen
+utilizables en el flujo del documento. La administración usa una jerarquía
+visual plana basada en espacio, tipografía, grid y fondos sobrios: no introduce
+franjas, pseudoelementos o bordes laterales de acento como decoración. La vista
+previa privada conserva un documento aislado para representar fielmente
+`header` y `main`, siempre bajo autenticación, `no-store` y `noindex`.
+
 `0005_blog_structured_content` incorpora `/admin/blog/editor`, documento actual,
 referencias de medios y revisiones inmutables. El JSON canónico v1 admite ocho
-bloques controlados: párrafo, heading H2/H3, lista, callout, enlace, imagen,
-YouTube y CTA. El H1 permanece separado y `body_text` se deriva en servidor.
-Abrir un artículo legacy solo proyecta su texto en memoria; se adopta al guardar.
-Cada restauración crea una revisión nueva y todas las escrituras conservan el
-lock optimista.
+bloques controlados: párrafo, heading H2-H6, lista, callout, enlace, imagen,
+YouTube y CTA. El lienzo visual representa el `header` con su H1 y la estructura
+del futuro `main` sin anidar otro `main` ni emitir un segundo H1 en la propia
+página administrativa. Un H2 abre una `section`, un H3 abre un `article` dentro
+de ella y H4-H6 pertenecen a ese artículo; los niveles no pueden saltarse y al
+mover o retirar un encabezado viaja todo su subárbol semántico. El H1 permanece
+separado y `body_text` se deriva en servidor.
+
+Al crear una variante se elige expresamente uno de los locales activos que el
+artículo todavía no utiliza, mostrando la ruta configurada en `public_paths`.
+El locale queda estable durante la edición y la URL se compone exclusivamente
+con ese path y el slug; el panel nunca inventa un prefijo como `/es`. Categorías
+del mismo idioma y medios se gestionan desde el inspector: el catálogo conserva
+visibles todos los assets ya referenciados por el documento aunque hayan
+quedado fuera del tramo de medios recientes.
+
+El formulario SSR sigue siendo el fallback. La mejora progresiva guarda con
+`fetch`, pero solo acepta como éxito la redirección esperada al mismo editor y
+origen. Un conflicto `409`, una validación `422`, una pérdida de autorización o
+un fallo de red conservan el documento y los campos sin navegar; también se
+avisa antes de abandonar cambios pendientes. Abrir un artículo legacy solo
+proyecta su texto en memoria; se adopta al guardar. Cada restauración crea una
+revisión nueva y todas las escrituras conservan el lock optimista. La traducción
+asistida mediante IA permanece diferida: cada locale continúa siendo una
+variante editorial independiente.
 
 El editor exige `webadmin.media.view` junto a `blog.articles.view` o
 `blog.articles.edit`, según la acción. Los uploads siguen perteneciendo a
@@ -503,6 +535,12 @@ shell, head, navegación, footer, tema y CSP del proyecto. Sus alternates SEO
 incluyen solo traducciones publicadas; la navegación de idioma separada cae al
 índice localizado cuando falta una variante. Si se omite, CORE conserva el HTML
 standalone y carga su CSS neutral responsive gestionado.
+
+`bodyHtml()` conserva por compatibilidad el cuerpo histórico completo, incluida
+la portada. Las vistas nuevas deben colocar `headerMediaHtml()` en el `header`
+junto al H1 y `mainHtml()` dentro del `main`; ambos fragmentos están saneados y
+evitan duplicar el medio destacado. Los tres métodos son la única salida HTML
+confiable del view model; sus escalares se siguen escapando según contexto.
 
 Los idiomas deben coincidir exactamente con `App/config/langs.php`. Las rutas
 estáticas del proyecto conservan prioridad; Blog resuelve las URLs de artículo

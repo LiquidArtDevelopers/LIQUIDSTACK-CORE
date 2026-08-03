@@ -28,12 +28,18 @@ final class WebAdminHttpController
         $requestPolicy ??= new WebAdminHttpRequestPolicy();
         $renderer ??= new WebAdminHtmlRenderer();
         $responses = new WebAdminHttpResponseFactory($runtime->config());
+        $shells = new WebAdminShellContextFactory(
+            $responses->rootPath(),
+            $runtime->authorization(),
+            $runtime->navigation()
+        );
 
         $this->authentication = new WebAdminAuthenticationHttpCoordinator(
             $runtime,
             $requestPolicy,
             $renderer,
-            $responses
+            $responses,
+            $shells
         );
         $this->credentials = new WebAdminCredentialActionHttpCoordinator(
             $runtime,
@@ -45,7 +51,8 @@ final class WebAdminHttpController
             $runtime,
             $requestPolicy,
             $renderer,
-            $responses
+            $responses,
+            $shells
         );
     }
 

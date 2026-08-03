@@ -27,6 +27,8 @@ use App\Core\WebAdmin\Media\Http\WebAdminMediaHttpController;
 use App\Core\WebAdmin\Media\Http\WebAdminMediaHttpRuntime;
 use App\Core\WebAdmin\Media\ProcessedMediaUpload;
 use App\Core\WebAdmin\Media\ProcessedMediaVariant;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationItem;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Security\PasswordHasher;
 use App\Core\WebAdmin\Security\SecurityKey;
@@ -250,6 +252,29 @@ final class MediaServiceTest extends TestCase
         self::assertSame(['repository.list'], $this->events->all());
     }
 
+    public function testGetIndexUsesTheAuthenticatedSharedShell(): void
+    {
+        $response = $this->controller()->index($this->authenticatedRequest(
+            'GET',
+            '/admin/media'
+        ));
+
+        self::assertSame(200, $response->status());
+        self::assertSame(1, substr_count($response->body(), '<main'));
+        self::assertStringContainsString(
+            'data-webadmin-shell',
+            $response->body()
+        );
+        self::assertStringContainsString(
+            'href="/admin/media" aria-current="page"',
+            $response->body()
+        );
+        self::assertStringContainsString(
+            'action="/admin/logout"',
+            $response->body()
+        );
+    }
+
     public function testHeadAndGetIndexHaveStatusParityWhenListingFails(): void
     {
         $this->repository->failList = true;
@@ -323,7 +348,15 @@ final class MediaServiceTest extends TestCase
             $config,
             $authentication,
             $authorization,
-            $this->service()
+            $this->service(),
+            new WebAdminNavigationCatalog([
+                new WebAdminNavigationItem(
+                    'webadmin',
+                    'Medios',
+                    '/media',
+                    MediaService::VIEW_CAPABILITY
+                ),
+            ])
         ));
     }
 

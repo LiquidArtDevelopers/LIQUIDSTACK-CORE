@@ -80,6 +80,8 @@ final class BlogAdminHtmlRendererTest extends TestCase
 
         self::assertStringContainsString('name="csrf" value="csrf-token-safe"', $html);
         self::assertStringContainsString('name="lock_version" value="7"', $html);
+        self::assertStringContainsString('name="locale" value="es"', $html);
+        self::assertStringNotContainsString('name="locale" required', $html);
         self::assertStringContainsString('Safe &amp; plain', $html);
         self::assertStringContainsString('/admin/blog/posts/preview', $html);
         self::assertStringContainsString('versi&oacute;n guardada', $html);
@@ -183,19 +185,39 @@ final class BlogAdminHtmlRendererTest extends TestCase
         $new = $renderer->createForm(
             '/admin/blog',
             'csrf-token',
-            ['es', 'en']
+            [
+                'es' => '/es/noticias',
+                'en' => '/international/insights',
+            ]
         );
         self::assertStringContainsString('name="post" value=""', $new);
-        self::assertSame(2, substr_count($new, '<option'));
+        self::assertSame(3, substr_count($new, '<option'));
+        self::assertStringContainsString(
+            '<option value="" selected disabled>Selecciona un idioma</option>',
+            $new
+        );
+        self::assertStringContainsString(
+            '<option value="es">es &mdash; /es/noticias</option>',
+            $new
+        );
+        self::assertStringContainsString(
+            '<option value="en">en &mdash; /international/insights</option>',
+            $new
+        );
 
         $existing = $renderer->createForm(
             '/admin/blog',
             'csrf-token',
-            ['es'],
+            ['eu' => '/eu/albisteak'],
             '11111111-1111-4111-8111-111111111111'
         );
         self::assertStringContainsString(
             'name="post" value="11111111-1111-4111-8111-111111111111"',
+            $existing
+        );
+        self::assertStringNotContainsString('value="es"', $existing);
+        self::assertStringContainsString(
+            '<option value="eu">eu &mdash; /eu/albisteak</option>',
             $existing
         );
     }

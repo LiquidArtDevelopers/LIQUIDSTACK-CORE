@@ -349,6 +349,18 @@ composer liquidstack:migrate --dry-run
 - Activar Blog solo mediante el selector directo `liquidstack/blog`; su cierre
   de dependencias debe activar WebAdmin antes. No registrar rutas, navegación,
   migraciones ni diagnósticos Blog en un proyecto core-only o WebAdmin-only.
+- Componer las páginas administrativas de gestión con el shell module-owned
+  compartido de WebAdmin: navegación lateral filtrada por capacidades, un único `main` y
+  un inspector derecho solo cuando la ruta tenga herramientas contextuales. No
+  crear layouts privados paralelos dentro de Blog ni trasladarlos a
+  `App/views`. Una preview privada puede conservar su documento aislado para
+  representar `header` y `main`, siempre dentro del namespace autenticado y con
+  `no-store` y `noindex`.
+- Conservar el shell funcional sin JavaScript. Los toggles de navegación e
+  inspector solo actúan como drawers después de enlazar el runtime; entonces
+  deben sincronizar `aria-expanded`, `aria-hidden`, foco e `inert`, cerrar con
+  Escape y devolver el foco al disparador. Una mejora progresiva fallida no
+  puede ocultar navegación, herramientas o formularios SSR.
 - Tratar `App/config/modules/blog.php` como configuración project-owned. Puede
   declarar `public_paths` por cada idioma activo, `sitemap_path`, el prefijo de
   tablas, la vista opcional `public_article_view` y el opt-in
@@ -356,7 +368,11 @@ composer liquidstack:migrate --dry-run
   permanece desactivada por defecto. La vista debe usar una
   ruta relativa `App/views/...php`, regular, legible, contenida y sin symlinks;
   recibe `$blogArticle` como `BlogPublicArticleViewModel`, debe escapar sus
-  escalares por contexto y puede imprimir directamente solo `bodyHtml()`.
+  escalares por contexto y solo puede imprimir directamente las proyecciones
+  HTML saneadas. `bodyHtml()` conserva por compatibilidad el cuerpo histórico
+  completo, incluida la portada; las vistas nuevas deben colocar
+  `headerMediaHtml()` en su `header` y `mainHtml()` dentro de su `main`, sin
+  duplicar el medio destacado.
   `alternateUrls()` contiene únicamente variantes publicadas para SEO y
   `languageNavigationUrls()` usa el índice localizado cuando falta traducción.
   El
@@ -374,6 +390,11 @@ composer liquidstack:migrate --dry-run
   `App/config/langs.php`, que sus rutas sean absolutas y únicas y que no
   colisionen con rutas o ficheros del proyecto. El path base puede pertenecer a
   un índice estático; las URLs de artículo viven en `{public_path}/{slug}`.
+- En la creación, ofrecer de forma explícita solo locales activos que el post
+  todavía no tenga y mostrar el `public_path` asociado. En una variante
+  existente el locale es identidad inmutable y viaja como campo oculto: no
+  permitir cambiarlo desde el editor ni inferir prefijos convencionales como
+  `/es`. La UI puede mostrarse en otro idioma sin cambiar el locale editorial.
 - Usar `RAIZ` como origen canónico del sitemap y de los artículos: HTTPS fuera
   del laboratorio y HTTP solo con el perfil loopback tipado de desarrollo.
   Mantener `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` como alias de transición y
@@ -418,6 +439,11 @@ composer liquidstack:migrate --dry-run
   capacidades. La proyección pública exige `0001+0003`; la administración
   exige `0001+0002+0003+0004`. Una categoría usa UUID público, slug por locale,
   lock optimista y un máximo de 100 asignaciones por operación.
+- Integrar en el inspector la asignación de categorías del locale actual solo
+  cuando el actor posea su capacidad. Mantener el POST nativo como fallback;
+  la mejora asíncrona solo acepta su redirección same-origin esperada y conserva
+  la selección ante un fallo. La gestión completa puede abrirse aparte sin
+  mezclar locales ni convertir ese enlace en requisito del guardado editorial.
 - Tratar `0005_blog_structured_content` como la frontera ya implementada del
   editor `/admin/blog/editor`: documento actual, referencias de medios y
   revisiones inmutables. Exige las postcondiciones combinadas de
@@ -425,9 +451,16 @@ composer liquidstack:migrate --dry-run
   `0002_webadmin_media_library` en el scope WebAdmin.
 - Mantener el contrato exacto del documento
   `liquidstack.blog.document`, versión `1`. Admite ocho bloques controlados:
-  párrafo, heading H2/H3, lista, callout, enlace, imagen, YouTube y CTA. No
+  párrafo, heading H2-H6, lista, callout, enlace, imagen, YouTube y CTA. Cada
+  nivel desde H3 exige que su padre inmediato permanezca activo; H2 abre una
+  `section`, H3 un `article` dentro de ella y H4-H6 quedan en ese artículo. No
   admitir H1, HTML, clases o CSS libres en el cuerpo. El H1 vive en los
   metadatos de la variante y `body_text` se deriva siempre en servidor.
+- Proyectar el editor sobre un lienzo neutral con `role="document"`, no sobre
+  otro `main` ni otro H1 real dentro de WebAdmin. Para documentos nuevos exigir
+  H2 antes del resto del contenido. Mover o retirar un heading debe operar sobre
+  todo su subárbol semántico; la representación visual y el renderer público
+  tienen que conservar el mismo orden y jerarquía.
 - Conservar `article-basic-01` y `article-cover-01` como las plantillas v1. Una
   plantilla nueva exige ampliar registro, validación, renderer, editor,
   persistencia y pruebas como un único contrato; no aceptar claves arbitrarias
@@ -444,11 +477,23 @@ composer liquidstack:migrate --dry-run
   transacción que variante, documento, referencias, lock y auditoría. Restaurar
   exige la `lock_version` actual y crea una revisión nueva; nunca actualiza ni
   elimina la revisión elegida.
+- Mantener el formulario SSR como fallback y mejorar el guardado sin perder
+  estado. Sincronizar primero `document_json`; aceptar como éxito únicamente la
+  redirección same-origin al editor exacto del mismo post y locale. Ante `403`,
+  `409`, `422`, una redirección de login o un fallo de red, conservar campos y
+  bloques, mostrar un mensaje genérico y no navegar. Proteger con
+  `beforeunload` únicamente cuando la huella actual difiera de la confirmada y
+  desactivar el aviso tras un éxito validado.
 - Exigir `blog.articles.edit` y `webadmin.media.view` para abrir, guardar o
   restaurar el editor; preview e historial exigen `blog.articles.view` y
   `webadmin.media.view`. La subida se realiza en `/admin/media` y requiere
   además `webadmin.media.upload`. Revalidar dentro de la transacción que todos
   los UUID de imagen existen y tienen variantes AVIF.
+- El catálogo del editor debe incluir el tramo reciente y, además, todos los
+  medios referenciados por el documento actual aunque sean anteriores. Mantener
+  esa ampliación como interfaz opcional y aditiva para no romper runtimes Media
+  anteriores; nunca eliminar una referencia válida de la UI solo por quedar
+  fuera de la ventana reciente.
 - Resolver las URLs de artículo Blog únicamente después de que fallen las rutas
   estáticas del proyecto. Un borrador o slug desconocido continúa al 404 legacy;
   un runtime reconocido pero no operativo responde `503`, y un método de

@@ -8,11 +8,14 @@ use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\WebAdmin\Media\MediaException;
 use App\Core\WebAdmin\Media\MediaService;
+use App\Core\WebAdmin\Http\WebAdminShellContext;
+use App\Core\WebAdmin\Http\WebAdminShellContextFactory;
 use App\Core\WebAdmin\Security\ConstantTime;
 
 final class WebAdminMediaHttpController
 {
     private readonly WebAdminMediaHttpResponseFactory $responses;
+    private readonly WebAdminShellContextFactory $shellContexts;
 
     public function __construct(
         private readonly WebAdminMediaHttpRuntime $runtime,
@@ -24,6 +27,11 @@ final class WebAdminMediaHttpController
     ) {
         $this->responses = $responses
             ?? new WebAdminMediaHttpResponseFactory($runtime->config());
+        $this->shellContexts = new WebAdminShellContextFactory(
+            $runtime->config()->basePath(),
+            $runtime->authorization(),
+            $runtime->navigation()
+        );
     }
 
     public function index(Request $request): Response
@@ -57,7 +65,8 @@ final class WebAdminMediaHttpController
                     $this->runtime->authorization()->hasCapability(
                         $context['session'],
                         MediaService::UPLOAD_CAPABILITY
-                    )
+                    ),
+                    $this->shellContext($context)
                 )
             );
         } catch (MediaException) {
@@ -140,7 +149,8 @@ final class WebAdminMediaHttpController
         return $this->responses->html(
             200,
             $request->method() === 'HEAD' ? '' : $this->renderer->updated(
-                $this->runtime->config()->basePath()
+                $this->runtime->config()->basePath(),
+                $this->shellContext($context)
             )
         );
     }
@@ -234,6 +244,17 @@ final class WebAdminMediaHttpController
     {
         return $this->responses->redirect(
             $this->runtime->config()->basePath() . '/login'
+        );
+    }
+
+    /** @param array{session: string, csrf: string} $context */
+    private function shellContext(
+        #[\SensitiveParameter] array $context
+    ): WebAdminShellContext {
+        return $this->shellContexts->create(
+            $context['session'],
+            $context['csrf'],
+            '/media'
         );
     }
 }

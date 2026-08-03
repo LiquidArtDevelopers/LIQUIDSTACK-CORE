@@ -9,6 +9,7 @@ use App\Core\Blog\BlogService;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Seo\BlogSeoAnalysisService;
 use App\Core\Blog\Seo\BlogSeoHttpRuntimeInterface;
+use App\Core\Blog\StructuredContent\Categories\BlogEditorCategoryCatalogInterface;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredEditorService;
 use App\Core\Blog\StructuredContent\Media\BlogEditorMediaCatalogInterface;
 use App\Core\Blog\StructuredContent\Rendering\BlogImageResolverInterface;
@@ -16,6 +17,7 @@ use App\Core\WebAdmin\Authentication\WebAdminAuthenticationService;
 use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
 use App\Core\WebAdmin\Authorization\WebAdminMutationActorGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
 use App\Core\WebAdmin\Security\OpaqueSecret;
 use Closure;
 use PDO;
@@ -24,8 +26,11 @@ use Throwable;
 final class BlogAdminHttpRuntime implements
     BlogAdminHttpRuntimeInterface,
     BlogStructuredEditorHttpRuntimeInterface,
+    BlogStructuredEditorCategoryHttpRuntimeInterface,
     BlogSeoHttpRuntimeInterface
 {
+    private readonly WebAdminNavigationCatalog $navigation;
+
     /**
      * @param list<string> $languages
      */
@@ -45,8 +50,12 @@ final class BlogAdminHttpRuntime implements
             $editorMediaCatalog = null,
         private readonly ?BlogImageResolverInterface
             $editorImageResolver = null,
-        private readonly ?BlogSeoAnalysisService $seoAnalysis = null
+        private readonly ?BlogSeoAnalysisService $seoAnalysis = null,
+        ?WebAdminNavigationCatalog $navigation = null,
+        private readonly ?BlogEditorCategoryCatalogInterface
+            $editorCategoryCatalog = null
     ) {
+        $this->navigation = $navigation ?? new WebAdminNavigationCatalog();
     }
 
     public function projectRoot(): string
@@ -85,6 +94,11 @@ final class BlogAdminHttpRuntime implements
         return $this->authorization;
     }
 
+    public function navigation(): WebAdminNavigationCatalog
+    {
+        return $this->navigation;
+    }
+
     public function structuredEditor(): BlogStructuredEditorService
     {
         if ($this->structuredEditor === null) {
@@ -116,6 +130,11 @@ final class BlogAdminHttpRuntime implements
         }
 
         return $this->editorImageResolver;
+    }
+
+    public function editorCategoryCatalog(): ?BlogEditorCategoryCatalogInterface
+    {
+        return $this->editorCategoryCatalog;
     }
 
     public function seoAnalysis(): BlogSeoAnalysisService

@@ -13,7 +13,12 @@ use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
+use App\Core\WebAdmin\Http\WebAdminPageAssets;
+use App\Core\WebAdmin\Http\WebAdminShellContext;
+use App\Core\WebAdmin\Http\WebAdminShellContextFactory;
 use App\Core\WebAdmin\Media\MediaService;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationItem;
 use App\Core\WebAdmin\Security\ConstantTime;
 use Closure;
 use PDO;
@@ -29,6 +34,7 @@ final class BlogAdminHttpController
     private readonly BlogAdminHtmlRenderer $renderer;
     private readonly BlogPublicationRouteGuard $publicationRouteGuard;
     private readonly PrivateRouteTransportPolicy $transportPolicy;
+    private readonly WebAdminShellContextFactory $shellContexts;
 
     /** @var array<string, mixed> */
     private readonly array $environment;
@@ -48,6 +54,11 @@ final class BlogAdminHttpController
             ?? new BlogPublicationRouteGuard();
         $this->transportPolicy = $transportPolicy
             ?? new PrivateRouteTransportPolicy();
+        $this->shellContexts = new WebAdminShellContextFactory(
+            $runtime->webAdminConfig()->basePath(),
+            $runtime->authorization(),
+            $this->navigationCatalog($runtime)
+        );
         $this->environment = $environment;
     }
 
@@ -95,7 +106,8 @@ final class BlogAdminHttpController
             canViewMedia: $authorization->hasCapability(
                 $context['session'],
                 MediaService::VIEW_CAPABILITY
-            )
+            ),
+            shell: $this->shellContext($context, '/blog')
         ));
     }
 
@@ -113,11 +125,38 @@ final class BlogAdminHttpController
         }
         $post = $request->query('post');
 
+        try {
+            $localePublicPaths = $this->activeLocalePublicPaths();
+            if (is_string($post)) {
+                $existingLocales = array_fill_keys(
+                    $this->runtime->service()->localesForPost($post),
+                    true
+                );
+                $localePublicPaths = array_diff_key(
+                    $localePublicPaths,
+                    $existingLocales
+                );
+                if ($localePublicPaths === []) {
+                    return $this->htmlForRequest(
+                        $request,
+                        200,
+                        $this->renderer->localizationsComplete(
+                            $this->basePath(),
+                            $this->shellContext($context, '/blog/posts/new')
+                        )
+                    );
+                }
+            }
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+
         return $this->htmlForRequest($request, 200, $this->renderer->createForm(
             $this->basePath(),
             $context['csrf'],
-            $this->activeLanguages(),
-            is_string($post) ? $post : null
+            $localePublicPaths,
+            is_string($post) ? $post : null,
+            shell: $this->shellContext($context, '/blog/posts/new')
         ));
     }
 
@@ -190,6 +229,16 @@ final class BlogAdminHttpController
                 (string) $request->query('post'),
                 (string) $request->query('locale')
             );
+            $existingLocales = array_fill_keys(
+                $this->runtime->service()->localesForPost(
+                    $variant->postPublicId()
+                ),
+                true
+            );
+            $canAddLocalization = array_diff_key(
+                $this->activeLocalePublicPaths(),
+                $existingLocales
+            ) !== [];
 
             return $this->htmlForRequest($request, 200, $this->renderer->editForm(
                 $this->basePath(),
@@ -198,7 +247,9 @@ final class BlogAdminHttpController
                 $this->runtime->authorization()->hasCapability(
                     $context['session'],
                     self::PUBLISH_CAPABILITY
-                )
+                ),
+                canAddLocalization: $canAddLocalization,
+                shell: $this->shellContext($context, '/blog/posts/edit')
             ));
         } catch (BlogException $exception) {
             return $this->domainFailure($exception);
@@ -242,7 +293,8 @@ final class BlogAdminHttpController
             return $this->htmlForRequest($request, 200, $this->renderer->preview(
                 $this->basePath(),
                 $variant,
-                $canOpenEditor
+                $canOpenEditor,
+                $this->shellContext($context, '/blog/posts/preview')
             ));
         } catch (BlogException $exception) {
             return $this->domainFailure($exception);
@@ -378,8 +430,48 @@ final class BlogAdminHttpController
         return $this->htmlForRequest(
             $request,
             200,
-            $this->renderer->operationCompleted($this->basePath())
+            $this->renderer->operationCompleted(
+                $this->basePath(),
+                $this->shellContext($context, '/blog')
+            )
         );
+    }
+
+    /**
+     * @param array{session: string, csrf: string} $context
+     */
+    private function shellContext(
+        #[\SensitiveParameter] array $context,
+        string $activePath
+    ): WebAdminShellContext {
+        return $this->shellContexts->create(
+            $context['session'],
+            $context['csrf'],
+            $activePath,
+            assets: new WebAdminPageAssets([
+                '/assets/modules/blog/blog-admin.css',
+            ])
+        );
+    }
+
+    private function navigationCatalog(
+        BlogAdminHttpRuntimeInterface $runtime
+    ): WebAdminNavigationCatalog {
+        if (method_exists($runtime, 'navigation')) {
+            $navigation = $runtime->navigation();
+            if ($navigation instanceof WebAdminNavigationCatalog) {
+                return $navigation;
+            }
+        }
+
+        return new WebAdminNavigationCatalog([
+            new WebAdminNavigationItem(
+                'blog',
+                'Art&iacute;culos',
+                '/blog',
+                self::VIEW_CAPABILITY
+            ),
+        ]);
     }
 
     /**
@@ -538,13 +630,21 @@ final class BlogAdminHttpController
             && $this->runtime->blogConfig()->publicPath($locale) !== null;
     }
 
-    /** @return list<string> */
-    private function activeLanguages(): array
+    /** @return array<string, string> */
+    private function activeLocalePublicPaths(): array
     {
-        return array_values(array_filter(
-            $this->runtime->languages(),
-            fn (string $locale): bool => $this->isActiveLocale($locale)
-        ));
+        $paths = [];
+        foreach ($this->runtime->languages() as $locale) {
+            if (!$this->isActiveLocale($locale)) {
+                continue;
+            }
+            $publicPath = $this->runtime->blogConfig()->publicPath($locale);
+            if (is_string($publicPath)) {
+                $paths[$locale] = $publicPath;
+            }
+        }
+
+        return $paths;
     }
 
     private function accepts(Request $request, string $operation): bool
@@ -630,7 +730,8 @@ final class BlogAdminHttpController
         array $headers = []
     ): Response {
         return new Response($status, $body, $headers + $this->headers(
-            "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+            "default-src 'none'; style-src 'self'; script-src 'self'; "
+            . "form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
         ) + [
             'Content-Type' => 'text/html; charset=utf-8',
             'Content-Language' => 'es',

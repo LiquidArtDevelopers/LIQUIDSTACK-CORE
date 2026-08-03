@@ -21,6 +21,8 @@ use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
 use App\Core\WebAdmin\Authorization\WebAdminMutationActorGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Media\MediaService;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationItem;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Security\PasswordHasher;
 use App\Core\WebAdmin\Security\SecureTokenGenerator;
@@ -216,10 +218,21 @@ final class BlogAdminHttpControllerTest extends TestCase
             new RandomUuidV4Generator(),
             $clock
         );
+        $languages = ['es', 'eu'];
+        $blogConfig = new BlogConfig(
+            [
+                'es' => '/es/noticias',
+                'eu' => '/eu/albisteak',
+            ],
+            BlogConfig::DEFAULT_SITEMAP_PATH,
+            BlogConfig::DEFAULT_TABLE_PREFIX,
+            'test',
+            defaultLocale: 'es'
+        );
         $this->runtime = new BlogAdminHttpRuntime(
             $this->projectRoot,
-            ['es'],
-            BlogConfig::defaults(['es']),
+            $languages,
+            $blogConfig,
             $config,
             $service,
             $authentication,
@@ -233,7 +246,15 @@ final class BlogAdminHttpControllerTest extends TestCase
                 $clock,
                 $tokens,
                 $hasher
-            )
+            ),
+            navigation: new WebAdminNavigationCatalog([
+                new WebAdminNavigationItem(
+                    'blog',
+                    'Art&iacute;culos',
+                    '/blog',
+                    BlogAdminHttpController::VIEW_CAPABILITY
+                ),
+            ])
         );
         $this->controller = new BlogAdminHttpController($this->runtime);
     }
@@ -249,6 +270,28 @@ final class BlogAdminHttpControllerTest extends TestCase
         $empty = $this->controller->index($this->get('/admin/blog'));
         self::assertSame(200, $empty->status());
         self::assertStringContainsString('No hay art&iacute;culos', $empty->body());
+        self::assertSame(1, substr_count($empty->body(), '<main'));
+        self::assertStringContainsString('data-webadmin-shell', $empty->body());
+        self::assertStringContainsString(
+            'href="/admin/blog" aria-current="page"',
+            $empty->body()
+        );
+        self::assertStringContainsString(
+            'action="/admin/logout"',
+            $empty->body()
+        );
+        self::assertStringContainsString(
+            '/assets/modules/blog/blog-admin.css',
+            $empty->body()
+        );
+        self::assertStringContainsString(
+            "style-src 'self'",
+            $empty->headers()['Content-Security-Policy']
+        );
+        self::assertStringContainsString(
+            "script-src 'self'",
+            $empty->headers()['Content-Security-Policy']
+        );
         $this->assertPrivateHeaders($empty);
 
         $create = $this->controller->create($this->post(
@@ -315,6 +358,110 @@ final class BlogAdminHttpControllerTest extends TestCase
         self::assertSame('draft', $this->pdo->query(
             'SELECT status FROM ls_blog_post_localizations'
         )->fetchColumn());
+    }
+
+    public function testLocaleChoiceUsesConfiguredPathsAndOmitsExistingVariants(): void
+    {
+        $new = $this->controller->newPost($this->get(
+            '/admin/blog/posts/new'
+        ));
+        self::assertSame(200, $new->status());
+        self::assertStringContainsString(
+            '<option value="" selected disabled>Selecciona un idioma</option>',
+            $new->body()
+        );
+        self::assertStringContainsString(
+            '<option value="es">es &mdash; /es/noticias</option>',
+            $new->body()
+        );
+        self::assertStringContainsString(
+            '<option value="eu">eu &mdash; /eu/albisteak</option>',
+            $new->body()
+        );
+
+        $missingLocale = $this->controller->create($this->post(
+            '/admin/blog/posts/create',
+            ['csrf' => $this->csrfToken, 'post' => '', 'locale' => '']
+                + $this->editorial('matrix-missing-locale')
+        ));
+        self::assertSame(400, $missingLocale->status());
+        self::assertSame(0, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+
+        $created = $this->controller->create($this->post(
+            '/admin/blog/posts/create',
+            ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
+                + $this->editorial('matrix-es')
+        ));
+        self::assertSame(303, $created->status());
+        $post = (string) $this->pdo->query(
+            'SELECT public_id FROM ls_blog_posts'
+        )->fetchColumn();
+
+        $translation = $this->controller->newPost($this->get(
+            '/admin/blog/posts/new',
+            ['post' => $post]
+        ));
+        self::assertSame(200, $translation->status());
+        self::assertStringNotContainsString(
+            '<option value="es">',
+            $translation->body()
+        );
+        self::assertStringContainsString(
+            '<option value="eu">eu &mdash; /eu/albisteak</option>',
+            $translation->body()
+        );
+
+        $editBeforeTranslation = $this->controller->edit($this->get(
+            '/admin/blog/posts/edit',
+            ['post' => $post, 'locale' => 'es']
+        ));
+        self::assertStringContainsString(
+            'A&ntilde;adir otro idioma',
+            $editBeforeTranslation->body()
+        );
+
+        $added = $this->controller->create($this->post(
+            '/admin/blog/posts/create',
+            ['csrf' => $this->csrfToken, 'post' => $post, 'locale' => 'eu']
+                + $this->editorial('matrix-eu')
+        ));
+        self::assertSame(303, $added->status());
+
+        $complete = $this->controller->newPost($this->get(
+            '/admin/blog/posts/new',
+            ['post' => $post]
+        ));
+        self::assertSame(200, $complete->status());
+        self::assertStringNotContainsString(
+            'action="/admin/blog/posts/create"',
+            $complete->body()
+        );
+        self::assertStringNotContainsString('name="locale"', $complete->body());
+        self::assertStringContainsString(
+            'todos los idiomas activos',
+            $complete->body()
+        );
+
+        $editComplete = $this->controller->edit($this->get(
+            '/admin/blog/posts/edit',
+            ['post' => $post, 'locale' => 'es']
+        ));
+        self::assertStringNotContainsString(
+            'A&ntilde;adir otro idioma',
+            $editComplete->body()
+        );
+        self::assertStringContainsString(
+            'todos los idiomas activos',
+            $editComplete->body()
+        );
+
+        $unknown = $this->controller->newPost($this->get(
+            '/admin/blog/posts/new',
+            ['post' => '99999999-9999-4999-8999-999999999999']
+        ));
+        self::assertSame(404, $unknown->status());
     }
 
     public function testLegacyRuntimeRevalidatesMediaInsideCreateTransaction(): void
@@ -387,7 +534,8 @@ final class BlogAdminHttpControllerTest extends TestCase
         self::assertSame(422, $inactive->status());
         $this->filesystem->dumpFile(
             $this->projectRoot . '/App/config/routes/get.php',
-            "<?php\nreturn ['/blog/matrix' => ['view' => 'legacy.php']];\n"
+            "<?php\nreturn ['/es/noticias/matrix' => "
+                . "['view' => 'legacy.php']];\n"
         );
 
         $response = $this->controller->publish($this->post(

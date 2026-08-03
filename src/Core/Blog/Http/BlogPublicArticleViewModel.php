@@ -10,7 +10,9 @@ use DateTimeImmutable;
  * Minimal public projection for a project-owned article shell.
  *
  * Scalar strings remain raw so the project can encode them for the exact
- * output context. bodyHtml() is the sole pre-rendered, sanitized HTML field.
+ * output context. bodyHtml(), mainHtml() and headerMediaHtml() are the only
+ * pre-rendered, sanitized HTML fields. bodyHtml() preserves the original
+ * composition contract; new views should pair headerMediaHtml() + mainHtml().
  */
 final class BlogPublicArticleViewModel
 {
@@ -38,6 +40,8 @@ final class BlogPublicArticleViewModel
         private readonly string $h1,
         private readonly string $excerpt,
         private readonly string $bodyHtml,
+        private readonly string $mainHtml,
+        private readonly string $headerMediaHtml,
         private readonly ?string $coverImageUrl,
         private readonly string $template,
         private readonly DateTimeImmutable $publishedAt,
@@ -96,6 +100,16 @@ final class BlogPublicArticleViewModel
     public function bodyHtml(): string
     {
         return $this->bodyHtml;
+    }
+
+    public function mainHtml(): string
+    {
+        return $this->mainHtml;
+    }
+
+    public function headerMediaHtml(): string
+    {
+        return $this->headerMediaHtml;
     }
 
     public function coverImageUrl(): ?string

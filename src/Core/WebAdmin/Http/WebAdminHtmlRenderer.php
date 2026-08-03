@@ -11,10 +11,12 @@ final class WebAdminHtmlRenderer
 {
     private readonly WebAdminPageDocumentRenderer $documentRenderer;
     private readonly WebAdminAuthHtmlRenderer $authRenderer;
+    private readonly WebAdminShellRenderer $shellRenderer;
 
     public function __construct(
         ?WebAdminPageDocumentRenderer $documentRenderer = null,
-        ?WebAdminAuthHtmlRenderer $authRenderer = null
+        ?WebAdminAuthHtmlRenderer $authRenderer = null,
+        ?WebAdminShellRenderer $shellRenderer = null
     ) {
         $this->documentRenderer = $documentRenderer
             ?? new WebAdminPageDocumentRenderer();
@@ -22,6 +24,8 @@ final class WebAdminHtmlRenderer
             ?? new WebAdminAuthHtmlRenderer(
                 documents: $this->documentRenderer
             );
+        $this->shellRenderer = $shellRenderer
+            ?? new WebAdminShellRenderer($this->documentRenderer);
     }
 
     public function login(
@@ -43,7 +47,8 @@ final class WebAdminHtmlRenderer
         string $basePath,
         string $csrf,
         bool $showUsersLink = false,
-        array $moduleNavigation = []
+        array $moduleNavigation = [],
+        ?WebAdminShellContext $shell = null
     ): string {
         if (!array_is_list($moduleNavigation)) {
             throw new InvalidArgumentException(
@@ -51,40 +56,30 @@ final class WebAdminHtmlRenderer
             );
         }
 
-        $links = $showUsersLink
-            ? '<li><a href="' . $this->path($basePath, '/users')
-                . '">Gestionar editores</a></li>'
-            : '';
         foreach ($moduleNavigation as $item) {
             if (!$item instanceof WebAdminNavigationItem) {
                 throw new InvalidArgumentException(
                     'Invalid WebAdmin navigation presentation item.'
                 );
             }
-
-            $links .= '<li><a href="'
-                . $this->path($basePath, $item->suffix()) . '">'
-                . $this->escape($item->label()) . '</a></li>';
         }
 
-        $navigation = $links === ''
-            ? ''
-            : '<nav aria-label="Administraci&oacute;n"><ul>'
-                . $links . '</ul></nav>';
+        $shell ??= new WebAdminShellContext(
+            basePath: $basePath,
+            logoutCsrf: $csrf,
+            activePath: '',
+            showUsersLink: $showUsersLink,
+            moduleNavigation: $moduleNavigation
+        );
 
-        return $this->document(
+        return $this->shellRenderer->render(
             'Gesti&oacute;n web',
-            '<main><article aria-labelledby="webadmin-title">'
+            '<article aria-labelledby="webadmin-title">'
             . '<h1 id="webadmin-title">Gesti&oacute;n web</h1>'
             . '<p id="webadmin-dashboard-description">La sesi&oacute;n segura '
             . 'est&aacute; activa.</p>'
-            . $navigation
-            . '<form method="post" action="'
-            . $this->path($basePath, '/logout')
-            . '" aria-describedby="webadmin-dashboard-description">'
-            . $this->csrfInput($csrf)
-            . '<button type="submit">Cerrar sesi&oacute;n</button>'
-            . '</form></article></main>'
+            . '</article>',
+            $shell
         );
     }
 
@@ -100,7 +95,8 @@ final class WebAdminHtmlRenderer
         string $basePath,
         array $editors,
         ?string $nextAfter,
-        bool $canInvite
+        bool $canInvite,
+        ?WebAdminShellContext $shell = null
     ): string {
         $rows = '';
         foreach ($editors as $editor) {
@@ -141,9 +137,16 @@ final class WebAdminHtmlRenderer
                 . '">Ver m&aacute;s editores</a></p>'
             : '';
 
-        return $this->document(
+        $shell ??= new WebAdminShellContext(
+            basePath: $basePath,
+            logoutCsrf: null,
+            activePath: '/users',
+            showUsersLink: true
+        );
+
+        return $this->shellRenderer->render(
             'Editores',
-            '<main><article aria-labelledby="webadmin-users-title">'
+            '<article aria-labelledby="webadmin-users-title">'
             . '<h1 id="webadmin-users-title">Editores</h1>'
             . '<p>Consulta y gestiona las personas con acceso editorial.</p>'
             . $inviteLink
@@ -153,7 +156,8 @@ final class WebAdminHtmlRenderer
             . '</tr></thead><tbody>' . $rows . '</tbody></table>'
             . $nextLink
             . $this->backToDashboard($basePath)
-            . '</article></main>'
+            . '</article>',
+            $shell
         );
     }
 
@@ -164,16 +168,24 @@ final class WebAdminHtmlRenderer
         string $basePath,
         string $csrf,
         array $capabilities,
-        bool $failed = false
+        bool $failed = false,
+        ?WebAdminShellContext $shell = null
     ): string {
         $feedback = $this->formError(
             $failed,
             'webadmin-user-invite-error'
         );
 
-        return $this->document(
+        $shell ??= new WebAdminShellContext(
+            basePath: $basePath,
+            logoutCsrf: null,
+            activePath: '/users',
+            showUsersLink: true
+        );
+
+        return $this->shellRenderer->render(
             'Invitar editor',
-            '<main><article aria-labelledby="webadmin-user-invite-title">'
+            '<article aria-labelledby="webadmin-user-invite-title">'
             . '<h1 id="webadmin-user-invite-title">Invitar editor</h1>'
             . '<p id="webadmin-user-invite-description">Crea un acceso '
             . 'editorial y asigna &uacute;nicamente las capacidades necesarias.</p>'
@@ -194,7 +206,8 @@ final class WebAdminHtmlRenderer
             . '<button type="submit">Enviar invitaci&oacute;n</button>'
             . '</form>'
             . $this->backToUsers($basePath)
-            . '</article></main>'
+            . '</article>',
+            $shell
         );
     }
 
@@ -215,7 +228,8 @@ final class WebAdminHtmlRenderer
         bool $canReplaceCapabilities,
         bool $canSuspend,
         bool $canResendInvite,
-        bool $failed = false
+        bool $failed = false,
+        ?WebAdminShellContext $shell = null
     ): string {
         $editor = $this->editorRow($editor);
         $target = $this->targetInput($editor['public_id']);
@@ -273,9 +287,16 @@ final class WebAdminHtmlRenderer
             $actions = '<p>No tienes acciones disponibles para este editor.</p>';
         }
 
-        return $this->document(
+        $shell ??= new WebAdminShellContext(
+            basePath: $basePath,
+            logoutCsrf: null,
+            activePath: '/users',
+            showUsersLink: true
+        );
+
+        return $this->shellRenderer->render(
             'Gestionar editor',
-            '<main><article aria-labelledby="webadmin-user-edit-title">'
+            '<article aria-labelledby="webadmin-user-edit-title">'
             . '<h1 id="webadmin-user-edit-title">Gestionar editor</h1>'
             . $feedback
             . '<dl><div><dt>Nombre</dt><dd>' . $this->escape($displayName)
@@ -286,27 +307,36 @@ final class WebAdminHtmlRenderer
             . '</dd></div></dl>'
             . $actions
             . $this->backToUsers($basePath)
-            . '</article></main>'
+            . '</article>',
+            $shell
         );
     }
 
     public function editorOperationCompleted(
         string $basePath,
-        bool $showUsersLink = true
-    ): string
-    {
+        bool $showUsersLink = true,
+        ?WebAdminShellContext $shell = null
+    ): string {
         $returnLink = $showUsersLink
             ? $this->backToUsers($basePath)
             : $this->backToDashboard($basePath);
 
-        return $this->document(
+        $shell ??= new WebAdminShellContext(
+            basePath: $basePath,
+            logoutCsrf: null,
+            activePath: '/users',
+            showUsersLink: $showUsersLink
+        );
+
+        return $this->shellRenderer->render(
             'Operaci&oacute;n completada',
-            '<main><article aria-labelledby="webadmin-user-operation-title">'
+            '<article aria-labelledby="webadmin-user-operation-title">'
             . '<h1 id="webadmin-user-operation-title">Operaci&oacute;n completada</h1>'
             . '<p role="status" aria-live="polite">La operaci&oacute;n se ha '
             . 'completado correctamente.</p>'
             . $returnLink
-            . '</article></main>'
+            . '</article>',
+            $shell
         );
     }
 

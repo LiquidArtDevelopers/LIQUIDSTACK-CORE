@@ -18,9 +18,21 @@ final class BlogPublicAssetContractTest extends TestCase
             'color-scheme: light dark',
             'font-family: system-ui',
             'width: min(100%',
+            '.blogArticleHeader {',
+            '.blogArticleHeader > h1,',
+            '.blogArticleHeader > .blogDocument__image--cover',
+            'max-height: min(70vh, 46rem)',
             '.blogDocument__image--cover',
+            '.blogDocument__section',
+            '.blogDocument__article',
+            'h4,',
+            'h5,',
+            'h6 {',
+            'font-size: clamp(1.125rem, 2.5vw, 1.45rem)',
+            'margin-block: clamp(2.5rem, 7vw, 4.5rem) 0',
             '.blogDocument__liteYoutube',
             'aspect-ratio: 16 / 9',
+            '@media (min-width: 48rem)',
             '@media (max-width: 35rem)',
             '@media (prefers-reduced-motion: reduce)',
             'a:focus-visible',
@@ -38,6 +50,15 @@ final class BlogPublicAssetContractTest extends TestCase
         ] as $forbidden) {
             self::assertStringNotContainsString($forbidden, $css);
         }
+
+        self::assertDoesNotMatchRegularExpression(
+            '/\.blogDocument__(?:section|article)[^{]*\{[^}]*(?:border|background|box-shadow)\s*:/s',
+            $css
+        );
+        self::assertDoesNotMatchRegularExpression(
+            '/\.blogArticleHeader\s*\{[^}]*(?:border|background|box-shadow)\s*:/s',
+            $css
+        );
     }
 
     public function testYoutubeRuntimeRequiresConsentAndCleansItsLifecycle(): void

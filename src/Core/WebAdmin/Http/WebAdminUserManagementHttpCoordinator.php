@@ -26,7 +26,8 @@ final class WebAdminUserManagementHttpCoordinator
         private readonly WebAdminHttpRuntime $runtime,
         private readonly WebAdminHttpRequestPolicy $requestPolicy,
         private readonly WebAdminHtmlRenderer $renderer,
-        private readonly WebAdminHttpResponseFactory $responses
+        private readonly WebAdminHttpResponseFactory $responses,
+        private readonly WebAdminShellContextFactory $shells
     ) {
     }
 
@@ -39,7 +40,7 @@ final class WebAdminUserManagementHttpCoordinator
             return $this->responses->html(200, '');
         }
 
-        $context = $this->managementContext($request);
+        $context = $this->managementContext($request, true);
         if ($context instanceof Response) {
             return $context;
         }
@@ -60,14 +61,22 @@ final class WebAdminUserManagementHttpCoordinator
         }
 
         return $this->responses->html(200, $this->renderer->editorList(
-            $this->responses->rootPath(),
-            array_map(
+            basePath: $this->responses->rootPath(),
+            editors: array_map(
                 fn (EditorSummary $editor): array =>
                     $this->editorRow($editor),
                 $page->editors()
             ),
-            $page->nextCursor(),
-            $this->hasCapability($context['token'], self::USERS_INVITE)
+            nextAfter: $page->nextCursor(),
+            canInvite: $this->hasCapability(
+                $context['token'],
+                self::USERS_INVITE
+            ),
+            shell: $this->shells->create(
+                $context['token'],
+                $context['csrf'],
+                '/users'
+            )
         ));
     }
 
@@ -97,9 +106,14 @@ final class WebAdminUserManagementHttpCoordinator
         }
 
         return $this->responses->html(200, $this->renderer->editorInvite(
-            $this->responses->rootPath(),
-            $context['csrf'],
-            $capabilities
+            basePath: $this->responses->rootPath(),
+            csrf: $context['csrf'],
+            capabilities: $capabilities,
+            shell: $this->shells->create(
+                $context['token'],
+                $context['csrf'],
+                '/users'
+            )
         ));
     }
 
@@ -149,10 +163,15 @@ final class WebAdminUserManagementHttpCoordinator
         }
 
         return $this->responses->html(422, $this->renderer->editorInvite(
-            $this->responses->rootPath(),
-            $context['csrf'],
-            $rows,
-            true
+            basePath: $this->responses->rootPath(),
+            csrf: $context['csrf'],
+            capabilities: $rows,
+            failed: true,
+            shell: $this->shells->create(
+                $context['token'],
+                $context['csrf'],
+                '/users'
+            )
         ));
     }
 
@@ -216,13 +235,18 @@ final class WebAdminUserManagementHttpCoordinator
         }
 
         return $this->responses->html(200, $this->renderer->editorDetail(
-            $this->responses->rootPath(),
-            $context['csrf'],
-            $this->editorRow($editor),
-            $capabilities,
-            $canManage && !$isSelf,
-            $canSuspend && !$isSelf,
-            $canInvite && !$isSelf,
+            basePath: $this->responses->rootPath(),
+            csrf: $context['csrf'],
+            editor: $this->editorRow($editor),
+            capabilities: $capabilities,
+            canReplaceCapabilities: $canManage && !$isSelf,
+            canSuspend: $canSuspend && !$isSelf,
+            canResendInvite: $canInvite && !$isSelf,
+            shell: $this->shells->create(
+                $context['token'],
+                $context['csrf'],
+                '/users'
+            )
         ));
     }
 
@@ -301,7 +325,7 @@ final class WebAdminUserManagementHttpCoordinator
             return $this->responses->html(200, '');
         }
 
-        $context = $this->managementContext($request);
+        $context = $this->managementContext($request, true);
         if ($context instanceof Response) {
             return $context;
         }
@@ -309,10 +333,15 @@ final class WebAdminUserManagementHttpCoordinator
         return $this->responses->html(
             200,
             $this->renderer->editorOperationCompleted(
-                $this->responses->rootPath(),
-                $this->hasCapability(
+                basePath: $this->responses->rootPath(),
+                showUsersLink: $this->hasCapability(
                     $context['token'],
                     self::USERS_VIEW
+                ),
+                shell: $this->shells->create(
+                    $context['token'],
+                    $context['csrf'],
+                    '/users'
                 )
             )
         );

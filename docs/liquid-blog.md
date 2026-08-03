@@ -136,7 +136,8 @@ variante y no forma parte del cuerpo.
 El documento admite ocho tipos de bloque controlados:
 
 - párrafo;
-- encabezado H2 o H3, sin saltos de jerarquía;
+- encabezado H2-H6, sin saltos de jerarquía: cada nivel desde H3 exige su
+  padre inmediato activo;
 - lista ordenada o no ordenada;
 - destacado (`callout`);
 - enlace independiente;
@@ -265,6 +266,60 @@ destino es inválido. Los recursos visuales estándar y hooks de showroom son
 selectivos: su ausencia legítima no rebaja por sí sola la disponibilidad del
 runtime Blog.
 
+## Shell y edición visual
+
+Las pantallas administrativas de gestión de Blog reutilizan el shell
+module-owned de WebAdmin: navegación lateral filtrada por capacidades, un único `main` y un
+inspector derecho opcional. El layout ocupa el ancho disponible y no obliga al
+contenido editorial a una columna estrecha. El HTML SSR deja navegación,
+herramientas y formularios en el flujo; solo después de enlazar `webadmin.js`
+los controles pasan a manejar drawers. En ese estado el runtime mantiene
+`aria-expanded`, `aria-hidden`, foco e `inert`, admite Escape y restaura el foco
+al control de origen. Sin JavaScript no quedan superficies ocultas ni botones
+sin función. La preview privada conserva un documento aislado para representar
+su `header` y `main`, pero sigue autenticada y responde `no-store` y `noindex`.
+
+La jerarquía visual administrativa es plana. Se construye con espacio,
+tipografía, grid, fondos sobrios y separadores funcionales; no usa por defecto
+bordes laterales de acento, franjas mediante pseudoelementos, rebordes
+decorativos ni cadenas de tarjetas anidadas. Los bordes permanecen reservados
+para controles, foco, tablas, separadores y estados seleccionados.
+
+El editor representa en directo la futura composición pública sin introducir
+un segundo `main` ni un segundo H1 en el documento de WebAdmin. Su lienzo neutral
+expone conceptualmente un `header` con H1 y medio destacado seguido del `main`:
+el primer bloque editorial nuevo debe ser H2, cada H2 abre una `section`, cada
+H3 abre un `article` y H4-H6 permanecen dentro de ese artículo. No se permiten
+saltos de nivel. Mover o retirar un encabezado mueve o retira también todo el
+subárbol que depende de él, por lo que el orden visual y el SSR público conservan
+la misma semántica.
+
+Al crear un artículo o añadirle una traducción, el formulario exige seleccionar
+de manera explícita un locale activo que ese agregado aún no utilice y muestra
+la ruta asociada en `public_paths`. Una variante existente conserva su locale
+como identidad inmutable. Tanto la URL de edición como la pública usan ese
+locale y `{public_path}/{slug}`; nunca se inventa `/es`, `/eu` u otro prefijo por
+convención. La traducción asistida mediante IA sigue fuera de este corte: una
+acción futura podrá crear otra variante, pero cada idioma mantendrá slug,
+metadatos, documento, revisiones y publicación independientes.
+
+El inspector reúne metadatos, bloque activo, SEO, categorías y acceso a medios.
+Las categorías asignables pertenecen al mismo locale y su guardado asíncrono
+mantiene el formulario POST nativo como fallback. El catálogo Media presenta el
+tramo reciente y añade todos los assets referenciados por el documento actual,
+aunque sean más antiguos, para que una edición nunca pierda la posibilidad de
+resolver o conservar una imagen ya usada. Subir sigue siendo responsabilidad
+de `/admin/media` y de `webadmin.media.upload`.
+
+El formulario completo continúa siendo la fuente de verdad. La mejora
+progresiva sincroniza el documento canónico y guarda con `fetch`, pero solo
+considera éxito una redirección al mismo origen y al editor exacto del mismo
+post y locale. Un `409`, `422`, una respuesta de autenticación inesperada o un
+fallo de red conservan en pantalla todos los campos y bloques y anuncian un
+error genérico sin navegar. Mientras el formulario difiera de su huella inicial,
+`beforeunload` protege frente a una salida accidental; tras un éxito confirmado
+se actualiza la huella y se permite la navegación.
+
 ## Resolución pública y prioridad
 
 Las rutas privadas se despachan antes del stack legacy para conservar el
@@ -300,7 +355,12 @@ rutas no reclamadas, POST y otros métodos conservan el orden de bootstrap
 anterior.
 
 Si la variante tiene un documento estructurado actual, la URL pública lo
-renderiza con la misma semántica validada del preview. Si todavía no ha sido
+renderiza con la misma semántica validada del preview. La lista plana conserva
+como contenido raíz cualquier introducción anterior al primer H2; cada H2 abre
+una `section`, cada H3 abre un `article` dentro de la sección activa y H4-H6
+permanecen dentro de ese artículo. El contenido posterior a un H2 pertenece a
+su sección y el posterior a un H3 a su artículo hasta que otro encabezado cierre
+ese ámbito. Si todavía no ha sido
 adoptada, conserva el renderer legacy de `body_text`; actualizar CORE no
 reescribe el artículo ni cambia por sí solo su salida. No existe fallback de
 Matrix o contenido dummy en producción.
@@ -310,14 +370,19 @@ El proyecto puede componer el detalle con su shell mediante
 exclusivamente `$blogArticle`, una instancia tipada de
 `BlogPublicArticleViewModel`. Expone locale, canonical, alternates y
 `x-default`, navegación localizada, title y description SEO, H1, extracto,
-cuerpo HTML ya saneado, portada opcional, plantilla y fechas inmutables de
-publicación/actualización. `alternateUrls()` contiene solo variantes publicadas
+y tres proyecciones HTML ya saneadas: `bodyHtml()` conserva el cuerpo histórico
+completo, incluida la portada; las vistas nuevas deben componer
+`headerMediaHtml()` con `mainHtml()` para situar la portada una sola vez fuera
+del contenido principal. También expone la URL de portada opcional, plantilla
+y fechas inmutables de publicación/actualización. `alternateUrls()` contiene
+solo variantes publicadas
 y alimenta `hreflang`; `languageNavigationUrls()` cubre todos los idiomas
 activos y cae al índice localizado cuando el artículo aún no tiene traducción
 publicada. Ambos contratos permanecen separados para no inventar alternates
 SEO.
 Los escalares permanecen sin escapar para que el proyecto los codifique según
-su contexto; solo `bodyHtml()` se imprime como HTML prevalidado. Una excepción,
+su contexto; solo `bodyHtml()`, `mainHtml()` y `headerMediaHtml()` se imprimen
+como HTML prevalidado. Una excepción,
 un fichero que deje de ser regular o una salida vacía fallan de forma genérica,
 sin volver silenciosamente al fallback.
 
@@ -326,8 +391,11 @@ conserva el resto de cabeceras defensivas, pero no impone su CSP cerrada sobre
 ese shell. Si no se configura vista, el HTML standalone y sus metadatos siguen
 siendo el fallback compatible; enlaza el asset gestionado
 `/assets/modules/blog/blog-public.css` y el runtime gestionado
-`/assets/modules/blog/blog-public.js`. Su CSP permite exclusivamente estilos y
-scripts del mismo origen y frames de `youtube-nocookie.com`.
+`/assets/modules/blog/blog-public.js`. El CSS fallback mantiene tipografía
+explícita hasta H6 y espaciado responsive para las `section` y `article`
+proyectadas, sin convertirlas en tarjetas ni añadir decoración estructural.
+Su CSP permite exclusivamente estilos y scripts del mismo origen y frames de
+`youtube-nocookie.com`.
 
 Si el shell reutiliza la navegación global del proyecto, debe enlazar cada
 idioma al valor publicado de `languageNavigationUrls()` y activar
@@ -453,9 +521,13 @@ conservan grupos propios. Así una personalización local bloquea únicamente su
 unidad coherente y no toda la familia.
 
 `artBlogArticle01` deduce el rango de su encabezado externo mediante el mismo
-contrato relacional del stack y desplaza en consecuencia los H2/H3 saneados
+contrato relacional del stack y desplaza en consecuencia los H2-H6 saneados
 del documento. Sus placeholders estructurales son reservados: solo
-`article_data.body_html` puede aportar el cuerpo confiable. Los relacionados
+`article_data.body_html` puede aportar el cuerpo confiable y el fragmento
+opcional `article_data.header_media_html` acepta exclusivamente la proyección
+saneada de cabecera. En una vista nueva se alimentan respectivamente con
+`mainHtml()` y `headerMediaHtml()`; omitir el segundo mantiene compatible la
+composición histórica basada en `bodyHtml()`. Los relacionados
 usan tres cards por defecto y centran cualquier última fila incompleta; el
 archivo expone el periodo activo con `aria-current="date"`.
 

@@ -43,7 +43,8 @@ final class BlogArticleResourceContractTest extends TestCase
         $xpath = $this->createXpath($html);
 
         self::assertCount(1, $xpath->query('/html/body/article'));
-        self::assertCount(0, $xpath->query('//article//article | //section | //header'));
+        self::assertCount(0, $xpath->query('//article//article | //section'));
+        self::assertCount(1, $xpath->query('/html/body/article/header'));
         self::assertCount(1, $xpath->query('//article//h1'));
         self::assertCount(1, $xpath->query('//article//time[@datetime]'));
         self::assertCount(1, $xpath->query('//article//a[@rel="up"]'));
@@ -62,6 +63,9 @@ final class BlogArticleResourceContractTest extends TestCase
         $data = $this->articleData('article-cover-01');
         $data['body_html'] = '<div class="blogDocument">'
             . '<h2>Body section</h2><h3>Body subsection</h3></div>';
+        $data['header_media_html'] = '<figure id="trusted-cover" '
+            . 'class="blogDocument__image blogDocument__image--cover">'
+            . '<img src="/media/cover.avif" alt="Matrix cover"></figure>';
         $html = controller('artBlogArticle01', 1, [
             'article_data' => $data,
             '{article-intro}' => '<div><h3>Preview heading</h3></div>',
@@ -77,9 +81,22 @@ final class BlogArticleResourceContractTest extends TestCase
             'data-blog-template="article-cover-01"',
             $html
         );
+        self::assertCount(
+            1,
+            $xpath->query(
+                '/html/body/article/header/figure[@id="trusted-cover"]'
+            )
+        );
+        self::assertCount(
+            0,
+            $xpath->query(
+                '/html/body/article/div[contains(@class, "artBlogArticle01-body")]'
+                    . '//figure[@id="trusted-cover"]'
+            )
+        );
     }
 
-    public function testOnlyTheTrustedBodyFragmentRemainsUnescaped(): void
+    public function testTrustedHtmlFragmentsDoNotRelaxScalarEscaping(): void
     {
         $data = $this->articleData('article-basic-01');
         $data['h1'] = '<script>alert(1)</script>';
@@ -107,11 +124,21 @@ final class BlogArticleResourceContractTest extends TestCase
         self::assertStringNotContainsString('moduleButtonType04', $html);
     }
 
+    public function testHeaderMediaIsAcceptedOnlyByTheCoverTemplate(): void
+    {
+        $data = $this->articleData('article-basic-01');
+        $data['header_media_html'] = '<figure>Trusted cover</figure>';
+
+        $this->expectException(InvalidArgumentException::class);
+        controller('artBlogArticle01', 0, ['article_data' => $data]);
+    }
+
     public function testReservedTemplatePlaceholdersCannotOverrideValidatedData(): void
     {
         $html = controller('artBlogArticle01', 0, [
             'article_data' => $this->articleData('article-basic-01'),
             '{article-body}' => '<script id="override">alert(1)</script>',
+            '{article-header-media}' => '<script id="media-override">alert(1)</script>',
             '{article-id}' => 'attacker-id',
             '{template}' => 'attacker-template',
             '{modifier}' => 'attacker-modifier',
@@ -163,6 +190,14 @@ final class BlogArticleResourceContractTest extends TestCase
         }
         self::assertStringContainsString("\$params['{article-intro}']", $controller);
         self::assertStringContainsString("\$params['{article-back}']", $controller);
+        self::assertStringContainsString("\$article['header_media_html']", $controller);
+        self::assertStringContainsString(
+            '<header class="artBlogArticle01-intro">',
+            (string) file_get_contents(
+                self::moduleProjectRoot()
+                    . '/App/templates/_artBlogArticle01.html'
+            )
+        );
         self::assertStringContainsString("@use '../config' as c;", $scss);
         self::assertStringContainsString('&--basic', $scss);
         self::assertStringContainsString('&--cover', $scss);

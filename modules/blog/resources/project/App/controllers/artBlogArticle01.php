@@ -8,8 +8,12 @@ use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
  * Composición pública de un artículo Blog.
  *
  * `body_html` debe proceder exclusivamente de
- * BlogPublicArticleViewModel::bodyHtml(). El controlador escapa el resto de
- * escalares y no consulta DB, configuración ni estado interno del módulo.
+ * BlogPublicArticleViewModel::bodyHtml() en composiciones legacy o de
+ * BlogPublicArticleViewModel::mainHtml() en vistas nuevas. El fragmento
+ * opcional `header_media_html` debe proceder de
+ * BlogPublicArticleViewModel::headerMediaHtml(). El controlador escapa el
+ * resto de escalares y no consulta DB, configuración ni estado interno del
+ * módulo.
  *
  * @param array<string, mixed> $params
  */
@@ -74,6 +78,17 @@ function controller_artBlogArticle01(
     $bodyHtml = is_string($article['body_html'] ?? null)
         ? trim($article['body_html'])
         : '';
+    $headerMediaHtml = is_string($article['header_media_html'] ?? null)
+        ? trim($article['header_media_html'])
+        : '';
+    if (
+        $headerMediaHtml !== ''
+        && $template !== BlogDocumentTemplateRegistry::ARTICLE_COVER
+    ) {
+        throw new InvalidArgumentException(
+            'Header media requires the Blog cover template.'
+        );
+    }
     $bodyHeadingShift = max(0, $headingLevel - 1);
     if ($bodyHtml !== '' && $bodyHeadingShift > 0) {
         $bodyHtml = (string) preg_replace_callback(
@@ -214,7 +229,8 @@ function controller_artBlogArticle01(
         '{modifier}' => $modifier,
         '{classVar}' => $escape($classVar),
         '{article-intro}' => $introHtml,
-        // Único fragmento HTML confiable: ya saneado por CORE.
+        // Fragmentos HTML confiables: ya saneados por CORE.
+        '{article-header-media}' => $headerMediaHtml,
         '{article-body}' => $bodyHtml,
         '{article-back}' => $backHtml,
     ];

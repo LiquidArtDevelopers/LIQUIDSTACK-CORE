@@ -203,9 +203,18 @@ final class BlogPublicHtmlRenderer
         }
 
         $draft = $variant->draft();
+        $documentRenderer = $document === null || $imageResolver === null
+            ? null
+            : new BlogDocumentHtmlRenderer($imageResolver);
         $body = $document === null
             ? $this->legacyBody($draft->bodyText())
-            : $this->structuredBody($document, $imageResolver);
+            : $this->structuredBody($document, $documentRenderer);
+        $main = $document === null
+            ? $body
+            : $this->structuredMain($document, $documentRenderer);
+        $headerMedia = $document === null
+            ? ''
+            : $this->structuredHeaderMedia($document, $documentRenderer);
         $alternates = $this->normalizeAlternates(
             $variant,
             $canonicalUrl,
@@ -244,6 +253,8 @@ final class BlogPublicHtmlRenderer
             $draft->h1(),
             (string) $draft->excerpt(),
             $body,
+            $main,
+            $headerMedia,
             $coverImageUrl,
             $document?->template()
                 ?? BlogDocumentTemplateRegistry::ARTICLE_BASIC,
@@ -302,11 +313,11 @@ final class BlogPublicHtmlRenderer
             . '<script src="' . self::STANDALONE_SCRIPT
             . '" defer></script>'
             . '</head><body>'
-            . '<main><article><header><h1>'
+            . '<header class="blogArticleHeader"><h1>'
             . $this->escape($article->h1()) . '</h1><p>'
             . $this->escape($article->excerpt())
-            . '</p></header><div>' . $article->bodyHtml()
-            . '</div></article></main>'
+            . '</p>' . $article->headerMediaHtml() . '</header>'
+            . '<main>' . $article->mainHtml() . '</main>'
             . '</body></html>';
     }
 
@@ -377,15 +388,35 @@ final class BlogPublicHtmlRenderer
 
     private function structuredBody(
         BlogDocument $document,
-        ?BlogImageResolverInterface $imageResolver
+        ?BlogDocumentHtmlRenderer $renderer
     ): string {
-        if ($imageResolver === null) {
+        if ($renderer === null) {
             throw new BlogException(BlogException::INVALID_STATE);
         }
 
-        return (new BlogDocumentHtmlRenderer($imageResolver))->render(
-            $document
-        );
+        return $renderer->render($document);
+    }
+
+    private function structuredHeaderMedia(
+        BlogDocument $document,
+        ?BlogDocumentHtmlRenderer $renderer
+    ): string {
+        if ($renderer === null) {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+
+        return $renderer->renderHeaderMedia($document);
+    }
+
+    private function structuredMain(
+        BlogDocument $document,
+        ?BlogDocumentHtmlRenderer $renderer
+    ): string {
+        if ($renderer === null) {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+
+        return $renderer->renderMain($document);
     }
 
     /**

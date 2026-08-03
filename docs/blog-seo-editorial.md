@@ -23,7 +23,7 @@ El análisis cubre:
 - longitud Unicode de title, meta description, H1 y slug;
 - solapamiento semántico entre title y H1 sin exigir igualdad;
 - recuento de palabras y presencia de la propuesta en las primeras 100;
-- jerarquía H2/H3, encabezados repetidos o vacíos;
+- jerarquía H2-H6 sin saltos, encabezados repetidos o vacíos;
 - ALT informativo e imágenes marcadas como decorativas;
 - palabras repetidas mecánicamente y concentración anómala de términos;
 - preview SERP con locale, URL, title y descripción;

@@ -10,6 +10,7 @@ use App\Core\Blog\BlogSitemapEntry;
 use App\Core\Blog\Audit\BlogMutationAuditEvent;
 use App\Core\Blog\Audit\BlogMutationAuditPortInterface;
 use App\Core\Blog\Persistence\BlogPersistenceException;
+use App\Core\Blog\Persistence\BlogPostLocaleCatalogRepositoryInterface;
 use App\Core\Blog\Persistence\BlogRepositoryInterface;
 use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Modules\Blog\BlogMigrationProvider;
@@ -267,6 +268,10 @@ final class BlogServicePersistenceTest extends TestCase
             'Matrix berria',
             $service->loadPost(self::POST_A, 'eu')->draft()->h1()
         );
+        self::assertSame(
+            ['es', 'eu'],
+            $service->localesForPost(self::POST_A)
+        );
 
         $this->expectBlogIssue(
             BlogException::LOCALE_CONFLICT,
@@ -278,6 +283,11 @@ final class BlogServicePersistenceTest extends TestCase
             )
         );
         self::assertSame(2, $this->tableCount('ls_blog_post_localizations'));
+
+        $this->expectBlogIssue(
+            BlogException::POST_NOT_FOUND,
+            fn () => $service->localesForPost(self::POST_B)
+        );
     }
 
     public function testAddingLocaleToUnknownAggregateFailsWithoutOrphanRows(): void
@@ -1042,6 +1052,18 @@ final class BlogServicePersistenceTest extends TestCase
                 self::assertStringNotContainsString('remove', $method);
             }
         }
+    }
+
+    public function testPostLocaleCatalogRemainsAnOptionalRepositoryCapability(): void
+    {
+        self::assertFalse(method_exists(
+            BlogRepositoryInterface::class,
+            'localesForPost'
+        ));
+        self::assertTrue(is_subclass_of(
+            PdoBlogRepository::class,
+            BlogPostLocaleCatalogRepositoryInterface::class
+        ));
     }
 
     /** @param list<string> $uuids */

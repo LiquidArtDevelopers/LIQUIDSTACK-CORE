@@ -68,17 +68,31 @@ final class BlogStructuredEditorAssetsContractTest extends TestCase
             'function renderImageFields(',
             'function renderLinkFields(',
             'function normalizeContracts(',
-            'function hasPreviousH2(',
-            "block.level = value === '3' ? 3 : 2",
-            "element(\n                'h3',\n                'blogEditor__blockTitle'",
-            "fieldset.setAttribute('aria-labelledby', titleId)",
-            "announce(context, 'Bloque eliminado.', false)",
+            'function headingLevelAllowed(',
+            'function semanticRange(',
+            'function moveSemanticGroup(',
+            'function refreshVisualCanvas(',
+            'function renderInspector(',
+            "[2, 3, 4, 5, 6].map(function (level)",
+            "fieldset.setAttribute('aria-labelledby', heading.id)",
+            "announce(context, 'Contenido eliminado.', false)",
             "provider: 'youtube'",
             "video_id: 'vKQi3bBA1y8'",
             'context.documentValue.blocks.splice(',
-            'move(context.documentValue.blocks,',
+            'moveSemanticGroup(context, blockIndex,',
             'form.addEventListener(\'submit\'',
             'event.preventDefault()',
+            "window.fetch(form.action, {",
+            "window.addEventListener('beforeunload'",
+            "document.addEventListener('invalid'",
+            'formFingerprint(form)',
+            'function isExpectedEditorRedirect(',
+            'function isExpectedCategoryRedirect(',
+            'function initCategoryAssignment(',
+            '[data-blog-category-assignment-form]',
+            "'webadmin:open-inspector'",
+            "inspector.removeAttribute('inert')",
+            '[2, 3, 4, 5, 6].includes(requestedHeadingLevel)',
             'window.crypto.randomUUID',
             'window.crypto.getRandomValues',
             "form.dataset.blogEditorReadonly === 'true'",
@@ -87,11 +101,62 @@ final class BlogStructuredEditorAssetsContractTest extends TestCase
         }
     }
 
+    public function testJavascriptExecutesNestedSemanticGroupingAndMoves(): void
+    {
+        $node = new Process(['node', '--version']);
+        $node->run();
+        if (!$node->isSuccessful()) {
+            self::markTestSkipped('Node.js no estÃ¡ disponible.');
+        }
+
+        $root = dirname(__DIR__, 3);
+        $process = new Process([
+            'node',
+            $root . '/tests/Blog/StructuredContent/fixtures/'
+                . 'blog-editor-semantic-harness.mjs',
+            $root . '/modules/blog/published/assets/blog-editor.js',
+        ]);
+        $process->mustRun();
+        $result = json_decode(
+            $process->getOutput(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertTrue($result['valid']);
+        self::assertFalse($result['invalidJump']);
+        self::assertSame(['start' => 2, 'end' => 7], $result['h4Range']);
+        self::assertSame(['start' => 1, 'end' => 9], $result['h3Range']);
+        self::assertSame(['start' => 0, 'end' => 11], $result['h2Range']);
+        self::assertSame(['start' => 2, 'end' => 7], $result['h4Previous']);
+        self::assertTrue($result['moved']);
+        self::assertTrue($result['movedValid']);
+        self::assertTrue($result['expectedRedirect']);
+        self::assertFalse($result['loginRedirect']);
+        self::assertTrue($result['expectedCategoryRedirect']);
+        self::assertFalse($result['categoryLoginRedirect']);
+        self::assertSame([
+            '00000000-0000-4000-8000-000000000001',
+            '00000000-0000-4000-8000-000000000002',
+            '00000000-0000-4000-8000-000000000008',
+            '00000000-0000-4000-8000-000000000009',
+            '00000000-0000-4000-8000-000000000003',
+            '00000000-0000-4000-8000-000000000004',
+            '00000000-0000-4000-8000-000000000005',
+            '00000000-0000-4000-8000-000000000006',
+            '00000000-0000-4000-8000-000000000007',
+            '00000000-0000-4000-8000-000000000010',
+            '00000000-0000-4000-8000-000000000011',
+            '00000000-0000-4000-8000-000000000012',
+        ], $result['movedIds']);
+    }
+
     public function testJavascriptRestoresFocusAndReannouncesRepeatedStatus(): void
     {
         foreach ([
             'function focusAfterRender(',
-            'title.dataset.blogBlockTitle = block.id',
+            'editButton.dataset.blogBlockTitle = block.id',
             'item.dataset.blogInlineOwner = ownerId',
             'item.dataset.blogInlineIndex = String(index)',
             'item.dataset.blogListItemId = itemValue.id',
@@ -281,17 +346,23 @@ JS;
     public function testStylesAreScopedResponsiveAndDependencyFree(): void
     {
         foreach ([
-            '.blogAdmin .blogEditor',
-            '.blogAdmin .blogEditor__metadataGrid',
-            '.blogAdmin .blogEditor__blockToolbar',
-            '.blogAdmin .blogEditor__blockList',
-            '.blogAdmin .blogEditor__inlineList',
-            '.blogAdmin .blogEditor__listItems',
-            '.blogAdmin .blogEditor__revision',
+            '.webadmin .blogAdminPage',
+            '.webadmin .blogAdminPage table',
+            '.webadmin .blogEditor',
+            '.webadmin .blogEditor__metadataGrid',
+            '.webadmin .blogEditor__blockToolbar',
+            '.webadmin .blogEditor__canvas',
+            '.webadmin .blogEditor__postPreview',
+            '.webadmin .blogEditor__previewSection',
+            '.webadmin .blogEditor__previewArticle',
+            '.webadmin .blogEditor__inspectorTabs',
+            '.webadmin .blogEditor [data-blog-category-assignment-form]',
+            '.webadmin .blogEditor__inlineList',
+            '.webadmin .blogEditor__listItems',
+            '.webadmin .blogEditor__revision',
             '@media (min-width: 48rem)',
-            '@media (min-width: 64rem)',
+            '@media (min-width: 80rem)',
             '@media (prefers-reduced-motion: reduce)',
-            'var(--ls-webadmin-border)',
             'var(--ls-webadmin-accent)',
         ] as $contract) {
             self::assertStringContainsString($contract, $this->stylesheet);

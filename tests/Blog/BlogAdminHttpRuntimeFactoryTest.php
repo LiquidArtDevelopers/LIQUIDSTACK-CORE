@@ -11,6 +11,7 @@ use App\Core\Blog\Audit\WebAdminBlogMutationAuditAdapter;
 use App\Core\Blog\Http\BlogAdminHttpRuntime;
 use App\Core\Blog\Http\BlogAdminHttpRuntimeException;
 use App\Core\Blog\Http\BlogAdminHttpRuntimeFactory;
+use App\Core\Blog\Http\BlogStructuredEditorCategoryHttpRuntimeInterface;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationApplyOptions;
@@ -131,6 +132,11 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
         );
 
         self::assertInstanceOf(BlogAdminHttpRuntime::class, $runtime);
+        self::assertInstanceOf(
+            BlogStructuredEditorCategoryHttpRuntimeInterface::class,
+            $runtime
+        );
+        self::assertNotNull($runtime->editorCategoryCatalog());
         self::assertSame($this->projectRoot, $runtime->projectRoot());
         self::assertSame(['es', 'en'], $runtime->languages());
         self::assertSame('/blog', $runtime->blogConfig()->publicPath('es'));
@@ -146,6 +152,13 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
         self::assertInstanceOf(
             WebAdminAuthorizationService::class,
             $runtime->authorization()
+        );
+        self::assertSame(
+            ['/blog', '/blog/categories', '/media'],
+            array_map(
+                static fn ($item): string => $item->suffix(),
+                $runtime->navigation()->items()
+            )
         );
         self::assertSame(1, $this->connectionCount);
 
@@ -185,6 +198,39 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
         self::assertNull($audit['user_agent_hash']);
         self::assertSame(self::NOW, $audit['occurred_at']);
         self::assertSame(self::NOW, $this->sessionTimes()['last_seen_at']);
+    }
+
+    public function testCategoryProjectionIsOptionalAtTheLegacyBoundary(): void
+    {
+        $this->applyMigrations();
+        $capabilityId = $this->pdo->query(
+            "SELECT id FROM ls_webadmin_capabilities "
+                . "WHERE code = 'blog.categories.edit'"
+        )->fetchColumn();
+        self::assertNotFalse($capabilityId);
+        foreach ([
+            'ls_webadmin_user_capabilities',
+            'ls_webadmin_role_capabilities',
+        ] as $table) {
+            $statement = $this->pdo->prepare(
+                'DELETE FROM ' . $table . ' WHERE capability_id = ?'
+            );
+            self::assertTrue($statement->execute([(int) $capabilityId]));
+        }
+        $statement = $this->pdo->prepare(
+            'DELETE FROM ls_webadmin_capabilities WHERE id = ?'
+        );
+        self::assertTrue($statement->execute([(int) $capabilityId]));
+
+        $runtime = $this->factory()->create(
+            $this->context(),
+            WebAdminConfig::defaults()
+        );
+
+        self::assertInstanceOf(BlogAdminHttpRuntime::class, $runtime);
+        self::assertNull($runtime->editorCategoryCatalog());
+        self::assertInstanceOf(BlogService::class, $runtime->service());
+        self::assertSame(1, $this->connectionCount);
     }
 
     public function testAuditFailureRollsBackBlogWriteAndSessionSlide(): void

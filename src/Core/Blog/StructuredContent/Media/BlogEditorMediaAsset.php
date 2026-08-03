@@ -11,10 +11,17 @@ use Throwable;
 /** Content-safe media catalog projection for the Blog editor. */
 final class BlogEditorMediaAsset
 {
+    public const MAX_THUMBNAIL_WIDTH = 2560;
+
     private readonly string $publicId;
     private readonly string $label;
+    private readonly ?int $thumbnailWidth;
 
-    public function __construct(string $publicId, string $label)
+    public function __construct(
+        string $publicId,
+        string $label,
+        ?int $thumbnailWidth = null
+    )
     {
         try {
             $this->publicId = BlogInput::generatedPublicId($publicId);
@@ -28,6 +35,18 @@ final class BlogEditorMediaAsset
                 throw new \InvalidArgumentException('Invalid media label.');
             }
             $this->label = $label;
+            if (
+                $thumbnailWidth !== null
+                && (
+                    $thumbnailWidth < 1
+                    || $thumbnailWidth > self::MAX_THUMBNAIL_WIDTH
+                )
+            ) {
+                throw new \InvalidArgumentException(
+                    'Invalid media thumbnail width.'
+                );
+            }
+            $this->thumbnailWidth = $thumbnailWidth;
         } catch (Throwable) {
             throw new BlogStructuredContentException(
                 BlogStructuredContentException::MEDIA_UNAVAILABLE
@@ -45,12 +64,18 @@ final class BlogEditorMediaAsset
         return $this->label;
     }
 
+    public function thumbnailWidth(): ?int
+    {
+        return $this->thumbnailWidth;
+    }
+
     /** @return array<string, mixed> */
     public function __debugInfo(): array
     {
         return [
             'public_id' => $this->publicId,
             'label' => '[redacted]',
+            'thumbnail_width' => $this->thumbnailWidth,
         ];
     }
 }

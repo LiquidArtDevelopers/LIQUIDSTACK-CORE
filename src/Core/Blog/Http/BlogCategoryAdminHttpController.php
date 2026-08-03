@@ -12,6 +12,11 @@ use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
+use App\Core\WebAdmin\Http\WebAdminPageAssets;
+use App\Core\WebAdmin\Http\WebAdminShellContext;
+use App\Core\WebAdmin\Http\WebAdminShellContextFactory;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationItem;
 use App\Core\WebAdmin\Security\ConstantTime;
 
 /** Separate category HTTP coordinator; the article controller stays bounded. */
@@ -22,6 +27,7 @@ final class BlogCategoryAdminHttpController
 
     /** @var array<string, mixed> */
     private readonly array $environment;
+    private readonly WebAdminShellContextFactory $shellContexts;
 
     public function __construct(
         private readonly BlogCategoryAdminHttpRuntimeInterface $runtime,
@@ -33,6 +39,11 @@ final class BlogCategoryAdminHttpController
             new PrivateRouteTransportPolicy(),
         #[\SensitiveParameter] array $environment = []
     ) {
+        $this->shellContexts = new WebAdminShellContextFactory(
+            $runtime->webAdminConfig()->basePath(),
+            $runtime->authorization(),
+            $this->navigationCatalog($runtime)
+        );
         $this->environment = $environment;
     }
 
@@ -57,7 +68,9 @@ final class BlogCategoryAdminHttpController
                 $this->runtime->authorization()->hasCapability(
                     $context['session'],
                     self::EDIT_CAPABILITY
-                )
+                ),
+                $this->activeLocalePublicPaths(),
+                $this->shellContext($context, '/blog/categories')
             ));
         } catch (BlogCategoryException) {
             return $this->plain(503, 'Service unavailable');
@@ -92,7 +105,11 @@ final class BlogCategoryAdminHttpController
                         $request,
                         200,
                         $this->renderer->localizationsComplete(
-                            $this->basePath()
+                            $this->basePath(),
+                            $this->shellContext(
+                                $context,
+                                '/blog/categories/new'
+                            )
                         )
                     );
                 }
@@ -105,7 +122,8 @@ final class BlogCategoryAdminHttpController
             $this->basePath(),
             $context['csrf'],
             $languages,
-            is_string($category) ? $category : null
+            is_string($category) ? $category : null,
+            $this->shellContext($context, '/blog/categories/new')
         ));
     }
 
@@ -181,7 +199,8 @@ final class BlogCategoryAdminHttpController
                 $this->basePath(),
                 $context['csrf'],
                 $category,
-                $missingLanguages !== []
+                $missingLanguages !== [],
+                $this->shellContext($context, '/blog/categories/edit')
             ));
         } catch (BlogCategoryException $exception) {
             return $this->domainFailure($exception);
@@ -249,7 +268,8 @@ final class BlogCategoryAdminHttpController
                 $post,
                 $locale,
                 $service->list(BlogCategoryService::MAX_ASSIGNMENTS, 0, $locale),
-                $service->assignedToPost($post)
+                $service->assignedToPost($post),
+                $this->shellContext($context, '/blog/categories/assign')
             ));
         } catch (BlogCategoryException|BlogException $exception) {
             return $this->domainFailure($exception);
@@ -304,8 +324,46 @@ final class BlogCategoryAdminHttpController
         return $this->htmlForRequest(
             $request,
             200,
-            $this->renderer->completed($this->basePath())
+            $this->renderer->completed(
+                $this->basePath(),
+                $this->shellContext($context, '/blog/categories')
+            )
         );
+    }
+
+    /** @param array{session: string, csrf: string} $context */
+    private function shellContext(
+        #[\SensitiveParameter] array $context,
+        string $activePath
+    ): WebAdminShellContext {
+        return $this->shellContexts->create(
+            $context['session'],
+            $context['csrf'],
+            $activePath,
+            assets: new WebAdminPageAssets([
+                '/assets/modules/blog/blog-admin.css',
+            ])
+        );
+    }
+
+    private function navigationCatalog(
+        BlogCategoryAdminHttpRuntimeInterface $runtime
+    ): WebAdminNavigationCatalog {
+        if (method_exists($runtime, 'navigation')) {
+            $navigation = $runtime->navigation();
+            if ($navigation instanceof WebAdminNavigationCatalog) {
+                return $navigation;
+            }
+        }
+
+        return new WebAdminNavigationCatalog([
+            new WebAdminNavigationItem(
+                'blog',
+                'Categor&iacute;as',
+                '/blog/categories',
+                self::VIEW_CAPABILITY
+            ),
+        ]);
     }
 
     private function service(): BlogCategoryService
@@ -381,6 +439,20 @@ final class BlogCategoryAdminHttpController
             $this->runtime->languages(),
             fn (string $locale): bool => $this->isActiveLocale($locale)
         ));
+    }
+
+    /** @return array<string, string> */
+    private function activeLocalePublicPaths(): array
+    {
+        $paths = [];
+        foreach ($this->activeLanguages() as $locale) {
+            $publicPath = $this->runtime->blogConfig()->publicPath($locale);
+            if (is_string($publicPath)) {
+                $paths[$locale] = $publicPath;
+            }
+        }
+
+        return $paths;
     }
 
     /**
@@ -480,7 +552,8 @@ final class BlogCategoryAdminHttpController
     private function html(int $status, string $body, array $headers = []): Response
     {
         return new Response($status, $body, $headers + $this->headers(
-            "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+            "default-src 'none'; style-src 'self'; script-src 'self'; "
+            . "form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
         ) + [
             'Content-Type' => 'text/html; charset=utf-8',
             'Content-Language' => 'es',

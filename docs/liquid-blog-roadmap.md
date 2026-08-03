@@ -28,6 +28,12 @@ Implementado:
 - login, logout, invitación, alta inicial, recuperación y cambio de clave;
 - alta, suspensión, reactivación y permisos delegables de editores;
 - navegación única de WebAdmin filtrada por capacidades;
+- shell compartido de ancho completo para WebAdmin y Blog, con un único
+  `main`, navegación lateral e inspector contextual opcional;
+- mejora progresiva accesible: sin JavaScript todo permanece en el flujo y,
+  una vez enlazado, los drawers sincronizan foco, `aria-*` e `inert`;
+- lenguaje visual plano basado en espacio, tipografía, grid y fondos, sin
+  bordes laterales de acento, franjas o pseudoelementos decorativos;
 - recuperación de contraseña con entrega síncrona sin cola, invitaciones
   mediante outbox one-shot y diagnóstico operativo.
 
@@ -73,9 +79,19 @@ Implementado mediante `0005_blog_structured_content` y la biblioteca Media:
 - editor privado en `/admin/blog/editor` con documento JSON canónico
   `liquidstack.blog.document`, versión `1`;
 - plantillas controladas `article-basic-01` y `article-cover-01`;
-- ocho tipos de bloque: párrafo, heading H2/H3, lista, callout, enlace, imagen,
+- ocho tipos de bloque: párrafo, heading H2-H6, lista, callout, enlace, imagen,
   YouTube y CTA;
+- lienzo visual que proyecta `header` y el futuro `main` sin duplicar landmarks
+  ni H1 en WebAdmin; H2 abre `section`, H3 abre `article`, H4-H6 permanecen en
+  él y las operaciones de orden o borrado conservan subárboles completos;
 - H1, title SEO, slug, description y extracto separados del cuerpo;
+- locale elegido expresamente entre los activos todavía libres, visible junto
+  a su `public_paths` y estable durante toda la edición;
+- asignación contextual de categorías del mismo idioma y catálogo Media que
+  suma a los recientes cualquier asset ya referenciado por el documento;
+- guardado progresivo que conserva campos y bloques ante conflictos,
+  validación, pérdida de autorización o red, valida estrictamente la
+  redirección de éxito y protege cambios pendientes al abandonar la página;
 - `body_text` derivado en servidor, nunca enviado como fuente paralela;
 - revisiones inmutables y restauración mediante una revisión nueva;
 - bloqueo optimista compartido con la variante y escritura transaccional de
@@ -111,6 +127,9 @@ legacy. Este corte incorpora además:
   `article-basic-01` y `article-cover-01`, con cuerpo HTML saneado por CORE,
   intro/retorno inyectables y fallback SSR para consumidores que aún no hayan
   adoptado el shell visual;
+- separación SSR compatible: `bodyHtml()` conserva la salida histórica con
+  portada, mientras las vistas nuevas componen `headerMediaHtml()` en el
+  `header` y `mainHtml()` dentro del `main` sin duplicar el medio destacado;
 - una proyección pública unificada y acotada para relacionados por categorías,
   archivo anual/mensual y periodos con recuento, reutilizando el mismo PDO y
   sin exponer borradores;
@@ -132,7 +151,7 @@ silenciosa una vista, un head o un layout project-owned.
 ### 6. SEO editorial avanzado
 
 El primer corte ya está implementado: revisa title, description, H1, slug,
-longitud, primeras 100 palabras, jerarquía H2/H3, ALT, repetición mecánica,
+longitud, primeras 100 palabras, jerarquía H2-H6, ALT, repetición mecánica,
 concentración de términos y posible canibalización por idioma. Incluye preview
 SERP, SSR del estado guardado y análisis reactivo del payload actual. Es
 advisory, no persiste una puntuación y no bloquea ninguna transición. Véase el
@@ -148,7 +167,8 @@ La independencia por idioma ya existe: cada variante conserva slug,
 metadatos, documento, revisiones y estado propios. Queda pendiente una
 integración IA que genere una nueva variante traducida mediante una acción
 explícita. La API y sus credenciales se configurarán por entorno y el resultado
-seguirá siendo editable y publicable de forma independiente.
+seguirá siendo editable y publicable de forma independiente. El editor actual
+no infiere traducciones ni genera variantes implícitas.
 
 ### 8. Descubrimiento e indexación
 

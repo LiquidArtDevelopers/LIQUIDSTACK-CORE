@@ -23,6 +23,8 @@ use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
 use App\Core\WebAdmin\Authorization\WebAdminMutationActorGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationItem;
 use App\Core\WebAdmin\Security\PasswordHasher;
 use App\Core\WebAdmin\Security\SecureTokenGenerator;
 use App\Core\WebAdmin\Security\SecurityKey;
@@ -158,7 +160,15 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
                 $clock,
                 $tokens,
                 $hasher
-            )
+            ),
+            new WebAdminNavigationCatalog([
+                new WebAdminNavigationItem(
+                    'blog',
+                    'Categor&iacute;as',
+                    '/blog/categories',
+                    BlogCategoryAdminHttpController::VIEW_CAPABILITY
+                ),
+            ])
         );
         $this->controller = new BlogCategoryAdminHttpController($runtime);
     }
@@ -233,6 +243,40 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
         self::assertSame(200, $get->status());
         self::assertStringContainsString(
             'Categor&iacute;as del Blog',
+            $get->body()
+        );
+        self::assertSame(1, substr_count($get->body(), '<main'));
+        self::assertStringContainsString('data-webadmin-shell', $get->body());
+        self::assertStringContainsString(
+            'href="/admin/blog/categories" aria-current="page"',
+            $get->body()
+        );
+        self::assertStringContainsString(
+            'action="/admin/logout"',
+            $get->body()
+        );
+        self::assertStringContainsString(
+            "style-src 'self'",
+            $get->headers()['Content-Security-Policy']
+        );
+        self::assertStringContainsString(
+            "script-src 'self'",
+            $get->headers()['Content-Security-Policy']
+        );
+        self::assertStringContainsString(
+            '<option value="" selected disabled>Selecciona un idioma</option>',
+            $get->body()
+        );
+        self::assertStringContainsString(
+            '<option value="es">es &mdash; /blog</option>',
+            $get->body()
+        );
+        self::assertStringContainsString(
+            '<option value="en">en &mdash; /en/blog</option>',
+            $get->body()
+        );
+        self::assertStringNotContainsString(
+            'id="category-locale" name="locale" value="es"',
             $get->body()
         );
         $head = $this->controller->index(Request::fromInput([
@@ -324,7 +368,11 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
                 );
             } else {
                 self::assertStringNotContainsString(
-                    '<form',
+                    'action="/admin/blog/categories/create"',
+                    $remaining->body()
+                );
+                self::assertStringNotContainsString(
+                    'name="locale"',
                     $remaining->body()
                 );
                 self::assertStringContainsString(

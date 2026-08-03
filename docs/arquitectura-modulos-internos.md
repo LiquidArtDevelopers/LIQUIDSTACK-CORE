@@ -65,6 +65,31 @@ Los tipos de provider reservados son rutas, middleware, servicios, navegación,
 capacidades, migraciones y sitemap. Un provider solo se consulta si su módulo
 está activo.
 
+## Shell administrativo compartido
+
+Las páginas administrativas de gestión no pertenecen a `App/views` ni son
+plantillas project-owned. WebAdmin compone un shell module-owned de ancho completo con
+navegación lateral generada por los providers y filtrada por capacidades, un
+único `main` para el contenido de la ruta y un inspector derecho opcional. Blog,
+Media, usuarios, revisiones y categorías aportan contenido a esa misma
+estructura sin crear layouts administrativos paralelos. Las vistas previas
+privadas pueden conservar un documento aislado para proyectar fielmente su
+`header` y `main`; siguen dentro del namespace autenticado, con `no-store` y
+`noindex`, y no se convierten en una segunda navegación administrativa.
+
+El HTML SSR conserva navegación, inspector y formularios en el flujo normal.
+Los toggles solo se convierten en drawers cuando `webadmin.js` ha enlazado el
+shell; desde ese momento el runtime sincroniza `aria-expanded`, `aria-hidden`,
+foco e `inert`, permite cerrar con Escape y devuelve el foco al control que
+abrió la superficie. Un fallo o ausencia de JavaScript no puede ocultar la
+navegación ni dejar controles muertos.
+
+El sistema visual es deliberadamente plano. La jerarquía se expresa con
+espaciado, tipografía, grid, fondos y separadores funcionales. Los bordes se
+reservan para controles, foco, tablas o selección; no se usan bordes laterales
+de acento, franjas, pseudoelementos decorativos ni cadenas de tarjetas anidadas
+como decoración por defecto.
+
 ## Sincronización y propiedad de datos
 
 El PHP de dominio de los módulos permanece en CORE, bajo `vendor`, y no se
@@ -510,6 +535,28 @@ bloqueo optimista, UI privada, auditoría atómica, consumo de Media, resolució
 pública tardía sin sesión legacy, medios por prefijo pre-bootstrap y sitemap
 DB-backed pre-bootstrap exacto.
 
+El editor proyecta el documento sobre un lienzo visual neutral, no sobre un
+segundo `main` ni un segundo H1 del documento administrativo. Conceptualmente
+presenta un `header` con H1 y medio destacado seguido del `main` público: H2
+abre una `section`, H3 un `article` dentro de ella y H4-H6 permanecen en ese
+artículo. La jerarquía no admite saltos y las operaciones de orden o borrado
+tratan cada encabezado junto a su subárbol semántico.
+
+La identidad localizada también forma parte del agregado. Al crear una
+variante solo se ofrecen locales activos todavía no usados y se muestra el path
+público configurado; al editar, el locale queda inmutable y la URL procede de
+`public_paths` más el slug, nunca de un prefijo convencional inferido. El
+inspector del editor puede asignar categorías de ese mismo locale y consultar
+medios recientes junto a todos los assets ya referenciados por el documento,
+de modo que una referencia antigua no desaparece de la UI.
+
+El guardado conserva el POST SSR como fallback y lo mejora con una petición
+asíncrona. Solo una redirección canónica al mismo origen, post y locale confirma
+el éxito. Conflictos de lock, validación, pérdida de autorización o red dejan
+intactos los campos y el documento; mientras existan diferencias frente al
+estado inicial, la navegación accidental se advierte. Categorías usan el mismo
+principio progresivo y mantienen su formulario nativo como fallback.
+
 El detalle público conserva un renderer standalone compatible, semántico y
 seguro, con CSS responsive publicado únicamente al activar Blog. Como punto de
 extensión aditivo, el proyecto puede declarar una vista regular bajo
@@ -520,6 +567,10 @@ una salida vacía o lanza una excepción. Omitir la clave no cambia la salida
 standalone de consumidores existentes. Las claves `article-basic-01` y
 `article-cover-01` siguen siendo contratos de documento y portada; nuevas
 composiciones visuales mediante recursos LiquidStack permanecen aditivas.
+El view model conserva `bodyHtml()` como cuerpo histórico completo, incluida la
+portada, para no romper shells existentes. Las vistas nuevas deben componer
+`headerMediaHtml()` en el `header` y `mainHtml()` dentro del `main`; ambos son
+fragmentos saneados y separan el medio destacado del contenido sin duplicarlo.
 
 El bloque YouTube conserva un enlace externo accesible y el asset module-owned
 `blog-public.js` lo mejora progresivamente. Solo un clic primario sin

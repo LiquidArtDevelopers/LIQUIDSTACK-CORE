@@ -105,8 +105,12 @@ final class BlogSeoAnalyzerTest extends TestCase
             $this->heading(2, 2, 'Elegir dentro de Matrix'),
             $this->heading(3, 3, 'El contexto de la elección'),
             $this->heading(4, 2, 'Elegir dentro de Matrix'),
-            $this->image(5, false, 'Neo observa el código de Matrix'),
-            $this->image(6, true, ''),
+            $this->heading(5, 3, 'Una nueva lectura'),
+            $this->heading(6, 4, 'Señales de la operadora'),
+            $this->heading(7, 5, 'Detalles del código'),
+            $this->heading(8, 6, 'La última capa'),
+            $this->image(9, false, 'Neo observa el código de Matrix'),
+            $this->image(10, true, ''),
         ];
         $analysis = (new BlogSeoAnalyzer())->analyze(
             $this->draftFromBlocks($blocks),
@@ -122,6 +126,13 @@ final class BlogSeoAnalyzerTest extends TestCase
         self::assertSame(
             1,
             $checks['content.heading_structure']['metrics']['repeated']
+        );
+        self::assertSame(1, $checks['content.heading_structure']['metrics']['h4']);
+        self::assertSame(1, $checks['content.heading_structure']['metrics']['h5']);
+        self::assertSame(1, $checks['content.heading_structure']['metrics']['h6']);
+        self::assertSame(
+            0,
+            $checks['content.heading_structure']['metrics']['hierarchy_issues']
         );
         self::assertSame(
             BlogSeoStatus::GOOD,

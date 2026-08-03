@@ -156,7 +156,11 @@ final class BlogDocumentValidator
             ['id', 'type', 'level', 'content'],
             BlogDocumentException::INVALID_BLOCK
         );
-        if (!is_int($block['level']) || !in_array($block['level'], [2, 3], true)) {
+        if (
+            !is_int($block['level'])
+            || $block['level'] < 2
+            || $block['level'] > 6
+        ) {
             throw new BlogDocumentException(
                 BlogDocumentException::INVALID_BLOCK
             );
@@ -767,20 +771,31 @@ final class BlogDocumentValidator
     /** @param list<array<string, mixed>> $blocks */
     private function assertHeadingHierarchy(array $blocks): void
     {
-        $hasH2 = false;
+        /** @var array<int, true> $activeLevels */
+        $activeLevels = [];
         foreach ($blocks as $block) {
             if (($block['type'] ?? null) !== 'heading') {
                 continue;
             }
-            if ($block['level'] === 2) {
-                $hasH2 = true;
+
+            $level = (int) $block['level'];
+            if ($level === 2) {
+                $activeLevels = [2 => true];
                 continue;
             }
-            if (!$hasH2) {
+
+            if (!isset($activeLevels[$level - 1])) {
                 throw new BlogDocumentException(
                     BlogDocumentException::INVALID_HEADING_HIERARCHY
                 );
             }
+
+            foreach (array_keys($activeLevels) as $activeLevel) {
+                if ($activeLevel >= $level) {
+                    unset($activeLevels[$activeLevel]);
+                }
+            }
+            $activeLevels[$level] = true;
         }
     }
 

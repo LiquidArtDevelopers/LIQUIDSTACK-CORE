@@ -8,14 +8,20 @@ use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Persistence\BlogStructuredRevisionRecord;
 use App\Core\WebAdmin\Http\WebAdminPageDocumentRenderer;
+use App\Core\WebAdmin\Http\WebAdminShellContext;
+use App\Core\WebAdmin\Http\WebAdminShellRenderer;
 use InvalidArgumentException;
 
 /** Private preview and revision pages; no mutation or inline executable code. */
 final class BlogStructuredPrivateHtmlRenderer
 {
+    private readonly WebAdminShellRenderer $shellRenderer;
+
     public function __construct(
-        private readonly BlogDocumentHtmlRenderer $documents
+        private readonly BlogDocumentHtmlRenderer $documents,
+        ?WebAdminShellRenderer $shellRenderer = null
     ) {
+        $this->shellRenderer = $shellRenderer ?? new WebAdminShellRenderer();
     }
 
     public function preview(
@@ -23,22 +29,25 @@ final class BlogStructuredPrivateHtmlRenderer
         BlogPostVariant $variant,
         BlogDocument $document
     ): string {
-        $body = $this->documents->render($document);
+        $body = $this->documents->renderMain($document);
+        $headerMedia = $this->documents->renderHeaderMedia($document);
         $draft = $variant->draft();
 
         return $this->shell(
             'Vista previa privada',
-            '<main><p role="status"><strong>Vista previa privada de la '
+            '<p class="blogPreviewNotice" role="status"><strong>'
+                . 'Vista previa privada de la '
                 . 'versi&oacute;n guardada.</strong> No publica ni modifica '
-                . 'el art&iacute;culo.</p><article lang="'
-                . $this->escape($variant->locale())
-                . '" aria-labelledby="blog-structured-preview-title">'
-                . '<header><h1 id="blog-structured-preview-title">'
+                . 'el art&iacute;culo.</p><header class="blogArticleHeader" lang="'
+                . $this->escape($variant->locale()) . '" '
+                . 'aria-labelledby="blog-structured-preview-title">'
+                . '<h1 id="blog-structured-preview-title">'
                 . $this->escape($draft->h1()) . '</h1>'
                 . ($draft->excerpt() === null ? '' : '<p>'
                     . $this->escape($draft->excerpt()) . '</p>')
-                . '</header>' . $body . '</article>'
-                . $this->backToEditor($basePath, $variant) . '</main>'
+                . $headerMedia . '</header><main class="blogArticleMain">'
+                . $body . '</main>'
+                . $this->backToEditor($basePath, $variant)
         );
     }
 
@@ -46,7 +55,8 @@ final class BlogStructuredPrivateHtmlRenderer
     public function revisions(
         string $basePath,
         BlogPostVariant $variant,
-        array $summaries
+        array $summaries,
+        ?WebAdminShellContext $adminShell = null
     ): string {
         if (!array_is_list($summaries) || count($summaries) > 100) {
             throw new InvalidArgumentException('Invalid revision list.');
@@ -75,9 +85,8 @@ final class BlogStructuredPrivateHtmlRenderer
             $items = '<li>No hay revisiones guardadas.</li>';
         }
 
-        return $this->shell(
-            'Historial del art&iacute;culo',
-            '<main><article aria-labelledby="blog-revisions-title">'
+        $fragment = '<article class="blogAdminPage" '
+                . 'aria-labelledby="blog-revisions-title">'
                 . '<h1 id="blog-revisions-title">Historial de revisiones</h1>'
                 . '<p>Art&iacute;culo: ' . $this->escape(
                     $variant->draft()->h1()
@@ -86,14 +95,25 @@ final class BlogStructuredPrivateHtmlRenderer
                 . '<h2 id="blog-revisions-list-title">Versiones guardadas</h2>'
                 . '<ol>' . $items . '</ol></section>'
                 . $this->backToEditor($basePath, $variant)
-                . '</article></main>'
-        );
+                . '</article>';
+
+        return $adminShell === null
+            ? $this->shell(
+                'Historial del art&iacute;culo',
+                '<main>' . $fragment . '</main>'
+            )
+            : $this->shellRenderer->render(
+                'Historial del art&iacute;culo',
+                $fragment,
+                $adminShell
+            );
     }
 
     public function revision(
         string $basePath,
         BlogPostVariant $variant,
-        BlogStructuredRevisionRecord $revision
+        BlogStructuredRevisionRecord $revision,
+        ?WebAdminShellContext $adminShell = null
     ): string {
         if (
             $revision->localizationPublicId()
@@ -104,9 +124,9 @@ final class BlogStructuredPrivateHtmlRenderer
         $snapshot = $revision->snapshot();
         $draft = $snapshot->compatibilityDraft();
 
-        return $this->shell(
-            'Revisi&oacute;n ' . $revision->revisionNumber(),
-            '<main><article aria-labelledby="blog-revision-title">'
+        $title = 'Revisi&oacute;n ' . $revision->revisionNumber();
+        $fragment = '<article class="blogAdminPage" '
+                . 'aria-labelledby="blog-revision-title">'
                 . '<h1 id="blog-revision-title">Revisi&oacute;n '
                 . $revision->revisionNumber() . '</h1>'
                 . '<p>Guardada el <time datetime="'
@@ -126,10 +146,14 @@ final class BlogStructuredPrivateHtmlRenderer
                 . '</dd></div><div><dt>Meta description</dt><dd>'
                 . $this->escape($draft->metaDescription() ?? '')
                 . '</dd></div></dl>'
-                . $this->documents->render($snapshot->document())
+                . $this->documents->renderHeaderMedia($snapshot->document())
+                . $this->documents->renderMain($snapshot->document())
                 . '</section>' . $this->backToRevisions($basePath, $variant)
-                . '</article></main>'
-        );
+                . '</article>';
+
+        return $adminShell === null
+            ? $this->shell($title, '<main>' . $fragment . '</main>')
+            : $this->shellRenderer->render($title, $fragment, $adminShell);
     }
 
     private function shell(string $title, string $body): string
@@ -141,6 +165,7 @@ final class BlogStructuredPrivateHtmlRenderer
             . WebAdminPageDocumentRenderer::STYLESHEET_PATH . '">'
             . '<link rel="stylesheet" href="'
             . BlogStructuredEditorHtmlRenderer::STYLESHEET_PATH . '">'
+            . '<link rel="stylesheet" href="/assets/modules/blog/blog-public.css">'
             . '<title>' . $title . '</title></head>'
             . '<body class="webadmin blogAdmin">' . $body
             . '<script src="' . WebAdminPageDocumentRenderer::SCRIPT_PATH

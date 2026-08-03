@@ -387,6 +387,37 @@ PHP);
             'hreflang="x-default" href="https://example.test/noticias/matrix"',
             $html
         );
+        $xpath = $this->xpath($html);
+        self::assertCount(
+            1,
+            $xpath->query(
+                '/html/body/header['
+                    . 'contains(concat(" ", normalize-space(@class), " "), '
+                    . '" blogArticleHeader ")'
+                    . ']/figure['
+                    . 'contains(concat(" ", normalize-space(@class), " "), '
+                    . '" blogDocument__image--cover ")'
+                    . ']'
+            )
+        );
+        self::assertCount(
+            0,
+            $xpath->query(
+                '/html/body/main//figure['
+                    . 'contains(concat(" ", normalize-space(@class), " "), '
+                    . '" blogDocument__image--cover ")'
+                    . ']'
+            )
+        );
+        self::assertCount(
+            1,
+            $xpath->query(
+                '/html/body//figure['
+                    . 'contains(concat(" ", normalize-space(@class), " "), '
+                    . '" blogDocument__image--cover ")'
+                    . ']'
+            )
+        );
 
         $view = tempnam(sys_get_temp_dir(), 'liquidstack-blog-view-');
         self::assertIsString($view);
@@ -420,6 +451,13 @@ PHP);
             self::assertStringContainsString(
                 'class="blogDocument blogDocument--cover"',
                 $projectHtml
+            );
+            self::assertSame(
+                1,
+                substr_count(
+                    $projectHtml,
+                    'blogDocument__image--cover'
+                )
             );
         } finally {
             @unlink($view);
@@ -477,5 +515,17 @@ PHP);
             $now,
             $now
         );
+    }
+
+    private function xpath(string $html): DOMXPath
+    {
+        $previous = libxml_use_internal_errors(true);
+        $document = new DOMDocument('1.0', 'UTF-8');
+        $loaded = $document->loadHTML($html, LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        self::assertTrue($loaded);
+
+        return new DOMXPath($document);
     }
 }

@@ -5,21 +5,30 @@ declare(strict_types=1);
 namespace App\Core\WebAdmin\Media\Http;
 
 use App\Core\WebAdmin\Http\WebAdminPageDocumentRenderer;
+use App\Core\WebAdmin\Http\WebAdminShellContext;
+use App\Core\WebAdmin\Http\WebAdminShellRenderer;
 use App\Core\WebAdmin\Media\MediaAssetPage;
 
 final class WebAdminMediaHtmlRenderer
 {
+    private readonly WebAdminShellRenderer $shellRenderer;
+
     public function __construct(
-        private readonly WebAdminPageDocumentRenderer $documents =
-            new WebAdminPageDocumentRenderer()
+        ?WebAdminPageDocumentRenderer $documents = null,
+        ?WebAdminShellRenderer $shellRenderer = null
     ) {
+        $this->shellRenderer = $shellRenderer
+            ?? new WebAdminShellRenderer(
+                $documents ?? new WebAdminPageDocumentRenderer()
+            );
     }
 
     public function index(
         string $basePath,
         string $csrf,
         MediaAssetPage $page,
-        bool $canUpload
+        bool $canUpload,
+        ?WebAdminShellContext $shell = null
     ): string {
         $cards = '';
         foreach ($page->items() as $item) {
@@ -76,29 +85,46 @@ final class WebAdminMediaHtmlRenderer
             $pagination = '<nav aria-label="Paginaci&oacute;n">' . $pagination . '</nav>';
         }
 
-        return $this->documents->render(
+        $shell ??= new WebAdminShellContext(
+            basePath: $basePath,
+            logoutCsrf: null,
+            activePath: '/media'
+        );
+
+        return $this->shellRenderer->render(
             'Biblioteca de medios',
-            '<main><article aria-labelledby="media-title"><h1 id="media-title">'
+            '<article class="webadminMedia" aria-labelledby="media-title"><h1 id="media-title">'
             . 'Biblioteca de medios</h1><p>Im&aacute;genes privadas reutilizables '
             . 'por los editores de la web.</p>' . $form
             . '<section aria-labelledby="media-list-title"><h2 id="media-list-title">'
             . 'Im&aacute;genes disponibles</h2><ul>' . $cards . '</ul>'
             . $pagination . '</section><p><a href="'
             . $this->path($basePath, '')
-            . '">Volver a la gesti&oacute;n web</a></p></article></main>'
+            . '">Volver a la gesti&oacute;n web</a></p></article>',
+            $shell
         );
     }
 
-    public function updated(string $basePath): string
+    public function updated(
+        string $basePath,
+        ?WebAdminShellContext $shell = null
+    ): string
     {
-        return $this->documents->render(
+        $shell ??= new WebAdminShellContext(
+            basePath: $basePath,
+            logoutCsrf: null,
+            activePath: '/media'
+        );
+
+        return $this->shellRenderer->render(
             'Imagen guardada',
-            '<main><article aria-labelledby="media-updated-title">'
+            '<article class="webadminMedia" aria-labelledby="media-updated-title">'
             . '<h1 id="media-updated-title">Imagen guardada</h1>'
             . '<p role="status" aria-live="polite">La imagen y sus variantes '
             . 'AVIF se han guardado correctamente.</p><p><a href="'
             . $this->path($basePath, '/media')
-            . '">Volver a la biblioteca</a></p></article></main>'
+            . '">Volver a la biblioteca</a></p></article>',
+            $shell
         );
     }
 

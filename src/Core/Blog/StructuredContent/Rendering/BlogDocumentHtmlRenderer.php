@@ -8,7 +8,7 @@ use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
 use Throwable;
 
-/** Pure, CSP-neutral renderer for the body fragment of Blog document v1. */
+/** Pure, CSP-neutral renderer for Blog document v1 HTML projections. */
 final class BlogDocumentHtmlRenderer
 {
     private const TEMPLATE_CLASSES = [
@@ -42,6 +42,23 @@ final class BlogDocumentHtmlRenderer
 
     public function render(BlogDocument $document): string
     {
+        return $this->renderBody($document, false);
+    }
+
+    /**
+     * Semantic body for new public compositions. Unlike render(), retained
+     * for compatibility, this projection omits the featured header medium.
+     */
+    public function renderMain(BlogDocument $document): string
+    {
+        return $this->renderBody($document, true);
+    }
+
+    private function renderBody(
+        BlogDocument $document,
+        bool $omitHeaderMedia
+    ): string
+    {
         $templateClass = self::TEMPLATE_CLASSES[$document->template()] ?? null;
         if ($templateClass === null) {
             throw new BlogRenderingException(
@@ -49,12 +66,97 @@ final class BlogDocumentHtmlRenderer
             );
         }
 
+        $blocks = $document->blocks();
+        if (
+            $omitHeaderMedia
+            && $document->template()
+                === BlogDocumentTemplateRegistry::ARTICLE_COVER
+        ) {
+            array_shift($blocks);
+        }
+
         $html = '<div class="blogDocument ' . $templateClass . '">';
-        foreach ($document->blocks() as $block) {
+        $sectionOpen = false;
+        $articleOpen = false;
+        foreach ($blocks as $block) {
+            if (($block['type'] ?? null) === 'heading') {
+                $level = (int) ($block['level'] ?? 0);
+
+                if ($level === 2) {
+                    if ($articleOpen) {
+                        $html .= '</article>';
+                        $articleOpen = false;
+                    }
+                    if ($sectionOpen) {
+                        $html .= '</section>';
+                    }
+
+                    $html .= '<section class="blogDocument__section"'
+                        . ' aria-labelledby="' . $this->blockId($block['id'])
+                        . '">' . $this->renderHeading($block);
+                    $sectionOpen = true;
+                    continue;
+                }
+
+                if ($level === 3) {
+                    if (!$sectionOpen) {
+                        throw new BlogRenderingException(
+                            BlogRenderingException::INVALID_RENDER_STATE
+                        );
+                    }
+                    if ($articleOpen) {
+                        $html .= '</article>';
+                    }
+
+                    $html .= '<article class="blogDocument__article"'
+                        . ' aria-labelledby="' . $this->blockId($block['id'])
+                        . '">' . $this->renderHeading($block);
+                    $articleOpen = true;
+                    continue;
+                }
+
+                if (!$sectionOpen || !$articleOpen) {
+                    throw new BlogRenderingException(
+                        BlogRenderingException::INVALID_RENDER_STATE
+                    );
+                }
+            }
+
             $html .= $this->renderBlock($block);
         }
 
+        if ($articleOpen) {
+            $html .= '</article>';
+        }
+        if ($sectionOpen) {
+            $html .= '</section>';
+        }
+
         return $html . '</div>';
+    }
+
+    /**
+     * Renders the optional featured medium for the page header. It is kept
+     * separate from render() so the public body always starts with its own
+     * section hierarchy and the cover is never duplicated.
+     */
+    public function renderHeaderMedia(BlogDocument $document): string
+    {
+        if ($document->template() !== BlogDocumentTemplateRegistry::ARTICLE_COVER) {
+            return '';
+        }
+        $cover = $document->blocks()[0] ?? null;
+        if (
+            !is_array($cover)
+            || ($cover['type'] ?? null) !== 'image'
+            || ($cover['display'] ?? null) !== 'cover'
+        ) {
+            throw new BlogRenderingException(
+                BlogRenderingException::INVALID_RENDER_STATE
+            );
+        }
+
+        return $this->renderImage($cover);
     }
 
     /** @param array<string, mixed> $block */
@@ -86,13 +188,13 @@ final class BlogDocumentHtmlRenderer
     /** @param array<string, mixed> $block */
     private function renderHeading(array $block): string
     {
-        $tag = match ($block['level']) {
-            2 => 'h2',
-            3 => 'h3',
-            default => throw new BlogRenderingException(
+        $level = $block['level'] ?? null;
+        if (!is_int($level) || $level < 2 || $level > 6) {
+            throw new BlogRenderingException(
                 BlogRenderingException::INVALID_RENDER_STATE
-            ),
-        };
+            );
+        }
+        $tag = 'h' . $level;
 
         return '<' . $tag . ' id="' . $this->blockId($block['id'])
             . '" class="blogDocument__heading">'

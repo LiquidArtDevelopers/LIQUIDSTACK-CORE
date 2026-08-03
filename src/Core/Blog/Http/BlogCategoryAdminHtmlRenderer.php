@@ -6,15 +6,27 @@ namespace App\Core\Blog\Http;
 
 use App\Core\Blog\Categories\BlogCategoryDraft;
 use App\Core\Blog\Categories\BlogCategoryLocalization;
+use App\Core\WebAdmin\Http\WebAdminPageAssets;
+use App\Core\WebAdmin\Http\WebAdminShellContext;
+use App\Core\WebAdmin\Http\WebAdminShellRenderer;
 use InvalidArgumentException;
 
 final class BlogCategoryAdminHtmlRenderer
 {
+    private readonly WebAdminShellRenderer $shellRenderer;
+
+    public function __construct(?WebAdminShellRenderer $shellRenderer = null)
+    {
+        $this->shellRenderer = $shellRenderer ?? new WebAdminShellRenderer();
+    }
+
     /** @param list<BlogCategoryLocalization> $categories */
     public function index(
         string $basePath,
         array $categories,
-        bool $canEdit
+        bool $canEdit,
+        array $localePublicPaths = [],
+        ?WebAdminShellContext $shell = null
     ): string {
         $rows = '';
         foreach ($categories as $category) {
@@ -36,6 +48,9 @@ final class BlogCategoryAdminHtmlRenderer
         if ($rows === '') {
             $rows = '<tr><td colspan="4">No hay categor&iacute;as.</td></tr>';
         }
+        $localeOptions = $canEdit
+            ? $this->localeOptions($localePublicPaths)
+            : '';
         $tools = $canEdit
             ? '<p><a href="' . $this->path($basePath . '/new')
                 . '">Crear categor&iacute;a</a></p>'
@@ -44,23 +59,27 @@ final class BlogCategoryAdminHtmlRenderer
                 . '<legend>Asignar categor&iacute;as a un art&iacute;culo</legend>'
                 . '<label for="category-post">ID p&uacute;blico del art&iacute;culo</label>'
                 . '<input id="category-post" name="post" type="text" required>'
-                . '<label for="category-locale">Idioma</label>'
-                . '<input id="category-locale" name="locale" value="es" '
-                . 'pattern="[a-z]{2,3}(?:-[a-z0-9]{2,8})*" required>'
+                . '<label for="category-locale">Idioma y ruta p&uacute;blica</label>'
+                . '<select id="category-locale" name="locale" required>'
+                . '<option value="" selected disabled>Selecciona un idioma</option>'
+                . $localeOptions . '</select>'
                 . '<button type="submit">Gestionar asignaci&oacute;n</button>'
                 . '</fieldset></form>'
             : '';
 
-        return $this->document(
+        return $this->page(
             'Categor&iacute;as del Blog',
-            '<main><article aria-labelledby="category-title">'
+            '<article class="blogAdminPage" aria-labelledby="category-title">'
             . '<h1 id="category-title">Categor&iacute;as del Blog</h1>'
             . $tools
             . '<table><caption>Traducciones de categor&iacute;as</caption>'
             . '<thead><tr><th scope="col">Nombre</th><th scope="col">Idioma</th>'
             . '<th scope="col">Slug</th><th scope="col">Acciones</th>'
             . '</tr></thead><tbody>' . $rows . '</tbody></table>'
-            . $this->back($basePath) . '</article></main>'
+            . $this->back($basePath) . '</article>',
+            $basePath,
+            '/blog/categories',
+            $shell
         );
     }
 
@@ -69,7 +88,8 @@ final class BlogCategoryAdminHtmlRenderer
         string $basePath,
         string $csrf,
         array $languages,
-        ?string $categoryPublicId = null
+        ?string $categoryPublicId = null,
+        ?WebAdminShellContext $shell = null
     ): string {
         $options = '';
         foreach ($languages as $index => $language) {
@@ -81,9 +101,9 @@ final class BlogCategoryAdminHtmlRenderer
             throw new InvalidArgumentException('Missing category languages.');
         }
 
-        return $this->document(
+        return $this->page(
             'Crear categor&iacute;a',
-            '<main><article aria-labelledby="category-create-title">'
+            '<article class="blogAdminPage" aria-labelledby="category-create-title">'
             . '<h1 id="category-create-title">'
             . ($categoryPublicId === null
                 ? 'Crear categor&iacute;a'
@@ -97,7 +117,10 @@ final class BlogCategoryAdminHtmlRenderer
             . 'id="category-create-locale" name="locale" required>'
             . $options . '</select>' . $this->draftFields(null)
             . '<button type="submit">Guardar categor&iacute;a</button></form>'
-            . $this->back($basePath) . '</article></main>'
+            . $this->back($basePath) . '</article>',
+            $basePath,
+            '/blog/categories/new',
+            $shell
         );
     }
 
@@ -105,7 +128,8 @@ final class BlogCategoryAdminHtmlRenderer
         string $basePath,
         string $csrf,
         BlogCategoryLocalization $category,
-        bool $canAddLocalization = true
+        bool $canAddLocalization = true,
+        ?WebAdminShellContext $shell = null
     ): string {
         $localizationAction = $canAddLocalization
             ? '<p><a href="' . $this->query($basePath . '/new', [
@@ -114,9 +138,9 @@ final class BlogCategoryAdminHtmlRenderer
             : '<p role="status">Esta categor&iacute;a ya est&aacute; traducida a '
                 . 'todos los idiomas activos.</p>';
 
-        return $this->document(
+        return $this->page(
             'Editar categor&iacute;a',
-            '<main><article aria-labelledby="category-edit-title">'
+            '<article class="blogAdminPage" aria-labelledby="category-edit-title">'
             . '<h1 id="category-edit-title">Editar categor&iacute;a</h1>'
             . '<p>Idioma: <strong>' . $this->escape($category->locale())
             . '</strong>.</p><form method="post" action="'
@@ -131,19 +155,28 @@ final class BlogCategoryAdminHtmlRenderer
             . $this->draftFields($category)
             . '<button type="submit">Guardar cambios</button></form>'
             . $localizationAction
-            . $this->back($basePath) . '</article></main>'
+            . $this->back($basePath) . '</article>',
+            $basePath,
+            '/blog/categories/edit',
+            $shell
         );
     }
 
-    public function localizationsComplete(string $basePath): string
+    public function localizationsComplete(
+        string $basePath,
+        ?WebAdminShellContext $shell = null
+    ): string
     {
-        return $this->document(
+        return $this->page(
             'Idiomas de la categor&iacute;a',
-            '<main><article aria-labelledby="category-locales-title">'
+            '<article class="blogAdminPage" aria-labelledby="category-locales-title">'
             . '<h1 id="category-locales-title">Idiomas de la categor&iacute;a</h1>'
             . '<p role="status">Esta categor&iacute;a ya est&aacute; traducida a '
             . 'todos los idiomas activos.</p>'
-            . $this->back($basePath) . '</article></main>'
+            . $this->back($basePath) . '</article>',
+            $basePath,
+            '/blog/categories/new',
+            $shell
         );
     }
 
@@ -157,7 +190,8 @@ final class BlogCategoryAdminHtmlRenderer
         string $postPublicId,
         string $locale,
         array $categories,
-        array $assignedPublicIds
+        array $assignedPublicIds,
+        ?WebAdminShellContext $shell = null
     ): string {
         $items = '';
         foreach ($categories as $category) {
@@ -178,9 +212,9 @@ final class BlogCategoryAdminHtmlRenderer
             $items = '<li>No hay categor&iacute;as para este idioma.</li>';
         }
 
-        return $this->document(
+        return $this->page(
             'Asignar categor&iacute;as',
-            '<main><article aria-labelledby="category-assign-title">'
+            '<article class="blogAdminPage" aria-labelledby="category-assign-title">'
             . '<h1 id="category-assign-title">Asignar categor&iacute;as</h1>'
             . '<p>Idioma de presentaci&oacute;n: '
             . $this->escape($locale) . '.</p><form method="post" action="'
@@ -190,18 +224,27 @@ final class BlogCategoryAdminHtmlRenderer
             . $this->escape($postPublicId) . '"><fieldset>'
             . '<legend>Categor&iacute;as del art&iacute;culo</legend><ul>' . $items
             . '</ul></fieldset><button type="submit">Guardar asignaci&oacute;n</button>'
-            . '</form>' . $this->back($basePath) . '</article></main>'
+            . '</form>' . $this->back($basePath) . '</article>',
+            $basePath,
+            '/blog/categories/assign',
+            $shell
         );
     }
 
-    public function completed(string $basePath): string
+    public function completed(
+        string $basePath,
+        ?WebAdminShellContext $shell = null
+    ): string
     {
-        return $this->document(
+        return $this->page(
             'Operaci&oacute;n completada',
-            '<main><article aria-labelledby="category-updated-title">'
+            '<article class="blogAdminPage" aria-labelledby="category-updated-title">'
             . '<h1 id="category-updated-title">Operaci&oacute;n completada</h1>'
             . '<p role="status">Los cambios se han guardado correctamente.</p>'
-            . $this->back($basePath) . '</article></main>'
+            . $this->back($basePath) . '</article>',
+            $basePath,
+            '/blog/categories',
+            $shell
         );
     }
 
@@ -219,6 +262,38 @@ final class BlogCategoryAdminHtmlRenderer
             . $this->escape($category?->draft()->slug() ?? '') . '" required>';
     }
 
+    /** @param array<string, string> $localePublicPaths */
+    private function localeOptions(array $localePublicPaths): string
+    {
+        $options = '';
+        $seenPaths = [];
+        foreach ($localePublicPaths as $locale => $publicPath) {
+            if (
+                !is_string($locale)
+                || preg_match(
+                    '/\A[a-z]{2,3}(?:-[a-z0-9]{2,8})*\z/',
+                    $locale
+                ) !== 1
+                || !is_string($publicPath)
+                || preg_match('/\A\/[^\x00-\x20?#]*\z/u', $publicPath) !== 1
+                || isset($seenPaths[$publicPath])
+            ) {
+                throw new InvalidArgumentException(
+                    'Invalid category language presentation.'
+                );
+            }
+            $seenPaths[$publicPath] = true;
+            $options .= '<option value="' . $this->escape($locale) . '">'
+                . $this->escape($locale) . ' &mdash; '
+                . $this->escape($publicPath) . '</option>';
+        }
+        if ($options === '') {
+            throw new InvalidArgumentException('Missing category languages.');
+        }
+
+        return $options;
+    }
+
     private function csrf(string $csrf): string
     {
         return '<input type="hidden" name="csrf" value="'
@@ -233,13 +308,39 @@ final class BlogCategoryAdminHtmlRenderer
             . '">Volver al Blog</a></p>';
     }
 
-    private function document(string $title, string $body): string
+    private function page(
+        string $title,
+        string $body,
+        string $categoryBasePath,
+        string $activePath,
+        ?WebAdminShellContext $shell
+    ): string
     {
-        return '<!doctype html><html lang="es"><head><meta charset="utf-8">'
-            . '<meta name="viewport" content="width=device-width,initial-scale=1">'
-            . '<meta name="robots" content="noindex,nofollow,noarchive">'
-            . '<title>' . $title . '</title></head><body>' . $body
-            . '</body></html>';
+        $shell ??= new WebAdminShellContext(
+            basePath: $this->webAdminBasePath($categoryBasePath),
+            logoutCsrf: null,
+            activePath: $activePath,
+            assets: new WebAdminPageAssets([
+                '/assets/modules/blog/blog-admin.css',
+            ])
+        );
+
+        return $this->shellRenderer->render($title, $body, $shell);
+    }
+
+    private function webAdminBasePath(string $categoryBasePath): string
+    {
+        $normalized = rtrim($categoryBasePath, '/');
+        $suffix = '/blog/categories';
+        if (!str_ends_with($normalized, $suffix)) {
+            throw new InvalidArgumentException(
+                'Invalid Blog category administration base path.'
+            );
+        }
+
+        $basePath = substr($normalized, 0, -strlen($suffix));
+
+        return $basePath === '' ? '/' : $basePath;
     }
 
     /** @param array<string, string> $values */

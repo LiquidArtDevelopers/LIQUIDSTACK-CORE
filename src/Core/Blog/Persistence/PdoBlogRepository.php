@@ -21,6 +21,7 @@ use Throwable;
 /** Portable PDO implementation for the Blog posts aggregate. */
 final class PdoBlogRepository implements
     BlogRepositoryInterface,
+    BlogPostLocaleCatalogRepositoryInterface,
     BlogPublishedSitemapRepositoryInterface
 {
     private const UTC_FORMAT = 'Y-m-d H:i:s.u';
@@ -380,6 +381,65 @@ final class PdoBlogRepository implements
             fn (array $row): BlogPostSummary => $this->summaryFromRow($row),
             $this->rows($statement->fetchAll(PDO::FETCH_ASSOC))
         );
+    }
+
+    public function localesForPost(string $postPublicId, int $limit): ?array
+    {
+        if (
+            $limit < 1
+            || $limit > BlogSitemapEntry::ALTERNATES_OVERFLOW_QUERY_LIMIT
+        ) {
+            throw new BlogPersistenceException();
+        }
+        $statement = $this->prepare(
+            'SELECT p.public_id AS post_public_id, l.locale FROM '
+            . $this->posts . ' p LEFT JOIN ' . $this->localizations
+            . ' l ON l.post_id = p.id WHERE p.public_id = :public_id '
+            . 'ORDER BY l.locale ASC LIMIT :locale_limit'
+        );
+        try {
+            if (
+                !$statement->bindValue(
+                    ':public_id',
+                    $postPublicId,
+                    PDO::PARAM_STR
+                )
+                || !$statement->bindValue(
+                    ':locale_limit',
+                    $limit,
+                    PDO::PARAM_INT
+                )
+                || !$statement->execute()
+            ) {
+                throw new BlogPersistenceException();
+            }
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+
+        $rows = $this->rows($statement->fetchAll(PDO::FETCH_ASSOC));
+        if ($rows === []) {
+            return null;
+        }
+
+        $locales = [];
+        foreach ($rows as $row) {
+            if (($row['post_public_id'] ?? null) !== $postPublicId) {
+                throw new BlogPersistenceException();
+            }
+            $locale = $row['locale'] ?? null;
+            if ($locale === null) {
+                continue;
+            }
+            if (!is_string($locale)) {
+                throw new BlogPersistenceException();
+            }
+            $locales[] = $locale;
+        }
+
+        return $locales;
     }
 
     public function variant(

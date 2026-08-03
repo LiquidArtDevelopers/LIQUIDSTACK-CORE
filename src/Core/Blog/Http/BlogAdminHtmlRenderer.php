@@ -8,10 +8,20 @@ use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogPostSummary;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
+use App\Core\WebAdmin\Http\WebAdminPageAssets;
+use App\Core\WebAdmin\Http\WebAdminShellContext;
+use App\Core\WebAdmin\Http\WebAdminShellRenderer;
 use InvalidArgumentException;
 
 final class BlogAdminHtmlRenderer
 {
+    private readonly WebAdminShellRenderer $shellRenderer;
+
+    public function __construct(?WebAdminShellRenderer $shellRenderer = null)
+    {
+        $this->shellRenderer = $shellRenderer ?? new WebAdminShellRenderer();
+    }
+
     /** @param list<BlogPostSummary> $summaries */
     public function index(
         string $basePath,
@@ -20,7 +30,8 @@ final class BlogAdminHtmlRenderer
         int $offset = 0,
         bool $hasNext = false,
         bool $canPublish = false,
-        bool $canViewMedia = false
+        bool $canViewMedia = false,
+        ?WebAdminShellContext $shell = null
     ): string {
         if (
             $offset < 0
@@ -81,9 +92,9 @@ final class BlogAdminHtmlRenderer
                 . '">Crear art&iacute;culo</a></p>'
             : '';
 
-        return $this->document(
+        return $this->page(
             'Art&iacute;culos del Blog',
-            '<main><article aria-labelledby="blog-admin-title">'
+            '<article class="blogAdminPage" aria-labelledby="blog-admin-title">'
             . '<h1 id="blog-admin-title">Art&iacute;culos del Blog</h1>'
             . '<p>Gestiona cada variante de idioma de forma independiente.</p>'
             . $create
@@ -94,45 +105,29 @@ final class BlogAdminHtmlRenderer
             . $rows . '</tbody></table>'
             . $this->pagination($basePath, $offset, $hasNext)
             . $this->backToDashboard($basePath)
-            . '</article></main>'
+            . '</article>',
+            $basePath,
+            '/blog',
+            $shell
         );
     }
 
-    /**
-     * @param list<string> $languages
-     */
+    /** @param array<string, string> $localePublicPaths */
     public function createForm(
         string $basePath,
         string $csrf,
-        array $languages,
+        array $localePublicPaths,
         ?string $postPublicId = null,
-        bool $failed = false
+        bool $failed = false,
+        ?WebAdminShellContext $shell = null
     ): string {
-        $localeOptions = '';
-        foreach ($languages as $language) {
-            if (
-                !is_string($language)
-                || preg_match('/\A[a-z]{2,3}(?:-[a-z0-9]{2,8})*\z/', $language)
-                    !== 1
-            ) {
-                throw new InvalidArgumentException(
-                    'Invalid Blog language presentation.'
-                );
-            }
-            $localeOptions .= '<option value="' . $this->escape($language)
-                . '">' . $this->escape($language) . '</option>';
-        }
-        if ($localeOptions === '') {
-            throw new InvalidArgumentException(
-                'Blog needs at least one presentation language.'
-            );
-        }
+        $localeOptions = $this->localeOptions($localePublicPaths);
 
-        return $this->document(
+        return $this->page(
             $postPublicId === null
                 ? 'Crear art&iacute;culo'
                 : 'A&ntilde;adir idioma',
-            '<main><article aria-labelledby="blog-create-title">'
+            '<article class="blogAdminPage" aria-labelledby="blog-create-title">'
             . '<h1 id="blog-create-title">'
             . ($postPublicId === null
                 ? 'Crear art&iacute;culo'
@@ -143,13 +138,19 @@ final class BlogAdminHtmlRenderer
             . $this->csrfInput($csrf)
             . '<input type="hidden" name="post" value="'
             . $this->escape($postPublicId ?? '') . '">'
-            . '<div><label for="blog-locale">Idioma</label><select '
+            . '<div><label for="blog-locale">Idioma y ruta p&uacute;blica</label>'
+            . '<select '
             . 'id="blog-locale" name="locale" required>'
+            . '<option value="" selected disabled>Selecciona un idioma</option>'
             . $localeOptions . '</select></div>'
-            . $this->editorialFields(null)
-            . '<button type="submit">Guardar borrador</button></form>'
+            . $this->creationFields()
+            . '<button type="submit">Crear borrador y abrir editor</button>'
+            . '</form>'
             . $this->backToBlog($basePath)
-            . '</article></main>'
+            . '</article>',
+            $basePath,
+            '/blog/posts/new',
+            $shell
         );
     }
 
@@ -158,7 +159,9 @@ final class BlogAdminHtmlRenderer
         string $csrf,
         BlogPostVariant $variant,
         bool $canPublish,
-        bool $failed = false
+        bool $failed = false,
+        bool $canAddLocalization = true,
+        ?WebAdminShellContext $shell = null
     ): string {
         $identity = $this->identityFields($variant);
         $publish = '';
@@ -193,9 +196,9 @@ final class BlogAdminHtmlRenderer
             . 'versi&oacute;n guardada</a>. Guarda primero cualquier cambio '
             . 'pendiente.</p>';
 
-        return $this->document(
+        return $this->page(
             'Editar art&iacute;culo',
-            '<main><article aria-labelledby="blog-edit-title">'
+            '<article class="blogAdminPage" aria-labelledby="blog-edit-title">'
             . '<h1 id="blog-edit-title">Editar art&iacute;culo</h1>'
             . '<p>Idioma: <strong>' . $this->escape($variant->locale())
             . '</strong>. Estado: ' . $this->statusLabel($variant->status())
@@ -203,20 +206,46 @@ final class BlogAdminHtmlRenderer
             . $preview
             . $editor
             . $publish
-            . '<p><a href="' . $this->pathWithQuery(
-                $basePath,
-                '/posts/new',
-                ['post' => $variant->postPublicId()]
-            ) . '">A&ntilde;adir otro idioma</a></p>'
+            . ($canAddLocalization
+                ? '<p><a href="' . $this->pathWithQuery(
+                    $basePath,
+                    '/posts/new',
+                    ['post' => $variant->postPublicId()]
+                ) . '">A&ntilde;adir otro idioma</a></p>'
+                : '<p role="status">Este art&iacute;culo ya tiene una variante '
+                    . 'para todos los idiomas activos.</p>')
             . $this->backToBlog($basePath)
-            . '</article></main>'
+            . '</article>',
+            $basePath,
+            '/blog/posts/edit',
+            $shell
+        );
+    }
+
+    public function localizationsComplete(
+        string $basePath,
+        ?WebAdminShellContext $shell = null
+    ): string
+    {
+        return $this->page(
+            'Idiomas del art&iacute;culo',
+            '<article class="blogAdminPage" aria-labelledby="blog-locales-title">'
+            . '<h1 id="blog-locales-title">Idiomas del art&iacute;culo</h1>'
+            . '<p role="status">Este art&iacute;culo ya tiene una variante para '
+            . 'todos los idiomas activos.</p>'
+            . $this->backToBlog($basePath)
+            . '</article>',
+            $basePath,
+            '/blog/posts/new',
+            $shell
         );
     }
 
     public function preview(
         string $basePath,
         BlogPostVariant $variant,
-        bool $canEdit
+        bool $canEdit,
+        ?WebAdminShellContext $shell = null
     ): string {
         $draft = $variant->draft();
         $excerpt = $draft->excerpt() === null
@@ -238,9 +267,9 @@ final class BlogAdminHtmlRenderer
             ) . '">Volver a editar</a></li>'
             : '';
 
-        return $this->document(
+        return $this->page(
             'Vista previa privada',
-            '<main><p role="status"><strong>Vista previa privada de la '
+            '<p role="status"><strong>Vista previa privada de la '
             . 'versi&oacute;n guardada.</strong> No crea una URL p&uacute;blica '
             . 'ni modifica el art&iacute;culo. Idioma: '
             . $this->escape($variant->locale()) . '. Estado: '
@@ -254,20 +283,29 @@ final class BlogAdminHtmlRenderer
             . $body . '</div></article>'
             . '<nav aria-label="Acciones de la vista previa"><ul>'
             . $edit . '<li><a href="' . $this->path($basePath, '')
-            . '">Volver al Blog</a></li></ul></nav></main>'
+            . '">Volver al Blog</a></li></ul></nav>',
+            $basePath,
+            '/blog/posts/preview',
+            $shell
         );
     }
 
-    public function operationCompleted(string $basePath): string
+    public function operationCompleted(
+        string $basePath,
+        ?WebAdminShellContext $shell = null
+    ): string
     {
-        return $this->document(
+        return $this->page(
             'Operaci&oacute;n completada',
-            '<main><article aria-labelledby="blog-updated-title">'
+            '<article class="blogAdminPage" aria-labelledby="blog-updated-title">'
             . '<h1 id="blog-updated-title">Operaci&oacute;n completada</h1>'
             . '<p role="status" aria-live="polite">Los cambios se han '
             . 'guardado correctamente.</p>'
             . $this->backToBlog($basePath)
-            . '</article></main>'
+            . '</article>',
+            $basePath,
+            '/blog',
+            $shell
         );
     }
 
@@ -310,6 +348,54 @@ final class BlogAdminHtmlRenderer
             . $this->escape($draft?->bodyText() ?? '') . '</textarea></div>';
     }
 
+    private function creationFields(): string
+    {
+        return '<div><label for="blog-h1">H1 inicial</label><input '
+            . 'id="blog-h1" name="h1" type="text" maxlength="'
+            . BlogDraft::MAX_H1_BYTES . '" required></div>'
+            . '<p>El slug, los metadatos, la portada y el contenido se '
+            . 'completan en el editor visual.</p>'
+            . '<input type="hidden" name="slug" value="">'
+            . '<input type="hidden" name="seo_title" value="">'
+            . '<input type="hidden" name="meta_description" value="">'
+            . '<input type="hidden" name="excerpt" value="">'
+            . '<input type="hidden" name="body_text" value="">';
+    }
+
+    /** @param array<string, string> $localePublicPaths */
+    private function localeOptions(array $localePublicPaths): string
+    {
+        $options = '';
+        $seenPaths = [];
+        foreach ($localePublicPaths as $locale => $publicPath) {
+            if (
+                !is_string($locale)
+                || preg_match(
+                    '/\A[a-z]{2,3}(?:-[a-z0-9]{2,8})*\z/',
+                    $locale
+                ) !== 1
+                || !is_string($publicPath)
+                || preg_match('/\A\/[^\x00-\x20?#]*\z/u', $publicPath) !== 1
+                || isset($seenPaths[$publicPath])
+            ) {
+                throw new InvalidArgumentException(
+                    'Invalid Blog language presentation.'
+                );
+            }
+            $seenPaths[$publicPath] = true;
+            $options .= '<option value="' . $this->escape($locale) . '">'
+                . $this->escape($locale) . ' &mdash; '
+                . $this->escape($publicPath) . '</option>';
+        }
+        if ($options === '') {
+            throw new InvalidArgumentException(
+                'Blog needs at least one presentation language.'
+            );
+        }
+
+        return $options;
+    }
+
     private function identityFields(BlogPostVariant $variant): string
     {
         return '<input type="hidden" name="post" value="'
@@ -344,13 +430,38 @@ final class BlogAdminHtmlRenderer
         return $body;
     }
 
-    private function document(string $title, string $body): string
+    private function page(
+        string $title,
+        string $body,
+        string $blogBasePath,
+        string $activePath,
+        ?WebAdminShellContext $shell
+    ): string
     {
-        return '<!doctype html><html lang="es"><head><meta charset="utf-8">'
-            . '<meta name="viewport" content="width=device-width,initial-scale=1">'
-            . '<meta name="robots" content="noindex,nofollow,noarchive">'
-            . '<title>' . $title . '</title></head><body>'
-            . $body . '</body></html>';
+        $shell ??= new WebAdminShellContext(
+            basePath: $this->webAdminBasePath($blogBasePath),
+            logoutCsrf: null,
+            activePath: $activePath,
+            assets: new WebAdminPageAssets([
+                '/assets/modules/blog/blog-admin.css',
+            ])
+        );
+
+        return $this->shellRenderer->render($title, $body, $shell);
+    }
+
+    private function webAdminBasePath(string $blogBasePath): string
+    {
+        $normalized = rtrim($blogBasePath, '/');
+        if (!str_ends_with($normalized, '/blog')) {
+            throw new InvalidArgumentException(
+                'Invalid Blog administration base path.'
+            );
+        }
+
+        $basePath = substr($normalized, 0, -strlen('/blog'));
+
+        return $basePath === '' ? '/' : $basePath;
     }
 
     private function statusLabel(string $status): string

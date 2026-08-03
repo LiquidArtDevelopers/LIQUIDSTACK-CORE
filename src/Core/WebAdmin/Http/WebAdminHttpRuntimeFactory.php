@@ -8,7 +8,6 @@ use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\ConfiguredModuleDatabaseConnectionResolver;
-use App\Core\Modules\ModuleWebAdminNavigationProviderInterface;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Modules\WebAdmin\WebAdminHttpSchemaGate;
@@ -25,7 +24,7 @@ use App\Core\WebAdmin\Mail\WebAdminMailConfiguration;
 use App\Core\WebAdmin\Mail\WebAdminMailConfigurationLoader;
 use App\Core\WebAdmin\Mail\WebAdminMailTransportFactory;
 use App\Core\WebAdmin\Mail\WebAdminMailTransportInterface;
-use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalogFactory;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Security\ExceptionTraceGuard;
 use App\Core\WebAdmin\Security\InvalidSecurityKey;
@@ -153,7 +152,9 @@ final class WebAdminHttpRuntimeFactory implements
                 $pdo,
                 $config->tablePrefix()
             );
-            $navigation = $this->navigationCatalog($registry);
+            $navigation = WebAdminNavigationCatalogFactory::fromRegistry(
+                $registry
+            );
             $clock = new SystemClock();
             $uuidGenerator = new RandomUuidV4Generator();
             $passwordHasher = PasswordHasher::productive();
@@ -230,30 +231,4 @@ final class WebAdminHttpRuntimeFactory implements
         }
     }
 
-    private function navigationCatalog(
-        ModuleRegistry $registry
-    ): WebAdminNavigationCatalog {
-        $items = [];
-
-        foreach ($registry->webAdminNavigationProviders() as $registered) {
-            $className = $registered['class'];
-            $provider = new $className();
-            if (!$provider instanceof ModuleWebAdminNavigationProviderInterface) {
-                throw new \RuntimeException(
-                    'Invalid WebAdmin navigation provider.'
-                );
-            }
-
-            $item = $provider->webAdminNavigationItem();
-            if ($item->module() !== $registered['module']) {
-                throw new \RuntimeException(
-                    'WebAdmin navigation provider module mismatch.'
-                );
-            }
-
-            $items[] = $item;
-        }
-
-        return new WebAdminNavigationCatalog($items);
-    }
 }
