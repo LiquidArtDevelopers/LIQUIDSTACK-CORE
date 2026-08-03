@@ -79,7 +79,6 @@ body.webadmin {
 
 .webadmin .artAuth01-support {
     padding: 1rem 0 0 1rem;
-    border-inline-start: 0.2rem solid var(--ls-webadmin-accent);
 }
 
 .webadmin .artAuth01-panel {
@@ -232,7 +231,6 @@ body.webadmin {
 .webadmin [role="alert"],
 .webadmin [role="status"] {
     padding: 0.8rem 1rem;
-    border-inline-start: 0.3rem solid currentColor;
     border-radius: 0.35rem;
     background: rgba(255, 255, 255, 0.72);
 }
@@ -382,15 +380,6 @@ body.webadmin {
         linear-gradient(145deg, var(--ls-webadmin-background), var(--ls-webadmin-background-soft));
 }
 
-.webadmin .artAuth02::before {
-    content: '';
-    width: clamp(8rem, 26vw, 18rem);
-    height: 0.35rem;
-    position: absolute;
-    inset: 0 auto auto 0;
-    background: var(--ls-webadmin-highlight);
-}
-
 .webadmin .artAuth02-copy {
     min-width: 0;
     display: flex;
@@ -414,7 +403,6 @@ body.webadmin {
 
 .webadmin .artAuth02-support {
     padding: 1rem 0 0 1rem;
-    border-inline-start: 0.2rem solid var(--ls-webadmin-highlight);
 }
 
 .webadmin .artAuth02-support h2,
@@ -584,9 +572,6 @@ body.webadmin {
     display: grid;
     gap: 0.55rem;
     color: var(--ls-webadmin-muted);
-    border: 1px solid var(--ls-webadmin-accent-soft);
-    border-inline-start: 0.25rem solid var(--ls-webadmin-highlight);
-    border-radius: 0.85rem;
     background: var(--ls-webadmin-surface-strong);
     list-style: none;
 }

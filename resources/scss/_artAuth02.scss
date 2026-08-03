@@ -16,15 +16,6 @@
         linear-gradient(145deg, c.$color01, c.$color02);
     box-shadow: c.$sombraMax;
 
-    &::before {
-        content: '';
-        width: clamp(8rem, 26vw, 18rem);
-        height: 0.35rem;
-        position: absolute;
-        inset: 0 auto auto 0;
-        background: c.$color03;
-    }
-
     .artAuth02-copy {
         min-width: 0;
         display: flex;
@@ -53,7 +44,6 @@
         padding: 1rem 0 0 1rem;
         display: grid;
         gap: 0.5rem;
-        border-left: 0.2rem solid c.$color03;
 
         h3,
         h4,
