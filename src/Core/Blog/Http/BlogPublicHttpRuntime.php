@@ -12,12 +12,16 @@ use App\Core\Blog\PublicDelivery\BlogPublicMediaDelivery;
 use App\Core\Blog\PublicDelivery\BlogPublicMediaFile;
 use App\Core\Blog\PublicDelivery\BlogUnavailableImageResolver;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogRepositoryInterface;
+use App\Core\Blog\PublicFeed\BlogPublicDiscoveryRepositoryInterface;
+use App\Core\Blog\PublicFeed\BlogPublicFeed;
 use App\Core\Blog\StructuredContent\Persistence\BlogStructuredContentRepositoryInterface;
 use App\Core\Blog\StructuredContent\Persistence\BlogStructuredDocumentRecord;
 use App\Core\Blog\StructuredContent\Rendering\BlogImageResolverInterface;
 
 final class BlogPublicHttpRuntime
 {
+    private ?BlogPublicFeed $publicFeed = null;
+
     public function __construct(
         private readonly BlogConfig $config,
         private readonly BlogPublicOrigin $origin,
@@ -57,6 +61,26 @@ final class BlogPublicHttpRuntime
         return $this->catalogRepository;
     }
 
+    /**
+     * Reuses this runtime's service and read adapters; it never opens a
+     * second database connection.
+     */
+    public function publicFeed(): BlogPublicFeed
+    {
+        $discoveryRepository = $this->catalogRepository instanceof
+            BlogPublicDiscoveryRepositoryInterface
+                ? $this->catalogRepository
+                : null;
+
+        return $this->publicFeed ??= new BlogPublicFeed(
+            $this->config,
+            $this->service,
+            $this->categoryProjection,
+            $this->catalogRepository,
+            $discoveryRepository
+        );
+    }
+
     public function structuredDocument(
         string $localizationPublicId
     ): ?BlogStructuredDocumentRecord {
@@ -92,6 +116,7 @@ final class BlogPublicHttpRuntime
             'public_media' => $this->mediaDelivery !== null,
             'category_projection' => $this->categoryProjection !== null,
             'catalog_repository' => $this->catalogRepository !== null,
+            'public_feed' => $this->publicFeed !== null,
         ];
     }
 }

@@ -13,6 +13,7 @@
 
 .blogAdmin .blogEditor__form,
 .blogAdmin .blogEditor__metadata,
+.blogAdmin .blogEditor__seo,
 .blogAdmin .blogEditor__document,
 .blogAdmin .blogEditor__revisions {
     display: grid;
@@ -20,11 +21,85 @@
 }
 
 .blogAdmin .blogEditor__metadata,
+.blogAdmin .blogEditor__seo,
 .blogAdmin .blogEditor__document,
 .blogAdmin .blogEditor__revisions {
     margin-block-start: 1.5rem;
     padding-block-start: 1.5rem;
     border-block-start: 1px solid var(--ls-webadmin-border);
+}
+
+.blogAdmin .blogEditor__seoSummary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.blogAdmin .blogEditor__seoSummary span,
+.blogAdmin .blogEditor__seoChecks li {
+    border: 1px solid var(--ls-webadmin-border);
+    border-radius: 0.75rem;
+}
+
+.blogAdmin .blogEditor__seoSummary span {
+    padding: 0.45rem 0.75rem;
+    font-weight: 700;
+}
+
+.blogAdmin .blogEditor__seoSummary [data-status="good"],
+.blogAdmin .blogEditor__seoChecks [data-status="good"] {
+    border-inline-start: 0.35rem solid var(--ls-webadmin-success);
+}
+
+.blogAdmin .blogEditor__seoSummary [data-status="review"],
+.blogAdmin .blogEditor__seoChecks [data-status="review"] {
+    border-inline-start: 0.35rem solid var(--ls-webadmin-danger);
+}
+
+.blogAdmin .blogEditor__seoSummary [data-status="pending"],
+.blogAdmin .blogEditor__seoChecks [data-status="pending"] {
+    border-inline-start: 0.35rem solid var(--ls-webadmin-accent);
+}
+
+.blogAdmin .blogEditor__serp {
+    max-width: 44rem;
+    padding: 1rem;
+    border: 1px solid var(--ls-webadmin-border);
+    border-radius: 0.8rem;
+    background: var(--ls-webadmin-surface-strong);
+}
+
+.blogAdmin .blogEditor__serp h3,
+.blogAdmin .blogEditor__serp p,
+.blogAdmin .blogEditor__seoChecks p {
+    margin: 0;
+}
+
+.blogAdmin .blogEditor__serpTitle {
+    color: var(--ls-webadmin-accent);
+    font-size: 1.15rem;
+}
+
+.blogAdmin .blogEditor__serpUrl {
+    overflow-wrap: anywhere;
+    font-size: 0.9rem;
+}
+
+.blogAdmin .blogEditor__seoChecks {
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+    list-style: none;
+}
+
+.blogAdmin .blogEditor__seoChecks li {
+    padding: 0.85rem 1rem;
+    background: var(--ls-webadmin-surface-strong);
+}
+
+.blogAdmin .blogEditor__seoCompetition code {
+    overflow-wrap: anywhere;
 }
 
 .blogAdmin .blogEditor__metadataGrid {

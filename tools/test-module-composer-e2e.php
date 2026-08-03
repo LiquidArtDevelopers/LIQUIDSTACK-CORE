@@ -350,6 +350,10 @@ try {
         ['module' => 'blog', 'id' => '0003_blog_categories'],
         ['module' => 'blog', 'id' => '0004_blog_category_capabilities'],
         ['module' => 'blog', 'id' => '0005_blog_structured_content'],
+        [
+            'module' => 'blog',
+            'id' => '0006_blog_sitemap_publication_state',
+        ],
     ];
     $plannedMigrations = array_map(
         static fn (array $entry): array => [

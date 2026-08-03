@@ -14,8 +14,10 @@ final class BlogConfigLoader
         'sitemap_path',
         'public_article_view',
         'database',
+        'sitemap_cache',
     ];
     private const DATABASE_KEYS = ['connection', 'table_prefix'];
+    private const SITEMAP_CACHE_KEYS = ['enabled', 'ttl_seconds'];
 
     public function databaseConnection(string $projectRoot): string
     {
@@ -54,6 +56,7 @@ final class BlogConfigLoader
             );
         }
         $this->assertOnlyKeys($database, self::DATABASE_KEYS, 'database');
+        $this->validateSitemapCache($raw['sitemap_cache'] ?? []);
         $connection = $database['connection']
             ?? DatabaseConnectionProfile::SHARED;
         if (!DatabaseConnectionProfile::isSupported($connection)) {
@@ -100,6 +103,9 @@ final class BlogConfigLoader
         $publicPaths = $raw['public_paths'] ?? $defaults->publicPaths();
         $sitemapPath = $raw['sitemap_path'] ?? $defaults->sitemapPath();
         $database = $raw['database'] ?? [];
+        $sitemapCache = $this->validateSitemapCache(
+            $raw['sitemap_cache'] ?? []
+        );
         $publicArticleView = array_key_exists('public_article_view', $raw)
             ? BlogPublicArticleViewPath::fromProject(
                 $root,
@@ -167,8 +173,41 @@ final class BlogConfigLoader
             'project',
             $connection,
             $languages[0],
-            $publicArticleView
+            $publicArticleView,
+            $sitemapCache
         );
+    }
+
+    private function validateSitemapCache(mixed $value): BlogSitemapCacheConfig
+    {
+        if (!is_array($value) || ($value !== [] && array_is_list($value))) {
+            throw new BlogConfigException(
+                'config.expected_object',
+                'sitemap_cache'
+            );
+        }
+        $this->assertOnlyKeys(
+            $value,
+            self::SITEMAP_CACHE_KEYS,
+            'sitemap_cache'
+        );
+        $enabled = $value['enabled'] ?? false;
+        $ttl = $value['ttl_seconds']
+            ?? BlogSitemapCacheConfig::DEFAULT_TTL_SECONDS;
+        if (!is_bool($enabled)) {
+            throw new BlogConfigException(
+                'config.sitemap_cache_enabled_invalid',
+                'sitemap_cache.enabled'
+            );
+        }
+        if (!is_int($ttl)) {
+            throw new BlogConfigException(
+                'config.sitemap_cache_ttl_invalid',
+                'sitemap_cache.ttl_seconds'
+            );
+        }
+
+        return new BlogSitemapCacheConfig($enabled, $ttl);
     }
 
     /** @param list<string> $languages @return list<string> */

@@ -15,6 +15,8 @@ final class BlogCategoryHttpSchemaGate
 {
     private readonly BlogCategoryMigrationPostconditionVerifier
         $extendedSchemaVerifier;
+    private readonly BlogCategoryMigrationPostconditionVerifier
+        $sitemapExtendedSchemaVerifier;
 
     public function __construct(
         private readonly MigrationFeatureGate $migrationGate =
@@ -26,11 +28,19 @@ final class BlogCategoryHttpSchemaGate
             $capabilityVerifier =
                 new BlogCategoryCapabilitySeedPostcondition(),
         ?BlogCategoryMigrationPostconditionVerifier
-            $extendedSchemaVerifier = null
+            $extendedSchemaVerifier = null,
+        ?BlogCategoryMigrationPostconditionVerifier
+            $sitemapExtendedSchemaVerifier = null
     ) {
         $this->extendedSchemaVerifier = $extendedSchemaVerifier
             ?? new BlogCategoryMigrationPostconditionVerifier(
                 expectStructuredContentExtension: true
+            );
+        $this->sitemapExtendedSchemaVerifier =
+            $sitemapExtendedSchemaVerifier
+            ?? new BlogCategoryMigrationPostconditionVerifier(
+                expectStructuredContentExtension: true,
+                expectSitemapStateExtension: true
             );
     }
 
@@ -64,7 +74,11 @@ final class BlogCategoryHttpSchemaGate
             // Both namespaces are closed contracts. Accept the exact 0003
             // boundary before 0005 or its exact structured-content extension.
             return $this->schemaVerifier->verify($pdo, $blogScope)
-                || $this->extendedSchemaVerifier->verify($pdo, $blogScope);
+                || $this->extendedSchemaVerifier->verify($pdo, $blogScope)
+                || $this->sitemapExtendedSchemaVerifier->verify(
+                    $pdo,
+                    $blogScope
+                );
         } catch (Throwable) {
             return false;
         }

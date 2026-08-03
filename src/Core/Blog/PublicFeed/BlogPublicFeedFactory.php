@@ -31,11 +31,18 @@ final class BlogPublicFeedFactory
             )
         );
 
+        $catalogRepository = $runtime->catalogRepository();
+        $discoveryRepository = $catalogRepository instanceof
+            BlogPublicDiscoveryRepositoryInterface
+                ? $catalogRepository
+                : null;
+
         return new BlogPublicFeed(
             $runtime->config(),
             $runtime->service(),
             $runtime->categoryProjection(),
-            $runtime->catalogRepository()
+            $catalogRepository,
+            $discoveryRepository
         );
     }
 }

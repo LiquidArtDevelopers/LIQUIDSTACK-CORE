@@ -33,6 +33,12 @@ final class MigrationCommandRuntime
         );
     }
 
+    /** Internal read-only diagnostic access to the already-open connection. */
+    public function connection(): PDO
+    {
+        return $this->connection;
+    }
+
     public function apply(MigrationApplyOptions $options): MigrationRunResult
     {
         return $this->runner->apply(

@@ -237,7 +237,7 @@ JS;
         self::assertSame('ok', $result['state']);
     }
 
-    public function testJavascriptDoesNotIntroduceFreeHtmlPersistenceOrDependencies(): void
+    public function testJavascriptKeepsHtmlSafeAndUsesOnlyTheSeoEndpoint(): void
     {
         foreach ([
             'localStorage',
@@ -248,7 +248,6 @@ JS;
             'insertAdjacentHTML',
             'eval(',
             'new Function',
-            'fetch(',
             'XMLHttpRequest',
             'require(',
             'import(',
@@ -261,6 +260,17 @@ JS;
         );
         self::assertStringContainsString('.textContent =', $this->javascript);
         self::assertStringContainsString('.replaceChildren()', $this->javascript);
+        self::assertSame(1, substr_count($this->javascript, 'fetch(endpoint,'));
+        self::assertStringContainsString(
+            "credentials: 'same-origin'",
+            $this->javascript
+        );
+        self::assertStringContainsString(
+            "'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'",
+            $this->javascript
+        );
+        self::assertStringContainsString('new AbortController()', $this->javascript);
+        self::assertStringContainsString('window.setTimeout(run, 650)', $this->javascript);
         self::assertStringContainsString(
             'El H1 pertenece al art&iacute;culo',
             (new \App\Core\Blog\StructuredContent\Rendering\BlogStructuredEditorHtmlRenderer())

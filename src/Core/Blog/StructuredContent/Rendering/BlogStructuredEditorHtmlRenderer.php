@@ -10,6 +10,7 @@ use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentCodec;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTextProjector;
+use App\Core\Blog\Seo\BlogSeoAnalysis;
 use App\Core\WebAdmin\Http\WebAdminPageDocumentRenderer;
 use InvalidArgumentException;
 
@@ -53,7 +54,8 @@ final class BlogStructuredEditorHtmlRenderer
         array $revisionSummaries = [],
         bool $failed = false,
         bool $canPublish = false,
-        bool $canAssignCategories = false
+        bool $canAssignCategories = false,
+        ?BlogSeoAnalysis $seoAnalysis = null
     ): string {
         $basePath = $this->basePath($basePath);
         $this->assertCsrfPresentation($csrf);
@@ -122,6 +124,7 @@ final class BlogStructuredEditorHtmlRenderer
             . $identity
             . $this->hidden('document_json', $canonicalJson)
             . $this->metadata($variant, $readOnly)
+            . $this->seoPanel($basePath, $seoAnalysis)
             . $this->documentEditor(
                 $document,
                 $mediaOptions,
@@ -142,6 +145,112 @@ final class BlogStructuredEditorHtmlRenderer
             . '">Volver al Blog</a></p></article></main>';
 
         return $this->document($body);
+    }
+
+    private function seoPanel(
+        string $basePath,
+        ?BlogSeoAnalysis $analysis
+    ): string {
+        $endpoint = $this->path($basePath . '/editor/seo-analysis');
+        if ($analysis === null) {
+            return '<section class="blogEditor__seo" '
+                . 'aria-labelledby="blog-editor-seo-panel-title" '
+                . 'data-blog-seo-panel data-blog-seo-endpoint="'
+                . $endpoint . '"><h2 id="blog-editor-seo-panel-title">'
+                . 'Revisi&oacute;n SEO editorial</h2><p>Los avisos son '
+                . 'orientativos: nunca bloquean el guardado ni la publicaci&oacute;n.'
+                . '</p><p data-blog-seo-live role="status" aria-live="polite">'
+                . 'Pendiente de analizar el contenido guardado.</p>'
+                . '<div data-blog-seo-results></div></section>';
+        }
+
+        $payload = $analysis->toArray();
+
+        return '<section class="blogEditor__seo" '
+            . 'aria-labelledby="blog-editor-seo-panel-title" '
+            . 'data-blog-seo-panel data-blog-seo-endpoint="'
+            . $endpoint . '"><h2 id="blog-editor-seo-panel-title">'
+            . 'Revisi&oacute;n SEO editorial</h2><p>Los avisos son '
+            . 'orientativos: nunca bloquean el guardado ni la publicaci&oacute;n.'
+            . '</p><p data-blog-seo-live role="status" aria-live="polite">'
+            . 'An&aacute;lisis del contenido guardado.</p><div '
+            . 'data-blog-seo-results>' . $this->seoResults($payload)
+            . '</div></section>';
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function seoResults(array $payload): string
+    {
+        $summary = is_array($payload['summary'] ?? null)
+            ? $payload['summary']
+            : [];
+        $html = '<div class="blogEditor__seoSummary" '
+            . 'aria-label="Resumen SEO"><span data-status="good">Bien: '
+            . (int) ($summary['good'] ?? 0) . '</span><span '
+            . 'data-status="review">Revisar: '
+            . (int) ($summary['review'] ?? 0) . '</span><span '
+            . 'data-status="pending">Pendiente: '
+            . (int) ($summary['pending'] ?? 0) . '</span></div>';
+
+        $preview = is_array($payload['serp_preview'] ?? null)
+            ? $payload['serp_preview']
+            : [];
+        $html .= '<article class="blogEditor__serp" '
+            . 'aria-labelledby="blog-editor-serp-title"><h3 '
+            . 'id="blog-editor-serp-title">Vista previa SERP ('
+            . $this->escape((string) ($preview['locale'] ?? ''))
+            . ')</h3><p class="blogEditor__serpTitle">'
+            . $this->escape((string) ($preview['title'] ?? ''))
+            . '</p><p class="blogEditor__serpUrl">'
+            . $this->escape((string) ($preview['url'] ?? ''))
+            . '</p><p>'
+            . $this->escape((string) ($preview['description'] ?? ''))
+            . '</p></article><ul class="blogEditor__seoChecks">';
+
+        $checks = is_array($payload['checks'] ?? null)
+            ? $payload['checks']
+            : [];
+        foreach ($checks as $check) {
+            if (!is_array($check)) {
+                continue;
+            }
+            $status = (string) ($check['status'] ?? 'pending');
+            if (!in_array($status, ['good', 'review', 'pending'], true)) {
+                $status = 'pending';
+            }
+            $html .= '<li data-status="' . $status . '"><p><strong>'
+                . $this->escape((string) ($check['status_label'] ?? ''))
+                . ': ' . $this->escape((string) ($check['label'] ?? ''))
+                . '</strong></p><p>'
+                . $this->escape((string) ($check['message'] ?? ''))
+                . '</p></li>';
+        }
+        $html .= '</ul>';
+
+        $competitors = is_array($payload['competing_pages'] ?? null)
+            ? $payload['competing_pages']
+            : [];
+        if ($competitors !== []) {
+            $html .= '<details class="blogEditor__seoCompetition"><summary>'
+                . 'URLs a revisar</summary><ul>';
+            foreach ($competitors as $competitor) {
+                if (!is_array($competitor)) {
+                    continue;
+                }
+                $html .= '<li><code>'
+                    . $this->escape((string) ($competitor['url'] ?? ''))
+                    . '</code> &mdash; '
+                    . $this->escape((string) ($competitor['h1'] ?? ''))
+                    . ' ('
+                    . (($competitor['match'] ?? '') === 'complete'
+                        ? 'coincidencia completa'
+                        : 'coincidencia parcial')
+                    . ')</li>';
+            }
+            $html .= '</ul></details>';
+        }
+
+        return $html;
     }
 
     private function publicationControl(

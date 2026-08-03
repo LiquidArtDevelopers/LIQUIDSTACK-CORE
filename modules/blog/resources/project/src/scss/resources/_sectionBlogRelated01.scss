@@ -1,0 +1,99 @@
+@use '../config' as c;
+
+.sectionBlogRelated01 {
+    width: 100%;
+    padding: clamp(3rem, 8vw, 6rem) c.$padMin;
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 2.75rem);
+    color: c.$color01;
+    background: c.$color00bis;
+
+    > h1,
+    > h2,
+    > h3,
+    > h4,
+    > h5,
+    > h6,
+    .sectionBlogRelated01-list {
+        width: min(100%, c.$textMax);
+        margin-inline: auto;
+    }
+
+    .sectionBlogRelated01-list {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .sectionBlogRelated01-item {
+        min-width: 0;
+        padding: clamp(1.15rem, 4vw, 1.75rem);
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+        border: 1px solid c.$color01bis4;
+        border-radius: 1rem;
+        background: c.$color00;
+
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            margin: 0;
+            font-size: clamp(1.2rem, 4vw, 1.65rem);
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+
+            a {
+                color: c.$color01;
+                text-decoration-color: transparent;
+                text-underline-offset: 0.18em;
+
+                &:hover {
+                    color: c.$color02;
+                    text-decoration-color: currentColor;
+                }
+
+                &:focus-visible {
+                    border-radius: 0.15rem;
+                    outline: 0.18rem solid c.$color02;
+                    outline-offset: 0.2rem;
+                }
+            }
+        }
+    }
+
+    .sectionBlogRelated01-date {
+        order: -1;
+        color: c.$color01bis;
+        font-family: c.$fuente02;
+        font-size: 0.8rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .sectionBlogRelated01-excerpt {
+        color: c.$color01bis;
+        overflow-wrap: anywhere;
+    }
+
+    @media (min-width: c.$tablet) {
+        padding-inline: c.$padMax;
+
+        .sectionBlogRelated01-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .sectionBlogRelated01-item {
+            flex: 0 1 calc((100% - 1rem) / 2);
+        }
+    }
+
+    @media (min-width: c.$desktop) {
+        .sectionBlogRelated01-item {
+            flex-basis: calc((100% - 2rem) / 3);
+        }
+    }
+}

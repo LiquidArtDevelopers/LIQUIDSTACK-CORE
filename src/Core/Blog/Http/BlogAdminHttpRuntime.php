@@ -7,6 +7,8 @@ namespace App\Core\Blog\Http;
 use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Configuration\BlogConfig;
+use App\Core\Blog\Seo\BlogSeoAnalysisService;
+use App\Core\Blog\Seo\BlogSeoHttpRuntimeInterface;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredEditorService;
 use App\Core\Blog\StructuredContent\Media\BlogEditorMediaCatalogInterface;
 use App\Core\Blog\StructuredContent\Rendering\BlogImageResolverInterface;
@@ -21,7 +23,8 @@ use Throwable;
 
 final class BlogAdminHttpRuntime implements
     BlogAdminHttpRuntimeInterface,
-    BlogStructuredEditorHttpRuntimeInterface
+    BlogStructuredEditorHttpRuntimeInterface,
+    BlogSeoHttpRuntimeInterface
 {
     /**
      * @param list<string> $languages
@@ -41,7 +44,8 @@ final class BlogAdminHttpRuntime implements
         private readonly ?BlogEditorMediaCatalogInterface
             $editorMediaCatalog = null,
         private readonly ?BlogImageResolverInterface
-            $editorImageResolver = null
+            $editorImageResolver = null,
+        private readonly ?BlogSeoAnalysisService $seoAnalysis = null
     ) {
     }
 
@@ -112,6 +116,17 @@ final class BlogAdminHttpRuntime implements
         }
 
         return $this->editorImageResolver;
+    }
+
+    public function seoAnalysis(): BlogSeoAnalysisService
+    {
+        if ($this->seoAnalysis === null) {
+            throw new BlogAdminHttpRuntimeException(
+                'blog.seo_analysis_unavailable'
+            );
+        }
+
+        return $this->seoAnalysis;
     }
 
     /** @return Closure(PDO): string */

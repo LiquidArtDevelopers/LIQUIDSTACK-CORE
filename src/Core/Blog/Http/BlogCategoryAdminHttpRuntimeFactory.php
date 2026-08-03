@@ -12,6 +12,8 @@ use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogConfigLoader;
 use App\Core\Blog\Persistence\PdoBlogRepository;
+use App\Core\Blog\Sitemap\BlogSitemapPublicationCoordinatorFactory;
+use App\Core\Blog\Sitemap\Cache\BlogSitemapCacheException;
 use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Modules\Blog\BlogCategoryHttpSchemaGate;
@@ -52,6 +54,8 @@ final class BlogCategoryAdminHttpRuntimeFactory implements
     private readonly ClockInterface $clock;
     private readonly UuidGeneratorInterface $uuidGenerator;
     private readonly SecureTokenGenerator $tokenGenerator;
+    private readonly BlogSitemapPublicationCoordinatorFactory
+        $sitemapCoordinatorFactory;
 
     /**
      * @param null|callable(array<string, mixed>, string): PdoConnectionFactoryInterface $connectionFactoryResolver
@@ -66,7 +70,9 @@ final class BlogCategoryAdminHttpRuntimeFactory implements
         ?WebAdminHttpSchemaGate $webAdminSchemaGate = null,
         ?ClockInterface $clock = null,
         ?UuidGeneratorInterface $uuidGenerator = null,
-        ?SecureTokenGenerator $tokenGenerator = null
+        ?SecureTokenGenerator $tokenGenerator = null,
+        ?BlogSitemapPublicationCoordinatorFactory
+            $sitemapCoordinatorFactory = null
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
             ? static fn (array $environment, string $connection):
@@ -93,6 +99,8 @@ final class BlogCategoryAdminHttpRuntimeFactory implements
             ?? new RandomUuidV4Generator();
         $this->tokenGenerator = $tokenGenerator
             ?? new SecureTokenGenerator();
+        $this->sitemapCoordinatorFactory = $sitemapCoordinatorFactory
+            ?? new BlogSitemapPublicationCoordinatorFactory();
     }
 
     public function create(
@@ -210,6 +218,22 @@ final class BlogCategoryAdminHttpRuntimeFactory implements
                 $this->tokenGenerator,
                 $hasher
             );
+            try {
+                $sitemapCoordinator =
+                    $this->sitemapCoordinatorFactory->create(
+                        $blogConfig,
+                        $pdo,
+                        $registry,
+                        $scopes,
+                        $blogScope,
+                        $root,
+                        $environment
+                    );
+            } catch (BlogSitemapCacheException $exception) {
+                throw new BlogAdminHttpRuntimeException(
+                    $exception->issueCode()
+                );
+            }
 
             return new BlogCategoryAdminHttpRuntime(
                 $languages,
@@ -223,7 +247,8 @@ final class BlogCategoryAdminHttpRuntimeFactory implements
                         $pdo,
                         $tables,
                         $this->uuidGenerator
-                    )
+                    ),
+                    sitemapPublicationCoordinator: $sitemapCoordinator
                 ),
                 new BlogCategoryService(
                     new PdoBlogCategoryRepository($pdo, $blogScope),

@@ -25,7 +25,9 @@ final class BlogPublicFeed
         private readonly ?BlogCategoryPublicProjectionService
             $categoryProjection = null,
         private readonly ?BlogPublicCatalogRepositoryInterface
-            $catalogRepository = null
+            $catalogRepository = null,
+        private readonly ?BlogPublicDiscoveryRepositoryInterface
+            $discoveryRepository = null
     ) {
     }
 
@@ -131,6 +133,106 @@ final class BlogPublicFeed
             ],
             $repository->search($query)
         );
+    }
+
+    /**
+     * Returns published posts that share the greatest number of localized
+     * categories with the published source article.
+     *
+     * @return list<array{
+     *     locale: string,
+     *     slug: string,
+     *     url: string,
+     *     h1: string,
+     *     excerpt: string,
+     *     published_at: string,
+     *     updated_at: string
+     * }>
+     */
+    public function cardsForRelated(BlogPublicRelatedQuery $query): array
+    {
+        return $this->discoveryCards(
+            $query->locale(),
+            fn (BlogPublicDiscoveryRepositoryInterface $repository): array =>
+                $repository->relatedPosts($query)
+        );
+    }
+
+    /**
+     * @return list<array{
+     *     locale: string,
+     *     slug: string,
+     *     url: string,
+     *     h1: string,
+     *     excerpt: string,
+     *     published_at: string,
+     *     updated_at: string
+     * }>
+     */
+    public function cardsForArchive(BlogPublicArchiveQuery $query): array
+    {
+        return $this->discoveryCards(
+            $query->locale(),
+            fn (BlogPublicDiscoveryRepositoryInterface $repository): array =>
+                $repository->archivePosts($query)
+        );
+    }
+
+    /**
+     * @return list<array{locale: string, year: int, month: int, count: int}>
+     */
+    public function archivePeriods(
+        BlogPublicArchivePeriodsQuery $query
+    ): array {
+        if ($this->config->publicPath($query->locale()) === null) {
+            throw new BlogException(BlogException::INVALID_INPUT);
+        }
+
+        return array_map(
+            static fn (BlogPublicArchivePeriod $period): array =>
+                $period->toResourceData(),
+            $this->requiredDiscoveryRepository()->archivePeriods($query)
+        );
+    }
+
+    /**
+     * @param callable(BlogPublicDiscoveryRepositoryInterface):list<PublishedPostCard>
+     *     $load
+     * @return list<array{
+     *     locale: string,
+     *     slug: string,
+     *     url: string,
+     *     h1: string,
+     *     excerpt: string,
+     *     published_at: string,
+     *     updated_at: string
+     * }>
+     */
+    private function discoveryCards(string $locale, callable $load): array
+    {
+        $basePath = $this->config->publicPath($locale);
+        if ($basePath === null) {
+            throw new BlogException(BlogException::INVALID_INPUT);
+        }
+
+        return array_map(
+            static fn (PublishedPostCard $card): array => [
+                'locale' => $card->locale(),
+                'slug' => $card->slug(),
+                'url' => $basePath . '/' . $card->slug(),
+                'h1' => $card->h1(),
+                'excerpt' => $card->excerpt(),
+                'published_at' => $card->publishedAt()->format(DATE_ATOM),
+                'updated_at' => $card->updatedAt()->format(DATE_ATOM),
+            ],
+            $load($this->requiredDiscoveryRepository())
+        );
+    }
+
+    private function requiredDiscoveryRepository(
+    ): BlogPublicDiscoveryRepositoryInterface {
+        return $this->discoveryRepository
+            ?? throw new BlogException(BlogException::STORAGE_UNAVAILABLE);
     }
 
     private function requiredCategoryProjection(): BlogCategoryPublicProjectionService

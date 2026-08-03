@@ -46,6 +46,10 @@ return [
         'en' => '/en/news',
     ],
     'sitemap_path' => '/blog-sitemap.xml',
+    'sitemap_cache' => [
+        'enabled' => false,
+        'ttl_seconds' => 300,
+    ],
     'public_article_view' => 'App/views/blog-article.php',
     'database' => [
         'connection' => 'liquidstack',
@@ -204,6 +208,7 @@ Rutas privadas:
 | `GET`/`HEAD` | `/admin/blog/categories/updated` | Destino PRG sin datos editoriales. |
 | `GET`/`HEAD` | `/admin/blog/editor` | Editor estructurado de una variante. |
 | `POST` | `/admin/blog/editor/save` | Guardado atómico de metadatos, documento y revisión. |
+| `POST` | `/admin/blog/editor/seo-analysis` | Análisis SEO editorial advisory del payload actual, sin persistencia. |
 | `GET`/`HEAD` | `/admin/blog/editor/preview` | Vista previa privada del documento guardado o de la proyección legacy. |
 | `GET`/`HEAD` | `/admin/blog/editor/revisions` | Historial o detalle de una revisión. |
 | `POST` | `/admin/blog/editor/restore` | Restauración mediante una revisión nueva. |
@@ -243,6 +248,13 @@ módulo hacia `public/assets/modules/blog`. El editor funciona con HTML SSR y
 controles seguros; JavaScript facilita añadir, editar, mover y retirar bloques,
 pero el servidor vuelve a validar el documento completo. Estos assets no son
 configuración project-owned ni deben duplicarse en el bundle general del stack.
+
+El editor integra además el primer corte del medidor SEO editorial. El panel
+SSR analiza el estado guardado y el runtime progresivo actualiza los avisos con
+debounce y cancelación de la petición anterior. Es determinista, no asigna una
+puntuación y nunca bloquea guardar o publicar. Su contrato, el inventario
+canónico estático opcional y sus límites se detallan en
+[Medidor SEO editorial del Blog](blog-seo-editorial.md).
 `doctor` inspecciona únicamente los assets runtime module-owned declarados bajo
 `public/assets/modules/blog`, `src/js/modules/blog` o
 `src/scss/modules/blog`. Un target de directorio se expande desde su fuente a
@@ -408,6 +420,15 @@ fuente de verdad. El proyecto debe enviar `Vary: X-LiquidStack-Partial` y
 conservar siempre el documento completo para navegación normal, JavaScript
 desactivado y cualquier cliente que no solicite la variante parcial.
 
+El mismo feed ofrece consultas tipadas y acotadas de descubrimiento. Los
+relacionados parten de una variante publicada y ordenan candidatos del mismo
+idioma por número de categorías localizadas compartidas, fecha y UUID estable,
+excluyendo el artículo de origen. El archivo consulta un año o mes UTC con
+límite y offset defensivos; su proyección de periodos agrega año, mes y recuento
+sin exponer IDs. `BlogPublicArticleViewModel::relatedArticles()` transporta las
+cards ya proyectadas al shell público. Todas estas lecturas conservan el mismo
+PDO y solo incluyen variantes publicadas con slug, extracto y fecha válidos.
+
 ### Recursos visuales y showroom selectivos
 
 El manifiesto de Blog declara una allowlist `resources` y publica la familia
@@ -415,9 +436,13 @@ visual únicamente cuando el selector `liquidstack/blog` está activo:
 
 - `moduleBlogFilters01`, formulario GET funcional sin JavaScript y mejora
   progresiva abortable para búsqueda, categorías `any|all` e historial;
+- `artBlogArticle01`, composición semántica del artículo para las plantillas
+  básica y con portada, con cuerpo saneado por CORE e intro/retorno inyectables;
+- `moduleBlogArchive01`, navegación por periodos con recuentos y estado actual;
 - `sectionBlogGrid01`, rejilla de cards;
 - `sectionBlogList01`, listado editorial;
 - `sectionBlogFeatured01`, entrada destacada con secundarias;
+- `sectionBlogRelated01`, cards relacionadas por categorías compartidas;
 - `sectionBlogSlider01`, carrusel horizontal accesible y responsive.
 
 Los recursos reciben arrays de presentación; nunca PDO, prefijos, IDs internos
@@ -426,6 +451,13 @@ ni secretos. Su fuente canónica replica la estructura del consumidor bajo
 recurso comparten un grupo gestionado, mientras helper y hooks de showroom
 conservan grupos propios. Así una personalización local bloquea únicamente su
 unidad coherente y no toda la familia.
+
+`artBlogArticle01` deduce el rango de su encabezado externo mediante el mismo
+contrato relacional del stack y desplaza en consecuencia los H2/H3 saneados
+del documento. Sus placeholders estructurales son reservados: solo
+`article_data.body_html` puede aportar el cuerpo confiable. Los relacionados
+usan tres cards por defecto y centran cualquier última fila incompleta; el
+archivo expone el periodo activo con `aria-current="date"`.
 
 El grupo independiente `resource-support` no rebaja ese aislamiento: su helper
 es una API de presentación común y estable. Las funciones
@@ -497,12 +529,24 @@ título o parecido entre slugs.
 Una respuesta válida incluye un `ETag` fuerte derivado de los bytes exactos del
 XML y `Cache-Control: public, no-cache, must-revalidate`. `GET` y `HEAD`
 atienden `If-None-Match`, incluida la comparación débil permitida para lecturas,
-y devuelven `304` sin cuerpo cuando coincide. El endpoint vuelve a consultar la
-DB antes de revalidar, de modo que publicar o retirar invalida el resultado de
-forma inmediata. No se usa `Last-Modified` como validador global: el máximo
-`updated_at` puede retroceder al retirar la URL más reciente. La caché
-last-known-good persistente queda supeditada al contrato descrito en
-[su diseño pendiente](mejoras-pendientes/blog-sitemap-last-known-good-cache.md).
+y devuelven `304` sin cuerpo cuando coincide. No se usa `Last-Modified` como
+validador global: el máximo `updated_at` puede retroceder al retirar la URL más
+reciente.
+
+La caché persistente last-known-good es opcional y está desactivada por
+defecto. Cuando el proyecto la activa, `0006_blog_sitemap_publication_state`
+mantiene una revisión pública monótona y una generación de storage. Publicar o
+retirar escribe un fence durable antes de cambiar la visibilidad y actualiza la
+revisión en la misma transacción. El snapshot solo se promueve después de
+comprobar de nuevo revisión y generación bajo locks coordinados.
+
+El fallback se admite exclusivamente ante
+`database.connection_unavailable`, con snapshot íntegro, vigente y de la misma
+identidad. La respuesta lo declara mediante
+`X-LiquidStack-Sitemap-Source: stale-cache` y `Warning: 110`; cualquier error
+de esquema, configuración, consulta no clasificada, render, overflow o storage
+falla cerrado. El contrato y runbook completos están en
+[Caché last-known-good del sitemap](blog-sitemap-last-known-good-cache.md).
 
 Una ruta o fichero project-owned con el mismo path bloquea `sitemap_ready` y se
 muestra en `doctor`; no se reemplaza automáticamente. Desactivar el selector
@@ -522,6 +566,8 @@ composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
 # Crear y verificar aquí un backup recuperable de DB y storage.
 composer liquidstack:migrate --apply
+# Solo si sitemap_cache.enabled=true:
+composer liquidstack:blog:sitemap-cache:init
 composer liquidstack:webadmin:bootstrap
 composer liquidstack:doctor
 ```
@@ -540,9 +586,11 @@ La resolución pública base exige `0001`; la administración de artículos suma
 `0002`. La proyección pública de categorías exige `0001+0003` y su
 administración `0001+0002+0003+0004`. El documento estructurado y sus
 revisiones requieren `0001+0003+0005`; su selección de imágenes necesita
-además `0002_webadmin_media_library` en el scope WebAdmin. Una migración
-compuesta registrada solo retira la postcondición anterior mientras su propio
-contrato completo continúe siendo válido.
+además `0002_webadmin_media_library` en el scope WebAdmin. La caché LKG exige
+el prefijo completo `0001`–`0006`, incluidas las migraciones intercaladas, y su
+inicialización explícita. Una migración compuesta
+registrada solo retira la postcondición anterior mientras su propio contrato
+completo continúe siendo válido.
 
 Cambiar un proyecto con artículos o identidades existentes desde `shared` a
 `liquidstack` no traslada ni adopta datos. Requiere una migración y verificación
@@ -567,7 +615,8 @@ mensajes PDO.
 
 Quedan expresamente para cortes posteriores:
 
-- etiquetas, vistas de archivo, relacionados, RSS y comentarios;
+- etiquetas, RSS y comentarios; relacionados y archivo ya forman parte del
+  feed público y de la familia base de recursos;
 - crop, focal point, vídeo local, audio, reemplazo y garbage collection de
   medios;
 - nuevas plantillas editoriales y el maquetador libre de secciones, filas y
@@ -575,15 +624,15 @@ Quedan expresamente para cortes posteriores:
 - workflow de aprobación, programación y borrado;
 - redirecciones automáticas por cambio de slug;
 - traducción mediante IA y generación automática de variantes;
-- medidor SEO avanzado, Search Console e Indexing API;
+- ampliaciones del medidor SEO, Search Console e Indexing API;
 - suscripciones y notificaciones al publicar: requieren consentimiento,
   campañas, un outbox por lotes y un scheduler futuro según el
   [contrato pendiente](mejoras-pendientes/blog-notificaciones-suscriptores.md);
 - localización independiente de la interfaz WebAdmin;
 - edición HTML avanzada, saneada, auditable, restaurable y limitada a una
   capacidad específica;
-- ampliación del catálogo de recursos Blog con relacionados, archivos y otras
-  composiciones dinámicas.
+- ampliación del catálogo de recursos Blog con nuevas composiciones dinámicas
+  posteriores a `sectionBlogRelated01` y `moduleBlogArchive01`.
 
 El documento JSON v1, sus revisiones, el agregado, las variantes, permisos,
 URLs y estados forman la base estable sobre la que se añadirán esas

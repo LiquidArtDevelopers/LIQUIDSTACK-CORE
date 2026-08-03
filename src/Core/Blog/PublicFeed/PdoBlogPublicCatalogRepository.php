@@ -16,7 +16,8 @@ use Throwable;
 
 /** Portable, fail-closed PDO read model for public Blog cards. */
 final class PdoBlogPublicCatalogRepository implements
-    BlogPublicCatalogRepositoryInterface
+    BlogPublicCatalogRepositoryInterface,
+    BlogPublicDiscoveryRepositoryInterface
 {
     private const UTC_FORMAT = 'Y-m-d H:i:s.u';
     private const SUPPORTED_DRIVERS = ['mysql', 'sqlite'];
@@ -163,6 +164,148 @@ final class PdoBlogPublicCatalogRepository implements
         }
     }
 
+    public function relatedPosts(BlogPublicRelatedQuery $query): array
+    {
+        try {
+            $sql = 'SELECT candidate.locale, candidate.slug, candidate.h1, '
+                . 'candidate.excerpt, candidate.published_at, '
+                . 'candidate.updated_at, '
+                . 'COUNT(DISTINCT source_pc.category_id) AS shared_count '
+                . 'FROM ' . $this->localizations . ' source JOIN '
+                . $this->posts . ' source_post ON source_post.id = '
+                . 'source.post_id JOIN ' . $this->relations
+                . ' source_pc ON source_pc.post_id = source_post.id JOIN '
+                . $this->categoryLocalizations
+                . ' source_category ON source_category.category_id = '
+                . 'source_pc.category_id AND source_category.locale = '
+                . ':category_locale JOIN ' . $this->relations
+                . ' candidate_pc ON candidate_pc.category_id = '
+                . 'source_pc.category_id JOIN ' . $this->posts
+                . ' candidate_post ON candidate_post.id = '
+                . 'candidate_pc.post_id AND candidate_post.id <> '
+                . 'source_post.id JOIN ' . $this->localizations
+                . ' candidate ON candidate.post_id = candidate_post.id '
+                . 'WHERE source.locale = :source_locale '
+                . 'AND source.slug = :source_slug '
+                . 'AND source.status = :source_status '
+                . 'AND source.published_at IS NOT NULL '
+                . 'AND candidate.locale = :candidate_locale '
+                . 'AND candidate.status = :candidate_status '
+                . 'AND candidate.slug IS NOT NULL '
+                . 'AND candidate.excerpt IS NOT NULL '
+                . 'AND candidate.published_at IS NOT NULL '
+                . 'GROUP BY candidate.locale, candidate.slug, '
+                . 'candidate.h1, candidate.excerpt, '
+                . 'candidate.published_at, candidate.updated_at, '
+                . 'candidate.public_id '
+                . 'ORDER BY shared_count DESC, '
+                . 'candidate.published_at DESC, candidate.public_id ASC '
+                . 'LIMIT :related_limit';
+            $statement = $this->prepare($sql);
+            $this->execute($statement, [
+                'category_locale' => [$query->locale(), PDO::PARAM_STR],
+                'source_locale' => [$query->locale(), PDO::PARAM_STR],
+                'source_slug' => [$query->sourceSlug(), PDO::PARAM_STR],
+                'source_status' => [
+                    BlogPostVariant::PUBLISHED,
+                    PDO::PARAM_STR,
+                ],
+                'candidate_locale' => [$query->locale(), PDO::PARAM_STR],
+                'candidate_status' => [
+                    BlogPostVariant::PUBLISHED,
+                    PDO::PARAM_STR,
+                ],
+                'related_limit' => [$query->limit(), PDO::PARAM_INT],
+            ]);
+
+            return $this->cardsFromStatement($statement);
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+    }
+
+    public function archivePosts(BlogPublicArchiveQuery $query): array
+    {
+        try {
+            $endExclusive = $query->endExclusive();
+            $sql = 'SELECT l.locale, l.slug, l.h1, l.excerpt, '
+                . 'l.published_at, l.updated_at FROM ' . $this->posts
+                . ' p JOIN ' . $this->localizations
+                . ' l ON l.post_id = p.id WHERE l.locale = :locale '
+                . 'AND l.status = :status AND l.slug IS NOT NULL '
+                . 'AND l.excerpt IS NOT NULL '
+                . 'AND l.published_at >= :archive_start '
+                . 'AND l.published_at '
+                . ($endExclusive === null ? '<= ' : '< ')
+                . ':archive_end ORDER BY l.published_at DESC, '
+                . 'l.public_id ASC LIMIT :archive_limit '
+                . 'OFFSET :archive_offset';
+            $statement = $this->prepare($sql);
+            $this->execute($statement, [
+                'locale' => [$query->locale(), PDO::PARAM_STR],
+                'status' => [BlogPostVariant::PUBLISHED, PDO::PARAM_STR],
+                'archive_start' => [
+                    $query->startInclusive()->format(self::UTC_FORMAT),
+                    PDO::PARAM_STR,
+                ],
+                'archive_end' => [
+                    $endExclusive?->format(self::UTC_FORMAT)
+                        ?? BlogPublicArchiveQuery::MAX_STORAGE_TIMESTAMP,
+                    PDO::PARAM_STR,
+                ],
+                'archive_limit' => [$query->limit(), PDO::PARAM_INT],
+                'archive_offset' => [$query->offset(), PDO::PARAM_INT],
+            ]);
+
+            return $this->cardsFromStatement($statement);
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+    }
+
+    public function archivePeriods(
+        BlogPublicArchivePeriodsQuery $query
+    ): array {
+        try {
+            $year = $this->archiveDatePartExpression('year');
+            $month = $this->archiveDatePartExpression('month');
+            $sql = 'SELECT l.locale, ' . $year . ' AS archive_year, '
+                . $month . ' AS archive_month, COUNT(*) AS post_count '
+                . 'FROM ' . $this->localizations . ' l '
+                . 'WHERE l.locale = :locale AND l.status = :status '
+                . 'AND l.slug IS NOT NULL AND l.excerpt IS NOT NULL '
+                . 'AND l.published_at IS NOT NULL '
+                . 'GROUP BY l.locale, ' . $year . ', ' . $month . ' '
+                . 'ORDER BY archive_year DESC, archive_month DESC '
+                . 'LIMIT :period_limit OFFSET :period_offset';
+            $statement = $this->prepare($sql);
+            $this->execute($statement, [
+                'locale' => [$query->locale(), PDO::PARAM_STR],
+                'status' => [BlogPostVariant::PUBLISHED, PDO::PARAM_STR],
+                'period_limit' => [$query->limit(), PDO::PARAM_INT],
+                'period_offset' => [$query->offset(), PDO::PARAM_INT],
+            ]);
+            $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+            if (!is_array($rows)) {
+                throw new BlogPersistenceException();
+            }
+
+            return array_map(
+                fn (mixed $row): BlogPublicArchivePeriod =>
+                    $this->archivePeriodFromRow($row),
+                array_values($rows)
+            );
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+    }
+
     /**
      * @return array{string, array<string, array{mixed, int}>}
      */
@@ -264,6 +407,20 @@ final class PdoBlogPublicCatalogRepository implements
             : 'LOWER(' . $expression . ')';
     }
 
+    private function archiveDatePartExpression(string $part): string
+    {
+        if (!in_array($part, ['year', 'month'], true)) {
+            throw new BlogPersistenceException();
+        }
+        if ($this->driver === 'mysql') {
+            return strtoupper($part) . '(l.published_at)';
+        }
+
+        return "CAST(strftime('"
+            . ($part === 'year' ? '%Y' : '%m')
+            . "', l.published_at) AS INTEGER)";
+    }
+
     private function prepare(string $sql): PDOStatement
     {
         try {
@@ -320,6 +477,39 @@ final class PdoBlogPublicCatalogRepository implements
         }
     }
 
+    /** @return list<PublishedPostCard> */
+    private function cardsFromStatement(PDOStatement $statement): array
+    {
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        if (!is_array($rows)) {
+            throw new BlogPersistenceException();
+        }
+
+        return array_map(
+            fn (mixed $row): PublishedPostCard => $this->cardFromRow($row),
+            array_values($rows)
+        );
+    }
+
+    private function archivePeriodFromRow(mixed $row): BlogPublicArchivePeriod
+    {
+        if (!is_array($row)) {
+            throw new BlogPersistenceException();
+        }
+        try {
+            return new BlogPublicArchivePeriod(
+                $this->requiredString($row, 'locale'),
+                $this->requiredPositiveInteger($row, 'archive_year'),
+                $this->requiredPositiveInteger($row, 'archive_month'),
+                $this->requiredPositiveInteger($row, 'post_count')
+            );
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+    }
+
     /** @param array<string, mixed> $row */
     private function requiredString(array $row, string $key): string
     {
@@ -329,6 +519,24 @@ final class PdoBlogPublicCatalogRepository implements
         }
 
         return $value;
+    }
+
+    /** @param array<string, mixed> $row */
+    private function requiredPositiveInteger(array $row, string $key): int
+    {
+        $value = $row[$key] ?? null;
+        if (
+            !is_int($value)
+            && !(is_string($value) && preg_match('/^[1-9][0-9]*$/D', $value))
+        ) {
+            throw new BlogPersistenceException();
+        }
+        $integer = (int) $value;
+        if ($integer < 1 || (string) $integer !== (string) $value) {
+            throw new BlogPersistenceException();
+        }
+
+        return $integer;
     }
 
     private function timestamp(mixed $value): DateTimeImmutable

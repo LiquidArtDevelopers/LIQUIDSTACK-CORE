@@ -324,12 +324,28 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
             'action="/admin/blog/posts/publish"',
             $editor->body()
         );
+        self::assertStringContainsString(
+            'data-blog-seo-endpoint="/admin/blog/editor/seo-analysis"',
+            $editor->body()
+        );
+        self::assertStringContainsString(
+            'Revisi&oacute;n SEO editorial',
+            $editor->body()
+        );
+        self::assertStringContainsString(
+            'Los avisos son orientativos: nunca bloquean',
+            $editor->body()
+        );
         self::assertStringContainsString('>Publicar</button>', $editor->body());
         self::assertStringContainsString(
             'name="lock_version" value="1"',
             $editor->body()
         );
         $this->assertPrivateHtml($editor);
+        self::assertStringContainsString(
+            "connect-src 'self'",
+            $editor->headers()['Content-Security-Policy']
+        );
 
         $editorHead = $this->controller->edit($this->head(
             '/admin/blog/editor',
@@ -436,6 +452,85 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
             '/admin/blog/editor/preview',
             $query
         ))->status());
+    }
+
+    public function testSeoAnalysisIsAuthenticatedAdvisoryJsonAndReadOnly(): void
+    {
+        $response = $this->controller->seoAnalysis($this->post(
+            '/admin/blog/editor/seo-analysis',
+            $this->saveForm(
+                $this->documentJson('Matrix context and a clear choice.'),
+                1,
+                'A clear guide to choosing inside Matrix'
+            )
+        ));
+
+        self::assertSame(200, $response->status());
+        self::assertSame(
+            'application/json; charset=utf-8',
+            $response->headers()['Content-Type']
+        );
+        self::assertSame(
+            'no-store, no-cache, must-revalidate, max-age=0',
+            $response->headers()['Cache-Control']
+        );
+        $payload = json_decode(
+            $response->body(),
+            true,
+            32,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertSame('liquidstack.blog.seo-analysis', $payload['schema']);
+        self::assertSame(1, $payload['version']);
+        self::assertTrue($payload['advisory']);
+        self::assertArrayNotHasKey('score', $payload);
+        self::assertCount(12, $payload['checks']);
+        self::assertSame('es', $payload['serp_preview']['locale']);
+        self::assertSame(0, $this->rowCount('ls_blog_content_docs'));
+        self::assertSame(0, $this->rowCount('ls_blog_content_revisions'));
+        self::assertSame(0, $this->rowCount('ls_webadmin_audit_log'));
+
+        $invalidCsrf = $this->saveForm(
+            $this->documentJson('Valid body.'),
+            1,
+            'Valid H1'
+        );
+        $invalidCsrf['csrf'] = 'wrong';
+        self::assertSame(403, $this->controller->seoAnalysis($this->post(
+            '/admin/blog/editor/seo-analysis',
+            $invalidCsrf
+        ))->status());
+
+        $this->removeCapability(BlogAdminHttpController::EDIT_CAPABILITY);
+        self::assertSame(403, $this->controller->seoAnalysis($this->post(
+            '/admin/blog/editor/seo-analysis',
+            $this->saveForm(
+                $this->documentJson('Valid body.'),
+                1,
+                'Valid H1'
+            )
+        ))->status());
+    }
+
+    public function testSeoAnalysisRejectsInvalidPayloadWithoutLeakingContent(): void
+    {
+        $form = $this->saveForm('{"tampered":true}', 1, 'Sensitive H1');
+        $response = $this->controller->seoAnalysis($this->post(
+            '/admin/blog/editor/seo-analysis',
+            $form
+        ));
+
+        self::assertSame(422, $response->status());
+        self::assertSame(
+            'application/json; charset=utf-8',
+            $response->headers()['Content-Type']
+        );
+        self::assertStringNotContainsString('Sensitive H1', $response->body());
+        self::assertStringNotContainsString('tampered', $response->body());
+        self::assertStringContainsString(
+            'unprocessable_content',
+            $response->body()
+        );
     }
 
     public function testSaveAdoptsLegacyAndRestoreAppendsImmutableRevision(): void

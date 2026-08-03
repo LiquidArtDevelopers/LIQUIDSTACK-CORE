@@ -52,11 +52,13 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
     public function __construct(
         ?BlogCategoryMigrationPostconditionVerifier $categoryVerifier = null,
         private readonly MySqlColumnDefaultNormalizer $defaultNormalizer =
-            new MySqlColumnDefaultNormalizer()
+            new MySqlColumnDefaultNormalizer(),
+        bool $expectSitemapStateExtension = false
     ) {
         $this->categoryVerifier = $categoryVerifier
             ?? new BlogCategoryMigrationPostconditionVerifier(
-                expectStructuredContentExtension: true
+                expectStructuredContentExtension: true,
+                expectSitemapStateExtension: $expectSitemapStateExtension
             );
     }
 

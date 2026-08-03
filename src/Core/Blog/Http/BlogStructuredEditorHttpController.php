@@ -17,6 +17,11 @@ use App\Core\Blog\StructuredContent\Rendering\BlogEditorRevisionSummary;
 use App\Core\Blog\StructuredContent\Rendering\BlogRenderingException;
 use App\Core\Blog\StructuredContent\Rendering\BlogStructuredEditorHtmlRenderer;
 use App\Core\Blog\StructuredContent\Rendering\BlogStructuredPrivateHtmlRenderer;
+use App\Core\Blog\Seo\BlogSeoAnalysis;
+use App\Core\Blog\Seo\BlogSeoAnalysisService;
+use App\Core\Blog\Seo\BlogSeoAnalyzer;
+use App\Core\Blog\Seo\BlogSeoHttpRuntimeInterface;
+use App\Core\Blog\Seo\BlogSeoStaticPageInventory;
 use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
@@ -144,6 +149,42 @@ final class BlogStructuredEditorHttpController
             return $this->domainFailure($exception);
         } catch (Throwable) {
             return $this->responses->plain(503, 'Service unavailable');
+        }
+    }
+
+    public function seoAnalysis(Request $request): Response
+    {
+        if (!$this->acceptsTransport($request)
+            || !$this->requestPolicy->acceptsSeoAnalysis($request)) {
+            return $this->responses->plain(400, 'Bad request');
+        }
+        $context = $this->authorizedContext($request, [
+            BlogAdminHttpController::EDIT_CAPABILITY,
+            MediaService::VIEW_CAPABILITY,
+        ], true);
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        try {
+            $draft = $this->draftFromRequest($request);
+            $analysis = $this->analyze(
+                $draft,
+                (string) $request->form('post'),
+                (string) $request->form('locale')
+            );
+
+            return $this->responses->json(200, $analysis->toArray());
+        } catch (BlogDocumentException|BlogException) {
+            return $this->responses->json(422, [
+                'error' => 'unprocessable_content',
+                'message' => 'No se puede analizar hasta completar los campos válidos.',
+            ]);
+        } catch (Throwable) {
+            return $this->responses->json(503, [
+                'error' => 'analysis_unavailable',
+                'message' => 'El análisis no está disponible temporalmente.',
+            ]);
         }
     }
 
@@ -297,6 +338,24 @@ final class BlogStructuredEditorHttpController
             );
         $canonicalJson = $snapshot?->canonicalJson()
             ?? $this->codec->encode($document);
+        $analysisDraft = $snapshot ?? new BlogStructuredDraft(
+            $state->variant()->draft()->h1(),
+            $document,
+            $state->variant()->draft()->slug(),
+            $state->variant()->draft()->seoTitle(),
+            $state->variant()->draft()->metaDescription(),
+            $state->variant()->draft()->excerpt()
+        );
+        try {
+            $analysis = $this->analyze(
+                $analysisDraft,
+                $postPublicId,
+                $locale
+            );
+        } catch (Throwable) {
+            // SEO is additive: its failure never takes the editor down.
+            $analysis = null;
+        }
 
         return $this->editorRenderer->render(
             $this->basePath(),
@@ -314,7 +373,51 @@ final class BlogStructuredEditorHttpController
                 $this->runtime->authorization()->hasCapability(
                     $sessionToken,
                     BlogCategoryAdminHttpController::EDIT_CAPABILITY
-                )
+                ),
+            seoAnalysis: $analysis
+        );
+    }
+
+    private function draftFromRequest(Request $request): BlogStructuredDraft
+    {
+        return new BlogStructuredDraft(
+            (string) $request->form('h1'),
+            $this->codec->decode((string) $request->form('document_json')),
+            $this->nullableForm($request, 'slug'),
+            $this->nullableForm($request, 'seo_title'),
+            $this->nullableForm($request, 'meta_description'),
+            $this->nullableForm($request, 'excerpt')
+        );
+    }
+
+    private function analyze(
+        BlogStructuredDraft $draft,
+        string $postPublicId,
+        string $locale
+    ): BlogSeoAnalysis {
+        $service = null;
+        if ($this->runtime instanceof BlogSeoHttpRuntimeInterface) {
+            try {
+                $service = $this->runtime->seoAnalysis();
+            } catch (Throwable) {
+                // Compatibility runtimes keep the advisory panel available.
+            }
+        }
+        $service ??= new BlogSeoAnalysisService(
+                new BlogSeoAnalyzer(),
+                null,
+                new BlogSeoStaticPageInventory($this->runtime->projectRoot())
+            );
+        $publicPath = $this->runtime->blogConfig()->publicPath($locale);
+        if ($publicPath === null) {
+            throw new BlogException(BlogException::INVALID_INPUT);
+        }
+
+        return $service->analyze(
+            $draft,
+            $postPublicId,
+            $locale,
+            $publicPath
         );
     }
 

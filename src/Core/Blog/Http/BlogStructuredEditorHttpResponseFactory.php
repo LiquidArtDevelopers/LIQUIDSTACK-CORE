@@ -17,7 +17,7 @@ final class BlogStructuredEditorHttpResponseFactory
     {
         return new Response($status, $body, $this->headers(
             "default-src 'none'; img-src 'self' data:; style-src 'self'; "
-                . "script-src 'self'; form-action 'self'; frame-ancestors "
+                . "script-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors "
                 . "'none'; base-uri 'none'"
         ) + [
             'Content-Type' => 'text/html; charset=utf-8',
@@ -31,6 +31,23 @@ final class BlogStructuredEditorHttpResponseFactory
             "default-src 'none'; form-action 'none'; frame-ancestors "
                 . "'none'; base-uri 'none'"
         ) + ['Content-Type' => 'text/plain; charset=utf-8']);
+    }
+
+    /** @param array<string, mixed> $payload */
+    public function json(int $status, array $payload): Response
+    {
+        return new Response(
+            $status,
+            json_encode(
+                $payload,
+                JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+            ),
+            $this->headers(
+                "default-src 'none'; form-action 'none'; frame-ancestors "
+                    . "'none'; base-uri 'none'"
+            ) + ['Content-Type' => 'application/json; charset=utf-8']
+        );
     }
 
     public function redirect(string $path): Response

@@ -1476,6 +1476,217 @@
         return media;
     }
 
+    function seoElement(tag, className, value) {
+        var node = document.createElement(tag);
+        if (className) {
+            node.className = className;
+        }
+        if (value !== undefined) {
+            node.textContent = String(value);
+        }
+        return node;
+    }
+
+    function validSeoAnalysis(value) {
+        return value
+            && typeof value === 'object'
+            && value.schema === 'liquidstack.blog.seo-analysis'
+            && value.version === 1
+            && value.advisory === true
+            && value.summary
+            && typeof value.summary === 'object'
+            && Array.isArray(value.checks)
+            && value.serp_preview
+            && typeof value.serp_preview === 'object'
+            && Array.isArray(value.competing_pages);
+    }
+
+    function renderSeoAnalysis(results, analysis) {
+        var fragment = document.createDocumentFragment();
+        var summary = seoElement('div', 'blogEditor__seoSummary');
+        summary.setAttribute('aria-label', 'Resumen SEO');
+        [
+            ['good', 'Bien'],
+            ['review', 'Revisar'],
+            ['pending', 'Pendiente']
+        ].forEach(function (definition) {
+            var item = seoElement(
+                'span',
+                '',
+                definition[1] + ': ' + Number(
+                    analysis.summary[definition[0]] || 0
+                )
+            );
+            item.dataset.status = definition[0];
+            summary.append(item);
+        });
+        fragment.append(summary);
+
+        var preview = seoElement('article', 'blogEditor__serp');
+        var previewTitle = seoElement(
+            'h3',
+            '',
+            'Vista previa SERP ('
+                + String(analysis.serp_preview.locale || '') + ')'
+        );
+        preview.append(
+            previewTitle,
+            seoElement(
+                'p',
+                'blogEditor__serpTitle',
+                analysis.serp_preview.title || ''
+            ),
+            seoElement(
+                'p',
+                'blogEditor__serpUrl',
+                analysis.serp_preview.url || ''
+            ),
+            seoElement('p', '', analysis.serp_preview.description || '')
+        );
+        fragment.append(preview);
+
+        var checks = seoElement('ul', 'blogEditor__seoChecks');
+        analysis.checks.forEach(function (check) {
+            if (!check || typeof check !== 'object') {
+                return;
+            }
+            var status = ['good', 'review', 'pending'].includes(check.status)
+                ? check.status
+                : 'pending';
+            var item = seoElement('li');
+            item.dataset.status = status;
+            var heading = seoElement('p');
+            heading.append(seoElement(
+                'strong',
+                '',
+                String(check.status_label || '') + ': '
+                    + String(check.label || '')
+            ));
+            item.append(
+                heading,
+                seoElement('p', '', check.message || '')
+            );
+            checks.append(item);
+        });
+        fragment.append(checks);
+
+        if (analysis.competing_pages.length > 0) {
+            var details = seoElement('details', 'blogEditor__seoCompetition');
+            details.append(seoElement('summary', '', 'URLs a revisar'));
+            var list = seoElement('ul');
+            analysis.competing_pages.slice(0, 5).forEach(function (page) {
+                if (!page || typeof page !== 'object') {
+                    return;
+                }
+                var item = seoElement('li');
+                item.append(
+                    seoElement('code', '', page.url || ''),
+                    document.createTextNode(
+                        ' — ' + String(page.h1 || '') + ' ('
+                        + (page.match === 'complete'
+                            ? 'coincidencia completa'
+                            : 'coincidencia parcial') + ')'
+                    )
+                );
+                list.append(item);
+            });
+            details.append(list);
+            fragment.append(details);
+        }
+        results.replaceChildren(fragment);
+    }
+
+    function initSeoAnalysis(context) {
+        var panel = context.form.querySelector('[data-blog-seo-panel]');
+        if (!(panel instanceof HTMLElement) || context.readOnly) {
+            return;
+        }
+        var endpoint = panel.dataset.blogSeoEndpoint || '';
+        var results = panel.querySelector('[data-blog-seo-results]');
+        var live = panel.querySelector('[data-blog-seo-live]');
+        if (
+            !safeRootRelativeUrl(endpoint)
+            || !(results instanceof HTMLElement)
+            || !(live instanceof HTMLElement)
+        ) {
+            return;
+        }
+
+        var timer = 0;
+        var activeController = null;
+        var requestVersion = 0;
+
+        function run() {
+            sync(context);
+            requestVersion += 1;
+            var version = requestVersion;
+            if (activeController) {
+                activeController.abort();
+            }
+            activeController = typeof AbortController === 'function'
+                ? new AbortController()
+                : null;
+            var body = new URLSearchParams();
+            new FormData(context.form).forEach(function (value, key) {
+                if (typeof value === 'string') {
+                    body.append(key, value);
+                }
+            });
+            live.textContent = 'Analizando cambios…';
+
+            fetch(endpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                body: body.toString(),
+                signal: activeController ? activeController.signal : undefined
+            }).then(function (response) {
+                return response.json().then(function (payload) {
+                    return { response: response, payload: payload };
+                });
+            }).then(function (result) {
+                if (version !== requestVersion) {
+                    return;
+                }
+                if (!result.response.ok || !validSeoAnalysis(result.payload)) {
+                    throw new Error('analysis-unavailable');
+                }
+                renderSeoAnalysis(results, result.payload);
+                live.textContent = 'Análisis actualizado. Los avisos no bloquean.';
+            }).catch(function (error) {
+                if (error && error.name === 'AbortError') {
+                    return;
+                }
+                if (version === requestVersion) {
+                    live.textContent = 'No se pudo actualizar el análisis. Puedes guardar igualmente.';
+                }
+            });
+        }
+
+        function schedule() {
+            window.clearTimeout(timer);
+            live.textContent = 'Cambios pendientes de analizar…';
+            timer = window.setTimeout(run, 650);
+        }
+        context.form.addEventListener('input', schedule);
+        context.form.addEventListener('change', schedule);
+        context.form.addEventListener('click', function (event) {
+            if (
+                event.target instanceof Element
+                && event.target.closest(
+                    '[data-blog-add-block], [data-blog-action], '
+                    + '[data-blog-inline-action], [data-blog-list-action], '
+                    + '[data-blog-add-inline], [data-blog-add-list-item]'
+                )
+            ) {
+                schedule();
+            }
+        });
+    }
+
     function disableSubmission(form, status, message) {
         form.querySelectorAll('button, select, textarea, input:not([type="hidden"])')
             .forEach(function (control) { control.disabled = true; });
@@ -1591,6 +1802,7 @@
         });
 
         render(context);
+        initSeoAnalysis(context);
         form.dataset.blogEditorEnhanced = 'true';
     }
 

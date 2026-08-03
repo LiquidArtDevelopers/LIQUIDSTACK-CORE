@@ -112,6 +112,8 @@ final class BlogHttpSchemaGateTest extends TestCase
             . "AND migration_id IN ('0002_blog_capabilities', "
             . "'0003_blog_categories', '0004_blog_category_capabilities', "
             . "'0005_blog_structured_content')"
+            . " OR (module_id = 'blog' AND migration_id = "
+            . "'0006_blog_sitemap_publication_state')"
         );
         self::assertFalse((new BlogHttpSchemaGate())->isReady(
             $this->pdo,
@@ -134,6 +136,8 @@ final class BlogHttpSchemaGateTest extends TestCase
             . "AND migration_id IN ('0002_blog_capabilities', "
             . "'0003_blog_categories', '0004_blog_category_capabilities', "
             . "'0005_blog_structured_content')"
+            . " OR (module_id = 'blog' AND migration_id = "
+            . "'0006_blog_sitemap_publication_state')"
         );
         $gate = new BlogHttpSchemaGate();
 
@@ -164,6 +168,8 @@ final class BlogHttpSchemaGateTest extends TestCase
             "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
             . "AND migration_id IN ('0004_blog_category_capabilities', "
             . "'0005_blog_structured_content')"
+            . " OR (module_id = 'blog' AND migration_id = "
+            . "'0006_blog_sitemap_publication_state')"
         );
         self::assertFalse($categoryGate->isReady(
             $this->pdo,
@@ -194,6 +200,8 @@ final class BlogHttpSchemaGateTest extends TestCase
             . "AND migration_id IN ('0003_blog_categories', "
             . "'0004_blog_category_capabilities', "
             . "'0005_blog_structured_content')"
+            . " OR (module_id = 'blog' AND migration_id = "
+            . "'0006_blog_sitemap_publication_state')"
         );
         $this->pdo->exec(
             "DELETE FROM ls_webadmin_capabilities WHERE code IN "

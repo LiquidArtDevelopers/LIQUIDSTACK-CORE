@@ -11,6 +11,9 @@ use App\Core\Blog\Http\BlogPublicMediaHttpResponseFactory;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeFactory;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeFactoryInterface;
 use App\Core\Blog\PublicDelivery\BlogPublicMediaRoute;
+use App\Core\Blog\Sitemap\Delivery\BlogSitemapDeliveryFactory;
+use App\Core\Blog\Sitemap\Delivery\BlogSitemapDeliveryFactoryInterface;
+use App\Core\Blog\Sitemap\Delivery\BlogSitemapHttpController;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\Modules\ModulePublicRouteProviderInterface;
@@ -26,7 +29,11 @@ final class BlogPublicRouteProvider implements
     ModulePreBootstrapPublicRoutePrefixProviderInterface
 {
     private ?BlogPublicHttpController $controller = null;
+    private ?BlogSitemapHttpController $sitemapController = null;
     private ?ModuleRuntimeContext $context = null;
+    private readonly BlogSitemapDeliveryFactoryInterface
+        $sitemapDeliveryFactory;
+    private readonly bool $useDedicatedSitemapDelivery;
 
     public function __construct(
         private readonly BlogPublicHttpRuntimeFactoryInterface $runtimeFactory =
@@ -34,8 +41,15 @@ final class BlogPublicRouteProvider implements
         private readonly BlogConfigLoader $configLoader =
             new BlogConfigLoader(),
         private readonly BlogPublicMediaHttpResponseFactory
-            $mediaResponseFactory = new BlogPublicMediaHttpResponseFactory()
+            $mediaResponseFactory = new BlogPublicMediaHttpResponseFactory(),
+        ?BlogSitemapDeliveryFactoryInterface $sitemapDeliveryFactory = null
     ) {
+        $this->sitemapDeliveryFactory = $sitemapDeliveryFactory
+            ?? new BlogSitemapDeliveryFactory();
+        // Existing injected public-runtime doubles retain their old contract.
+        $this->useDedicatedSitemapDelivery =
+            $sitemapDeliveryFactory !== null
+            || $runtimeFactory instanceof BlogPublicHttpRuntimeFactory;
     }
 
     public static function moduleId(): string
@@ -150,7 +164,9 @@ final class BlogPublicRouteProvider implements
             return null;
         }
 
-        return $this->controller()->sitemap($request);
+        return $this->useDedicatedSitemapDelivery
+            ? $this->sitemapController()->handle($request)
+            : $this->controller()->sitemap($request);
     }
 
     private function media(Request $request): Response
@@ -181,6 +197,17 @@ final class BlogPublicRouteProvider implements
             new BlogPublicHtmlRenderer(
                 $runtime->config()->publicArticleViewPath()
             )
+        );
+    }
+
+    private function sitemapController(): BlogSitemapHttpController
+    {
+        if ($this->sitemapController instanceof BlogSitemapHttpController) {
+            return $this->sitemapController;
+        }
+
+        return $this->sitemapController = new BlogSitemapHttpController(
+            $this->sitemapDeliveryFactory->create($this->requiredContext())
         );
     }
 

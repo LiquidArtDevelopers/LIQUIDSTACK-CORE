@@ -67,10 +67,16 @@ final class InstallerModuleHookTest extends TestCase
         );
         foreach ([
             'App/templates/_sectionBlogGrid01.html',
+            'App/templates/_artBlogArticle01.html',
+            'App/templates/_moduleBlogArchive01.html',
+            'App/templates/_sectionBlogRelated01.html',
             'App/views/showroom/_blog.php',
             'src/js/resources/_moduleBlogFilters01.js',
             'src/js/showroom/blog.js',
             'src/scss/resources/_sectionBlogGrid01.scss',
+            'src/scss/resources/_artBlogArticle01.scss',
+            'src/scss/resources/_moduleBlogArchive01.scss',
+            'src/scss/resources/_sectionBlogRelated01.scss',
             'src/scss/showroom/blog.scss',
         ] as $relative) {
             self::assertFileDoesNotExist(
@@ -102,18 +108,27 @@ final class InstallerModuleHookTest extends TestCase
         );
         foreach ([
             'App/controllers/_moduleBlogResources.php',
+            'App/controllers/artBlogArticle01.php',
+            'App/controllers/moduleBlogArchive01.php',
             'App/controllers/moduleBlogFilters01.php',
             'App/controllers/sectionBlogFeatured01.php',
             'App/controllers/sectionBlogGrid01.php',
             'App/controllers/sectionBlogList01.php',
+            'App/controllers/sectionBlogRelated01.php',
             'App/controllers/sectionBlogSlider01.php',
+            'App/templates/_moduleBlogArchive01.html',
             'App/templates/_moduleBlogFilters01.html',
+            'App/templates/_artBlogArticle01.html',
+            'App/templates/_sectionBlogRelated01.html',
             'App/views/showroom/_blog.php',
             'src/js/resources/_moduleBlogFilters01.js',
             'src/js/resources/_sectionBlogSlider01.js',
             'src/js/showroom/blog.js',
             'src/scss/resources/_moduleBlogFilters01.scss',
+            'src/scss/resources/_artBlogArticle01.scss',
+            'src/scss/resources/_moduleBlogArchive01.scss',
             'src/scss/resources/_sectionBlogGrid01.scss',
+            'src/scss/resources/_sectionBlogRelated01.scss',
             'src/scss/showroom/blog.scss',
         ] as $relative) {
             self::assertFileExists(

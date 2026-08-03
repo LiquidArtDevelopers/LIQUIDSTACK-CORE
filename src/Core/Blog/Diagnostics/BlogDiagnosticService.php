@@ -8,12 +8,16 @@ use App\Core\Blog\Configuration\BlogConfigException;
 use App\Core\Blog\Configuration\BlogConfigLoader;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Routing\BlogRoutePolicy;
+use App\Core\Blog\Sitemap\Cache\PrivateBlogSitemapCacheStorage;
+use App\Core\Blog\Sitemap\Persistence\PdoBlogSitemapStateRepository;
 use App\Core\Modules\Migrations\MigrationDatabasePlan;
 use App\Core\Modules\Migrations\MigrationFeatureReadiness;
+use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\Blog\BlogMigrationRequirements;
 use App\Core\Modules\Diagnostics\ProjectAssetInspector;
 use App\Core\WebAdmin\Configuration\WebAdminConfigException;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
+use PDO;
 use Throwable;
 
 final class BlogDiagnosticService
@@ -43,7 +47,8 @@ final class BlogDiagnosticService
         ?bool $webAdminRuntimeReady,
         ?MigrationDatabasePlan $databasePlan = null,
         bool $inspectDatabase = true,
-        array $requiredAssets = []
+        array $requiredAssets = [],
+        ?PDO $databaseConnection = null
     ): BlogDiagnosticReport {
         $configurationReady = false;
         $configurationIssues = [];
@@ -56,10 +61,14 @@ final class BlogDiagnosticService
             ]],
             'collisions' => [],
         ];
+        $sitemapCacheEnabled = false;
+        $sitemapTablePrefix = null;
 
         try {
             $config = $this->configLoader->load($projectRoot, $languages);
             $configurationReady = true;
+            $sitemapCacheEnabled = $config->sitemapCache()->enabled();
+            $sitemapTablePrefix = $config->tablePrefix();
             $effective = [
                 'source' => $config->source(),
                 'public_paths' => $config->publicPaths(),
@@ -67,6 +76,7 @@ final class BlogDiagnosticService
                 'database' => [
                     'connection' => $config->databaseConnection(),
                 ],
+                'sitemap_cache' => $config->sitemapCache()->toSafeArray(),
             ];
             if ($config->publicArticleView() !== null) {
                 $effective['public_article_view'] =
@@ -134,6 +144,15 @@ final class BlogDiagnosticService
             $databasePlan,
             $inspectDatabase
         );
+        $sitemapCache = $this->sitemapCacheStatus(
+            $projectRoot,
+            $environment,
+            $sitemapCacheEnabled,
+            $databasePlan,
+            $inspectDatabase,
+            $sitemapTablePrefix,
+            $databaseConnection
+        );
         $assets = $this->assetInspector->inspect(
             $projectRoot,
             $requiredAssets
@@ -157,6 +176,15 @@ final class BlogDiagnosticService
             $blockers[] = $inspectDatabase
                 ? 'database.migrations_not_ready'
                 : 'database.not_checked';
+        }
+        if (
+            ($sitemapCache['enabled'] ?? false) === true
+            && (
+                ($sitemapCache['ready'] ?? false) !== true
+                || ($sitemapCache['status'] ?? null) === 'blocked'
+            )
+        ) {
+            $blockers[] = 'sitemap_cache.not_ready';
         }
         if (!$assets['ready']) {
             $blockers[] = 'assets.missing_or_invalid';
@@ -191,11 +219,108 @@ final class BlogDiagnosticService
                         : 'not_checked'),
             ],
             'database' => $database,
+            'sitemap_cache' => $sitemapCache,
             'readiness' => [
                 'blog_ready' => $blockers === [],
                 'blockers' => array_values(array_unique($blockers)),
             ],
         ]);
+    }
+
+    /** @param array<string, mixed> $environment @return array<string, mixed> */
+    private function sitemapCacheStatus(
+        string $projectRoot,
+        array $environment,
+        bool $enabled,
+        ?MigrationDatabasePlan $plan,
+        bool $inspectDatabase,
+        ?string $tablePrefix,
+        ?PDO $databaseConnection
+    ): array {
+        if (!$enabled) {
+            return [
+                'enabled' => false,
+                'ready' => true,
+                'status' => 'disabled',
+                'migration' => 'not_applicable',
+                'storage' => 'not_applicable',
+                'generation' => 'not_applicable',
+            ];
+        }
+        $migration = 'not_checked';
+        $migrationReady = false;
+        if ($inspectDatabase && $plan instanceof MigrationDatabasePlan) {
+            $readiness = MigrationFeatureReadiness::fromPlan(
+                $plan,
+                BlogMigrationRequirements::sitemapCache()
+            );
+            $migrationReady = $readiness->baseReady();
+            $migration = $readiness->baseStatus();
+        }
+        $storageReady = false;
+        $storageStatus = 'invalid';
+        $storage = null;
+        try {
+            $storage = PrivateBlogSitemapCacheStorage::forProject(
+                $projectRoot,
+                $environment
+            );
+            $diagnostic = $storage->diagnostic();
+            $storageReady = ($diagnostic['ready'] ?? false) === true;
+            $storageStatus = is_string($diagnostic['status'] ?? null)
+                ? $diagnostic['status'] : 'invalid';
+        } catch (Throwable) {
+            $storageReady = false;
+        }
+        $generationStatus = 'not_checked';
+        $generationReady = false;
+        if (
+            $migrationReady
+            && $storageReady
+            && $storage instanceof PrivateBlogSitemapCacheStorage
+            && is_string($tablePrefix)
+            && $tablePrefix !== ''
+            && $databaseConnection instanceof PDO
+        ) {
+            try {
+                $state = (new PdoBlogSitemapStateRepository(
+                    $databaseConnection,
+                    MigrationScope::forTablePrefix('blog', $tablePrefix)
+                ))->current();
+                $generation = $state->cacheGeneration();
+                $generationReady = $generation !== null
+                    && hash_equals(
+                        $generation,
+                        $storage->markerGeneration()
+                    );
+                $generationStatus = $generationReady
+                    ? 'matched' : 'mismatch';
+            } catch (Throwable) {
+                $generationStatus = 'invalid';
+            }
+        }
+        $ready = $migrationReady
+            && $storageReady
+            && $storageStatus !== 'blocked'
+            && $generationReady;
+        $status = $ready
+            ? 'ready'
+            : (!$migrationReady
+                ? 'migration_not_ready'
+                : (!$storageReady
+                    ? 'storage_not_ready'
+                    : ($storageStatus === 'blocked'
+                        ? 'blocked'
+                        : 'generation_' . $generationStatus)));
+
+        return [
+            'enabled' => true,
+            'ready' => $ready,
+            'status' => $status,
+            'migration' => $migration,
+            'storage' => $storageStatus,
+            'generation' => $generationStatus,
+        ];
     }
 
     /** @return array<string, mixed> */

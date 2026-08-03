@@ -52,13 +52,15 @@ final class BlogPublicHtmlRenderer
     /**
      * @param array<string, string> $alternateUrls
      * @param array<string, string> $languageNavigationUrls
+     * @param list<array<string, mixed>> $relatedArticles
      */
     public function render(
         BlogPostVariant $variant,
         string $canonicalUrl,
         array $alternateUrls = [],
         ?string $xDefaultUrl = null,
-        array $languageNavigationUrls = []
+        array $languageNavigationUrls = [],
+        array $relatedArticles = []
     ): string {
         if (
             filter_var($canonicalUrl, FILTER_VALIDATE_URL) === false
@@ -74,13 +76,15 @@ final class BlogPublicHtmlRenderer
             null,
             $alternateUrls,
             $xDefaultUrl,
-            $languageNavigationUrls
+            $languageNavigationUrls,
+            $relatedArticles
         );
     }
 
     /**
      * @param array<string, string> $alternateUrls
      * @param array<string, string> $languageNavigationUrls
+     * @param list<array<string, mixed>> $relatedArticles
      */
     public function renderStructured(
         BlogPostVariant $variant,
@@ -89,7 +93,8 @@ final class BlogPublicHtmlRenderer
         BlogImageResolverInterface $imageResolver,
         array $alternateUrls = [],
         ?string $xDefaultUrl = null,
-        array $languageNavigationUrls = []
+        array $languageNavigationUrls = [],
+        array $relatedArticles = []
     ): string {
         if (
             filter_var($canonicalUrl, FILTER_VALIDATE_URL) === false
@@ -105,13 +110,15 @@ final class BlogPublicHtmlRenderer
             $imageResolver,
             $alternateUrls,
             $xDefaultUrl,
-            $languageNavigationUrls
+            $languageNavigationUrls,
+            $relatedArticles
         );
     }
 
     /**
      * @param array<string, string> $alternatePaths
      * @param array<string, string> $languageNavigationPaths
+     * @param list<array<string, mixed>> $relatedArticles
      */
     public function renderFromOrigin(
         BlogPostVariant $variant,
@@ -119,7 +126,8 @@ final class BlogPublicHtmlRenderer
         string $canonicalPath,
         array $alternatePaths = [],
         ?string $xDefaultPath = null,
-        array $languageNavigationPaths = []
+        array $languageNavigationPaths = [],
+        array $relatedArticles = []
     ): string {
         return $this->renderDocument(
             $variant,
@@ -133,13 +141,15 @@ final class BlogPublicHtmlRenderer
             $this->absoluteAlternates(
                 $origin,
                 $languageNavigationPaths
-            )
+            ),
+            $relatedArticles
         );
     }
 
     /**
      * @param array<string, string> $alternatePaths
      * @param array<string, string> $languageNavigationPaths
+     * @param list<array<string, mixed>> $relatedArticles
      */
     public function renderStructuredFromOrigin(
         BlogPostVariant $variant,
@@ -149,7 +159,8 @@ final class BlogPublicHtmlRenderer
         BlogImageResolverInterface $imageResolver,
         array $alternatePaths = [],
         ?string $xDefaultPath = null,
-        array $languageNavigationPaths = []
+        array $languageNavigationPaths = [],
+        array $relatedArticles = []
     ): string {
         return $this->renderDocument(
             $variant,
@@ -163,13 +174,15 @@ final class BlogPublicHtmlRenderer
             $this->absoluteAlternates(
                 $origin,
                 $languageNavigationPaths
-            )
+            ),
+            $relatedArticles
         );
     }
 
     /**
      * @param array<string, string> $alternateUrls
      * @param array<string, string> $languageNavigationUrls
+     * @param list<array<string, mixed>> $relatedArticles
      */
     private function renderDocument(
         BlogPostVariant $variant,
@@ -178,7 +191,8 @@ final class BlogPublicHtmlRenderer
         ?BlogImageResolverInterface $imageResolver = null,
         array $alternateUrls = [],
         ?string $xDefaultUrl = null,
-        array $languageNavigationUrls = []
+        array $languageNavigationUrls = [],
+        array $relatedArticles = []
     ): string {
         if (
             $variant->status() !== BlogPostVariant::PUBLISHED
@@ -234,7 +248,8 @@ final class BlogPublicHtmlRenderer
             $document?->template()
                 ?? BlogDocumentTemplateRegistry::ARTICLE_BASIC,
             $publishedAt,
-            $variant->updatedAt()
+            $variant->updatedAt(),
+            $relatedArticles
         );
 
         return $this->projectArticleView === null

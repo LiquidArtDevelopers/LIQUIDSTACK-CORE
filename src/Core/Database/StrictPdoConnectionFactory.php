@@ -6,6 +6,7 @@ namespace App\Core\Database;
 
 use Closure;
 use PDO;
+use PDOException;
 use Throwable;
 
 final class StrictPdoConnectionFactory implements
@@ -58,6 +59,18 @@ final class StrictPdoConnectionFactory implements
             }
 
             return $pdo;
+        } catch (PDOException $exception) {
+            $sqlState = (string) (
+                $exception->errorInfo[0] ?? $exception->getCode()
+            );
+            $driverCode = (int) ($exception->errorInfo[1] ?? 0);
+            $transient = str_starts_with($sqlState, '08')
+                || in_array($driverCode, [2002, 2003, 2006, 2013], true);
+            throw new DatabaseConnectionException(
+                $transient
+                    ? 'database.connection_unavailable'
+                    : 'database.connection_failed'
+            );
         } catch (Throwable) {
             throw new DatabaseConnectionException(
                 'database.connection_failed'

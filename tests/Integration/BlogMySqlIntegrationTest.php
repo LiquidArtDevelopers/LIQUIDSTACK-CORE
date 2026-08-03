@@ -11,6 +11,10 @@ use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Http\BlogAdminHttpRuntime;
 use App\Core\Blog\Persistence\PdoBlogRepository;
+use App\Core\Blog\PublicFeed\BlogPublicArchivePeriodsQuery;
+use App\Core\Blog\PublicFeed\BlogPublicArchiveQuery;
+use App\Core\Blog\PublicFeed\BlogPublicRelatedQuery;
+use App\Core\Blog\PublicFeed\PdoBlogPublicCatalogRepository;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredDraft;
@@ -178,6 +182,7 @@ final class BlogMySqlIntegrationTest extends TestCase
                 'blog:0003_blog_categories',
                 'blog:0004_blog_category_capabilities',
                 'blog:0005_blog_structured_content',
+                'blog:0006_blog_sitemap_publication_state',
                 'webadmin:0001_webadmin_identity_and_access',
                 'webadmin:0002_webadmin_media_library',
             ], $applied);
@@ -200,7 +205,9 @@ final class BlogMySqlIntegrationTest extends TestCase
                 )
             );
             $structuredContentVerifier =
-                new BlogStructuredContentMigrationPostconditionVerifier();
+                new BlogStructuredContentMigrationPostconditionVerifier(
+                    expectSitemapStateExtension: true
+                );
             self::assertTrue(
                 $structuredContentVerifier->verify(
                     $connection,
@@ -208,7 +215,8 @@ final class BlogMySqlIntegrationTest extends TestCase
                 )
             );
             $categoryVerifier = new BlogCategoryMigrationPostconditionVerifier(
-                expectStructuredContentExtension: true
+                expectStructuredContentExtension: true,
+                expectSitemapStateExtension: true
             );
             self::assertTrue(
                 $categoryVerifier->verify($connection, $blogScope)
@@ -394,6 +402,28 @@ final class BlogMySqlIntegrationTest extends TestCase
             self::assertNull(
                 $runtime->service()->resolvePublished('eu', 'matrix-mysql-eu')
             );
+
+            // Exercise the production MySQL/MariaDB SQL branches used by
+            // related content and the year/month archive projections.
+            $publicCatalog = new PdoBlogPublicCatalogRepository(
+                $connection,
+                $blogScope
+            );
+            self::assertSame([], $publicCatalog->relatedPosts(
+                new BlogPublicRelatedQuery('es', 'matrix-mysql')
+            ));
+            $archiveCards = $publicCatalog->archivePosts(
+                new BlogPublicArchiveQuery('es', 2032, 4)
+            );
+            self::assertCount(1, $archiveCards);
+            self::assertSame('matrix-mysql', $archiveCards[0]->slug());
+            $archivePeriods = $publicCatalog->archivePeriods(
+                new BlogPublicArchivePeriodsQuery('es')
+            );
+            self::assertCount(1, $archivePeriods);
+            self::assertSame(2032, $archivePeriods[0]->year());
+            self::assertSame(4, $archivePeriods[0]->month());
+            self::assertSame(1, $archivePeriods[0]->count());
 
             $withdrawn = $runtime->service()->unpublish(
                 $publishGate,
@@ -1126,6 +1156,11 @@ final class BlogMySqlIntegrationTest extends TestCase
                 'scope_hash' => $blogScope->hash(),
             ],
             [
+                'module_id' => 'blog',
+                'migration_id' => '0006_blog_sitemap_publication_state',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
                 'module_id' => 'webadmin',
                 'migration_id' => '0001_webadmin_identity_and_access',
                 'scope_hash' => $webAdminScope->hash(),
@@ -1374,6 +1409,7 @@ final class BlogMySqlIntegrationTest extends TestCase
             'content_revisions',
             'content_media',
             'revision_media',
+            'sitemap_state',
         ] as $suffix) {
             $tables[] = $blogPrefix . $suffix;
         }

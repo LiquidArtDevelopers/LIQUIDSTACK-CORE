@@ -12,6 +12,7 @@ use InvalidArgumentException;
 
 final class BlogSitemapRenderer
 {
+    public const CONTRACT_VERSION = 'blog-sitemap-renderer-v1';
     public const MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
 
     public function __construct(

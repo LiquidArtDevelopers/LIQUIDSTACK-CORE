@@ -41,9 +41,15 @@ final class BlogStructuredEditorRequestPolicyTest extends TestCase
         $policy = new BlogStructuredEditorRequestPolicy();
         $form = $this->saveForm();
         self::assertTrue($policy->acceptsSave($this->request('POST', [], $form)));
+        self::assertTrue($policy->acceptsSeoAnalysis(
+            $this->request('POST', [], $form)
+        ));
 
         $form['document_json'] = str_repeat('x', 300_001);
         self::assertFalse($policy->acceptsSave($this->request('POST', [], $form)));
+        self::assertFalse($policy->acceptsSeoAnalysis(
+            $this->request('POST', [], $form)
+        ));
 
         $form = $this->saveForm();
         $form['body_text'] = 'Competing plain body';

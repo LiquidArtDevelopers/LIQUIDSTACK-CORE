@@ -4,11 +4,13 @@
     "files": {
         "modules/blog/published/assets/blog-admin.css": [
             "sha256:24a1a32d47ab2b9d87d6eb1b078a1b06b7a3b1c66b75c65a8beac5a83ecd56a2",
+            "sha256:baff29cfa103fe8c11ba4b2295c643985abcdce09e59e1360858549f9b6f7070",
             "sha256:eeeec6d2ad12033dab68ae3192f8aadb8317bca9a892cb9d896ca324b7417802"
         ],
         "modules/blog/published/assets/blog-editor.js": [
             "sha256:56619bb9e6d39b88e36a60d9715f09b98f6612ce304ec17da0dde24aa8b95187",
-            "sha256:9c9e24f13769b4c3dee66f877b3938f0bb1f296e8f8e37668a7628542ceb246d"
+            "sha256:9c9e24f13769b4c3dee66f877b3938f0bb1f296e8f8e37668a7628542ceb246d",
+            "sha256:a2b6e19ff593063a25858dca1e716d25a486244f371de236deaa9a5fb95c6075"
         ],
         "modules/blog/published/assets/blog-public.css": [
             "sha256:22b655580846599dd10238c3f2ccf2d7a20f571e673d9383ef521b08bc7d751a",
@@ -19,6 +21,12 @@
         ],
         "modules/blog/resources/project/App/controllers/_moduleBlogResources.php": [
             "sha256:6f0984b2ba817226b7018da5c0c276a7b6bb68a2304d808dcc9f25565312fd35"
+        ],
+        "modules/blog/resources/project/App/controllers/artBlogArticle01.php": [
+            "sha256:49eb33a37c0f6871d9d353de9a159f5b874d5060c1ce9452cba440d268782102"
+        ],
+        "modules/blog/resources/project/App/controllers/moduleBlogArchive01.php": [
+            "sha256:705a8abad83375cce2b88854d40f88e8e44a7af46f37f03ba47b942050925e42"
         ],
         "modules/blog/resources/project/App/controllers/moduleBlogFilters01.php": [
             "sha256:3309e4373178dfb28f5c845c9f2546956716afd859b21b40984294d700d40571"
@@ -33,8 +41,17 @@
         "modules/blog/resources/project/App/controllers/sectionBlogList01.php": [
             "sha256:e14f551ea17fa84bee822c8e6c7045540d2884956dd57ef136eb036fd5969b7c"
         ],
+        "modules/blog/resources/project/App/controllers/sectionBlogRelated01.php": [
+            "sha256:0365611e905d1027f17fa5a32eb2589eb14836b20f05e9f3309ede6a05d1e12a"
+        ],
         "modules/blog/resources/project/App/controllers/sectionBlogSlider01.php": [
             "sha256:6e3aac167cc6749bb3ab51f28a620520ce728ef1ae540ad12042679965f36842"
+        ],
+        "modules/blog/resources/project/App/templates/_artBlogArticle01.html": [
+            "sha256:c381f1f79596208ce9629f822678c19cc90f2063a3b453eecd2d3ac6a36d4257"
+        ],
+        "modules/blog/resources/project/App/templates/_moduleBlogArchive01.html": [
+            "sha256:d40dc80441b331af1828a20f62a390b4ba453a621801094339fdc59306b7ec7d"
         ],
         "modules/blog/resources/project/App/templates/_moduleBlogFilters01.html": [
             "sha256:2d3ecbffb0910e27bf69a4d24b87b0e46beb7ebccdf2a9a5b0f33e69722a91e5"
@@ -48,11 +65,15 @@
         "modules/blog/resources/project/App/templates/_sectionBlogList01.html": [
             "sha256:17415736191e55744e61af669a269e26b4c70178cbe94d39ca956704a673ca07"
         ],
+        "modules/blog/resources/project/App/templates/_sectionBlogRelated01.html": [
+            "sha256:1c38056fa5517f70173b5537d91aca8f8ac288d78ed754b03a11e6b7676e050e"
+        ],
         "modules/blog/resources/project/App/templates/_sectionBlogSlider01.html": [
             "sha256:0c2b061e3da0de147dad3ee268f8c1c98815d7c9d8db192095d924c6ee020af1"
         ],
         "modules/blog/resources/project/App/views/showroom/_blog.php": [
             "sha256:5e52cfd9a8d96503e209cce2dbdd6241475d1966454f957ddcd8d5d01679129c",
+            "sha256:749c18ee6f4233eb819d68e9dc77dfed59b74f585e4366f1c76d8ecffa6be848",
             "sha256:d31b36f2431c4d97efcd97f1456a9eabebf93739f5021b34e75e764ab677c7b0",
             "sha256:e95d141d0e1ecdaacdebd879a3d57d20cdfe8526b21e97a5ee576c3a923132aa"
         ],
@@ -65,6 +86,12 @@
         "modules/blog/resources/project/src/js/showroom/blog.js": [
             "sha256:2ad33b5a309c65ebbd4ffd0fa26c6cf6638920ad8335460c7d008260bbc0f3d1",
             "sha256:3cccfd0606cec03147953483d303b09410aff8b9c4b4784c00a13e45c33f2151"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_artBlogArticle01.scss": [
+            "sha256:5fac98ea5b515f29172e191ccac4e45653927c9efd69fd630950326be9dfc0b4"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_moduleBlogArchive01.scss": [
+            "sha256:ef2904fefa442d07e772ccf0657e26ecd3fbdc3ea2d57de2a781251bc595eda8"
         ],
         "modules/blog/resources/project/src/scss/resources/_moduleBlogFilters01.scss": [
             "sha256:fac49e61fd7be2067c81563fe8484778e7237666f579fbef4635b7362499919d"
@@ -80,10 +107,14 @@
         "modules/blog/resources/project/src/scss/resources/_sectionBlogList01.scss": [
             "sha256:a581bd9357d05b19a4fea75bbb17bdfcbd2fd7fd19cab9ff45d0e461a261b9dd"
         ],
+        "modules/blog/resources/project/src/scss/resources/_sectionBlogRelated01.scss": [
+            "sha256:e4badadb7f4a5e633a75791a4036ccfe6b50de60d875ebe359b35c420c725852"
+        ],
         "modules/blog/resources/project/src/scss/resources/_sectionBlogSlider01.scss": [
             "sha256:f997994ea3fe3566d162ee2869f1399ca89ab85f36f51e2243cade0cfedb188f"
         ],
         "modules/blog/resources/project/src/scss/showroom/blog.scss": [
+            "sha256:4d9fd8022e4059927067b67656a7307e6320b51a7491073964716e0e06e81651",
             "sha256:50346325f24453e9d3d9b4a814baf5a87b51632c954e83255fc9e39073012e1c",
             "sha256:8ad671c20ce95534bda20339f4baa88608368e3a4097a5aff077762ce2914e44"
         ],

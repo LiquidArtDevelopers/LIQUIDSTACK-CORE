@@ -8,19 +8,22 @@ use function App\Core\Support\controller;
 
 final class BlogResourceFamilyContractTest extends TestCase
 {
+    private const ARTICLE_RESOURCE = 'artBlogArticle01';
+
     /** @var list<string> */
     private const SECTION_RESOURCES = [
         'sectionBlogGrid01',
         'sectionBlogList01',
         'sectionBlogFeatured01',
         'sectionBlogSlider01',
+        'sectionBlogRelated01',
     ];
 
     public function testTheBlogResourceFamilyHasACompleteProjectContract(): void
     {
         $root = self::moduleProjectRoot();
 
-        foreach (self::SECTION_RESOURCES as $resource) {
+        foreach ([self::ARTICLE_RESOURCE, ...self::SECTION_RESOURCES] as $resource) {
             self::assertFileExists(
                 $root . "/App/controllers/{$resource}.php",
                 "Falta el controlador de {$resource}."
@@ -35,13 +38,12 @@ final class BlogResourceFamilyContractTest extends TestCase
             );
         }
 
-        foreach (['controller', 'template', 'scss'] as $kind) {
-            $path = match ($kind) {
-                'controller' => '/App/controllers/moduleBlogFilters01.php',
-                'template' => '/App/templates/_moduleBlogFilters01.html',
-                default => '/src/scss/resources/_moduleBlogFilters01.scss',
-            };
-            self::assertFileExists($root . $path);
+        foreach (['moduleBlogArchive01', 'moduleBlogFilters01'] as $resource) {
+            self::assertFileExists($root . "/App/controllers/{$resource}.php");
+            self::assertFileExists($root . "/App/templates/_{$resource}.html");
+            self::assertFileExists(
+                $root . "/src/scss/resources/_{$resource}.scss"
+            );
         }
 
         self::assertFileExists(
@@ -146,6 +148,7 @@ final class BlogResourceFamilyContractTest extends TestCase
             'sectionBlogFeatured01',
             'sectionBlogList01',
             'sectionBlogSlider01',
+            'sectionBlogRelated01',
         ] as $resource) {
             $controller = (string) file_get_contents(
                 $root . "/App/controllers/{$resource}.php"
@@ -184,6 +187,7 @@ final class BlogResourceFamilyContractTest extends TestCase
                 'sectionBlogFeatured01',
                 'sectionBlogList01',
                 'sectionBlogSlider01',
+                'sectionBlogRelated01',
             ] as $resource) {
                 $html = controller($resource, 2, [
                     '{header-primary}' => '<h4 class="external-heading">'
@@ -450,7 +454,12 @@ final class BlogResourceFamilyContractTest extends TestCase
     public function testStandardBlogResourcesOnlyUseTheCoreColorFamilies(): void
     {
         $root = self::moduleProjectRoot();
-        $resources = [...self::SECTION_RESOURCES, 'moduleBlogFilters01'];
+        $resources = [
+            self::ARTICLE_RESOURCE,
+            ...self::SECTION_RESOURCES,
+            'moduleBlogArchive01',
+            'moduleBlogFilters01',
+        ];
 
         foreach ($resources as $resource) {
             $scss = (string) file_get_contents(
@@ -478,10 +487,13 @@ final class BlogResourceFamilyContractTest extends TestCase
         );
 
         self::assertSame([
+            'artBlogArticle01',
+            'moduleBlogArchive01',
             'moduleBlogFilters01',
             'sectionBlogFeatured01',
             'sectionBlogGrid01',
             'sectionBlogList01',
+            'sectionBlogRelated01',
             'sectionBlogSlider01',
         ], $manifest['resources']);
 
@@ -493,10 +505,13 @@ final class BlogResourceFamilyContractTest extends TestCase
         self::assertSame([
             'App/controllers/_moduleBlogResources.php',
         ], $groups['resource-support']);
+        self::assertCount(3, $groups['resource-artBlogArticle01']);
+        self::assertCount(3, $groups['resource-moduleBlogArchive01']);
         self::assertCount(4, $groups['resource-moduleBlogFilters01']);
         self::assertCount(3, $groups['resource-sectionBlogFeatured01']);
         self::assertCount(3, $groups['resource-sectionBlogGrid01']);
         self::assertCount(3, $groups['resource-sectionBlogList01']);
+        self::assertCount(3, $groups['resource-sectionBlogRelated01']);
         self::assertCount(4, $groups['resource-sectionBlogSlider01']);
         self::assertEqualsCanonicalizing([
             'App/views/showroom/_blog.php',

@@ -109,7 +109,8 @@ final class BlogCategoryAdminHttpRuntimeFactoryTest extends TestCase
             "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
             . "AND migration_id IN ('0003_blog_categories', "
             . "'0004_blog_category_capabilities', "
-            . "'0005_blog_structured_content')"
+            . "'0005_blog_structured_content', "
+            . "'0006_blog_sitemap_publication_state')"
         );
         $this->pdo->exec(
             "DELETE FROM ls_webadmin_capabilities WHERE code IN "

@@ -11,6 +11,13 @@ use App\Core\Blog\Http\BlogPublicHttpRuntime;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeException;
 use App\Core\Blog\Http\BlogPublicHtmlRenderer;
 use App\Core\Blog\Persistence\PdoBlogRepository;
+use App\Core\Blog\PublicFeed\BlogPublicArchivePeriodsQuery;
+use App\Core\Blog\PublicFeed\BlogPublicArchiveQuery;
+use App\Core\Blog\PublicFeed\BlogPublicCatalogQuery;
+use App\Core\Blog\PublicFeed\BlogPublicCatalogRepositoryInterface;
+use App\Core\Blog\PublicFeed\BlogPublicDiscoveryRepositoryInterface;
+use App\Core\Blog\PublicFeed\BlogPublicRelatedQuery;
+use App\Core\Blog\PublishedPostCard;
 use App\Core\Http\Request;
 use App\Core\Modules\Blog\BlogMigrationProvider;
 use App\Core\Modules\Migrations\MigrationDefinition;
@@ -169,6 +176,149 @@ final class BlogPublicHttpControllerTest extends TestCase
         self::assertStringNotContainsString(
             '/noticias/matrix',
             $this->controller->sitemap()->body()
+        );
+    }
+
+    public function testProjectArticleReceivesRelatedCardsFromTheSameRuntime(): void
+    {
+        $created = $this->service->createPost(
+            $this->actorGate(),
+            'es',
+            $this->draft()
+        );
+        $this->service->publish(
+            $this->actorGate(),
+            $created->postPublicId(),
+            'es',
+            $created->lockVersion()
+        );
+        $related = new PublishedPostCard(
+            'es',
+            'matrix-reloaded',
+            'Matrix Reloaded',
+            'Una entrada relacionada.',
+            new DateTimeImmutable('2026-08-01T09:00:00Z'),
+            new DateTimeImmutable('2026-08-02T09:00:00Z')
+        );
+        $repository = new class($related) implements
+            BlogPublicCatalogRepositoryInterface,
+            BlogPublicDiscoveryRepositoryInterface {
+            public int $relatedCalls = 0;
+
+            public function __construct(
+                private readonly PublishedPostCard $related
+            ) {
+            }
+
+            public function search(BlogPublicCatalogQuery $query): array
+            {
+                return [];
+            }
+
+            public function relatedPosts(BlogPublicRelatedQuery $query): array
+            {
+                ++$this->relatedCalls;
+
+                return [$this->related];
+            }
+
+            public function archivePosts(BlogPublicArchiveQuery $query): array
+            {
+                return [];
+            }
+
+            public function archivePeriods(
+                BlogPublicArchivePeriodsQuery $query
+            ): array {
+                return [];
+            }
+        };
+        $view = tempnam(sys_get_temp_dir(), 'liquidstack-related-view-');
+        self::assertIsString($view);
+        file_put_contents($view, <<<'PHP'
+<?php
+echo json_encode(
+    $blogArticle->relatedArticles(),
+    JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES
+);
+PHP);
+
+        try {
+            $runtime = new BlogPublicHttpRuntime(
+                $this->runtime->config(),
+                $this->runtime->origin(),
+                $this->service,
+                catalogRepository: $repository
+            );
+            $response = (new BlogPublicHttpController(
+                $runtime,
+                new BlogPublicHtmlRenderer($view)
+            ))->article('es', 'matrix');
+
+            self::assertNotNull($response);
+            self::assertSame(1, $repository->relatedCalls);
+            self::assertStringContainsString(
+                '"url":"/noticias/matrix-reloaded"',
+                $response->body()
+            );
+            self::assertStringNotContainsString('post_id', $response->body());
+        } finally {
+            @unlink($view);
+        }
+    }
+
+    public function testRelatedReadFailureDoesNotHideThePublishedArticle(): void
+    {
+        $created = $this->service->createPost(
+            $this->actorGate(),
+            'es',
+            $this->draft()
+        );
+        $this->service->publish(
+            $this->actorGate(),
+            $created->postPublicId(),
+            'es',
+            $created->lockVersion()
+        );
+        $repository = new class implements
+            BlogPublicCatalogRepositoryInterface,
+            BlogPublicDiscoveryRepositoryInterface {
+            public function search(BlogPublicCatalogQuery $query): array
+            {
+                return [];
+            }
+
+            public function relatedPosts(BlogPublicRelatedQuery $query): array
+            {
+                throw new RuntimeException('Private storage failure.');
+            }
+
+            public function archivePosts(BlogPublicArchiveQuery $query): array
+            {
+                return [];
+            }
+
+            public function archivePeriods(
+                BlogPublicArchivePeriodsQuery $query
+            ): array {
+                return [];
+            }
+        };
+        $runtime = new BlogPublicHttpRuntime(
+            $this->runtime->config(),
+            $this->runtime->origin(),
+            $this->service,
+            catalogRepository: $repository
+        );
+
+        $response = (new BlogPublicHttpController($runtime))
+            ->article('es', 'matrix');
+
+        self::assertNotNull($response);
+        self::assertSame(200, $response->status());
+        self::assertStringContainsString(
+            '<h1>Matrix &amp; sistemas</h1>',
+            $response->body()
         );
     }
 

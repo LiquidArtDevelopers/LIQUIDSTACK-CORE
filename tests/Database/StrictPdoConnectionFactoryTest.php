@@ -147,4 +147,31 @@ final class StrictPdoConnectionFactoryTest extends TestCase
             self::assertNull($exception->getPrevious());
         }
     }
+
+    public function testTransientDriverConnectionFailureGetsAStableCode(): void
+    {
+        $factory = new StrictPdoConnectionFactory(
+            [],
+            new StrictPdoValidatorFixture(),
+            static function (): PDO {
+                $exception = new PDOException('private host', 2002);
+                $exception->errorInfo = ['HY000', 2002, 'private host'];
+                throw $exception;
+            }
+        );
+
+        try {
+            $factory->connect();
+            self::fail('Transient connection failure was expected.');
+        } catch (DatabaseConnectionException $exception) {
+            self::assertSame(
+                'database.connection_unavailable',
+                $exception->issueCode()
+            );
+            self::assertStringNotContainsString(
+                'private host',
+                $exception->getMessage()
+            );
+        }
+    }
 }

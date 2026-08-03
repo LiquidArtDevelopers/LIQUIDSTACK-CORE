@@ -92,6 +92,84 @@ final class BlogMigrationProvider implements MigrationProviderInterface
                 '0003_blog_categories',
             ]
         );
+
+        yield MigrationDefinition::sql(
+            id: '0006_blog_sitemap_publication_state',
+            description: 'Crea la revision publica estable del sitemap Blog.',
+            statementsByDriver: [
+                'mysql' => self::mysqlSitemapStateStatements(),
+                'sqlite' => self::sqliteSitemapStateStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogSitemapStateMigrationPostconditionVerifier(),
+            supersedesPostconditions: [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+            ]
+        );
+    }
+
+    /** @return list<string> */
+    private static function mysqlSitemapStateStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:sitemap_state}} (
+    `state_key` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `public_revision` BIGINT UNSIGNED NOT NULL DEFAULT 1,
+    `cache_generation` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (`state_key`),
+    CONSTRAINT {{table:c_ss_key}} CHECK (`state_key` = 'sitemap'),
+    CONSTRAINT {{table:c_ss_revision}} CHECK (`public_revision` > 0),
+    CONSTRAINT {{table:c_ss_generation}} CHECK (
+        `cache_generation` IS NULL OR (
+            CHAR_LENGTH(`cache_generation`) = 36
+            AND `cache_generation` = LOWER(`cache_generation`)
+        )
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:sitemap_state}}
+    (`state_key`, `public_revision`, `cache_generation`)
+VALUES ('sitemap', 1, NULL)
+ON DUPLICATE KEY UPDATE `state_key` = VALUES(`state_key`)
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteSitemapStateStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:sitemap_state}} (
+    "state_key" TEXT COLLATE BINARY NOT NULL PRIMARY KEY
+        CHECK ("state_key" = 'sitemap'),
+    "public_revision" INTEGER NOT NULL DEFAULT 1
+        CHECK ("public_revision" > 0),
+    "cache_generation" TEXT COLLATE BINARY NULL CHECK (
+        "cache_generation" IS NULL OR (
+            length("cache_generation") = 36
+            AND "cache_generation" = lower("cache_generation")
+        )
+    ),
+    "updated_at" TEXT NOT NULL
+        DEFAULT (strftime('%Y-%m-%d %H:%M:%f000', 'now'))
+) WITHOUT ROWID
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:sitemap_state}}
+    ("state_key", "public_revision", "cache_generation")
+VALUES ('sitemap', 1, NULL)
+ON CONFLICT("state_key") DO NOTHING
+SQL,
+        ];
     }
 
     /** @return list<string> */

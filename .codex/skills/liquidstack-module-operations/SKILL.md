@@ -340,7 +340,9 @@ composer liquidstack:migrate --dry-run
   migraciones ni diagnósticos Blog en un proyecto core-only o WebAdmin-only.
 - Tratar `App/config/modules/blog.php` como configuración project-owned. Puede
   declarar `public_paths` por cada idioma activo, `sitemap_path`, el prefijo de
-  tablas y la vista opcional `public_article_view`. Esta última debe usar una
+  tablas, la vista opcional `public_article_view` y el opt-in
+  `sitemap_cache.enabled` con `ttl_seconds` entre 30 y 3.600. La caché LKG
+  permanece desactivada por defecto. La vista debe usar una
   ruta relativa `App/views/...php`, regular, legible, contenida y sin symlinks;
   recibe `$blogArticle` como `BlogPublicArticleViewModel`, debe escapar sus
   escalares por contexto y puede imprimir directamente solo `bodyHtml()`.
@@ -381,7 +383,9 @@ composer liquidstack:migrate --dry-run
   Seguir `docs/mejoras-pendientes/blog-notificaciones-suscriptores.md`.
 - Aplicar en orden `doctor`, `migrate --plan`, `migrate --dry-run`, backup
   recuperable de DB y storage, autorización expresa, `migrate --apply`,
-  `media:init`, `webadmin:bootstrap`, un segundo `doctor` y QA HTTP. No confundir
+  `media:init` y, solo si la caché LKG está activada,
+  `blog:sitemap-cache:init`; continuar con `webadmin:bootstrap`, un segundo
+  `doctor` y QA HTTP. No confundir
   `--backup-confirmed` con la creación del backup. Repetir el bootstrap es
   obligatorio al añadir Blog a un WebAdmin ya inicializado para completar de
   forma idempotente las capacidades de las cuentas protegidas.
@@ -468,6 +472,35 @@ composer liquidstack:migrate --dry-run
   `ETag` fuerte, `Cache-Control: public, no-cache, must-revalidate` y la
   revalidación `If-None-Match` de `GET`/`HEAD`. No inferir un `Last-Modified`
   global mediante `MAX(updated_at)`, porque puede retroceder al retirar URLs.
+- Tratar la caché LKG como una frontera opt-in completa, no como un fichero XML
+  suelto. Exige el prefijo Blog completo `0001`–`0006`, incluida
+  `0006_blog_sitemap_publication_state`, y
+  `composer liquidstack:blog:sitemap-cache:init`; en producción exige además
+  `--shared-storage-confirmed` y
+  `LIQUIDSTACK_BLOG_SITEMAP_CACHE_ROOT` absoluto, privado, persistente, fuera
+  del deploy y compartido por todos los nodos. Confirmar operativamente que el
+  volumen ofrece `flock` coherente y `rename` atómico; el flag no puede probar
+  esas propiedades. No inicializar desde Composer ni rotar una generación
+  activa por intuición; respaldar y restaurar DB y storage como una unidad.
+  La identidad del snapshot debe incluir también el destino y el prefijo de
+  tablas. `doctor` debe contrastar la generación de DB con el marker cuando
+  inspecciona la conexión; storage inicializado no equivale por sí solo a
+  capacidad preparada. Limpiar restos de `.staging` únicamente bajo lock y con
+  nombres, profundidad, cantidad y ficheros estrictamente acotados; una entrada
+  inesperada falla cerrada y no se elimina por intuición.
+- Mantener la invalidación dentro de `publish`/`unpublish`: fence durable antes
+  del cambio visible, revisión pública monótona en la misma transacción y
+  promoción solo tras comparar revisión/generación bajo locks. Un rollback
+  puede dejar el fence y deshabilitar el stale hasta la siguiente regeneración;
+  no retirarlo manualmente. Si ya existe un fence válido de esa generación,
+  conservarlo sin reemplazo para no abrir una ventana unlink/rename ante crash.
+- Permitir fallback LKG solo para `database.connection_unavailable` y solo con
+  snapshot vigente, íntegro, de la misma identidad y sin fence. No degradar a
+  stale ante esquema/config inválidos, error de consulta no clasificado,
+  overflow, render o storage. Conservar ETag y paridad GET/HEAD/304, declarar
+  `X-LiquidStack-Sitemap-Source: stale-cache` y `Warning: 110`, y responder
+  cerrado cuando no exista snapshot utilizable. Seguir
+  `docs/blog-sitemap-last-known-good-cache.md`.
 - Para índices project-owned, crear una sola instancia con
   `BlogPublicFeedFactory` y reutilizarla para cards generales, filtros y cards
   por categoría. `BlogCategoryPublicFeedFactory` es compatibilidad legacy, no
@@ -496,6 +529,22 @@ composer liquidstack:migrate --dry-run
   general ni convertirlos en ficheros project-owned. Revisar `blog.assets` en
   `doctor`: un destino ausente o inválido debe bloquear con
   `assets.missing_or_invalid`, sin intentar reparar DB o storage.
+- Tratar el medidor SEO editorial v1 como una ayuda no bloqueante, sin score ni
+  persistencia propia. Debe clasificar cada comprobación como `Bien`,
+  `Revisar` o `Pendiente`; un error del analizador nunca impide abrir, guardar
+  o publicar un artículo.
+- Mantener el análisis vivo en `POST /admin/blog/editor/seo-analysis`, con
+  sesión, CSRF, `blog.articles.edit`, `webadmin.media.view`, respuestas
+  `no-store` y CSP `connect-src 'self'`. Conservar el panel SSR como base y
+  cancelar peticiones obsoletas en la mejora progresiva.
+- Comparar canibalización solo con publicaciones del mismo idioma, excluyendo
+  el artículo actual. Acotar la consulta con `MAX + 1`: si el catálogo DB o el
+  inventario estático no se ha podido inspeccionar completo, devolver
+  `Pendiente` y nunca un falso `Bien`.
+- Considerar `App/config/seo/canonical-pages.json` un inventario opcional y
+  project-owned. CORE puede leer su esquema documentado, pero no crearlo,
+  completarlo ni sobrescribirlo durante Composer; rutas inválidas, exceso de
+  entradas o lectura fallida degradan el check a `Pendiente`.
 - Mantener la familia visual Blog bajo
   `modules/blog/resources/project/`, replicando las rutas estándar del
   consumidor. Declarar cada identificador en la allowlist `resources` del
@@ -503,8 +552,9 @@ composer liquidstack:migrate --dry-run
   SCSS y JS, más el helper y los hooks exactos de showroom. Agrupar cada
   recurso de forma cohesiva con `managed_hash`; no devolverlo al catálogo base
   ni ampliar el permiso a directorios completos. Un stack sin el selector Blog
-  no debe recibir `moduleBlogFilters01`, `sectionBlogGrid01`,
-  `sectionBlogList01`, `sectionBlogFeatured01` o `sectionBlogSlider01`.
+  no debe recibir `artBlogArticle01`, `moduleBlogArchive01`,
+  `moduleBlogFilters01`, `sectionBlogGrid01`, `sectionBlogList01`,
+  `sectionBlogFeatured01`, `sectionBlogRelated01` o `sectionBlogSlider01`.
 - Mantener `resource-support` como grupo independiente y su helper como API
   estable y aditiva: no retirar ni cambiar las firmas de
   `liquidstack_blog_resource_context()`,
@@ -537,10 +587,11 @@ composer liquidstack:migrate --dry-run
   restauración, medios, stale writes con dos PDO, rollback conjunto de
   contenido y auditoría, prioridad estática, sitemap y ausencia de mutaciones
   en `HEAD`.
-- Consultar `docs/liquid-blog.md` como contrato completo antes de ampliar el
-  módulo. No presentar categorías, AVIF ni el editor v1 como pendientes. Los
-  pendientes reales incluyen SEO avanzado, traducción IA, Search Console o
-  Indexing API, vídeo local y el maquetador libre de secciones/filas/columnas.
+- Consultar `docs/liquid-blog.md` y `docs/blog-seo-editorial.md` como contratos
+  completos antes de ampliar el módulo. No presentar categorías, AVIF, el
+  editor v1 ni el medidor SEO editorial v1 como pendientes. Los pendientes
+  reales incluyen traducción IA, Search Console o Indexing API, vídeo local y
+  el maquetador libre de secciones/filas/columnas.
 
 ## Modificar la infraestructura en CORE
 

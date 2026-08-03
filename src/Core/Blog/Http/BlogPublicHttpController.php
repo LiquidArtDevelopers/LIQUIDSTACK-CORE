@@ -6,6 +6,7 @@ namespace App\Core\Blog\Http;
 
 use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogPostVariant;
+use App\Core\Blog\PublicFeed\BlogPublicRelatedQuery;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use Throwable;
@@ -51,6 +52,17 @@ final class BlogPublicHttpController
             if ($canonicalSlug === null) {
                 throw new BlogPublicHttpRuntimeException();
             }
+            try {
+                $relatedArticles = $this->runtime->publicFeed()
+                    ->cardsForRelated(new BlogPublicRelatedQuery(
+                        $locale,
+                        $canonicalSlug
+                    ));
+            } catch (Throwable) {
+                // Discovery is additive: a related read failure must not make
+                // an otherwise valid published article unavailable.
+                $relatedArticles = [];
+            }
             $html = $structured === null
                 ? $this->articleRenderer->renderFromOrigin(
                     $variant,
@@ -58,7 +70,8 @@ final class BlogPublicHttpController
                     $base . '/' . $canonicalSlug,
                     $alternatePaths,
                     $xDefaultPath,
-                    $languageNavigationPaths
+                    $languageNavigationPaths,
+                    $relatedArticles
                 )
                 : $this->articleRenderer->renderStructuredFromOrigin(
                     $variant,
@@ -70,7 +83,8 @@ final class BlogPublicHttpController
                     ),
                     $alternatePaths,
                     $xDefaultPath,
-                    $languageNavigationPaths
+                    $languageNavigationPaths,
+                    $relatedArticles
                 );
 
             return new Response(

@@ -217,6 +217,7 @@ composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
 composer liquidstack:migrate --apply
 composer liquidstack:media:init
+composer liquidstack:blog:sitemap-cache:init
 composer liquidstack:webadmin:bootstrap
 composer liquidstack:webadmin:mail:dispatch
 ```
@@ -468,8 +469,19 @@ el prefijo pre-bootstrap fijo `/_liquidstack/blog-media/`. Ambos se resuelven
 antes del router multidioma y de la sesión tras comprobar que la ruta o fichero
 no pertenece al proyecto. El sitemap se alimenta de la DB de producción;
 publicar o retirar un artículo actualiza su respuesta sin modificar el
-repositorio ni requerir deploy. El contrato completo del primer corte está en
-[Liquid Blog](liquid-blog.md).
+repositorio ni requerir deploy.
+
+Opcionalmente, Blog puede activar una caché privada last-known-good. Exige el
+prefijo Blog completo 0001–0006; la migración 0006 aporta revisión pública
+monótona y generación de storage;
+`publish`/`unpublish` escriben un fence antes de hacer visible el cambio y el
+generador solo promueve snapshots de la revisión bloqueada. La inicialización
+es un comando explícito, nunca un efecto de Composer. En producción requiere
+storage persistente compartido, locks advisory y promoción atómica confirmados
+por el operador. El fallback se limita a conexión DB indisponible y se declara
+en cabeceras; cualquier otra deriva falla cerrada. Los contratos completos
+están en [Liquid Blog](liquid-blog.md) y en
+[la caché LKG del sitemap](blog-sitemap-last-known-good-cache.md).
 Las URLs del sitemap y el HTML público comparten el mismo origen tipado,
 canonical y conjunto de variantes publicadas. Los alternates `hreflang` y
 `x-default` se derivan del agregado multidioma y nunca incluyen borradores;

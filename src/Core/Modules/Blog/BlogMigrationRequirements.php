@@ -69,6 +69,23 @@ final class BlogMigrationRequirements
         );
     }
 
+    /** Optional cache state; it must never gate uncached public Blog. */
+    public static function sitemapCache(): MigrationFeatureRequirement
+    {
+        return new MigrationFeatureRequirement(
+            'blog',
+            'blog.sitemap_cache',
+            [
+                '0001_blog_posts',
+                '0002_blog_capabilities',
+                '0003_blog_categories',
+                '0004_blog_category_capabilities',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+            ]
+        );
+    }
+
     /** Backwards-compatible internal alias for the private feature gate. */
     public static function categories(): MigrationFeatureRequirement
     {

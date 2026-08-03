@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Composer;
 
 use App\Core\Composer\Command\DoctorCommand;
+use App\Core\Composer\Command\BlogSitemapCacheInitCommand;
 use App\Core\Composer\Command\MediaInitCommand;
 use App\Core\Composer\Command\MigrateCommand;
 use App\Core\Composer\Command\WebAdminBootstrapCommand;
@@ -33,6 +34,7 @@ final class LiquidStackCommandProvider implements CommandProvider
             new DoctorCommand(),
             new MigrateCommand(),
             new MediaInitCommand(),
+            new BlogSitemapCacheInitCommand(),
             new WebAdminBootstrapCommand(),
             new WebAdminMailDispatchCommand(),
         ];

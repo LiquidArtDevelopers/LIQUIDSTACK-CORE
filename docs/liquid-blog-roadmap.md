@@ -96,9 +96,7 @@ El constructor libre de secciones, filas y columnas tipo Divi no pertenece a
 este corte. El documento v1 permite ampliar plantillas controladas sin aceptar
 HTML, clases o estilos arbitrarios del usuario.
 
-## Siguientes cortes
-
-### 5. Entrega pública integrada y rendimiento
+### 5. Entrega pública integrada y rendimiento — implementado
 
 El renderer público ya permite que el proyecto aporte de forma tipada su shell,
 head, navegación, footer, recursos de tema y CSP mediante una vista confinada a
@@ -107,42 +105,42 @@ un CSS neutral responsive gestionado por el módulo. La frontera pública ya
 difiere la sesión legacy únicamente para `GET`/`HEAD` reclamados: artículos,
 sitemap y medios no crean `PHPSESSID`; el índice project-owned puede usar
 `session => false`, mientras rutas ajenas y misses conservan el bootstrap
-legacy. Los siguientes pasos son:
+legacy. Este corte incorpora además:
 
-- convertir `article-basic-01` y `article-cover-01` en composiciones visuales
-  reales sobre recursos LiquidStack, conservando el documento v1 y el fallback
-  SSR cuando un consumidor no haya adoptado todavía el nuevo shell;
-- ampliar de forma aditiva el runtime público de bloques sin acoplarlo al bundle
-  administrativo ni introducir dependencias en el fallback;
-- extender a futuros relacionados y archivos la proyección pública unificada
-  que ya consumen los recursos base: cards generales, filtros y cards por
-  categoría comparten un solo runtime y PDO, mientras el factory anterior
-  sigue siendo compatible;
-- completar la caché last-known-good del sitemap. La revalidación condicional
-  mediante `ETag`, `GET`/`HEAD` e `If-None-Match`, junto al límite de 50 MiB,
-  ya está implementada. La persistencia exige invalidación transaccional al
-  publicar o retirar según el
-  [contrato pendiente](mejoras-pendientes/blog-sitemap-last-known-good-cache.md).
-  Una caída
-  temporal de DB podrá servir únicamente una última respuesta válida,
-  explícitamente acotada y observable; nunca inventará URLs ni expondrá
-  borradores.
+- `artBlogArticle01` como composición LiquidStack real para
+  `article-basic-01` y `article-cover-01`, con cuerpo HTML saneado por CORE,
+  intro/retorno inyectables y fallback SSR para consumidores que aún no hayan
+  adoptado el shell visual;
+- una proyección pública unificada y acotada para relacionados por categorías,
+  archivo anual/mensual y periodos con recuento, reutilizando el mismo PDO y
+  sin exponer borradores;
+- los recursos gestionados `sectionBlogRelated01` y `moduleBlogArchive01`,
+  junto a su muestra multidioma en showroom;
+- la caché last-known-good del sitemap, que cada proyecto puede adoptar cuando
+  la necesite. Es opt-in, exige el prefijo Blog completo 0001–0006, storage
+  privado inicializado y una comprobación operativa real de locks/rename
+  compartidos en producción.
+  Solo una conexión DB clasificada como indisponible puede servir un snapshot
+  vigente, íntegro y observable; el [contrato vigente](blog-sitemap-last-known-good-cache.md)
+  falla cerrado para el resto de errores.
 
-La integración visual seguirá siendo aditiva: actualizar CORE no sustituirá de
-forma silenciosa una vista, un head o un layout project-owned.
+La integración visual es aditiva: actualizar CORE no sustituye de forma
+silenciosa una vista, un head o un layout project-owned.
+
+## Siguientes cortes
 
 ### 6. SEO editorial avanzado
 
-- Medidor de title, description, H1, slug, longitud, densidad y keyword
-  stuffing.
-- Validación de jerarquía H1/H2/H3, segregación temática y cobertura del
-  contenido.
-- Comparación con URLs canónicas del sitio para detectar posible
-  canibalización.
-- Datos estructurados y preview de metadatos por idioma.
+El primer corte ya está implementado: revisa title, description, H1, slug,
+longitud, primeras 100 palabras, jerarquía H2/H3, ALT, repetición mecánica,
+concentración de términos y posible canibalización por idioma. Incluye preview
+SERP, SSR del estado guardado y análisis reactivo del payload actual. Es
+advisory, no persiste una puntuación y no bloquea ninguna transición. Véase el
+[contrato del medidor SEO](blog-seo-editorial.md).
 
-El medidor ayudará y explicará; no publicará, reescribirá ni bloqueará sin una
-regla editorial explícita.
+Quedan para cortes posteriores el focus phrase persistido, la segregación
+temática profunda, datos estructurados editoriales, un read-model para
+catálogos canónicos grandes y la asistencia mediante API/IA.
 
 ### 7. Traducción asistida
 
@@ -164,7 +162,10 @@ localizados fallan cerrados si superan el máximo público de 100.
 `moduleBlogFilters01` añade `fetch` abortable, debounce, historial y
 región viva sin convertir JavaScript en requisito.
 
-- Relacionados, archivos, RSS y nuevos recursos dinámicos.
+Relacionados y archivo ya pertenecen al corte 5. Continúan pendientes RSS y
+nuevas composiciones dinámicas que no estén cubiertas por los recursos
+actuales.
+
 - Antes de usar el catálogo en volúmenes altos, sustituir la búsqueda
   `LIKE` sobre H1, extracto y cuerpo por un read model o índice de texto
   completo compatible con MySQL/MariaDB, con límites de coste y frecuencia.
@@ -200,8 +201,8 @@ por proyecto. El diseño completo está registrado como
 ### 10. Plantillas, recursos y maquetador
 
 - Nuevas plantillas de artículo basadas en recursos de showroom.
-- Más recursos públicos Blog: relacionados, archivos y nuevas composiciones
-  filtradas.
+- Más composiciones filtradas sobre los feeds ya disponibles y futuros feeds
+  como RSS; relacionados y archivo ya tienen proyección y recursos base.
 - Vídeo local servido desde una frontera Media segura.
 - Maquetador futuro de secciones, filas, columnas y módulos, construido sobre
   un esquema versionado y sin romper los documentos v1.

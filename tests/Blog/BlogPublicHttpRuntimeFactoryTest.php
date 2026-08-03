@@ -6,6 +6,7 @@ use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeException;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeFactory;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogQuery;
+use App\Core\Blog\PublicFeed\BlogPublicDiscoveryRepositoryInterface;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationCatalog;
@@ -169,6 +170,10 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
         self::assertTrue($runtime->__debugInfo()['catalog_repository']);
         self::assertNotNull($runtime->categoryProjection());
         self::assertNotNull($runtime->catalogRepository());
+        self::assertInstanceOf(
+            BlogPublicDiscoveryRepositoryInterface::class,
+            $runtime->catalogRepository()
+        );
         self::assertSame([], $runtime->categoryProjection()->filtersForLocale(
             'es'
         ));
@@ -212,8 +217,10 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
         $pdo->exec('DROP TRIGGER ls_blog_corrupt_structured_gate');
         $pdo->exec(
             "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
-            . "AND migration_id = '0005_blog_structured_content'"
+            . "AND migration_id IN ('0005_blog_structured_content', "
+            . "'0006_blog_sitemap_publication_state')"
         );
+        $pdo->exec('DROP TABLE ls_blog_sitemap_state');
         foreach ([
             'ls_blog_revision_media',
             'ls_blog_content_media',

@@ -477,6 +477,10 @@ return [
         'en' => '/en/news',
     ],
     'sitemap_path' => '/blog-sitemap.xml',
+    'sitemap_cache' => [
+        'enabled' => false,
+        'ttl_seconds' => 300,
+    ],
     'public_article_view' => 'App/views/blog-article.php',
     'database' => [
         'connection' => 'liquidstack',
@@ -514,6 +518,17 @@ petición, admite hasta 50.000 URLs, no crea `PHPSESSID` y nunca modifica
 resueltos en la fase tardía tampoco crean la sesión PHP ni degradan sus
 cabeceras de caché.
 
+La caché persistente last-known-good del sitemap es opt-in y permanece
+desactivada en el ejemplo. Si se habilita, requiere el prefijo Blog completo
+0001–0006 y el comando explícito
+`composer liquidstack:blog:sitemap-cache:init`; en producción
+se añade `--shared-storage-confirmed` y una raíz privada, persistente y
+compartida en `LIQUIDSTACK_BLOG_SITEMAP_CACHE_ROOT`. Solo una conexión DB
+clasificada como indisponible puede servir el snapshot vigente, marcado con
+`X-LiquidStack-Sitemap-Source: stale-cache`; los demás fallos responden de forma
+cerrada. Composer nunca inicializa esa raíz ni activa la capacidad. Véase el
+[runbook LKG](docs/blog-sitemap-last-known-good-cache.md).
+
 El ejemplo usa el perfil dedicado y presupone que WebAdmin declara también
 `connection => liquidstack`. Si se omite la configuración de DB en ambos
 ficheros, los dos conservan el default compatible `shared`.
@@ -540,6 +555,8 @@ composer liquidstack:migrate --dry-run
 # Crear y verificar aquí un backup recuperable de DB y storage.
 composer liquidstack:migrate --apply
 composer liquidstack:media:init
+# Solo si sitemap_cache.enabled=true:
+composer liquidstack:blog:sitemap-cache:init
 composer liquidstack:webadmin:bootstrap
 composer liquidstack:doctor
 ```
@@ -561,12 +578,14 @@ distribuyen selectivamente y no forman parte de este gate operativo.
 
 La familia visual pública también es selectiva. Su fuente canónica vive bajo
 `modules/blog/resources/project/` y el manifiesto publica, solo con
-`liquidstack/blog`, `moduleBlogFilters01`, `sectionBlogGrid01`,
-`sectionBlogList01`, `sectionBlogFeatured01` y `sectionBlogSlider01`, junto a
-su helper y hooks de showroom. Cada recurso agrupa controlador, template, SCSS
-y JS como una unidad gestionada; una copia local desconocida se preserva y un
-proyecto core-only o WebAdmin-only no recibe esos ficheros. Los ejemplos Matrix
-pertenecen exclusivamente al showroom y nunca sustituyen contenido de la DB.
+`liquidstack/blog`, `artBlogArticle01`, `moduleBlogArchive01`,
+`moduleBlogFilters01`, `sectionBlogGrid01`, `sectionBlogList01`,
+`sectionBlogFeatured01`, `sectionBlogRelated01` y `sectionBlogSlider01`, junto
+a su helper y hooks de showroom. Cada recurso agrupa controlador, template,
+SCSS y JS como una unidad gestionada; una copia local desconocida se preserva
+y un proyecto core-only o WebAdmin-only no recibe esos ficheros. Los ejemplos
+Matrix pertenecen exclusivamente al showroom y nunca sustituyen contenido de
+la DB.
 El helper común mantiene una API estable y aditiva en su propio grupo, de modo
 que una personalización de un recurso no congela los demás. Si el contrato
 SCSS del consumidor no puede verificarse, CORE conserva los assets

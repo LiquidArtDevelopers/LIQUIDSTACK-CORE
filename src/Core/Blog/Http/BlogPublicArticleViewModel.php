@@ -17,6 +17,15 @@ final class BlogPublicArticleViewModel
     /**
      * @param array<string, string> $alternateUrls
      * @param array<string, string> $languageNavigationUrls
+     * @param list<array{
+     *     locale: string,
+     *     slug: string,
+     *     url: string,
+     *     h1: string,
+     *     excerpt: string,
+     *     published_at: string,
+     *     updated_at: string
+     * }> $relatedArticles
      */
     public function __construct(
         private readonly string $locale,
@@ -32,7 +41,8 @@ final class BlogPublicArticleViewModel
         private readonly ?string $coverImageUrl,
         private readonly string $template,
         private readonly DateTimeImmutable $publishedAt,
-        private readonly DateTimeImmutable $updatedAt
+        private readonly DateTimeImmutable $updatedAt,
+        private readonly array $relatedArticles = []
     ) {
     }
 
@@ -106,5 +116,21 @@ final class BlogPublicArticleViewModel
     public function updatedAt(): DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    /**
+     * @return list<array{
+     *     locale: string,
+     *     slug: string,
+     *     url: string,
+     *     h1: string,
+     *     excerpt: string,
+     *     published_at: string,
+     *     updated_at: string
+     * }>
+     */
+    public function relatedArticles(): array
+    {
+        return $this->relatedArticles;
     }
 }

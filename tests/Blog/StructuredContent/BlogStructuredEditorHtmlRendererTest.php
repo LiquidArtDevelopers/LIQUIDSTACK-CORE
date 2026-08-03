@@ -63,6 +63,21 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             '<form class="blogEditor__form" method="post" action="/admin/blog/editor/save" data-blog-editor data-blog-editor-readonly="false">',
             $html
         );
+        self::assertStringContainsString(
+            'data-blog-seo-endpoint="/admin/blog/editor/seo-analysis"',
+            $html
+        );
+        self::assertStringContainsString(
+            'id="blog-editor-seo-panel-title"',
+            $html
+        );
+        self::assertSame(1, substr_count($html, 'id="blog-editor-seo-title"'));
+        preg_match_all('/\sid="([^"]+)"/', $html, $idMatches);
+        self::assertSame(
+            count($idMatches[1]),
+            count(array_unique($idMatches[1])),
+            'El editor no puede renderizar IDs HTML duplicados.'
+        );
         foreach (['csrf', 'post', 'locale', 'lock_version', 'document_json'] as $name) {
             self::assertStringContainsString(
                 'type="hidden" name="' . $name . '"',

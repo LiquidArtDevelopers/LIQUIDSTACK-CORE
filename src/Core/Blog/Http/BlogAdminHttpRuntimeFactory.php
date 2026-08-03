@@ -9,6 +9,12 @@ use App\Core\Blog\BlogService;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogConfigLoader;
 use App\Core\Blog\Persistence\PdoBlogRepository;
+use App\Core\Blog\Sitemap\BlogSitemapPublicationCoordinatorFactory;
+use App\Core\Blog\Sitemap\Cache\BlogSitemapCacheException;
+use App\Core\Blog\Seo\BlogSeoAnalysisService;
+use App\Core\Blog\Seo\BlogSeoAnalyzer;
+use App\Core\Blog\Seo\BlogSeoStaticPageInventory;
+use App\Core\Blog\Seo\PdoBlogSeoCandidateRepository;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredEditorService;
 use App\Core\Blog\StructuredContent\Media\PdoWebAdminMediaAvailabilityAdapter;
 use App\Core\Blog\StructuredContent\Media\PdoBlogEditorImageResolver;
@@ -61,6 +67,8 @@ final class BlogAdminHttpRuntimeFactory implements
     private readonly ClockInterface $clock;
     private readonly UuidGeneratorInterface $uuidGenerator;
     private readonly SecureTokenGenerator $tokenGenerator;
+    private readonly BlogSitemapPublicationCoordinatorFactory
+        $sitemapCoordinatorFactory;
 
     /**
      * @param null|callable(array<string, mixed>, string): PdoConnectionFactoryInterface $connectionFactoryResolver
@@ -76,7 +84,9 @@ final class BlogAdminHttpRuntimeFactory implements
         ?WebAdminMediaHttpSchemaGate $webAdminMediaSchemaGate = null,
         ?ClockInterface $clock = null,
         ?UuidGeneratorInterface $uuidGenerator = null,
-        ?SecureTokenGenerator $tokenGenerator = null
+        ?SecureTokenGenerator $tokenGenerator = null,
+        ?BlogSitemapPublicationCoordinatorFactory
+            $sitemapCoordinatorFactory = null
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
             ? static fn (
@@ -108,6 +118,8 @@ final class BlogAdminHttpRuntimeFactory implements
             ?? new RandomUuidV4Generator();
         $this->tokenGenerator = $tokenGenerator
             ?? new SecureTokenGenerator();
+        $this->sitemapCoordinatorFactory = $sitemapCoordinatorFactory
+            ?? new BlogSitemapPublicationCoordinatorFactory();
     }
 
     public function create(
@@ -262,6 +274,22 @@ final class BlogAdminHttpRuntimeFactory implements
                 $tables,
                 $this->uuidGenerator
             );
+            try {
+                $sitemapCoordinator =
+                    $this->sitemapCoordinatorFactory->create(
+                        $blogConfig,
+                        $pdo,
+                        $registry,
+                        $scopes,
+                        $blogScope,
+                        $projectRoot,
+                        $environment
+                    );
+            } catch (BlogSitemapCacheException $exception) {
+                throw new BlogAdminHttpRuntimeException(
+                    $exception->issueCode()
+                );
+            }
             $service = new BlogService(
                 $blogRepository,
                 $this->uuidGenerator,
@@ -270,7 +298,8 @@ final class BlogAdminHttpRuntimeFactory implements
                 new BlogStructuredPlainDraftWriteGuard(
                     $pdo,
                     $contentRepository
-                )
+                ),
+                sitemapPublicationCoordinator: $sitemapCoordinator
             );
             $structuredEditor = new BlogStructuredEditorService(
                 $blogRepository,
@@ -303,6 +332,15 @@ final class BlogAdminHttpRuntimeFactory implements
                     $pdo,
                     $webAdminScope,
                     $canonicalWebAdminConfig->basePath()
+                ),
+                new BlogSeoAnalysisService(
+                    new BlogSeoAnalyzer(),
+                    new PdoBlogSeoCandidateRepository(
+                        $pdo,
+                        $blogScope,
+                        $blogConfig->publicPaths()
+                    ),
+                    new BlogSeoStaticPageInventory($projectRoot)
                 )
             );
         } catch (BlogAdminHttpRuntimeException $exception) {

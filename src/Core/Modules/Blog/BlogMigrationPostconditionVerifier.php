@@ -23,7 +23,8 @@ final class BlogMigrationPostconditionVerifier implements
         private readonly MySqlColumnDefaultNormalizer $defaultNormalizer =
             new MySqlColumnDefaultNormalizer(),
         private readonly bool $expectCategoryExtension = false,
-        private readonly bool $expectStructuredContentExtension = false
+        private readonly bool $expectStructuredContentExtension = false,
+        private readonly bool $expectSitemapStateExtension = false
     ) {
     }
 
@@ -127,6 +128,11 @@ final class BlogMigrationPostconditionVerifier implements
                     $scope->tableName($suffix)
                 );
             }
+        }
+        if ($this->expectSitemapStateExtension) {
+            $expected[] = 'table:' . strtolower(
+                $scope->tableName('sitemap_state')
+            );
         }
         sort($expected, SORT_STRING);
 
@@ -431,6 +437,13 @@ final class BlogMigrationPostconditionVerifier implements
                     'utf8mb4_unicode_ci',
                 ];
             }
+        }
+        if ($this->expectSitemapStateExtension) {
+            $expected[strtolower($scope->tableName('sitemap_state'))] = [
+                'BASE TABLE',
+                'INNODB',
+                'utf8mb4_unicode_ci',
+            ];
         }
         ksort($expected, SORT_STRING);
 

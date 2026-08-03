@@ -153,6 +153,7 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
             ['GET', $prefix . '/posts/updated', 'updated'],
             ['GET', $prefix . '/editor', 'editor'],
             ['POST', $prefix . '/editor/save', 'editorSave'],
+            ['POST', $prefix . '/editor/seo-analysis', 'editorSeoAnalysis'],
             ['GET', $prefix . '/editor/preview', 'editorPreview'],
             ['GET', $prefix . '/editor/revisions', 'editorRevisions'],
             ['POST', $prefix . '/editor/restore', 'editorRestore'],
@@ -223,6 +224,11 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
     public function editorSave(Request $request): Response
     {
         return $this->handleStructured('save', $request);
+    }
+
+    public function editorSeoAnalysis(Request $request): Response
+    {
+        return $this->handleStructured('seoAnalysis', $request);
     }
 
     public function editorPreview(Request $request): Response
@@ -399,6 +405,8 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
         return match ($operation) {
             'edit' => $this->structuredRequestPolicy->acceptsEditor($request),
             'save' => $this->structuredRequestPolicy->acceptsSave($request),
+            'seoAnalysis' =>
+                $this->structuredRequestPolicy->acceptsSeoAnalysis($request),
             'preview' =>
                 $this->structuredRequestPolicy->acceptsPreview($request),
             'revisions' =>

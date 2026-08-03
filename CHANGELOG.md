@@ -4,6 +4,44 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Cambiado
+- Blog incorpora un medidor SEO editorial advisory en el editor estructurado:
+  renderiza el estado guardado por SSR y reanaliza el payload actual mediante
+  `POST /admin/blog/editor/seo-analysis`, con CSRF, capacidades, `no-store`,
+  debounce y `AbortController`. Sus checks Unicode cubren metadatos, coherencia
+  title/H1, primeras 100 palabras, H2/H3, ALT, repetición, concentración y
+  canibalización same-locale contra publicaciones e inventario project-owned.
+  No crea score, migración ni llamadas IA, y cualquier fallo degrada el panel
+  sin bloquear editor, guardado o publicación.
+- Blog completa su primera composición pública basada en recursos:
+  `artBlogArticle01` presenta `article-basic-01` y `article-cover-01` con
+  semántica `article`, cuerpo saneado por CORE, intro y retorno inyectables y
+  estilos responsive; el fallback SSR anterior permanece disponible para
+  consumidores sin shell visual adoptado. El feed público suma consultas
+  tipadas y acotadas de relacionados por categorías compartidas, archivo
+  anual/mensual y periodos con recuento, reutilizando el mismo PDO y excluyendo
+  borradores. Los nuevos `sectionBlogRelated01` y `moduleBlogArchive01`, junto
+  con `artBlogArticle01`, se distribuyen selectivamente con Blog, se registran
+  en showroom y conservan grupos `managed_hash` independientes.
+  `artBlogArticle01` protege sus placeholders internos y desplaza también los
+  H2/H3 del cuerpo cuando el encabezado externo cambia de rango; las filas
+  incompletas de relacionados se centran y el archivo identifica el periodo
+  vigente mediante `aria-current="date"`.
+- Blog incorpora una caché privada last-known-good del sitemap, opcional y
+  desactivada por defecto. La migración append-only
+  `0006_blog_sitemap_publication_state` mantiene una revisión pública monótona
+  y la generación del storage; `publish`/`unpublish` escriben un fence durable
+  antes de cambiar visibilidad y actualizan la revisión en la misma
+  transacción. El comando explícito
+  `liquidstack:blog:sitemap-cache:init` inicializa la raíz privada y exige en
+  producción la confirmación del storage compartido. Solo una conexión DB
+  clasificada como indisponible puede servir un snapshot vigente e íntegro,
+  identificado por las cabeceras `X-LiquidStack-Sitemap-Source: stale-cache`
+  y `Warning: 110`; errores de esquema, configuración, consulta no clasificada,
+  render, overflow o storage continúan fallando cerrados. Composer no activa
+  la capacidad, no ejecuta la migración y no crea su storage. La identidad
+  incluye el prefijo de tablas, `doctor` contrasta generación DB y marker, los
+  write runtimes comparten una única factoría de coordinator y el staging de
+  una caída se limpia únicamente mediante una rutina privada y acotada.
 - Se fija la frontera operativa del correo modular: la recuperación de
   contraseña entrega de forma síncrona, no crea trabajo en el outbox y muestra
   un fallo genérico si SMTP no confirma el mensaje; las invitaciones conservan

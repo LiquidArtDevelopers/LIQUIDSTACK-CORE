@@ -114,6 +114,13 @@ controller('nombre', $index, [
 - Combinar `$pad` (instancia `00`, `01`, etc.) y `$letter` para items variables.
 - Generar claves únicas y estables; por ejemplo, `recurso_00_a_img`.
 - Sustituir todos los placeholders y devolver el HTML renderizado.
+- Separar los placeholders controlados por el recurso de los reemplazos
+  públicos. No permitir que un `array_replace()` genérico reintroduzca desde
+  `$params` HTML confiable, IDs, template, modificadores o clases ya saneados;
+  usar una allowlist o construir el mapa final después de filtrar esas claves.
+- Cuando un recurso admita otro rango de encabezado y renderice contenido HTML
+  confiable con encabezados interiores, escalar también esos `h2`-`h6` de
+  forma relacional. Probar al menos el rango natural y un rango desplazado.
 - No redactar ni alterar copy de cliente salvo petición expresa.
 - Para enlaces configurables, usar el helper de URL localizada del stack cuando exista.
 
@@ -197,6 +204,9 @@ controller('nombre', $index, [
   contradiga al controlador. Preferir `auto-fit` cuando conserve el diseño o
   emitir un modificador saneado `recurso--items-N` y cubrir en SCSS los rangos
   admitidos.
+- Validar las cantidades mínima, predeterminada y máxima, además de una última
+  fila incompleta. Centrarla o redistribuirla cuando dejar una tarjeta huérfana
+  alineada al inicio rompa la composición.
 - Evitar selectores globales y dependencias de una vista concreta.
 
 ### JavaScript

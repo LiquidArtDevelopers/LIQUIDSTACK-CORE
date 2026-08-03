@@ -13,13 +13,23 @@ use Throwable;
 /** Pure schema readiness gate for structured Blog persistence. */
 final class BlogStructuredContentSchemaGate
 {
+    private readonly BlogStructuredContentMigrationPostconditionVerifier
+        $sitemapExtendedSchemaVerifier;
+
     public function __construct(
         private readonly MigrationFeatureGate $migrationGate =
             new MigrationFeatureGate(),
         private readonly BlogStructuredContentMigrationPostconditionVerifier
             $schemaVerifier =
-                new BlogStructuredContentMigrationPostconditionVerifier()
+                new BlogStructuredContentMigrationPostconditionVerifier(),
+        ?BlogStructuredContentMigrationPostconditionVerifier
+            $sitemapExtendedSchemaVerifier = null
     ) {
+        $this->sitemapExtendedSchemaVerifier =
+            $sitemapExtendedSchemaVerifier
+            ?? new BlogStructuredContentMigrationPostconditionVerifier(
+                expectSitemapStateExtension: true
+            );
     }
 
     public function isReady(
@@ -41,7 +51,8 @@ final class BlogStructuredContentSchemaGate
                 return false;
             }
 
-            return $this->schemaVerifier->verify($pdo, $scope);
+            return $this->schemaVerifier->verify($pdo, $scope)
+                || $this->sitemapExtendedSchemaVerifier->verify($pdo, $scope);
         } catch (Throwable) {
             return false;
         }

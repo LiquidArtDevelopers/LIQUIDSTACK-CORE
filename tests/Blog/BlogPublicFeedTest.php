@@ -14,10 +14,15 @@ use App\Core\Blog\Http\BlogPublicHttpRuntime;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeFactoryInterface;
 use App\Core\Blog\Persistence\BlogRepositoryInterface;
 use App\Core\Blog\PublishedPostCard;
+use App\Core\Blog\PublicFeed\BlogPublicArchivePeriod;
+use App\Core\Blog\PublicFeed\BlogPublicArchivePeriodsQuery;
+use App\Core\Blog\PublicFeed\BlogPublicArchiveQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogRepositoryInterface;
+use App\Core\Blog\PublicFeed\BlogPublicDiscoveryRepositoryInterface;
 use App\Core\Blog\PublicFeed\BlogPublicFeed;
 use App\Core\Blog\PublicFeed\BlogPublicFeedFactory;
+use App\Core\Blog\PublicFeed\BlogPublicRelatedQuery;
 use App\Core\Modules\ModuleRuntimeContext;
 use PHPUnit\Framework\TestCase;
 
@@ -195,6 +200,142 @@ final class BlogPublicFeedTest extends TestCase
                 BlogException::STORAGE_UNAVAILABLE,
                 $exception->issueCode()
             );
+        }
+    }
+
+    public function testDiscoveryMethodsProjectOnlyReusablePresentationData(): void
+    {
+        $related = new BlogPublicRelatedQuery('es', 'matrix-anterior', 3);
+        $archive = new BlogPublicArchiveQuery('es', 2030, 1, 6, 2);
+        $periods = new BlogPublicArchivePeriodsQuery('es', 24);
+        $repository = $this->createMock(
+            BlogPublicDiscoveryRepositoryInterface::class
+        );
+        $repository->expects(self::once())
+            ->method('relatedPosts')
+            ->with(self::identicalTo($related))
+            ->willReturn([$this->card()]);
+        $repository->expects(self::once())
+            ->method('archivePosts')
+            ->with(self::identicalTo($archive))
+            ->willReturn([$this->card()]);
+        $repository->expects(self::once())
+            ->method('archivePeriods')
+            ->with(self::identicalTo($periods))
+            ->willReturn([new BlogPublicArchivePeriod('es', 2030, 1, 2)]);
+        $feed = new BlogPublicFeed(
+            $this->config(),
+            new BlogService($this->createMock(BlogRepositoryInterface::class)),
+            discoveryRepository: $repository
+        );
+
+        foreach (
+            [$feed->cardsForRelated($related), $feed->cardsForArchive($archive)]
+            as $cards
+        ) {
+            self::assertSame('/es/noticias/matrix-despierta', $cards[0]['url']);
+            self::assertArrayNotHasKey('body_text', $cards[0]);
+            self::assertArrayNotHasKey('post_public_id', $cards[0]);
+        }
+        self::assertSame([[
+            'locale' => 'es',
+            'year' => 2030,
+            'month' => 1,
+            'count' => 2,
+        ]], $feed->archivePeriods($periods));
+    }
+
+    public function testFactoryReusesTheCatalogAdapterForDiscovery(): void
+    {
+        $card = $this->card();
+        $repository = new class($card) implements
+            BlogPublicCatalogRepositoryInterface,
+            BlogPublicDiscoveryRepositoryInterface {
+            public function __construct(
+                private readonly PublishedPostCard $card
+            ) {
+            }
+
+            public function search(BlogPublicCatalogQuery $query): array
+            {
+                return [];
+            }
+
+            public function relatedPosts(BlogPublicRelatedQuery $query): array
+            {
+                return [$this->card];
+            }
+
+            public function archivePosts(BlogPublicArchiveQuery $query): array
+            {
+                return [$this->card];
+            }
+
+            public function archivePeriods(
+                BlogPublicArchivePeriodsQuery $query
+            ): array {
+                return [new BlogPublicArchivePeriod('es', 2030, 1, 1)];
+            }
+        };
+        $runtime = new BlogPublicHttpRuntime(
+            $this->config(),
+            BlogPublicOrigin::fromEnvironment([
+                'DEV_MODE' => '1',
+                'RAIZ' => 'http://localhost:1309',
+            ]),
+            new BlogService($this->createMock(BlogRepositoryInterface::class)),
+            catalogRepository: $repository
+        );
+        $runtimeFactory = $this->createMock(
+            BlogPublicHttpRuntimeFactoryInterface::class
+        );
+        $runtimeFactory->expects(self::once())
+            ->method('create')
+            ->willReturn($runtime);
+
+        $feed = (new BlogPublicFeedFactory($runtimeFactory))->create(
+            'C:\\project',
+            ['DEV_MODE' => '1']
+        );
+
+        self::assertSame(
+            'matrix-despierta',
+            $feed->cardsForRelated(
+                new BlogPublicRelatedQuery('es', 'matrix-anterior')
+            )[0]['slug']
+        );
+        self::assertSame(2030, $feed->archivePeriods(
+            new BlogPublicArchivePeriodsQuery('es')
+        )[0]['year']);
+    }
+
+    public function testDiscoveryFailsClosedWithoutTheDiscoveryAdapter(): void
+    {
+        $feed = new BlogPublicFeed(
+            $this->config(),
+            new BlogService($this->createMock(BlogRepositoryInterface::class))
+        );
+
+        foreach ([
+            static fn (): array => $feed->cardsForRelated(
+                new BlogPublicRelatedQuery('es', 'matrix')
+            ),
+            static fn (): array => $feed->cardsForArchive(
+                new BlogPublicArchiveQuery('es', 2030)
+            ),
+            static fn (): array => $feed->archivePeriods(
+                new BlogPublicArchivePeriodsQuery('es')
+            ),
+        ] as $operation) {
+            try {
+                $operation();
+                self::fail('The missing discovery adapter must fail closed.');
+            } catch (BlogException $exception) {
+                self::assertSame(
+                    BlogException::STORAGE_UNAVAILABLE,
+                    $exception->issueCode()
+                );
+            }
         }
     }
 

@@ -12,6 +12,8 @@ use App\Core\Blog\Persistence\BlogPersistenceConflict;
 use App\Core\Blog\Persistence\BlogPersistenceException;
 use App\Core\Blog\Persistence\BlogPublishedSitemapRepositoryInterface;
 use App\Core\Blog\Persistence\BlogRepositoryInterface;
+use App\Core\Blog\Sitemap\BlogSitemapPublicationCoordinator;
+use App\Core\Blog\Sitemap\BlogSitemapPublicationFence;
 use App\Core\WebAdmin\Support\ClockInterface;
 use App\Core\WebAdmin\Support\RandomUuidV4Generator;
 use App\Core\WebAdmin\Support\SystemClock;
@@ -46,7 +48,9 @@ final class BlogService
         private readonly ?BlogMutationAuditPortInterface $auditPort = null,
         private readonly ?BlogPlainDraftWriteGuardInterface
             $plainDraftWriteGuard = null,
-        ?BlogDraftMutationCoordinator $draftMutationCoordinator = null
+        ?BlogDraftMutationCoordinator $draftMutationCoordinator = null,
+        private readonly ?BlogSitemapPublicationCoordinator
+            $sitemapPublicationCoordinator = null
     ) {
         $this->draftMutationCoordinator = $draftMutationCoordinator
             ?? new BlogDraftMutationCoordinator(
@@ -216,60 +220,84 @@ final class BlogService
         $locale = BlogInput::locale($locale);
         BlogInput::expectedLockVersion($expectedLockVersion);
 
-        return $this->mutate(
-            function (PDO $pdo) use (
-                $actorGate,
-                $postPublicId,
-                $locale,
-                $expectedLockVersion
-            ): BlogPostVariant {
-                $actorPublicId = $this->authorizedActor($actorGate, $pdo);
-                $now = $this->now();
-                $current = $this->requiredLockedVariant(
+        $sitemapFence = null;
+        try {
+            return $this->mutate(
+                function (PDO $pdo) use (
+                    $actorGate,
                     $postPublicId,
-                    $locale
-                );
-                $this->assertExpectedVersion($current, $expectedLockVersion);
-                if ($current->status() !== BlogPostVariant::DRAFT) {
-                    throw new BlogException(BlogException::INVALID_STATE);
-                }
-                if (!$current->draft()->isPublishable()) {
-                    throw new BlogException(BlogException::PUBLISH_INCOMPLETE);
-                }
-                $slug = $current->draft()->slug();
-                if ($slug === null) {
-                    throw new BlogException(BlogException::PUBLISH_INCOMPLETE);
-                }
-                $this->assertSlugAvailable(
                     $locale,
-                    $slug,
-                    $current->localizationPublicId()
-                );
-                if (!$this->repository->updateStatus(
-                    $current->localizationPublicId(),
                     $expectedLockVersion,
-                    BlogPostVariant::DRAFT,
-                    BlogPostVariant::PUBLISHED,
-                    $now,
-                    $actorPublicId,
-                    $now
-                )) {
-                    throw new BlogException(BlogException::LOCK_CONFLICT);
+                    &$sitemapFence
+                ): BlogPostVariant {
+                    $actorPublicId = $this->authorizedActor($actorGate, $pdo);
+                    $now = $this->now();
+                    $current = $this->requiredLockedVariant(
+                        $postPublicId,
+                        $locale
+                    );
+                    $this->assertExpectedVersion(
+                        $current,
+                        $expectedLockVersion
+                    );
+                    if ($current->status() !== BlogPostVariant::DRAFT) {
+                        throw new BlogException(BlogException::INVALID_STATE);
+                    }
+                    if (!$current->draft()->isPublishable()) {
+                        throw new BlogException(
+                            BlogException::PUBLISH_INCOMPLETE
+                        );
+                    }
+                    $slug = $current->draft()->slug();
+                    if ($slug === null) {
+                        throw new BlogException(
+                            BlogException::PUBLISH_INCOMPLETE
+                        );
+                    }
+                    $this->assertSlugAvailable(
+                        $locale,
+                        $slug,
+                        $current->localizationPublicId()
+                    );
+                    $sitemapFence =
+                        $this->sitemapPublicationCoordinator?->begin();
+                    if (!$this->repository->updateStatus(
+                        $current->localizationPublicId(),
+                        $expectedLockVersion,
+                        BlogPostVariant::DRAFT,
+                        BlogPostVariant::PUBLISHED,
+                        $now,
+                        $actorPublicId,
+                        $now
+                    )) {
+                        throw new BlogException(BlogException::LOCK_CONFLICT);
+                    }
+                    $this->repository->touchPost($postPublicId, $now);
+
+                    $stored = $this->requiredStoredVariant(
+                        $postPublicId,
+                        $locale
+                    );
+                    $this->auditMutation(
+                        $pdo,
+                        BlogMutationAuditEvent::PUBLISH,
+                        $actorPublicId,
+                        $postPublicId,
+                        $now
+                    );
+                    if ($sitemapFence instanceof BlogSitemapPublicationFence) {
+                        $this->sitemapPublicationCoordinator?->complete(
+                            $sitemapFence,
+                            $now
+                        );
+                    }
+
+                    return $stored;
                 }
-                $this->repository->touchPost($postPublicId, $now);
-
-                $stored = $this->requiredStoredVariant($postPublicId, $locale);
-                $this->auditMutation(
-                    $pdo,
-                    BlogMutationAuditEvent::PUBLISH,
-                    $actorPublicId,
-                    $postPublicId,
-                    $now
-                );
-
-                return $stored;
-            }
-        );
+            );
+        } finally {
+            $sitemapFence?->release();
+        }
     }
 
     /**
@@ -285,48 +313,68 @@ final class BlogService
         $locale = BlogInput::locale($locale);
         BlogInput::expectedLockVersion($expectedLockVersion);
 
-        return $this->mutate(
-            function (PDO $pdo) use (
-                $actorGate,
-                $postPublicId,
-                $locale,
-                $expectedLockVersion
-            ): BlogPostVariant {
-                $actorPublicId = $this->authorizedActor($actorGate, $pdo);
-                $now = $this->now();
-                $current = $this->requiredLockedVariant(
+        $sitemapFence = null;
+        try {
+            return $this->mutate(
+                function (PDO $pdo) use (
+                    $actorGate,
                     $postPublicId,
-                    $locale
-                );
-                $this->assertExpectedVersion($current, $expectedLockVersion);
-                if ($current->status() !== BlogPostVariant::PUBLISHED) {
-                    throw new BlogException(BlogException::INVALID_STATE);
-                }
-                if (!$this->repository->updateStatus(
-                    $current->localizationPublicId(),
+                    $locale,
                     $expectedLockVersion,
-                    BlogPostVariant::PUBLISHED,
-                    BlogPostVariant::DRAFT,
-                    null,
-                    $actorPublicId,
-                    $now
-                )) {
-                    throw new BlogException(BlogException::LOCK_CONFLICT);
+                    &$sitemapFence
+                ): BlogPostVariant {
+                    $actorPublicId = $this->authorizedActor($actorGate, $pdo);
+                    $now = $this->now();
+                    $current = $this->requiredLockedVariant(
+                        $postPublicId,
+                        $locale
+                    );
+                    $this->assertExpectedVersion(
+                        $current,
+                        $expectedLockVersion
+                    );
+                    if ($current->status() !== BlogPostVariant::PUBLISHED) {
+                        throw new BlogException(BlogException::INVALID_STATE);
+                    }
+                    $sitemapFence =
+                        $this->sitemapPublicationCoordinator?->begin();
+                    if (!$this->repository->updateStatus(
+                        $current->localizationPublicId(),
+                        $expectedLockVersion,
+                        BlogPostVariant::PUBLISHED,
+                        BlogPostVariant::DRAFT,
+                        null,
+                        $actorPublicId,
+                        $now
+                    )) {
+                        throw new BlogException(BlogException::LOCK_CONFLICT);
+                    }
+                    $this->repository->touchPost($postPublicId, $now);
+
+                    $stored = $this->requiredStoredVariant(
+                        $postPublicId,
+                        $locale
+                    );
+                    $this->auditMutation(
+                        $pdo,
+                        BlogMutationAuditEvent::UNPUBLISH,
+                        $actorPublicId,
+                        $postPublicId,
+                        $now
+                    );
+                    if ($sitemapFence instanceof BlogSitemapPublicationFence) {
+                        $this->sitemapPublicationCoordinator?->complete(
+                            $sitemapFence,
+                            $now
+                        );
+                    }
+
+                    return $stored;
                 }
-                $this->repository->touchPost($postPublicId, $now);
-
-                $stored = $this->requiredStoredVariant($postPublicId, $locale);
-                $this->auditMutation(
-                    $pdo,
-                    BlogMutationAuditEvent::UNPUBLISH,
-                    $actorPublicId,
-                    $postPublicId,
-                    $now
-                );
-
-                return $stored;
-            }
-        );
+            );
+        } finally {
+            $sitemapFence?->release();
+        }
     }
 
     /** @return list<BlogPostSummary> */

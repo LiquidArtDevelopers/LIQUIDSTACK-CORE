@@ -225,6 +225,11 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
                 'provider' => BlogMigrationProvider::class,
                 'migration' => '0005_blog_structured_content',
             ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0006_blog_sitemap_publication_state',
+            ],
         ], array_map(
             static fn (array $entry): array => [
                 'module' => $entry['module'],

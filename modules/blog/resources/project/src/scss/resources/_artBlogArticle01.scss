@@ -1,0 +1,331 @@
+@use '../config' as c;
+
+.artBlogArticle01 {
+    width: min(100%, 92rem);
+    margin-inline: auto;
+    padding-inline: c.$padMin;
+    display: grid;
+    gap: clamp(2.5rem, 7vw, 5rem);
+    color: c.$color01;
+
+    &--basic {
+        width: min(100%, 80rem);
+    }
+
+    &-intro {
+        width: min(100%, c.$textMax);
+        margin-inline: auto;
+    }
+
+    .artBlogArticle01-heading {
+        width: 100%;
+        padding: 0;
+        gap: clamp(1rem, 3vw, 1.75rem);
+        color: c.$color01;
+
+        .moduleH1Type04-title,
+        .artBlogArticle01-title {
+            max-width: 20ch;
+            color: c.$color02;
+            font-size: clamp(2.2rem, 7vw, 5rem);
+            line-height: 1.03;
+            letter-spacing: -0.025em;
+        }
+
+        .moduleH1Type04-text,
+        .artBlogArticle01-excerpt {
+            max-width: 65ch;
+            color: c.$color01bis;
+            font-size: clamp(1.1rem, 2.4vw, 1.5rem);
+            line-height: 1.55;
+        }
+    }
+
+    &-date {
+        margin: 0;
+        color: c.$color01bis;
+        font-family: c.$fuente02;
+        font-size: clamp(0.8rem, 1.4vw, 0.95rem);
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    &-body {
+        width: min(100%, 50rem);
+        margin-inline: auto;
+        min-width: 0;
+
+        > p,
+        .blogDocument__paragraph,
+        .blogDocument__listItem,
+        .blogDocument__calloutContent {
+            color: c.$color01;
+            font-size: clamp(1rem, 1.8vw, 1.15rem);
+            line-height: 1.8;
+            overflow-wrap: anywhere;
+        }
+
+        > p + p {
+            margin-top: 1.5rem;
+        }
+
+        a {
+            color: c.$color02;
+            text-decoration: underline;
+            text-decoration-thickness: 0.08em;
+            text-underline-offset: 0.2em;
+
+            &:hover {
+                color: c.$color01;
+            }
+
+            &:focus-visible {
+                border-radius: 0.15rem;
+                outline: 0.18rem solid c.$color02;
+                outline-offset: 0.2rem;
+            }
+        }
+    }
+
+    .blogDocument {
+        display: grid;
+        gap: clamp(1.5rem, 4vw, 2.5rem);
+        min-width: 0;
+
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            margin: clamp(1rem, 4vw, 2.5rem) 0 0;
+            color: c.$color02;
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+        }
+
+        h2,
+        h3 {
+            font-size: clamp(1.65rem, 4vw, 2.6rem);
+        }
+
+        h4,
+        h5,
+        h6 {
+            font-size: clamp(1.35rem, 3vw, 2rem);
+        }
+    }
+
+    .blogDocument__list {
+        padding-left: clamp(1.25rem, 4vw, 2rem);
+        display: grid;
+        gap: 0.75rem;
+
+        &[class] {
+            list-style: revert;
+        }
+    }
+
+    .blogDocument__callout {
+        padding: clamp(1.25rem, 4vw, 2rem);
+        border-left: 0.3rem solid c.$color02;
+        border-radius: 0.25rem 1rem 1rem 0.25rem;
+        background: c.$color00bis;
+    }
+
+    .blogDocument__image,
+    .blogDocument__video {
+        width: 100%;
+        margin: clamp(0.5rem, 3vw, 1.5rem) 0;
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .blogDocument__image--wide,
+    .blogDocument__image--cover {
+        width: min(calc(100vw - (2 * c.$padMin)), 72rem);
+        margin-left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .blogDocument__picture,
+    .blogDocument__imageElement {
+        width: 100%;
+        display: block;
+    }
+
+    .blogDocument__imageElement {
+        height: auto;
+        border-radius: clamp(0.5rem, 2vw, 1.25rem);
+        object-fit: cover;
+    }
+
+    .blogDocument__image--cover .blogDocument__imageElement {
+        max-height: min(70vh, 50rem);
+    }
+
+    .blogDocument__imageCaption,
+    .blogDocument__videoCaption {
+        color: c.$color01bis;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .blogDocument__liteYoutube {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        border-radius: clamp(0.5rem, 2vw, 1.25rem);
+        background: c.$color01;
+
+        > .blogDocument__youtubeFrame {
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+    }
+
+    .blogDocument__videoTrigger {
+        width: 4.5rem;
+        height: 4.5rem;
+        display: grid;
+        place-items: center;
+        border: 0.15rem solid c.$color00;
+        border-radius: 50%;
+        color: c.$color00;
+        text-decoration: none;
+        transition: transform 180ms ease, background-color 180ms ease;
+
+        &:hover {
+            color: c.$color01;
+            background: c.$color00;
+            transform: scale(1.05);
+        }
+    }
+
+    .blogDocument__videoPlay {
+        margin-left: 0.2rem;
+        color: currentColor;
+        font-size: 1.5rem;
+    }
+
+    .blogDocument__ctaLink {
+        width: fit-content;
+        max-width: 100%;
+        min-height: 3rem;
+        padding: 0.75rem 1.25rem;
+        border: 0.1rem solid c.$color02;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: c.$color00;
+        background: c.$color02;
+        text-decoration: none;
+        overflow-wrap: anywhere;
+
+        &:hover {
+            color: c.$color02;
+            background: c.$color00;
+        }
+    }
+
+    &-footer {
+        width: min(100%, 50rem);
+        margin-inline: auto;
+        padding-top: clamp(1rem, 4vw, 2rem);
+        border-top: 1px solid c.$color01bis4;
+
+        &:empty {
+            display: none;
+        }
+
+        .artBlogArticle01-backAction {
+            min-width: 0;
+            text-transform: none;
+        }
+    }
+
+    &--cover {
+        .artBlogArticle01-intro,
+        .artBlogArticle01-body {
+            width: 100%;
+        }
+
+        .blogDocument--cover {
+            > :not(:first-child) {
+                width: min(100%, 50rem);
+                margin-inline: auto;
+            }
+
+            > .blogDocument__image--wide:not(:first-child) {
+                width: min(100%, 72rem);
+                margin-inline: auto;
+                transform: none;
+            }
+
+            > .blogDocument__image--cover:first-child {
+                width: 100%;
+                margin: 0;
+                transform: none;
+
+                .blogDocument__imageElement {
+                    height: clamp(16rem, 52vw, 42rem);
+                }
+
+                .blogDocument__imageCaption {
+                    width: min(100%, 50rem);
+                    margin-inline: auto;
+                }
+            }
+        }
+    }
+
+    @media (min-width: c.$tablet) {
+        padding-inline: c.$padMax;
+
+        .blogDocument__image--wide,
+        .blogDocument__image--cover {
+            width: min(calc(100vw - (2 * c.$padMax)), 72rem);
+        }
+
+        &--cover {
+            .artBlogArticle01-heading {
+                display: grid;
+                grid-template-columns: minmax(0, 1.65fr) minmax(16rem, 0.75fr);
+                column-gap: clamp(2rem, 7vw, 7rem);
+                align-items: end;
+
+                .artBlogArticle01-date,
+                .moduleH1Type04-title,
+                .artBlogArticle01-title {
+                    grid-column: 1;
+                }
+
+                .artBlogArticle01-date {
+                    grid-row: 1;
+                }
+
+                .moduleH1Type04-title {
+                    grid-row: 2;
+                    max-width: 16ch;
+                }
+
+                .moduleH1Type04-text,
+                .artBlogArticle01-excerpt {
+                    grid-column: 2;
+                    grid-row: 1 / span 2;
+                    align-self: end;
+                }
+            }
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .blogDocument__videoTrigger {
+            transition: none;
+        }
+    }
+}

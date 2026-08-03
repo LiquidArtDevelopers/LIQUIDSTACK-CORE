@@ -91,6 +91,10 @@ PHP);
                 'connection' => 'shared',
                 'table_prefix' => 'client_blog_',
             ],
+            'sitemap_cache' => [
+                'enabled' => false,
+                'ttl_seconds' => 300,
+            ],
         ]);
     }
 
@@ -206,6 +210,30 @@ PHP);
         ], $config->publicPaths());
         self::assertSame('/blog-sitemap.xml', $config->sitemapPath());
         self::assertSame('ls_blog_', $config->tablePrefix());
+    }
+
+    public function testSitemapCacheIsAnExplicitBoundedOptIn(): void
+    {
+        $this->writeConfig(<<<'PHP'
+<?php
+return [
+    'sitemap_cache' => [
+        'enabled' => true,
+        'ttl_seconds' => 600,
+    ],
+];
+PHP);
+
+        $cache = $this->load(['es'])->sitemapCache();
+        self::assertTrue($cache->enabled());
+        self::assertSame(600, $cache->ttlSeconds());
+
+        $this->writeConfig(<<<'PHP'
+<?php
+return ['sitemap_cache' => ['enabled' => 'yes']];
+PHP);
+        $this->expectException(BlogConfigException::class);
+        $this->load(['es']);
     }
 
     /**

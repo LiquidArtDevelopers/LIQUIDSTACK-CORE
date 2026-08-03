@@ -66,6 +66,11 @@ final class BlogStructuredEditorRequestPolicy
                 <= BlogDocument::MAX_JSON_BYTES;
     }
 
+    public function acceptsSeoAnalysis(Request $request): bool
+    {
+        return $this->acceptsSave($request);
+    }
+
     public function acceptsRestore(Request $request): bool
     {
         if (!$this->webAdminPolicy->acceptsFormPost($request, [

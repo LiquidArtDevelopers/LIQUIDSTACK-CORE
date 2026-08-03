@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Diagnostics\BlogDiagnosticService;
+use App\Core\Blog\Sitemap\Cache\PrivateBlogSitemapCacheStorage;
 use App\Core\Modules\Migrations\MigrationDatabasePlan;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
@@ -78,6 +79,135 @@ final class BlogDiagnosticServiceTest extends TestCase
         self::assertSame(
             'App/views/blog-article.php',
             $data['configuration']['effective']['public_article_view']
+        );
+    }
+
+    public function testEnabledSitemapCacheWithoutPrivateStorageBlocksReadiness(): void
+    {
+        $this->filesystem->mkdir($this->root . '/App/config/modules');
+        $this->filesystem->dumpFile(
+            $this->root . '/App/config/modules/blog.php',
+            "<?php\nreturn ['sitemap_cache' => ['enabled' => true]];\n"
+        );
+        $plan = new MigrationDatabasePlan(
+            'sqlite',
+            true,
+            [
+                $this->entry('0001_blog_posts', 'applied', null),
+                $this->entry(
+                    '0002_blog_capabilities',
+                    'applied',
+                    'webadmin'
+                ),
+                $this->entry('0003_blog_categories', 'applied', null),
+                $this->entry(
+                    '0004_blog_category_capabilities',
+                    'applied',
+                    'webadmin'
+                ),
+                $this->entry(
+                    '0005_blog_structured_content',
+                    'applied',
+                    null
+                ),
+                $this->entry(
+                    '0006_blog_sitemap_publication_state',
+                    'applied',
+                    null
+                ),
+            ],
+            []
+        );
+
+        $data = $this->inspect($plan)->toArray();
+
+        self::assertFalse($data['readiness']['blog_ready']);
+        self::assertTrue($data['sitemap_cache']['enabled']);
+        self::assertFalse($data['sitemap_cache']['ready']);
+        self::assertSame(
+            'storage_not_ready',
+            $data['sitemap_cache']['status']
+        );
+        self::assertContains(
+            'sitemap_cache.not_ready',
+            $data['readiness']['blockers']
+        );
+    }
+
+    public function testSitemapCacheReadinessRequiresMatchingDbGeneration(): void
+    {
+        $this->filesystem->mkdir($this->root . '/App/config/modules');
+        $this->filesystem->dumpFile(
+            $this->root . '/App/config/modules/blog.php',
+            "<?php\nreturn ['sitemap_cache' => ['enabled' => true]];\n"
+        );
+        $environment = [
+            'RAIZ' => 'http://localhost:1309',
+            'DEV_MODE' => '1',
+        ];
+        $storage = PrivateBlogSitemapCacheStorage::forProject(
+            $this->root,
+            $environment
+        );
+        $generation = $storage->initialize()->generation();
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $pdo->exec('PRAGMA foreign_keys = ON');
+        $pdo->exec(<<<'SQL'
+CREATE TABLE ls_blog_sitemap_state (
+    state_key TEXT PRIMARY KEY,
+    public_revision INTEGER NOT NULL,
+    cache_generation TEXT NULL,
+    updated_at TEXT NOT NULL
+)
+SQL);
+        $insert = $pdo->prepare(
+            'INSERT INTO ls_blog_sitemap_state '
+            . '(state_key, public_revision, cache_generation, updated_at) '
+            . "VALUES ('sitemap', 1, :generation, "
+            . "'2026-08-03 12:00:00.000000')"
+        );
+        $insert->execute(['generation' => $generation]);
+
+        $service = new BlogDiagnosticService();
+        $matched = $service->inspect(
+            $this->root,
+            ['es', 'en'],
+            $environment,
+            '/admin',
+            true,
+            $this->sitemapPlan(),
+            true,
+            [],
+            $pdo
+        )->toArray();
+        self::assertTrue($matched['sitemap_cache']['ready']);
+        self::assertSame('matched', $matched['sitemap_cache']['generation']);
+
+        $pdo->exec(
+            "UPDATE ls_blog_sitemap_state SET cache_generation = "
+            . "'123e4567-e89b-42d3-a456-426614174000'"
+        );
+        $mismatch = $service->inspect(
+            $this->root,
+            ['es', 'en'],
+            $environment,
+            '/admin',
+            true,
+            $this->sitemapPlan(),
+            true,
+            [],
+            $pdo
+        )->toArray();
+        self::assertFalse($mismatch['sitemap_cache']['ready']);
+        self::assertSame(
+            'generation_mismatch',
+            $mismatch['sitemap_cache']['status']
+        );
+        self::assertContains(
+            'sitemap_cache.not_ready',
+            $mismatch['readiness']['blockers']
         );
     }
 
@@ -392,6 +522,39 @@ final class BlogDiagnosticServiceTest extends TestCase
     private function appliedPlan(): MigrationDatabasePlan
     {
         return $this->plan('applied', 'applied');
+    }
+
+    private function sitemapPlan(): MigrationDatabasePlan
+    {
+        return new MigrationDatabasePlan(
+            'sqlite',
+            true,
+            [
+                $this->entry('0001_blog_posts', 'applied', null),
+                $this->entry(
+                    '0002_blog_capabilities',
+                    'applied',
+                    'webadmin'
+                ),
+                $this->entry('0003_blog_categories', 'applied', null),
+                $this->entry(
+                    '0004_blog_category_capabilities',
+                    'applied',
+                    'webadmin'
+                ),
+                $this->entry(
+                    '0005_blog_structured_content',
+                    'applied',
+                    null
+                ),
+                $this->entry(
+                    '0006_blog_sitemap_publication_state',
+                    'applied',
+                    null
+                ),
+            ],
+            []
+        );
     }
 
     private function plan(

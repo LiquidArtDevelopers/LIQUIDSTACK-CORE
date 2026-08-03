@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Tests\Blog;
 
 use App\Core\Blog\Persistence\BlogPersistenceException;
+use App\Core\Blog\PublicFeed\BlogPublicArchivePeriodsQuery;
+use App\Core\Blog\PublicFeed\BlogPublicArchiveQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogRepositoryInterface;
+use App\Core\Blog\PublicFeed\BlogPublicRelatedQuery;
 use App\Core\Blog\PublicFeed\PdoBlogPublicCatalogRepository;
 use App\Core\Blog\PublishedPostCard;
 use App\Core\Modules\Blog\BlogMigrationProvider;
@@ -21,6 +24,7 @@ final class BlogPublicCatalogRepositoryTest extends TestCase
     private PDO $pdo;
     private MigrationScope $scope;
     private BlogPublicCatalogRepositoryInterface $repository;
+    private PdoBlogPublicCatalogRepository $discoveryRepository;
     /** @var array<string, int> */
     private array $categoryIds = [];
 
@@ -33,10 +37,11 @@ final class BlogPublicCatalogRepositoryTest extends TestCase
         $this->scope = MigrationScope::forTablePrefix('blog', 'ls_blog_');
         $this->installSchema();
         $this->seedCatalog();
-        $this->repository = new PdoBlogPublicCatalogRepository(
+        $this->discoveryRepository = new PdoBlogPublicCatalogRepository(
             $this->pdo,
             $this->scope
         );
+        $this->repository = $this->discoveryRepository;
     }
 
     public function testReturnsOnlyPublishedCardsForTheRequestedLocale(): void
@@ -249,6 +254,89 @@ final class BlogPublicCatalogRepositoryTest extends TestCase
         );
     }
 
+    public function testRelatedPostsRequireAPublishedSourceAndRankSharedCategories(
+    ): void {
+        $this->insertPost(8, [
+            $this->published(
+                801,
+                'es',
+                'matrix-doble-categoria',
+                'Otra mirada a Matrix',
+                'Una entrada anterior que comparte las dos categorias.',
+                'Cuerpo relacionado.',
+                '2029-12-12 10:00:00.000000'
+            ),
+        ], ['news', 'cinema']);
+
+        self::assertSame(
+            [
+                'matrix-doble-categoria',
+                'primer-empate',
+                'porcentaje-literal',
+                'animatrix',
+            ],
+            $this->slugs($this->discoveryRepository->relatedPosts(
+                new BlogPublicRelatedQuery('es', 'matrix-reloaded', 4)
+            ))
+        );
+        self::assertSame([], $this->discoveryRepository->relatedPosts(
+            new BlogPublicRelatedQuery('es', 'desconocida')
+        ));
+        self::assertSame([], $this->discoveryRepository->relatedPosts(
+            new BlogPublicRelatedQuery('es', 'matrix-draft')
+        ));
+    }
+
+    public function testMonthlyArchivePeriodsAreLocalizedCountedAndOrdered(): void
+    {
+        $periods = $this->discoveryRepository->archivePeriods(
+            new BlogPublicArchivePeriodsQuery('es', 10)
+        );
+
+        self::assertSame([
+            ['locale' => 'es', 'year' => 2030, 'month' => 4, 'count' => 2],
+            ['locale' => 'es', 'year' => 2030, 'month' => 3, 'count' => 1],
+            ['locale' => 'es', 'year' => 2030, 'month' => 2, 'count' => 1],
+            ['locale' => 'es', 'year' => 2030, 'month' => 1, 'count' => 1],
+        ], array_map(
+            static fn ($period): array => $period->toResourceData(),
+            $periods
+        ));
+        self::assertSame([
+            ['locale' => 'en', 'year' => 2030, 'month' => 6, 'count' => 1],
+        ], array_map(
+            static fn ($period): array => $period->toResourceData(),
+            $this->discoveryRepository->archivePeriods(
+                new BlogPublicArchivePeriodsQuery('en')
+            )
+        ));
+    }
+
+    public function testArchiveCardsSupportYearMonthAndStablePagination(): void
+    {
+        self::assertSame(
+            ['primer-empate', 'matrix-reloaded'],
+            $this->slugs($this->discoveryRepository->archivePosts(
+                new BlogPublicArchiveQuery('es', 2030, 4)
+            ))
+        );
+        self::assertSame(
+            ['porcentaje-literal', 'animatrix'],
+            $this->slugs($this->discoveryRepository->archivePosts(
+                new BlogPublicArchiveQuery('es', 2030, null, 2, 2)
+            ))
+        );
+        self::assertSame([], $this->discoveryRepository->archivePosts(
+            new BlogPublicArchiveQuery('es', 2029)
+        ));
+        self::assertNotContains(
+            'matrix-draft',
+            $this->slugs($this->discoveryRepository->archivePosts(
+                new BlogPublicArchiveQuery('es', 2030)
+            ))
+        );
+    }
+
     public function testDraftsNeverLeakEvenWhenEveryFilterMatches(): void
     {
         self::assertSame([], $this->searchSlugs('unpublished'));
@@ -302,6 +390,28 @@ final class BlogPublicCatalogRepositoryTest extends TestCase
             );
             self::assertNull($exception->getPrevious());
         }
+        foreach ([
+            static fn (): array => $repository->relatedPosts(
+                new BlogPublicRelatedQuery('es', 'matrix')
+            ),
+            static fn (): array => $repository->archivePosts(
+                new BlogPublicArchiveQuery('es', 2030)
+            ),
+            static fn (): array => $repository->archivePeriods(
+                new BlogPublicArchivePeriodsQuery('es')
+            ),
+        ] as $operation) {
+            try {
+                $operation();
+                self::fail('Missing schema must fail closed.');
+            } catch (BlogPersistenceException $exception) {
+                self::assertSame(
+                    'Blog persistence is unavailable.',
+                    $exception->getMessage()
+                );
+                self::assertNull($exception->getPrevious());
+            }
+        }
 
         $this->pdo->exec(
             "UPDATE ls_blog_post_localizations SET updated_at = 'not-a-date' "
@@ -312,6 +422,18 @@ final class BlogPublicCatalogRepositoryTest extends TestCase
                 new BlogPublicCatalogQuery('es', 'matrix')
             );
             self::fail('An invalid persisted row must fail closed.');
+        } catch (BlogPersistenceException $exception) {
+            self::assertSame(
+                'Blog persistence is unavailable.',
+                $exception->getMessage()
+            );
+            self::assertNull($exception->getPrevious());
+        }
+        try {
+            $this->discoveryRepository->archivePosts(
+                new BlogPublicArchiveQuery('es', 2030)
+            );
+            self::fail('Invalid archive rows must fail closed.');
         } catch (BlogPersistenceException $exception) {
             self::assertSame(
                 'Blog persistence is unavailable.',

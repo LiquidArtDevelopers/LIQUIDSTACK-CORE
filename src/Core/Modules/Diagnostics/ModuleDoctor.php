@@ -18,6 +18,7 @@ use App\Core\Modules\ModuleDefinition;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Modules\ModuleSelection;
+use PDO;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Diagnostics\WebAdminDatabaseDiagnostic;
 use App\Core\WebAdmin\Diagnostics\WebAdminDiagnosticService;
@@ -54,6 +55,7 @@ final class ModuleDoctor
         $migrationPlan = MigrationPlan::empty();
         $migrationCatalog = null;
         $databasePlan = null;
+        $databaseConnection = null;
         $moduleDiagnostics = [];
         $languages = [];
         $webAdminRegisteredPath = null;
@@ -164,11 +166,13 @@ final class ModuleDoctor
                     )
                 ) {
                     try {
-                        $databasePlan = ($this->migrationRuntimeFactory
+                        $migrationRuntime = ($this->migrationRuntimeFactory
                             ?? new MigrationCommandRuntimeFactory())->create(
                                 $projectRoot,
                                 $coreRoot
-                            )->preview();
+                            );
+                        $databasePlan = $migrationRuntime->preview();
+                        $databaseConnection = $migrationRuntime->connection();
                         $databaseDiagnostic =
                             WebAdminDatabaseDiagnostic::fromPlan($databasePlan);
                     } catch (\Throwable) {
@@ -248,7 +252,10 @@ final class ModuleDoctor
                     $inspectDatabase,
                     $this->runtimeAssets->resolve(
                         $catalog->get('blog')
-                    )
+                    ),
+                    $databaseConnection instanceof PDO
+                        ? $databaseConnection
+                        : null
                 );
                 $blogPayload = $blogReport->toArray();
                 $moduleDiagnostics['blog'] = $blogPayload;
@@ -923,6 +930,32 @@ final class ModuleDoctor
                 'Las ampliaciones Blog no se evaluaron en este diagnostico.'
             ),
         };
+
+        $cacheEnabled = ($payload['sitemap_cache']['enabled'] ?? false)
+            === true;
+        $cacheReady = ($payload['sitemap_cache']['ready'] ?? false) === true;
+        $cacheStatus = is_string(
+            $payload['sitemap_cache']['status'] ?? null
+        ) ? $payload['sitemap_cache']['status'] : 'invalid';
+        $checks[] = !$cacheEnabled
+            ? DiagnosticCheck::ok(
+                'blog.sitemap_cache',
+                'La caché LKG del sitemap está desactivada; el sitemap sigue usando la DB.'
+            )
+            : ($cacheReady && $cacheStatus !== 'blocked'
+                ? DiagnosticCheck::ok(
+                    'blog.sitemap_cache',
+                    'La caché privada LKG del sitemap está preparada.'
+                )
+                : ($cacheStatus === 'migration_not_ready'
+                    ? DiagnosticCheck::warning(
+                        'blog.sitemap_cache',
+                        'La caché LKG es opcional y su migración o inicialización sigue pendiente.'
+                    )
+                    : DiagnosticCheck::error(
+                        'blog.sitemap_cache',
+                        'La caché LKG está activada pero su storage está bloqueado o no es válido.'
+                    )));
     }
 
     /**

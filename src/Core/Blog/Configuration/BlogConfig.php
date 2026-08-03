@@ -30,7 +30,9 @@ final class BlogConfig
         private readonly string $databaseConnection =
             DatabaseConnectionProfile::SHARED,
         ?string $defaultLocale = null,
-        private readonly ?BlogPublicArticleViewPath $publicArticleView = null
+        private readonly ?BlogPublicArticleViewPath $publicArticleView = null,
+        private readonly BlogSitemapCacheConfig $sitemapCache =
+            new BlogSitemapCacheConfig()
     ) {
         $defaultLocale ??= array_key_first($publicPaths);
         if (
@@ -113,6 +115,11 @@ final class BlogConfig
         return $this->publicArticleView?->absolutePath();
     }
 
+    public function sitemapCache(): BlogSitemapCacheConfig
+    {
+        return $this->sitemapCache;
+    }
+
     /** @return array<string, mixed> */
     public function toSafeArray(): array
     {
@@ -124,6 +131,7 @@ final class BlogConfig
                 'connection' => $this->databaseConnection(),
                 'table_prefix' => $this->tablePrefix,
             ],
+            'sitemap_cache' => $this->sitemapCache->toSafeArray(),
         ];
 
         if ($this->publicArticleView !== null) {
