@@ -130,6 +130,13 @@ final class WebAdminMailDispatchCommandTest extends TestCase
         WebAdminMailConfiguration::SMTP_PASSWORD_ENV,
         WebAdminMailConfiguration::FROM_ADDRESS_ENV,
         WebAdminMailConfiguration::FROM_NAME_ENV,
+        WebAdminMailConfiguration::GENERAL_SMTP_HOST_ENV,
+        WebAdminMailConfiguration::GENERAL_SMTP_PORT_ENV,
+        WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV,
+        WebAdminMailConfiguration::GENERAL_SMTP_USERNAME_ENV,
+        WebAdminMailConfiguration::GENERAL_SMTP_PASSWORD_ENV,
+        WebAdminMailConfiguration::GENERAL_FROM_NAME_ENV,
+        WebAdminMailConfiguration::GENERAL_LEGACY_FROM_NAME_ENV,
     ];
 
     private Filesystem $filesystem;
@@ -703,6 +710,59 @@ final class WebAdminMailDispatchCommandTest extends TestCase
         self::assertSame(1, $pdoFactory->connectCalls);
     }
 
+    public function testRealFactoryBuildsGeneralSmtpRuntimeOnLocalhost(): void
+    {
+        if (!in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+            self::markTestSkipped('pdo_sqlite es necesario para probar el CLI.');
+        }
+
+        $prefix = 'general_mail_webadmin_';
+        $project = $this->createProject(
+            'general-mail-runtime',
+            true,
+            $this->generalEnvironment(),
+            $prefix
+        );
+        $coreRoot = dirname(__DIR__, 2);
+        $pdo = $this->sqlite();
+        $this->applyWebAdminSchema($pdo, $project, $coreRoot, $prefix);
+        $pdoFactory = new MailDispatchCliPdoFactoryFixture($pdo);
+        $transport = new MailDispatchCliTransportFixture();
+        $transportCalls = 0;
+        $factory = new WebAdminMailDispatchCommandRuntimeFactory(
+            connectionFactoryResolver: static fn (
+                array $_environment
+            ): PdoConnectionFactoryInterface => $pdoFactory,
+            transportResolver: static function (
+                WebAdminMailConfiguration $configuration
+            ) use ($transport, &$transportCalls): WebAdminMailTransportInterface {
+                ++$transportCalls;
+                self::assertSame(
+                    WebAdminMailConfiguration::SOURCE_GENERAL_MAIL,
+                    $configuration->source()
+                );
+                self::assertSame(
+                    'http://localhost:1309',
+                    $configuration->publicOrigin()
+                );
+                self::assertSame(
+                    $configuration->smtpUsername(),
+                    $configuration->fromAddress()
+                );
+
+                return $transport;
+            }
+        );
+
+        $runtime = $factory->create($project, $coreRoot);
+        $report = $runtime->dispatch(1);
+
+        self::assertSame(0, $report->examined());
+        self::assertSame(1, $pdoFactory->connectCalls);
+        self::assertSame(1, $transportCalls);
+        self::assertSame([], $transport->messages);
+    }
+
     public function testRealFactoryRequiresAppliedSchemaBeforeBuildingTransport(): void
     {
         if (!in_array('sqlite', PDO::getAvailableDrivers(), true)) {
@@ -1089,6 +1149,38 @@ final class WebAdminMailDispatchCommandTest extends TestCase
             WebAdminMailConfiguration::FROM_NAME_ENV => 'LiquidStack WebAdmin',
         ], $overrides);
 
+        return $this->serializeEnvironment($values);
+    }
+
+    /** @param array<string, string> $overrides */
+    private function generalEnvironment(array $overrides = []): string
+    {
+        return $this->serializeEnvironment(array_replace([
+            'RAIZ' => 'http://localhost:1309',
+            'DEV_MODE' => '1',
+            'BBDD_SERVER' => 'db.example.test',
+            'BBDD_USER' => 'webadmin_fixture',
+            'BBDD_PASS' => 'database-password-must-remain-private',
+            'BBDD_NAME' => 'webadmin_fixture',
+            WebAdminMailConfiguration::TRANSPORT_ENV =>
+                WebAdminMailConfiguration::TRANSPORT_SMTP,
+            WebAdminMailConfiguration::GENERAL_SMTP_HOST_ENV =>
+                'smtp.example.test',
+            WebAdminMailConfiguration::GENERAL_SMTP_PORT_ENV => '465',
+            WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV =>
+                'smtps',
+            WebAdminMailConfiguration::GENERAL_SMTP_USERNAME_ENV =>
+                'no-reply@example.test',
+            WebAdminMailConfiguration::GENERAL_SMTP_PASSWORD_ENV =>
+                'smtp-password-must-remain-private',
+            WebAdminMailConfiguration::GENERAL_FROM_NAME_ENV =>
+                'LiquidStack WebAdmin',
+        ], $overrides));
+    }
+
+    /** @param array<string, string> $values */
+    private function serializeEnvironment(array $values): string
+    {
         $lines = [];
         foreach ($values as $name => $value) {
             $lines[] = $name . '=' . json_encode(

@@ -17,8 +17,6 @@ final class ManagedFileRegistry
     private const INSTALL_IF_MISSING_FILES = [
         'resources/js/_terminos.js',
         'resources/scss/_moduleTerminos.scss',
-        'stubs/App/app/_phpmailer.php',
-        'stubs/App/app/formContact.php',
         'stubs/App/class/_comprobaciones.php',
         'stubs/App/controllers/footerInfo01.php',
         'stubs/App/templates/_footerInfo01.html',
@@ -151,6 +149,13 @@ final class ManagedFileRegistry
             'stubs/App/app/updateLanguage.php',
         ], true)) {
             return 'runtime:inline-editor';
+        }
+
+        if (in_array($sourceId, [
+            'stubs/App/app/_phpmailer.php',
+            'stubs/App/app/formContact.php',
+        ], true)) {
+            return 'runtime:mail';
         }
 
         if (in_array($sourceId, [

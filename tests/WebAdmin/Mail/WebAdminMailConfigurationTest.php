@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Core\WebAdmin\Mail\WebAdminMailConfiguration;
 use App\Core\WebAdmin\Mail\WebAdminMailConfigurationException;
 use App\Core\WebAdmin\Mail\WebAdminMailConfigurationLoader;
+use App\Core\WebAdmin\Security\OpaqueSecret;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -26,12 +27,291 @@ final class WebAdminMailConfigurationTest extends TestCase
         self::assertSame('LiquidStack WebAdmin', $configuration->fromName());
         self::assertSame([
             'transport' => 'smtp',
+            'source' => WebAdminMailConfiguration::SOURCE_LEGACY_WEBADMIN,
             'public_origin_scheme' => 'https',
             'encryption' => 'starttls',
             'timeout_seconds' => 15,
             'required_environment_names' =>
                 WebAdminMailConfiguration::REQUIRED_ENV,
         ], $configuration->toSafeArray());
+    }
+
+    public function testLoadsCanonicalGeneralMailAndUsesUsernameAsFrom(): void
+    {
+        $configuration = (new WebAdminMailConfigurationLoader())->load(
+            $this->validGeneralEnvironment()
+        );
+
+        self::assertSame(
+            WebAdminMailConfiguration::SOURCE_GENERAL_MAIL,
+            $configuration->source()
+        );
+        self::assertSame(
+            'http://localhost:1309',
+            $configuration->publicOrigin()
+        );
+        self::assertSame('smtp.example.test', $configuration->smtpHost());
+        self::assertSame(465, $configuration->smtpPort());
+        self::assertSame('smtps', $configuration->smtpEncryption());
+        self::assertSame(
+            'No-Reply@example.test',
+            $configuration->smtpUsername()
+        );
+        self::assertSame(
+            'no-reply@example.test',
+            $configuration->fromAddress()
+        );
+        self::assertSame('Example website', $configuration->fromName());
+        self::assertSame(
+            [
+                'RAIZ',
+                'DEV_MODE',
+                WebAdminMailConfiguration::GENERAL_SMTP_HOST_ENV,
+                WebAdminMailConfiguration::GENERAL_SMTP_PORT_ENV,
+                WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV,
+                WebAdminMailConfiguration::GENERAL_SMTP_USERNAME_ENV,
+                WebAdminMailConfiguration::GENERAL_SMTP_PASSWORD_ENV,
+                WebAdminMailConfiguration::GENERAL_FROM_NAME_ENV,
+            ],
+            $configuration->requiredEnvironmentNames()
+        );
+    }
+
+    public function testLoadsCanonicalGeneralMailForHttpsProduction(): void
+    {
+        $environment = $this->validGeneralEnvironment();
+        $environment['RAIZ'] = 'https://www.example.test';
+        $environment['DEV_MODE'] = '0';
+
+        $configuration = (new WebAdminMailConfigurationLoader())->load(
+            $environment
+        );
+
+        self::assertSame(
+            'https://www.example.test',
+            $configuration->publicOrigin()
+        );
+        self::assertSame(
+            WebAdminMailConfiguration::SOURCE_GENERAL_MAIL,
+            $configuration->source()
+        );
+    }
+
+    #[DataProvider('invalidGeneralEnvironmentProvider')]
+    public function testRejectsInvalidGeneralMailWithoutLeakingValues(
+        string $name,
+        string $value
+    ): void {
+        $environment = $this->validGeneralEnvironment();
+        $environment[$name] = $value;
+        $loader = new WebAdminMailConfigurationLoader();
+
+        [$missing, $invalid] = $loader->inspect($environment);
+
+        self::assertSame([], $missing);
+        self::assertContains($name, $invalid);
+
+        try {
+            $loader->load($environment);
+            self::fail('Invalid general mail configuration must fail closed.');
+        } catch (WebAdminMailConfigurationException $exception) {
+            self::assertSame('mail.environment_invalid', $exception->issueCode());
+            self::assertStringNotContainsString($value, $exception->getMessage());
+        }
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function invalidGeneralEnvironmentProvider(): iterable
+    {
+        yield 'remote http origin' => [
+            'RAIZ',
+            'http://remote.example.test',
+        ];
+        yield 'host header injection' => [
+            WebAdminMailConfiguration::GENERAL_SMTP_HOST_ENV,
+            "smtp.example.test\r\nInjected: yes",
+        ];
+        yield 'zero port' => [
+            WebAdminMailConfiguration::GENERAL_SMTP_PORT_ENV,
+            '0',
+        ];
+        yield 'plaintext encryption' => [
+            WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV,
+            'none',
+        ];
+        yield 'legacy tls spelling' => [
+            WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV,
+            'tls',
+        ];
+        yield 'username must be an email' => [
+            WebAdminMailConfiguration::GENERAL_SMTP_USERNAME_ENV,
+            'smtp-account',
+        ];
+        yield 'username header injection' => [
+            WebAdminMailConfiguration::GENERAL_SMTP_USERNAME_ENV,
+            "mailer@example.test\r\nBcc: victim@example.test",
+        ];
+        yield 'password line break' => [
+            WebAdminMailConfiguration::GENERAL_SMTP_PASSWORD_ENV,
+            "secret\nnext",
+        ];
+        yield 'from name header injection' => [
+            WebAdminMailConfiguration::GENERAL_FROM_NAME_ENV,
+            "Sender\r\nBcc: victim@example.test",
+        ];
+    }
+
+    public function testAnyLegacyMailValueSelectsTheWholeLegacyBlock(): void
+    {
+        $environment = $this->validGeneralEnvironment();
+        $environment[WebAdminMailConfiguration::SMTP_HOST_ENV]
+            = 'legacy.example.test';
+
+        [$missing, $invalid] = (new WebAdminMailConfigurationLoader())
+            ->inspect($environment);
+
+        self::assertSame([], $invalid);
+        self::assertContains(
+            WebAdminMailConfiguration::PUBLIC_ORIGIN_ENV,
+            $missing
+        );
+        self::assertContains(
+            WebAdminMailConfiguration::SMTP_PASSWORD_ENV,
+            $missing
+        );
+        self::assertNotContains(
+            WebAdminMailConfiguration::GENERAL_SMTP_HOST_ENV,
+            $missing
+        );
+    }
+
+    public function testCompleteLegacyBlockKeepsPrecedenceDuringMigration(): void
+    {
+        $environment = array_merge(
+            $this->validGeneralEnvironment(),
+            $this->validEnvironment()
+        );
+
+        $configuration = (new WebAdminMailConfigurationLoader())->load(
+            $environment
+        );
+
+        self::assertSame(
+            WebAdminMailConfiguration::SOURCE_LEGACY_WEBADMIN,
+            $configuration->source()
+        );
+        self::assertSame('smtp.example.test', $configuration->smtpHost());
+        self::assertSame(
+            'mailer@example.test',
+            $configuration->smtpUsername()
+        );
+        self::assertSame(
+            'webadmin@example.test',
+            $configuration->fromAddress()
+        );
+        self::assertSame(
+            WebAdminMailConfiguration::LEGACY_REQUIRED_ENV,
+            $configuration->requiredEnvironmentNames()
+        );
+    }
+
+    public function testIsolatedLegacyOriginDoesNotHijackGeneralMail(): void
+    {
+        $environment = $this->validGeneralEnvironment();
+        $environment[WebAdminMailConfiguration::PUBLIC_ORIGIN_ENV]
+            = 'https://legacy-blog-origin.example.test';
+
+        $configuration = (new WebAdminMailConfigurationLoader())->load(
+            $environment
+        );
+
+        self::assertSame(
+            WebAdminMailConfiguration::SOURCE_GENERAL_MAIL,
+            $configuration->source()
+        );
+        self::assertSame(
+            'http://localhost:1309',
+            $configuration->publicOrigin()
+        );
+        self::assertSame(
+            'No-Reply@example.test',
+            $configuration->smtpUsername()
+        );
+    }
+
+    public function testExistingProjectMailBlockHasBoundedCompatibility(): void
+    {
+        $environment = $this->validGeneralEnvironment();
+        unset(
+            $environment[
+                WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV
+            ],
+            $environment[WebAdminMailConfiguration::GENERAL_FROM_NAME_ENV]
+        );
+
+        $configuration = (new WebAdminMailConfigurationLoader())->load(
+            $environment
+        );
+
+        self::assertSame(
+            WebAdminMailConfiguration::ENCRYPTION_SMTPS,
+            $configuration->smtpEncryption()
+        );
+        self::assertSame('Existing website', $configuration->fromName());
+        self::assertSame(
+            array_merge(
+                WebAdminMailConfiguration::GENERAL_REQUIRED_ENV,
+                [
+                    WebAdminMailConfiguration::GENERAL_LEGACY_FROM_NAME_ENV,
+                ]
+            ),
+            $configuration->requiredEnvironmentNames()
+        );
+    }
+
+    public function testGeneralRequiredNamesMatchMissingFallbackInputs(): void
+    {
+        $loader = new WebAdminMailConfigurationLoader();
+
+        $withoutName = $this->validGeneralEnvironment();
+        unset(
+            $withoutName[WebAdminMailConfiguration::GENERAL_FROM_NAME_ENV],
+            $withoutName[
+                WebAdminMailConfiguration::GENERAL_LEGACY_FROM_NAME_ENV
+            ]
+        );
+        [$missingName, $invalidName] = $loader->inspect($withoutName);
+
+        self::assertSame([], $invalidName);
+        self::assertSame(
+            [WebAdminMailConfiguration::GENERAL_FROM_NAME_ENV],
+            $missingName
+        );
+        self::assertContains(
+            WebAdminMailConfiguration::GENERAL_FROM_NAME_ENV,
+            $loader->requiredEnvironmentNames($withoutName)
+        );
+
+        $withoutEncryption = $this->validGeneralEnvironment();
+        unset($withoutEncryption[
+            WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV
+        ]);
+        $withoutEncryption[
+            WebAdminMailConfiguration::GENERAL_SMTP_PORT_ENV
+        ] = '2525';
+        [$missingEncryption, $invalidEncryption] = $loader->inspect(
+            $withoutEncryption
+        );
+
+        self::assertSame([], $invalidEncryption);
+        self::assertSame(
+            [WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV],
+            $missingEncryption
+        );
+        self::assertContains(
+            WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV,
+            $loader->requiredEnvironmentNames($withoutEncryption)
+        );
     }
 
     public function testNormalizesOnlyDocumentedNonSecretSurface(): void
@@ -81,6 +361,7 @@ final class WebAdminMailConfigurationTest extends TestCase
         self::assertSame([
             'transport' =>
                 WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+            'source' => WebAdminMailConfiguration::SOURCE_LOCAL_CAPTURE,
             'public_origin_scheme' => 'http',
             'encryption' => WebAdminMailConfiguration::ENCRYPTION_NONE,
             'timeout_seconds' => 15,
@@ -101,6 +382,31 @@ final class WebAdminMailConfigurationTest extends TestCase
 
         self::assertSame('http://[::1]:1309', $configuration->publicOrigin());
         self::assertSame('[::1]', $configuration->smtpHost());
+    }
+
+    public function testLegacyConstructorInfersLocalCaptureSource(): void
+    {
+        $configuration = new WebAdminMailConfiguration(
+            'http://localhost:1309',
+            '127.0.0.1',
+            1025,
+            WebAdminMailConfiguration::ENCRYPTION_NONE,
+            OpaqueSecret::fromString(''),
+            OpaqueSecret::fromString(''),
+            'webadmin@example.test',
+            'WebAdmin dev',
+            WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
+            false
+        );
+
+        self::assertSame(
+            WebAdminMailConfiguration::SOURCE_LOCAL_CAPTURE,
+            $configuration->source()
+        );
+        self::assertSame(
+            WebAdminMailConfiguration::LOCAL_CAPTURE_REQUIRED_ENV,
+            $configuration->requiredEnvironmentNames()
+        );
     }
 
     #[DataProvider('invalidLocalCaptureEnvironmentProvider')]
@@ -299,6 +605,30 @@ final class WebAdminMailConfigurationTest extends TestCase
                 'webadmin@example.test',
             WebAdminMailConfiguration::FROM_NAME_ENV =>
                 'LiquidStack WebAdmin',
+        ];
+    }
+
+    /** @return array<string, string> */
+    private function validGeneralEnvironment(): array
+    {
+        return [
+            'RAIZ' => 'http://localhost:1309',
+            'DEV_MODE' => '1',
+            WebAdminMailConfiguration::TRANSPORT_ENV =>
+                WebAdminMailConfiguration::TRANSPORT_SMTP,
+            WebAdminMailConfiguration::GENERAL_SMTP_HOST_ENV =>
+                'smtp.example.test',
+            WebAdminMailConfiguration::GENERAL_SMTP_PORT_ENV => '465',
+            WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV =>
+                'smtps',
+            WebAdminMailConfiguration::GENERAL_SMTP_USERNAME_ENV =>
+                'No-Reply@example.test',
+            WebAdminMailConfiguration::GENERAL_SMTP_PASSWORD_ENV =>
+                'not-a-real-password',
+            WebAdminMailConfiguration::GENERAL_FROM_NAME_ENV =>
+                'Example website',
+            WebAdminMailConfiguration::GENERAL_LEGACY_FROM_NAME_ENV =>
+                'Existing website',
         ];
     }
 

@@ -916,9 +916,9 @@ final class ManagedFileSynchronizerTest extends TestCase
         $jsonTarget = $this->projectRoot
             . '/App/config/languages/templates/es.json';
         $seedSource = $this->packageRoot
-            . '/stubs/App/app/formContact.php';
+            . '/stubs/App/class/_comprobaciones.php';
         $seedTarget = $this->projectRoot
-            . '/App/app/formContact.php';
+            . '/App/class/_comprobaciones.php';
 
         $this->writeFile($jsonSource, '{"new":{"text":"dummy"}}');
         $this->writeFile($jsonTarget, '{"broken":');
@@ -935,8 +935,8 @@ final class ManagedFileSynchronizerTest extends TestCase
         $sync->queueFile(
             $seedSource,
             $seedTarget,
-            'stubs/App/app/formContact.php',
-            'App/app/formContact.php'
+            'stubs/App/class/_comprobaciones.php',
+            'App/class/_comprobaciones.php'
         );
         $sync->apply();
 

@@ -114,6 +114,35 @@ final class WebAdminCredentialMailMessageFactoryTest extends TestCase
         );
     }
 
+    public function testAuthenticatedGeneralMailCanBuildLocalDevLink(): void
+    {
+        $token = (new SecureTokenGenerator())->generate();
+        $message = $this->generalAuthenticatedFactory()->create(
+            WebAdminCredentialMailMessageFactory::KIND_PASSWORD_RESET,
+            'editor@example.test',
+            'es',
+            $token
+        );
+
+        self::assertStringContainsString(
+            'http://localhost:1309/admin/password/reset?token='
+                . rawurlencode($token),
+            $message->textBody()
+        );
+    }
+
+    public function testAuthenticatedGeneralMailRejectsRemoteHttpLink(): void
+    {
+        $this->expectException(WebAdminMailMessageFactoryException::class);
+        $this->expectExceptionMessage(
+            'WebAdmin mail message cannot be created.'
+        );
+
+        $this->generalAuthenticatedFactory(
+            'http://must-not-leak.example.test'
+        );
+    }
+
     public function testLocalCaptureProfileCannotAuthorizeRemoteHttpLinks(): void
     {
         $this->expectException(WebAdminMailMessageFactoryException::class);
@@ -247,6 +276,27 @@ final class WebAdminCredentialMailMessageFactoryTest extends TestCase
                 'AIWA WebAdmin dev',
                 WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
                 false
+            ),
+            '/admin'
+        );
+    }
+
+    private function generalAuthenticatedFactory(
+        string $publicOrigin = 'http://localhost:1309'
+    ): WebAdminCredentialMailMessageFactory {
+        return new WebAdminCredentialMailMessageFactory(
+            new WebAdminMailConfiguration(
+                $publicOrigin,
+                'smtp.example.test',
+                465,
+                WebAdminMailConfiguration::ENCRYPTION_SMTPS,
+                OpaqueSecret::fromString('no-reply@example.test'),
+                OpaqueSecret::fromString('password'),
+                'no-reply@example.test',
+                'LiquidStack',
+                WebAdminMailConfiguration::TRANSPORT_SMTP,
+                true,
+                WebAdminMailConfiguration::SOURCE_GENERAL_MAIL
             ),
             '/admin'
         );

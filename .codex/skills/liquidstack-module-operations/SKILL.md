@@ -90,23 +90,51 @@ return [
   controller con `public` como directorio de trabajo para conservar las rutas
   relativas legacy.
 - Reservar `LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL` y `LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL` para el bootstrap explícito. No mostrar sus valores.
-- Configurar el correo solo mediante
-  `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, `LIQUIDSTACK_WEBADMIN_SMTP_HOST`,
-  `LIQUIDSTACK_WEBADMIN_SMTP_PORT`,
-  `LIQUIDSTACK_WEBADMIN_SMTP_ENCRYPTION`,
-  `LIQUIDSTACK_WEBADMIN_SMTP_USERNAME`,
-  `LIQUIDSTACK_WEBADMIN_SMTP_PASSWORD`,
-  `LIQUIDSTACK_WEBADMIN_MAIL_FROM_ADDRESS` y
-  `LIQUIDSTACK_WEBADMIN_MAIL_FROM_NAME`. El origen debe ser HTTPS explícito y
-  nunca derivarse de `Host` o cabeceras `Forwarded`.
-- Para pruebas locales, usar únicamente el perfil tipado
+- En el perfil `smtp`, tomar el origen de enlaces exclusivamente del perfil
+  tipado `RAIZ` + `DEV_MODE` y configurar la cuenta de correo con el bloque
+  general `MAIL_HOST`, `MAIL_PORT`, `MAIL_ENCRYPTION`, `MAIL_USERNAME`,
+  `MAIL_PASSWORD` y `MAIL_FROM_NAME`. Fuera del laboratorio, `RAIZ` debe ser
+  un origen HTTPS explícito; HTTP solo es válido con `DEV_MODE=1` y un origen
+  loopback canónico. `MAIL_USERNAME` autentica contra SMTP y es también la
+  dirección `From`; `MAIL_FROM_NAME` es únicamente su nombre visible. En
+  proyectos nuevos, exigir `MAIL_ENCRYPTION` (`starttls` o `smtps`) y
+  `MAIL_FROM_NAME` de forma explícita. Para adoptar sin ruptura un bloque
+  general anterior que no tenga esas claves, admitir solo estas equivalencias
+  acotadas: puerto `465` implica `smtps`, puerto `587` implica `starttls` y la
+  ausencia o valor vacío de `MAIL_FROM_NAME` permite usar `EMISOR_NAME`.
+  Cualquier otro puerto sin cifrado explícito o nombre ausente/inválido debe
+  fallar cerrado. No inferir host, puerto, dirección remitente ni credenciales,
+  y nunca derivar el origen de `Host` o cabeceras `Forwarded`.
+- Tratar `MAIL_ADMIN`, `MAIL_LAD` y `MAIL_LAD_BIS` exclusivamente como
+  destinatarios de formularios. WebAdmin obtiene el único destinatario de
+  cada mensaje desde su outbox y no añade CC/BCC; esas variables no pueden
+  autenticar SMTP, definir el remitente ni recibir invitaciones o enlaces de
+  recuperación por copia.
+- Admitir `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, el bloque dedicado
+  `LIQUIDSTACK_WEBADMIN_SMTP_*` y `LIQUIDSTACK_WEBADMIN_MAIL_FROM_*` solo como
+  compatibilidad del perfil `smtp`. Si cualquier clave SMTP/FROM legacy está
+  presente y no vacía, exigir el bloque legacy completo —incluido su origen— y
+  usarlo como una unidad; nunca completar sus huecos con `MAIL_*` ni mezclar
+  ambos contratos. Un `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` aislado, conservado
+  como alias de Blog, no selecciona por sí solo el correo legacy. No crear
+  configuraciones nuevas con el namespace legacy ni registrar sus valores.
+- Para pruebas locales, usar por defecto el perfil tipado
   `LIQUIDSTACK_WEBADMIN_MAIL_TRANSPORT=local_capture_smtp`: exige
   `DEV_MODE=1`, `RAIZ` HTTP loopback y SMTP en `127.0.0.1` o `[::1]`, toma el
-  origen del enlace de `RAIZ` y prohíbe origen legacy, TLS, usuario y
-  contraseña SMTP. Arrancar el capturador externo ligado solo a loopback y sin
-  relay/forwarding. No instalarlo desde CORE ni sustituirlo por un comando que
-  revele tokens en consola. Fuera de ese perfil el dispatcher debe fallar
-  antes de PDO/transporte y el SMTP productivo conserva STARTTLS/SMTPS y auth.
+  origen del enlace de `RAIZ` y conserva su bloque dedicado de host, puerto y
+  remitente local, sin TLS, usuario ni contraseña SMTP. El bloque general
+  `MAIL_*` puede existir para formularios, pero WebAdmin no lo consume en este
+  perfil ni permite que active un relay remoto. Arrancar el capturador externo
+  ligado solo a loopback y sin relay/forwarding. No instalarlo desde CORE ni
+  sustituirlo por un comando que revele tokens en consola. Fuera de ese perfil
+  el dispatcher debe fallar antes de PDO/transporte y el SMTP productivo
+  conserva STARTTLS/SMTPS y autenticación.
+- Permitir SMTP real desde desarrollo solo como opt-in explícito con
+  `LIQUIDSTACK_WEBADMIN_MAIL_TRANSPORT=smtp`, el bloque general válido,
+  `DEV_MODE=1` y `RAIZ` loopback. El mensaje sale al proveedor configurado,
+  pero su enlace `localhost` solo sirve en la misma máquina de desarrollo;
+  limitar la prueba a cuentas controladas y volver a `local_capture_smtp` para
+  QA que no necesite entrega externa.
 - Mantener el prefijo fuera de los idiomas activos y de rutas GET/POST existentes. `/admin` es el default neutral.
 - Determinar las colisiones con el catálogo estructurado de `doctor` o con el inspector estático de rutas. Una mención textual en la configuración, comentarios, documentación o código de negocio no convierte por sí sola el prefijo en una ruta ocupada; una búsqueda general solo aporta pistas. Las claves de ruta calculadas, concatenadas o añadidas mediante índices son deliberadamente no analizables: bloquean WebAdmin con `route_file.dynamic_key` hasta convertirlas en un catálogo literal o estático.
 - No escribir valores en `.env`; como máximo documentar nombres vacíos en `.env.example` cuando la tarea lo autorice.
@@ -324,10 +352,14 @@ composer liquidstack:migrate --dry-run
   del laboratorio y HTTP solo con el perfil loopback tipado de desarrollo.
   Mantener `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` como alias de transición y
   conservarlo temporalmente si difiere en producción para no cambiar URLs
-  durante un update; `doctor` debe avisar hasta alinear ambos valores. En local
-  debe prevalecer la `RAIZ` loopback. No derivar el origen de `Host`,
-  `Forwarded` ni del request. Blog no debe depender de que el transporte SMTP
-  esté listo.
+  durante un update; `doctor` debe avisar hasta alinear ambos valores. Ese
+  alias no selecciona por sí solo el transporte SMTP legacy y puede coexistir
+  durante la transición con `MAIL_*`; si aparece además cualquier clave
+  SMTP/FROM legacy, entonces sí se exige el bloque anterior completo. Para
+  adoptar por completo el correo canónico, alinear primero `RAIZ` y retirar las
+  claves WebAdmin SMTP/FROM legacy. En local debe prevalecer la `RAIZ`
+  loopback. No derivar el origen de `Host`, `Forwarded` ni del request. Blog no
+  debe depender de que el transporte SMTP esté listo.
 - Aplicar en orden `doctor`, `migrate --plan`, `migrate --dry-run`, backup
   recuperable de DB y storage, autorización expresa, `migrate --apply`,
   `media:init`, `webadmin:bootstrap`, un segundo `doctor` y QA HTTP. No confundir

@@ -1113,6 +1113,14 @@
             "sha256:dd085a829e0308fe203aeee0da5221284ecfe25d4b1abb8a31b27f14365b34a9",
             "sha256:fd92d0f46bd29e2e92f0c1c22ee01e9edf063561abca182d416a803501a117d2"
         ],
+        "stubs/App/app/_phpmailer.php": [
+            "sha256:b3491fcc43b9d6cbb08c7f31e9a9bdbf26de3a2285a9df5ea34d68076613956d",
+            "sha256:ee358b642ca709a69e50348031276e84e7106384c55ce42a933e81c0f353a7c1"
+        ],
+        "stubs/App/app/formContact.php": [
+            "sha256:62def14f3fc3f169604adefc053bf36acb5c9c15b0f906241ac198baf3480264",
+            "sha256:fe2f613fdb908f1fa7a3016359238c8dc2e0c204754efd2deb717d9feb6afafb"
+        ],
         "stubs/App/app/updateLanguage.php": [
             "sha256:2e751bbc5dbeef195b4c98fd0d50049bcbe940323f0e4060a8c17f0087df59e5",
             "sha256:684b230275602c9ec5839c6257e734baad16ec498dd4371f5857a8d1bd1498ff",

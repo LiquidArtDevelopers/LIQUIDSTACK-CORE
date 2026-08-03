@@ -352,10 +352,12 @@ El informe distingue readiness independientes:
   correos iniciales, pero no depende de la clave del runtime HTTP.
 
 El informe presenta además `mail_ready` y `mail_blockers` como eje
-independiente. Valida el origen público HTTPS y las ocho variables SMTP sin
-mostrar valores. Que el transporte no esté listo bloquea el dispatcher del
-outbox, pero no convierte por sí solo en no disponible el login ni el
-bootstrap que únicamente encola invitaciones.
+independiente. Valida el origen tipado `RAIZ` + `DEV_MODE` y el bloque SMTP
+general `MAIL_*` sin mostrar valores; conserva como unidad indivisible el
+namespace WebAdmin anterior para instalaciones que aún no lo hayan migrado.
+Que el transporte no esté listo bloquea el dispatcher del outbox, pero no
+convierte por sí solo en no disponible el login ni el bootstrap que únicamente
+encola invitaciones.
 
 La readiness de medios es otro eje independiente y no bloquea el runtime base
 de WebAdmin. Tras aplicar `0002_webadmin_media_library`, el operador ejecuta

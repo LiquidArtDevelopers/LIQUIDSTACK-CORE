@@ -668,12 +668,22 @@ PHP
             ['environment.mail_missing'],
             $data['readiness']['mail_blockers']
         );
+        $expectedMailEnvironment = [
+            'RAIZ',
+            'DEV_MODE',
+            WebAdminMailConfiguration::GENERAL_SMTP_HOST_ENV,
+            WebAdminMailConfiguration::GENERAL_SMTP_PORT_ENV,
+            WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV,
+            WebAdminMailConfiguration::GENERAL_SMTP_USERNAME_ENV,
+            WebAdminMailConfiguration::GENERAL_SMTP_PASSWORD_ENV,
+            WebAdminMailConfiguration::GENERAL_FROM_NAME_ENV,
+        ];
         self::assertSame(
-            WebAdminMailConfiguration::REQUIRED_ENV,
+            $expectedMailEnvironment,
             $data['environment']['mail']['missing']
         );
         self::assertSame([], $data['environment']['mail']['invalid']);
-        foreach (WebAdminMailConfiguration::REQUIRED_ENV as $name) {
+        foreach ($expectedMailEnvironment as $name) {
             self::assertNotContains($name, $data['missing_env']);
         }
     }
@@ -685,19 +695,19 @@ PHP
                 => 'superadmin@example.invalid',
             'LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL'
                 => 'siteadmin@example.invalid',
-            WebAdminMailConfiguration::PUBLIC_ORIGIN_ENV =>
+            'RAIZ' =>
                 'https://private-host.example.test',
-            WebAdminMailConfiguration::SMTP_HOST_ENV =>
+            'DEV_MODE' => '0',
+            WebAdminMailConfiguration::GENERAL_SMTP_HOST_ENV =>
                 'smtp.private-host.example.test',
-            WebAdminMailConfiguration::SMTP_PORT_ENV => '587',
-            WebAdminMailConfiguration::SMTP_ENCRYPTION_ENV => 'starttls',
-            WebAdminMailConfiguration::SMTP_USERNAME_ENV =>
-                'private-smtp-user',
-            WebAdminMailConfiguration::SMTP_PASSWORD_ENV =>
+            WebAdminMailConfiguration::GENERAL_SMTP_PORT_ENV => '587',
+            WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV =>
+                'starttls',
+            WebAdminMailConfiguration::GENERAL_SMTP_USERNAME_ENV =>
+                'private-smtp-user@example.test',
+            WebAdminMailConfiguration::GENERAL_SMTP_PASSWORD_ENV =>
                 'private-smtp-password',
-            WebAdminMailConfiguration::FROM_ADDRESS_ENV =>
-                'webadmin@example.test',
-            WebAdminMailConfiguration::FROM_NAME_ENV => 'WebAdmin',
+            WebAdminMailConfiguration::GENERAL_FROM_NAME_ENV => 'WebAdmin',
         ];
         $data = $this->inspect(
             $this->fixtureRoot,
@@ -712,7 +722,10 @@ PHP
             'private-host.example.test',
             $encoded
         );
-        self::assertStringNotContainsString('private-smtp-user', $encoded);
+        self::assertStringNotContainsString(
+            'private-smtp-user@example.test',
+            $encoded
+        );
         self::assertStringNotContainsString('private-smtp-password', $encoded);
     }
 

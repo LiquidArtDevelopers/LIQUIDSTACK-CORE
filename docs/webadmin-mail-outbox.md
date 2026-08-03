@@ -8,33 +8,84 @@ de forma separada.
 
 ## Configuración SMTP productiva
 
-Las ocho variables siguientes son obligatorias para el transporte:
+El perfil `smtp` comparte la cuenta SMTP general del proyecto. Este es el
+contrato canónico para configuraciones nuevas:
 
 ```dotenv
-LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN=https://www.example.com
-LIQUIDSTACK_WEBADMIN_SMTP_HOST=smtp.example.com
-LIQUIDSTACK_WEBADMIN_SMTP_PORT=587
-LIQUIDSTACK_WEBADMIN_SMTP_ENCRYPTION=starttls
-LIQUIDSTACK_WEBADMIN_SMTP_USERNAME=
-LIQUIDSTACK_WEBADMIN_SMTP_PASSWORD=
-LIQUIDSTACK_WEBADMIN_MAIL_FROM_ADDRESS=no-reply@example.com
-LIQUIDSTACK_WEBADMIN_MAIL_FROM_NAME="Example WebAdmin"
+RAIZ=
+DEV_MODE=
+MAIL_HOST=
+MAIL_PORT=
+MAIL_ENCRYPTION=
+MAIL_USERNAME=
+MAIL_PASSWORD=
+MAIL_FROM_NAME=
 ```
 
-`LIQUIDSTACK_WEBADMIN_SMTP_ENCRYPTION` acepta exclusivamente `starttls` o
-`smtps`. El puerto debe estar entre 1 y 65535; el timeout SMTP es de 15
-segundos. Usuario y contraseña no pueden estar vacíos. El remitente debe ser un
-email válido y el nombre no puede contener caracteres de control.
+`MAIL_ENCRYPTION` acepta exclusivamente `starttls` o `smtps`. El puerto debe
+estar entre 1 y 65535; el timeout SMTP es de 15 segundos. `MAIL_USERNAME` debe
+ser un email válido y cumple deliberadamente dos funciones inseparables:
+autentica contra SMTP y es la dirección `From`. `MAIL_FROM_NAME` contiene solo
+el nombre visible del remitente. En proyectos nuevos, `MAIL_ENCRYPTION` y
+`MAIL_FROM_NAME` son declaraciones explícitas. Usuario, contraseña y nombre no
+pueden estar vacíos ni contener caracteres de control. No se infieren host,
+puerto, credenciales o dirección remitente a partir de defaults u otras
+variables.
 
-`LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` es el origen público canónico, explícito y
-solo HTTPS: esquema y host, puerto opcional, sin credenciales, path, query ni
-fragment. No se deriva de `Host`, `Forwarded`, `X-Forwarded-Host` o
-`X-Forwarded-Proto`; por tanto, un proxy o request manipulado no puede cambiar
-el dominio de un enlace de credencial.
+El origen público canónico procede exclusivamente de `RAIZ` y su perfil
+`DEV_MODE`. Fuera del laboratorio debe ser HTTPS: esquema y host, puerto
+opcional, sin credenciales, path, query ni fragment. HTTP solo es válido con
+`DEV_MODE=1` y una `RAIZ` loopback canónica. No se deriva de `Host`,
+`Forwarded`, `X-Forwarded-Host` o `X-Forwarded-Proto`; por tanto, un proxy o
+request manipulado no puede cambiar el dominio de un enlace de credencial.
 
 Los secretos pertenecen al gestor de secretos o al `.env` no versionado del
 consumidor. No deben colocarse en `App/config/modules/webadmin.php`, el
 repositorio, argumentos CLI, unidades de scheduler visibles o logs.
+
+`MAIL_ADMIN`, `MAIL_LAD` y `MAIL_LAD_BIS` son destinatarios propios de los
+formularios del proyecto. WebAdmin no los consulta: cada invitación o
+recuperación se dirige únicamente al destinatario validado que contiene su
+outbox, sin CC ni BCC. Ninguna de esas variables puede actuar como credencial
+SMTP, remitente o copia de un enlace de acceso.
+
+### Compatibilidad con el bloque general anterior
+
+Los stacks existentes pueden tener `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`,
+`MAIL_PASSWORD` y `EMISOR_NAME`, pero carecer todavía de las dos claves nuevas.
+Para que una actualización no los rompa, el cargador aplica únicamente estas
+equivalencias acotadas cuando falta la declaración correspondiente:
+
+- `MAIL_PORT=465` equivale a `MAIL_ENCRYPTION=smtps`;
+- `MAIL_PORT=587` equivale a `MAIL_ENCRYPTION=starttls`;
+- si `MAIL_FROM_NAME` está ausente o vacío, el nombre visible procede de
+  `EMISOR_NAME`.
+
+No son defaults para proyectos nuevos. Un puerto distinto sin
+`MAIL_ENCRYPTION`, o la ausencia de ambos nombres, falla cerrado. La
+compatibilidad no permite obtener host, puerto, contraseña o dirección `From`
+de destinatarios ni de otras variables.
+
+### Compatibilidad con el bloque dedicado anterior
+
+El perfil `smtp` admite temporalmente
+`LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, `LIQUIDSTACK_WEBADMIN_SMTP_HOST`,
+`LIQUIDSTACK_WEBADMIN_SMTP_PORT`,
+`LIQUIDSTACK_WEBADMIN_SMTP_ENCRYPTION`,
+`LIQUIDSTACK_WEBADMIN_SMTP_USERNAME`,
+`LIQUIDSTACK_WEBADMIN_SMTP_PASSWORD`,
+`LIQUIDSTACK_WEBADMIN_MAIL_FROM_ADDRESS` y
+`LIQUIDSTACK_WEBADMIN_MAIL_FROM_NAME` para no romper instalaciones existentes.
+No es el contrato recomendado para instalaciones nuevas.
+
+La selección es cerrada y por bloque: si cualquier clave SMTP/FROM legacy está
+presente y no vacía, WebAdmin exige el conjunto legacy completo, incluido
+`LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`. Nunca rellena una clave legacy ausente con
+`MAIL_*`, ni mezcla host, credenciales o remitente de ambos espacios. El origen
+legacy aislado puede conservarse temporalmente como alias de Blog sin cambiar
+el transporte de correo. Para adoptar el contrato general se retiran las claves
+SMTP/FROM legacy después de verificar que el bloque `MAIL_*` canónico está
+completo. Los valores no se muestran en `doctor`, errores ni logs.
 
 ## Captura local tipada
 
@@ -57,12 +108,28 @@ LIQUIDSTACK_WEBADMIN_MAIL_FROM_NAME="Example WebAdmin dev"
 ```
 
 En este perfil el origen de los enlaces procede exclusivamente de `RAIZ`.
-`LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, `SMTP_ENCRYPTION`, `SMTP_USERNAME` y
-`SMTP_PASSWORD` deben quedar ausentes o vacíos. El cargador exige a la vez
+`LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`,
+`LIQUIDSTACK_WEBADMIN_SMTP_ENCRYPTION`,
+`LIQUIDSTACK_WEBADMIN_SMTP_USERNAME` y
+`LIQUIDSTACK_WEBADMIN_SMTP_PASSWORD` deben quedar ausentes o vacíos. El
+cargador exige a la vez
 `DEV_MODE=1`, una `RAIZ` HTTP loopback canónica y un host SMTP `127.0.0.1` o
 `[::1]`. Cualquier perfil de producción, origen remoto, credencial o petición de
 TLS lo invalida antes de abrir PDO o construir el transporte. El SMTP
 productivo mantiene obligatorios autenticación y STARTTLS/SMTPS.
+
+El capturador conserva deliberadamente sus claves dedicadas de host, puerto y
+remitente local. Un bloque general `MAIL_*` puede coexistir porque lo utilicen
+formularios, pero WebAdmin lo ignora por completo en `local_capture_smtp`: no
+puede convertir ese perfil en un relay remoto, activar autenticación ni añadir
+CC/BCC.
+
+Si una comprobación local necesita entrega externa real, se puede seleccionar
+explícitamente `LIQUIDSTACK_WEBADMIN_MAIL_TRANSPORT=smtp` con el bloque general
+completo, `DEV_MODE=1` y `RAIZ` loopback. El transporte conserva autenticación
+y TLS reales, pero el enlace enviado apunta a `localhost` y solo puede abrirse
+en la misma máquina. Este modo se limita a destinatarios controlados; Mailpit
+sigue siendo el default para QA sin efectos externos.
 
 Mailpit es el capturador recomendado, pero CORE solo depende del protocolo
 SMTP local y no instala ni arranca herramientas del sistema. Para evitar que

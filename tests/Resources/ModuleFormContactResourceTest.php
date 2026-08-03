@@ -314,6 +314,32 @@ final class ModuleFormContactResourceTest extends TestCase
             'PHPMailer\\PHPMailer\\PHPMailer',
             $mailer
         );
+        self::assertStringContainsString(
+            '$_ENV[\'MAIL_USERNAME\']',
+            $mailer
+        );
+        self::assertStringContainsString(
+            '$_ENV[\'MAIL_ENCRYPTION\']',
+            $mailer
+        );
+        self::assertStringContainsString(
+            '$mail->setFrom($mailUsername, $mailFromName, false)',
+            $mailer
+        );
+        self::assertStringContainsString(
+            '$mailAllowOperationalBcc === true',
+            $mailer
+        );
+        self::assertStringNotContainsString('$correoEmisor', $mailer);
+        self::assertStringNotContainsString('ErrorInfo', $mailer);
+        self::assertStringNotContainsString(
+            '$_ENV[\'MAIL_WEB\']',
+            $backend
+        );
+        self::assertStringContainsString(
+            '$mailAllowOperationalBcc = true',
+            $backend
+        );
         self::assertArrayHasKey('phpmailer/phpmailer', $composer['require']);
 
         foreach (['es', 'en', 'eu'] as $language) {

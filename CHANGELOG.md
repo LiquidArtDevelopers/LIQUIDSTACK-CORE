@@ -3,6 +3,28 @@
 Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://semver.org/lang/es/) a partir de la 1.0.0. Documenta cada release en esta cronología y añade instrucciones de actualización visibles para los proyectos cliente.
 
 ## [Unreleased]
+### Cambiado
+- El perfil `smtp` de WebAdmin comparte ahora el contrato general
+  `MAIL_HOST`, `MAIL_PORT`, `MAIL_ENCRYPTION`, `MAIL_USERNAME`,
+  `MAIL_PASSWORD` y `MAIL_FROM_NAME`. `MAIL_USERNAME` autentica y es también
+  la dirección `From` y `RAIZ` + `DEV_MODE` determinan el origen tipado de los
+  enlaces. Para no romper bloques generales anteriores, la ausencia de las
+  claves nuevas conserva únicamente `465 => smtps`, `587 => starttls` y
+  `EMISOR_NAME` como nombre visible si `MAIL_FROM_NAME` está ausente o vacío;
+  las instalaciones nuevas deben declarar ambas claves.
+  Los destinatarios `MAIL_ADMIN`, `MAIL_LAD` y `MAIL_LAD_BIS` continúan
+  limitados a formularios y nunca reciben por copia invitaciones o
+  recuperaciones. WebAdmin conserva su outbox, transporte endurecido y entrega
+  sin CC/BCC. `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` y el namespace dedicado
+  `LIQUIDSTACK_WEBADMIN_SMTP_*`/`LIQUIDSTACK_WEBADMIN_MAIL_FROM_*` quedan como
+  compatibilidad de bloque completo, sin mezcla por campos; el origen aislado
+  puede seguir como alias de Blog sin seleccionar por sí solo ese transporte.
+  `local_capture_smtp` mantiene intacto su contrato loopback sin auth ni TLS.
+- Los backends distribuidos `formContact.php` y `_phpmailer.php` pasan de
+  semilla inmutable a sincronización atómica por huella: CORE actualiza las
+  versiones históricas intactas y preserva como grupo cualquier
+  personalización local.
+
 ### Corregido
 - La imagen de portada de `article-cover-01` deja de cargarse de forma tardía:
   el renderer conserva `lazy` para imágenes de contenido y anchas, pero marca

@@ -156,11 +156,10 @@ if(isset($_POST)){
 
     //**** PHPMAILER ****
     //ADMIN
-    $correoEmisor= $_ENV['MAIL_WEB'];
-    $nombreEmisor =$_ENV['EMISOR_NAME']." (".$consulta_admin->tipo.")";
     $destinatario = $_ENV['MAIL_ADMIN'];
     $nombreDestinatario = $_ENV['EMISOR_NAME'];
     $asunto = $_ENV['EMISOR_NAME']." | ". $consulta_admin->asunto ." ". $nombre;
+    $mailAllowOperationalBcc = true;
     
     /*--------------------------------------
     _formContactAdmin
@@ -210,8 +209,6 @@ if(isset($_POST)){
 
     //**** PHPMAILER ****
     //USER
-    $correoEmisor= $_ENV['MAIL_WEB'];
-    $nombreEmisor =$_ENV['EMISOR_NAME']." (".$consulta_user->tipo.")";
     $destinatario = $correo;
     $nombreDestinatario = $nombre;
     $asunto = $_ENV['EMISOR_NAME'] ." | ". $consulta_user->asunto ." ". $nombre;
@@ -259,6 +256,8 @@ if(isset($_POST)){
     $cuerpo = render(__DIR__.'/../templates/_formContactUser.html', $pageVars);
 
     include __DIR__.'/_phpmailer.php';
+
+    unset($mailAllowOperationalBcc);
 
        
     sleep(2);

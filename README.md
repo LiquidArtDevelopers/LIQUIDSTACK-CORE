@@ -296,21 +296,46 @@ Guárdala solo en el gestor de secretos o `.env` no versionado. La directiva
 como en el SAPI que sirve la web; reinicia el proceso correspondiente tras
 cambiar `php.ini`.
 
-La entrega de invitaciones y recuperaciones requiere además:
+La entrega de invitaciones y recuperaciones usa el bloque SMTP general del
+proyecto en el perfil `smtp`:
 
-- `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`;
-- `LIQUIDSTACK_WEBADMIN_SMTP_HOST`;
-- `LIQUIDSTACK_WEBADMIN_SMTP_PORT`;
-- `LIQUIDSTACK_WEBADMIN_SMTP_ENCRYPTION` (`starttls` o `smtps`);
-- `LIQUIDSTACK_WEBADMIN_SMTP_USERNAME`;
-- `LIQUIDSTACK_WEBADMIN_SMTP_PASSWORD`;
-- `LIQUIDSTACK_WEBADMIN_MAIL_FROM_ADDRESS`;
-- `LIQUIDSTACK_WEBADMIN_MAIL_FROM_NAME`.
+```dotenv
+RAIZ=
+DEV_MODE=
+MAIL_HOST=
+MAIL_PORT=
+MAIL_ENCRYPTION=
+MAIL_USERNAME=
+MAIL_PASSWORD=
+MAIL_FROM_NAME=
+```
 
-El origen debe ser un origen HTTPS explícito; nunca se infiere de `Host` o
-cabeceras `Forwarded`. El dispatcher está pensado como tarea one-shot de cron o
-scheduler. Su contrato de leases, cinco intentos, backoff, entrega al menos una
-vez y redacción de tokens se documenta en
+`MAIL_USERNAME` es a la vez la identidad de autenticación y la dirección
+`From`; `MAIL_FROM_NAME` es su nombre visible. `MAIL_ENCRYPTION` debe declarar
+explícitamente `starttls` o `smtps` en proyectos nuevos. Para conservar stacks
+anteriores, si falta esa clave solo se reconocen `MAIL_PORT=465` como `smtps` y
+`MAIL_PORT=587` como `starttls`; si `MAIL_FROM_NAME` está ausente o vacío,
+puede usarse `EMISOR_NAME` como nombre visible. Cualquier otro caso incompleto
+falla cerrado.
+
+No se usan `MAIL_ADMIN`, `MAIL_LAD` o `MAIL_LAD_BIS` como credenciales,
+remitentes o copias: pertenecen a formularios. WebAdmin entrega cada mensaje
+solo al destinatario validado de su outbox y no añade CC/BCC.
+
+`RAIZ` es también el origen canónico de los enlaces: HTTPS fuera del laboratorio
+y HTTP únicamente con `DEV_MODE=1` y loopback canónico. Nunca se deriva de
+`Host` o cabeceras `Forwarded`. `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, el bloque
+dedicado anterior `LIQUIDSTACK_WEBADMIN_SMTP_*` y
+`LIQUIDSTACK_WEBADMIN_MAIL_FROM_*` se admiten únicamente como compatibilidad.
+La presencia no vacía de cualquier clave SMTP/FROM dedicada selecciona y exige
+el bloque legacy completo, incluido su origen; nunca se completa ni mezcla por
+campos con `MAIL_*`. Un `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` aislado que siga
+sirviendo como alias de Blog no selecciona por sí solo ese transporte. Las
+configuraciones nuevas deben usar el contrato general.
+
+El dispatcher está pensado como tarea one-shot de cron o scheduler. Su contrato
+de leases, cinco intentos, backoff, entrega al menos una vez y redacción de
+tokens se documenta en
 [correo y outbox de WebAdmin](docs/webadmin-mail-outbox.md).
 
 Para el laboratorio existe el perfil explícito
@@ -320,7 +345,15 @@ usa `RAIZ` para los enlaces y no admite TLS, autenticación ni origen legacy.
 Fuera de ese contrato falla antes de PDO y no modifica el SMTP productivo.
 CORE no instala el capturador ni imprime enlaces de credencial; Mailpit puede
 usarse como servicio externo ligado exclusivamente a loopback siguiendo la
-guía de correo.
+guía de correo. Este perfil conserva sus claves dedicadas de host, puerto y
+remitente local e ignora el bloque `MAIL_*` aunque exista para formularios.
+
+Cuando una prueba necesite entrega externa real, el laboratorio puede activar
+de forma explícita `LIQUIDSTACK_WEBADMIN_MAIL_TRANSPORT=smtp` con su bloque
+general, `DEV_MODE=1` y `RAIZ` loopback. El proveedor recibe el mensaje, pero
+el enlace `localhost` solo funciona en la misma máquina de desarrollo; debe
+usarse únicamente con cuentas controladas y no sustituye al perfil seguro por
+defecto de Mailpit.
 
 HTTP y CLI usan el mismo cargador: las variables inyectadas por el proceso
 tienen prioridad sobre `.env`, con independencia de `variables_order`, y las
@@ -484,10 +517,15 @@ Blog usa `RAIZ` como origen canónico: HTTPS en producción y HTTP solo cuando
 `DEV_MODE=1` y el origen es un loopback exacto. El anterior
 `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` se conserva como alias compatible, pero
 si difiere en producción se mantiene temporalmente para no cambiar URLs durante
-el update y `doctor` avisa hasta que se alinee con `RAIZ`. La `RAIZ` loopback
-prevalece en desarrollo. Blog no necesita que SMTP esté configurado. Después
-de activar el selector se deben revisar y aplicar las migraciones explícitas y
-volver a ejecutar el
+el update y `doctor` avisa hasta que se alinee con `RAIZ`. El alias aislado puede
+coexistir durante esa transición con `MAIL_*` y no selecciona por sí solo el
+correo legacy. Si existe además cualquier clave WebAdmin SMTP/FROM no vacía,
+se exige entonces el bloque anterior completo. Para adoptar el correo canónico
+se alinea primero `RAIZ` y se retiran las claves WebAdmin SMTP/FROM legacy. La
+`RAIZ` loopback prevalece en desarrollo. Blog no necesita que SMTP esté
+configurado.
+Después de activar el selector se deben revisar y aplicar las migraciones
+explícitas y volver a ejecutar el
 bootstrap idempotente de WebAdmin para garantizar las capacidades protegidas:
 
 ```bash
@@ -748,8 +786,7 @@ Por defecto envían el contrato legacy mediante `POST /form`:
 ```
 
 `App/config/routes/post.php` pertenece al proyecto y CORE no lo sobrescribe.
-El proyecto consumidor debe conservar esa entrada. El backend genérico se
-siembra desde CORE solo si no existe y utiliza:
+El proyecto consumidor debe conservar esa entrada. El backend genérico utiliza:
 
 - `App/app/formContact.php`
 - `App/app/_phpmailer.php`
@@ -757,23 +794,38 @@ siembra desde CORE solo si no existe y utiliza:
 - `App/config/languages/_email/{es,en,eu}.json`
 - `_formContactAdmin.html` y `_formContactUser.html`
 
+`formContact.php` y `_phpmailer.php` se sincronizan juntos por huella: una
+versión histórica intacta recibe las correcciones de CORE, mientras cualquier
+personalización local preserva ambos ficheros como una unidad. Las
+comprobaciones, catálogos y plantillas de correo continúan siendo semillas que
+solo se instalan cuando faltan.
+
 Configuración mínima en el `.env` del consumidor:
 
 ```dotenv
 MAIL_HOST=
+MAIL_PORT=
+MAIL_ENCRYPTION=
 MAIL_USERNAME=
 MAIL_PASSWORD=
-MAIL_PORT=465
-MAIL_WEB=
+MAIL_FROM_NAME=
 MAIL_ADMIN=
 EMISOR_NAME=
 DOMAIN=
 DOMAIN_URL=
 ```
 
-`MAIL_LAD` y `MAIL_LAD_BIS` son copias ocultas opcionales. Las credenciales,
-destinatarios, idiomas habilitados y plantillas personalizadas siguen siendo
-responsabilidad de cada proyecto.
+`MAIL_USERNAME` autentica contra SMTP y actúa como dirección `From`;
+`MAIL_FROM_NAME` es el nombre visible. `MAIL_ENCRYPTION` se declara como
+`starttls` o `smtps` en proyectos nuevos. Para stacks anteriores que aún no la
+declaren, solo `465` equivale a `smtps` y `587` a `starttls`; si
+`MAIL_FROM_NAME` está ausente o vacío, se conserva `EMISOR_NAME` como nombre
+visible. `MAIL_ADMIN` es el destinatario del formulario y
+`MAIL_LAD`/`MAIL_LAD_BIS` son copias ocultas opcionales: nunca son credenciales
+ni remitentes y WebAdmin no las consume. `MAIL_WEB` queda reservada a backends
+project-owned antiguos que aún dependan de ella y no debe usarse en
+integraciones nuevas. Las credenciales, destinatarios, idiomas habilitados y
+plantillas personalizadas siguen siendo responsabilidad de cada proyecto.
 
 Este backend conserva compatibilidad con el flujo existente. No debe
 considerarse todavía un sistema antispam endurecido: el reto aritmético se

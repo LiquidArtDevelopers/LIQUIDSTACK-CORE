@@ -188,13 +188,14 @@ final class WebAdminCredentialMailMessageFactory implements
             && str_ends_with($host, ']')
                 ? substr($host, 1, -1)
                 : $host;
+        $loopbackHttp = $scheme === 'http'
+            && in_array(
+                $comparisonHost,
+                ['localhost', '127.0.0.1', '::1'],
+                true
+            );
         $schemeAndHostAreValid = $configuration->isLocalCaptureSmtp()
-            ? $scheme === 'http'
-                && in_array(
-                    $comparisonHost,
-                    ['localhost', '127.0.0.1', '::1'],
-                    true
-                )
+            ? $loopbackHttp
                 && !$configuration->usesSmtpAuthentication()
                 && $configuration->smtpEncryption()
                     === WebAdminMailConfiguration::ENCRYPTION_NONE
@@ -204,7 +205,12 @@ final class WebAdminCredentialMailMessageFactory implements
                     true
                 )
             : $configuration->isProductionSmtp()
-                && $scheme === 'https'
+                && (
+                    $scheme === 'https'
+                    || $configuration->source()
+                        === WebAdminMailConfiguration::SOURCE_GENERAL_MAIL
+                        && $loopbackHttp
+                )
                 && $configuration->usesSmtpAuthentication()
                 && in_array($configuration->smtpEncryption(), [
                     WebAdminMailConfiguration::ENCRYPTION_STARTTLS,

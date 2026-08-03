@@ -219,6 +219,8 @@ final class ManagedFileManifestTest extends TestCase
         foreach ([
             'src/js/templates.js',
             'src/scss/templates.scss',
+            'stubs/App/app/_phpmailer.php',
+            'stubs/App/app/formContact.php',
             'stubs/App/app/updateLanguage.php',
             'stubs/App/app/url.php',
             'stubs/App/config/helpers.php',

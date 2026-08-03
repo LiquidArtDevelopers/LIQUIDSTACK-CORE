@@ -7,6 +7,30 @@ use PHPUnit\Framework\TestCase;
 
 final class ManagedFileRegistryTest extends TestCase
 {
+    public function testMailRuntimeUpdatesByHashButKeepsOtherSeedsProtected(): void
+    {
+        foreach ([
+            'stubs/App/app/_phpmailer.php',
+            'stubs/App/app/formContact.php',
+        ] as $sourceId) {
+            self::assertSame(
+                ManagedFileRegistry::POLICY_MANAGED,
+                ManagedFileRegistry::policyForSource($sourceId)
+            );
+            self::assertSame(
+                'runtime:mail',
+                ManagedFileRegistry::groupForSource($sourceId)
+            );
+        }
+
+        self::assertSame(
+            ManagedFileRegistry::POLICY_INSTALL_IF_MISSING,
+            ManagedFileRegistry::policyForSource(
+                'stubs/App/class/_comprobaciones.php'
+            )
+        );
+    }
+
     public function testTextFingerprintsIgnoreOnlyTrailingEofWhitespace(): void
     {
         $path = 'resources/scss/_sample.scss';
