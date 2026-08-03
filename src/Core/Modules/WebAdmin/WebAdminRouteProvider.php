@@ -228,6 +228,12 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
         $routes->add(
             self::moduleId(),
             'GET',
+            $prefix . '/password/forgot/unavailable',
+            [$this, 'forgotPasswordUnavailable']
+        );
+        $routes->add(
+            self::moduleId(),
+            'GET',
             $prefix . '/activate',
             [$this, 'activate']
         );
@@ -349,6 +355,11 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
     public function forgotPasswordSent(Request $request): Response
     {
         return $this->handle('forgotPasswordSent', $request);
+    }
+
+    public function forgotPasswordUnavailable(Request $request): Response
+    {
+        return $this->handle('forgotPasswordUnavailable', $request);
     }
 
     public function activate(Request $request): Response
@@ -489,6 +500,7 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
             'loginForm',
             'forgotPasswordForm',
             'forgotPasswordSent',
+            'forgotPasswordUnavailable',
             'inviteEditorForm',
             'usersUpdated',
             'actionUnavailable',

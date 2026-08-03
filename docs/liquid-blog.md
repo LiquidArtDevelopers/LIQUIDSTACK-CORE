@@ -576,6 +576,9 @@ Quedan expresamente para cortes posteriores:
 - redirecciones automáticas por cambio de slug;
 - traducción mediante IA y generación automática de variantes;
 - medidor SEO avanzado, Search Console e Indexing API;
+- suscripciones y notificaciones al publicar: requieren consentimiento,
+  campañas, un outbox por lotes y un scheduler futuro según el
+  [contrato pendiente](mejoras-pendientes/blog-notificaciones-suscriptores.md);
 - localización independiente de la interfaz WebAdmin;
 - edición HTML avanzada, saneada, auditable, restaurable y limitada a una
   capacidad específica;

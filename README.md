@@ -145,7 +145,9 @@ se sigue usando `composer update liquidstack/core`.
 El plugin expone los comandos operativos en los proyectos consumidores.
 `doctor`, `migrate --plan` y `migrate --dry-run` son de solo lectura;
 bootstrap, `migrate --apply` y `media:init` requieren confirmación explícita.
-El dispatcher de correo procesa un lote finito ya encolado:
+La recuperación de contraseña intenta entregar su mensaje de forma síncrona y
+no usa el outbox. El dispatcher de correo procesa únicamente un lote finito ya
+encolado por los flujos de invitación:
 
 ```bash
 composer liquidstack:doctor
@@ -320,7 +322,8 @@ falla cerrado.
 
 No se usan `MAIL_ADMIN`, `MAIL_LAD` o `MAIL_LAD_BIS` como credenciales,
 remitentes o copias: pertenecen a formularios. WebAdmin entrega cada mensaje
-solo al destinatario validado de su outbox y no añade CC/BCC.
+solo al destinatario validado por el flujo correspondiente —directo en una
+recuperación, desde el outbox en una invitación— y no añade CC/BCC.
 
 `RAIZ` es también el origen canónico de los enlaces: HTTPS fuera del laboratorio
 y HTTP únicamente con `DEV_MODE=1` y loopback canónico. Nunca se deriva de
@@ -333,10 +336,12 @@ campos con `MAIL_*`. Un `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` aislado que siga
 sirviendo como alias de Blog no selecciona por sí solo ese transporte. Las
 configuraciones nuevas deben usar el contrato general.
 
-El dispatcher está pensado como tarea one-shot de cron o scheduler. Su contrato
-de leases, cinco intentos, backoff, entrega al menos una vez y redacción de
-tokens se documenta en
-[correo y outbox de WebAdmin](docs/webadmin-mail-outbox.md).
+El dispatcher está preparado como tarea one-shot de un cron o scheduler
+futuro. CORE no provisiona hoy esa tarea: hasta que cada producción adopte el
+[pendiente operativo](docs/mejoras-pendientes/webadmin-mail-scheduler-produccion.md),
+las invitaciones se despachan de forma explícita. El contrato de leases, cinco
+intentos, backoff, entrega al menos una vez y redacción de tokens se documenta
+en [correo y outbox de WebAdmin](docs/webadmin-mail-outbox.md).
 
 Para el laboratorio existe el perfil explícito
 `LIQUIDSTACK_WEBADMIN_MAIL_TRANSPORT=local_capture_smtp`. Solo es válido con
@@ -1087,6 +1092,12 @@ Despues de publicar:
 
 ## Contratos y mejoras pendientes
 
+- [Scheduler de correo de WebAdmin en producción](docs/mejoras-pendientes/webadmin-mail-scheduler-produccion.md):
+  adopción futura y por proyecto del dispatcher one-shot para invitaciones;
+  la recuperación de contraseña ya es síncrona y no depende de esa cola.
+- [Notificaciones de Blog a suscriptores](docs/mejoras-pendientes/blog-notificaciones-suscriptores.md):
+  dominio expresamente fuera del MVP actual, con consentimiento, campañas,
+  outbox separado, lotes, límites, reintentos y cron futuro.
 - [Biblioteca de medios de WebAdmin](docs/mejoras-pendientes/webadmin-media-library.md):
   contrato ya implementado de uploads privados, AVIF responsive y consumo
   Blog, junto a los pendientes reales de ciclo de vida y nuevos formatos.

@@ -129,6 +129,11 @@ final class WebAdminHttpController
         return $this->credentials->forgotPasswordSent($request);
     }
 
+    public function forgotPasswordUnavailable(Request $request): Response
+    {
+        return $this->credentials->forgotPasswordUnavailable($request);
+    }
+
     public function activate(Request $request): Response
     {
         return $this->credentials->activate($request);

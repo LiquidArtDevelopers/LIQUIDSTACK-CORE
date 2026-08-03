@@ -14,12 +14,11 @@ use App\Core\Modules\ConfiguredModuleDatabaseConnectionResolver;
 use App\Core\Modules\WebAdmin\WebAdminHttpSchemaGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfigException;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
-use App\Core\WebAdmin\Mail\LocalCaptureSmtpWebAdminTransport;
-use App\Core\WebAdmin\Mail\PhpMailerWebAdminTransport;
 use App\Core\WebAdmin\Mail\WebAdminCredentialMailMessageFactory;
 use App\Core\WebAdmin\Mail\WebAdminMailConfiguration;
 use App\Core\WebAdmin\Mail\WebAdminMailConfigurationException;
 use App\Core\WebAdmin\Mail\WebAdminMailConfigurationLoader;
+use App\Core\WebAdmin\Mail\WebAdminMailTransportFactory;
 use App\Core\WebAdmin\Mail\WebAdminMailTransportInterface;
 use App\Core\WebAdmin\Outbox\WebAdminOutboxDispatcher;
 use App\Core\WebAdmin\Outbox\WebAdminOutboxRepository;
@@ -63,10 +62,10 @@ final class WebAdminMailDispatchCommandRuntimeFactory implements
                 )
             : Closure::fromCallable($connectionFactoryResolver);
         $this->transportResolver = $transportResolver === null
-            ? static fn (WebAdminMailConfiguration $configuration): WebAdminMailTransportInterface =>
-                $configuration->isLocalCaptureSmtp()
-                    ? new LocalCaptureSmtpWebAdminTransport($configuration)
-                    : new PhpMailerWebAdminTransport($configuration)
+            ? static fn (
+                WebAdminMailConfiguration $configuration
+            ): WebAdminMailTransportInterface =>
+                (new WebAdminMailTransportFactory())->create($configuration)
             : Closure::fromCallable($transportResolver);
         $this->databaseConnectionResolver = $databaseConnectionResolver
             ?? new ConfiguredModuleDatabaseConnectionResolver(

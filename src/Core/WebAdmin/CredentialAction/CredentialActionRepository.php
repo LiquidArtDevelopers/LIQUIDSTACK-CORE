@@ -436,38 +436,125 @@ final class CredentialActionRepository
         return is_array($row) ? $row : null;
     }
 
-    public function hasOpenPasswordResetOutbox(int $userId): bool
-    {
+    public function revokeLivePasswordResetTokens(
+        int $userId,
+        DateTimeImmutable $revokedAt
+    ): void {
         $statement = $this->prepare(
-            'SELECT id FROM ' . $this->tables->table('outbox') . ' '
-            . "WHERE user_id = :user_id AND kind = 'password_reset' "
-            . "AND status IN ('pending', 'processing') ORDER BY id LIMIT 1"
+            'SELECT id FROM ' . $this->tables->table('action_tokens') . ' '
+            . 'WHERE user_id = :user_id '
+            . "AND purpose = 'password_reset' AND used_at IS NULL "
+            . 'AND revoked_at IS NULL ORDER BY id' . $this->forUpdate()
         );
         $this->execute($statement, ['user_id' => $userId]);
-        $value = $statement->fetchColumn();
+        $ids = $statement->fetchAll(PDO::FETCH_COLUMN);
+        if (!is_array($ids)) {
+            throw new CredentialActionStorageException();
+        }
+        foreach ($ids as $id) {
+            $this->revokeActionSessionsForToken(
+                $this->positiveInteger($id),
+                $revokedAt
+            );
+        }
 
-        return $value !== false;
+        $statement = $this->prepare(
+            'UPDATE ' . $this->tables->table('action_tokens') . ' SET '
+            . 'revoked_at = :revoked_at WHERE user_id = :user_id '
+            . "AND purpose = 'password_reset' AND used_at IS NULL "
+            . 'AND revoked_at IS NULL'
+        );
+        $this->execute($statement, [
+            'revoked_at' => self::format($revokedAt),
+            'user_id' => $userId,
+        ]);
     }
 
-    public function insertPasswordResetOutbox(
+    public function insertPasswordResetActionToken(
         int $userId,
-        string $locale,
-        DateTimeImmutable $createdAt
-    ): void {
-        $timestamp = self::format($createdAt);
+        string $tokenHash,
+        int $authVersion,
+        DateTimeImmutable $createdAt,
+        DateTimeImmutable $expiresAt
+    ): int {
         $statement = $this->prepare(
-            'INSERT INTO ' . $this->tables->table('outbox') . ' '
-            . '(kind, user_id, locale, status, attempts, available_at, '
-            . 'locked_at, lock_token_hash, action_token_id, last_error_code, '
-            . "created_at, sent_at) VALUES ('password_reset', :user_id, "
-            . ":locale, 'pending', 0, :available_at, NULL, NULL, NULL, NULL, "
-            . ':created_at, NULL)'
+            'INSERT INTO ' . $this->tables->table('action_tokens') . ' '
+            . '(user_id, purpose, token_hash, auth_version, '
+            . 'created_by_user_id, created_at, expires_at, delivered_at, '
+            . 'used_at, revoked_at) VALUES '
+            . "(:user_id, 'password_reset', :token_hash, :auth_version, "
+            . 'NULL, :created_at, :expires_at, NULL, NULL, NULL)'
         );
         $this->execute($statement, [
             'user_id' => $userId,
-            'locale' => $locale,
-            'available_at' => $timestamp,
-            'created_at' => $timestamp,
+            'token_hash' => $tokenHash,
+            'auth_version' => $authVersion,
+            'created_at' => self::format($createdAt),
+            'expires_at' => self::format($expiresAt),
+        ]);
+        return $this->positiveInteger($this->pdo->lastInsertId());
+    }
+
+    public function markPasswordResetActionDelivered(
+        int $actionTokenId,
+        int $userId,
+        int $authVersion,
+        string $tokenHash,
+        DateTimeImmutable $deliveredAt
+    ): bool {
+        $statement = $this->prepare(
+            'UPDATE ' . $this->tables->table('action_tokens') . ' SET '
+            . 'delivered_at = :delivered_at WHERE id = :id '
+            . "AND user_id = :user_id AND purpose = 'password_reset' "
+            . 'AND auth_version = :auth_version AND token_hash = :token_hash '
+            . 'AND delivered_at IS NULL AND used_at IS NULL '
+            . 'AND revoked_at IS NULL AND expires_at > :expires_after'
+        );
+        $formatted = self::format($deliveredAt);
+        $this->execute($statement, [
+            'delivered_at' => $formatted,
+            'id' => $actionTokenId,
+            'user_id' => $userId,
+            'auth_version' => $authVersion,
+            'token_hash' => $tokenHash,
+            'expires_after' => $formatted,
+        ]);
+
+        return $statement->rowCount() === 1;
+    }
+
+    public function revokePasswordResetActionToken(
+        int $actionTokenId,
+        int $userId,
+        DateTimeImmutable $revokedAt
+    ): void {
+        $this->revokeActionSessionsForToken($actionTokenId, $revokedAt);
+        $statement = $this->prepare(
+            'UPDATE ' . $this->tables->table('action_tokens') . ' SET '
+            . 'revoked_at = :revoked_at WHERE id = :id '
+            . "AND user_id = :user_id AND purpose = 'password_reset' "
+            . 'AND used_at IS NULL AND revoked_at IS NULL'
+        );
+        $this->execute($statement, [
+            'revoked_at' => self::format($revokedAt),
+            'id' => $actionTokenId,
+            'user_id' => $userId,
+        ]);
+    }
+
+    private function revokeActionSessionsForToken(
+        int $actionTokenId,
+        DateTimeImmutable $revokedAt
+    ): void {
+        $statement = $this->prepare(
+            'UPDATE ' . $this->tables->table('sessions') . ' SET '
+            . 'revoked_at = :revoked_at '
+            . 'WHERE pending_action_token_id = :action_token_id '
+            . 'AND revoked_at IS NULL'
+        );
+        $this->execute($statement, [
+            'revoked_at' => self::format($revokedAt),
+            'action_token_id' => $actionTokenId,
         ]);
     }
 

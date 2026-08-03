@@ -12,10 +12,19 @@ autenticación, acciones de credencial y gestión de editores; todos comparten
 una única frontera de respuestas, cabeceras y cookies. Esta separación no
 cambia las rutas ni permite que una pantalla eluda la política común.
 
-Este corte incluye login, panel mínimo, logout, solicitud no enumerable de
+Este corte incluye login, panel mínimo, logout, solicitud genérica de
 recuperación, activación inicial mediante invitación y restablecimiento de
-contraseña. La entrega asíncrona se describe en
-[Correo y outbox de WebAdmin](webadmin-mail-outbox.md).
+contraseña. La recuperación entrega de forma síncrona y no usa cola; las
+invitaciones conservan el outbox y su dispatcher one-shot. Ambos contratos se
+describen en [Correo y outbox de WebAdmin](webadmin-mail-outbox.md).
+
+La respuesta ordinaria sigue siendo idéntica para una identidad ausente,
+inactiva, limitada o elegible cuyo correo se haya aceptado. Por decisión de
+producto, un fallo SMTP de una identidad elegible sí conduce a una pantalla
+genérica de reintento. No muestra correo ni diagnóstico técnico, pero esa
+distinción y el tiempo del transporte reducen la protección estricta frente a
+enumeración durante un fallo; este compromiso debe reevaluarse antes de una
+producción que exija indistinguibilidad total.
 
 Las pantallas de credenciales usan la familia canónica de recursos
 `artAuth01`, `moduleFormAuthLogin01`, `moduleFormAuthRecover01` y
@@ -98,7 +107,7 @@ configura `path => '/gestion'`, por ejemplo, `/admin` se sustituye por
 | `POST` | `/admin/login` | Autenticación con CSRF |
 | `POST` | `/admin/logout` | Revocación de sesión con CSRF |
 | `GET`/`HEAD` | `/admin/password/forgot` | Formulario de recuperación |
-| `POST` | `/admin/password/forgot` | Solicitud genérica no enumerable |
+| `POST` | `/admin/password/forgot` | Solicitud genérica y envío inmediato |
 | `GET`/`HEAD` | `/admin/password/forgot/sent` | Confirmación genérica |
 | `GET`/`HEAD` | `/admin/activate?token=…` | Vincular una invitación |
 | `GET`/`HEAD` | `/admin/activate` | Formulario de contraseña inicial |

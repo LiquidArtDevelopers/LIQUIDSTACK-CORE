@@ -261,6 +261,9 @@ final class WebAdminHttpControllerTest extends TestCase
             $this->controller->forgotPasswordSent(
                 $this->head('/admin/password/forgot/sent')
             ),
+            $this->controller->forgotPasswordUnavailable(
+                $this->head('/admin/password/forgot/unavailable')
+            ),
             $this->controller->actionUnavailable(
                 $this->head('/admin/action-unavailable')
             ),

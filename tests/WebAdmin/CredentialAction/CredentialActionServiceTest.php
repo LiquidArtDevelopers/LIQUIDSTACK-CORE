@@ -13,6 +13,8 @@ use App\Core\WebAdmin\CredentialAction\CredentialActionService;
 use App\Core\WebAdmin\CredentialAction\CredentialActionSessionSecrets;
 use App\Core\WebAdmin\CredentialAction\CredentialActionStorageException;
 use App\Core\WebAdmin\CredentialAction\PasswordResetRequestResult;
+use App\Core\WebAdmin\CredentialAction\PasswordResetDelivery;
+use App\Core\WebAdmin\Mail\PasswordResetMailSenderInterface;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Security\InvalidPassword;
 use App\Core\WebAdmin\Security\PasswordHasher;
@@ -33,6 +35,7 @@ final class CredentialActionServiceTest extends TestCase
     private PasswordHasher $hasher;
     private SecureTokenGenerator $tokens;
     private SecurityKey $securityKey;
+    private CredentialActionTestPasswordResetMailSender $mailSender;
     private CredentialActionService $service;
     private string $previousExceptionTraceSetting;
 
@@ -51,6 +54,9 @@ final class CredentialActionServiceTest extends TestCase
         $this->hasher = PasswordHasher::productive();
         $this->tokens = new SecureTokenGenerator();
         $this->securityKey = SecurityKey::fromRawBytes(str_repeat('C', 32));
+        $this->mailSender = new CredentialActionTestPasswordResetMailSender(
+            $this->pdo
+        );
         $this->service = $this->service();
     }
 
@@ -62,7 +68,7 @@ final class CredentialActionServiceTest extends TestCase
         );
     }
 
-    public function testPasswordResetRequestIsGenericAndQueuesOnlyEligibleIdentity(): void
+    public function testPasswordResetRequestSendsImmediatelyOnlyForEligibleIdentity(): void
     {
         $activeId = $this->seedUser('active@example.test', 'active');
         $this->seedUser('invited@example.test', 'invited');
@@ -86,28 +92,39 @@ final class CredentialActionServiceTest extends TestCase
 
         foreach ($results as $result) {
             self::assertTrue($result->accepted());
+            self::assertFalse($result->deliveryFailed());
             self::assertSame(
                 PasswordResetRequestResult::PUBLIC_MESSAGE,
                 $result->publicMessageCode()
             );
         }
-        $outbox = $this->pdo->query(
-            "SELECT kind, user_id, locale, status, action_token_id "
-            . "FROM ls_webadmin_outbox WHERE kind = 'password_reset'"
-        )->fetchAll(PDO::FETCH_ASSOC);
-        self::assertSame([[
-            'kind' => 'password_reset',
-            'user_id' => $activeId,
-            'locale' => 'es-ES',
-            'status' => 'pending',
-            'action_token_id' => null,
-        ]], $outbox);
+        self::assertSame(0, $this->countOutbox('password_reset'));
+        self::assertCount(1, $this->mailSender->deliveries);
+        self::assertFalse($this->mailSender->transactionObserved);
+        self::assertSame(
+            'active@example.test',
+            $this->mailSender->deliveries[0]->recipientEmail()
+        );
+        self::assertSame('es-ES', $this->mailSender->deliveries[0]->locale());
+        $firstAction = $this->actionById(
+            $this->mailSender->deliveries[0]->actionTokenId()
+        );
+        self::assertSame($activeId, $firstAction['user_id']);
+        self::assertNotNull($firstAction['delivered_at']);
+        self::assertNull($firstAction['revoked_at']);
 
         $this->service->requestPasswordReset(
             'active@example.test',
             '192.0.2.9'
         );
-        self::assertSame(1, $this->countOutbox('password_reset'));
+        self::assertSame(0, $this->countOutbox('password_reset'));
+        self::assertCount(2, $this->mailSender->deliveries);
+        self::assertNotNull($this->actionById(
+            $this->mailSender->deliveries[0]->actionTokenId()
+        )['revoked_at']);
+        self::assertNotNull($this->actionById(
+            $this->mailSender->deliveries[1]->actionTokenId()
+        )['delivered_at']);
         self::assertSame(count($cases) + 1, $this->tableCount('audit_log'));
 
         $persisted = json_encode([
@@ -138,11 +155,6 @@ final class CredentialActionServiceTest extends TestCase
             'limited@example.test',
             '198.51.100.4'
         );
-        $this->pdo->exec(
-            "UPDATE ls_webadmin_outbox SET status = 'sent', "
-            . "sent_at = '2026-08-01 06:00:00.000000' "
-            . "WHERE user_id = {$userId}"
-        );
         $second = $this->service->requestPasswordReset(
             'limited@example.test',
             '198.51.100.4'
@@ -152,7 +164,10 @@ final class CredentialActionServiceTest extends TestCase
             $first->publicMessageCode(),
             $second->publicMessageCode()
         );
-        self::assertSame(1, $this->countOutbox('password_reset'));
+        self::assertFalse($first->deliveryFailed());
+        self::assertFalse($second->deliveryFailed());
+        self::assertSame(0, $this->countOutbox('password_reset'));
+        self::assertCount(1, $this->mailSender->deliveries);
         $limits = $this->pdo->query(
             'SELECT action, subject_hash, attempts, blocked_until FROM '
             . 'ls_webadmin_rate_limits ORDER BY action'
@@ -182,7 +197,151 @@ final class CredentialActionServiceTest extends TestCase
             'limited@example.test',
             '198.51.100.4'
         );
-        self::assertSame(2, $this->countOutbox('password_reset'));
+        self::assertSame(0, $this->countOutbox('password_reset'));
+        self::assertCount(2, $this->mailSender->deliveries);
+        self::assertSame(
+            $userId,
+            $this->mailSender->deliveries[1]->userId()
+        );
+    }
+
+    public function testPasswordResetDeliveryFailureRevokesTokenAndReportsOnlyGenericState(): void
+    {
+        $this->seedUser('smtp-failure@example.test', 'active');
+        $this->mailSender->fail = true;
+
+        $result = $this->service->requestPasswordReset(
+            'smtp-failure@example.test',
+            '203.0.113.7'
+        );
+
+        self::assertTrue($result->accepted());
+        self::assertTrue($result->deliveryFailed());
+        self::assertSame(
+            PasswordResetRequestResult::PUBLIC_MESSAGE,
+            $result->publicMessageCode()
+        );
+        self::assertSame(0, $this->countOutbox('password_reset'));
+        self::assertCount(1, $this->mailSender->deliveries);
+        $action = $this->actionById(
+            $this->mailSender->deliveries[0]->actionTokenId()
+        );
+        self::assertNull($action['delivered_at']);
+        self::assertNotNull($action['revoked_at']);
+        self::assertNull($this->service->bindActionToken(
+            $this->mailSender->deliveries[0]->rawToken(),
+            CredentialActionService::PASSWORD_RESET
+        ));
+    }
+
+    public function testMissingMailSenderFailsOnlyEligibleRecoveryAndNeverQueues(): void
+    {
+        $this->seedUser('mail-unavailable@example.test', 'active');
+        $service = new CredentialActionService(
+            new CredentialActionRepository(
+                $this->pdo,
+                WebAdminTableNames::fromPdo($this->pdo, 'ls_webadmin_')
+            ),
+            new WebAdminConfig(
+                '/admin',
+                'ls_webadmin_',
+                'LS_WEBADMIN_SID',
+                300,
+                600,
+                'test'
+            ),
+            $this->securityKey,
+            $this->clock,
+            $this->uuids,
+            $this->hasher,
+            $this->tokens
+        );
+
+        $missing = $service->requestPasswordReset(
+            'absent@example.test',
+            '203.0.113.8'
+        );
+        $eligible = $service->requestPasswordReset(
+            'mail-unavailable@example.test',
+            '203.0.113.9'
+        );
+
+        self::assertFalse($missing->deliveryFailed());
+        self::assertTrue($eligible->deliveryFailed());
+        self::assertSame(0, $this->countOutbox('password_reset'));
+        self::assertSame(1, $this->tableCount('action_tokens'));
+        $action = $this->pdo->query(
+            'SELECT delivered_at, revoked_at FROM ls_webadmin_action_tokens'
+        )->fetch(PDO::FETCH_ASSOC);
+        self::assertIsArray($action);
+        self::assertNull($action['delivered_at']);
+        self::assertNotNull($action['revoked_at']);
+    }
+
+    public function testResetTokenCannotBeConsumedInsideTransportBeforeDeliveryAck(): void
+    {
+        $this->seedUser('ack-boundary@example.test', 'active');
+        $boundDuringSend = true;
+        $this->mailSender->onSend = function (
+            PasswordResetDelivery $delivery
+        ) use (
+            &$boundDuringSend
+        ): void {
+            $boundDuringSend = $this->service->bindActionToken(
+                $delivery->rawToken(),
+                CredentialActionService::PASSWORD_RESET
+            );
+        };
+
+        $result = $this->service->requestPasswordReset(
+            'ack-boundary@example.test',
+            '203.0.113.10'
+        );
+
+        self::assertFalse($result->deliveryFailed());
+        self::assertNull($boundDuringSend);
+        self::assertNotNull($this->service->bindActionToken(
+            $this->mailSender->deliveries[0]->rawToken(),
+            CredentialActionService::PASSWORD_RESET
+        ));
+    }
+
+    public function testDirectRecoveryLeavesLegacyOutboxRowUntouched(): void
+    {
+        $userId = $this->seedUser('legacy-outbox@example.test', 'active');
+        $timestamp = CredentialActionRepository::format($this->clock->now());
+        $statement = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_outbox '
+            . '(kind, user_id, locale, status, attempts, available_at, '
+            . 'created_at) VALUES '
+            . "('password_reset', :user_id, 'es', 'pending', 0, "
+            . ':available_at, :created_at)'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'available_at' => $timestamp,
+            'created_at' => $timestamp,
+        ]);
+        $outboxId = (int) $this->pdo->lastInsertId();
+
+        $result = $this->service->requestPasswordReset(
+            'legacy-outbox@example.test',
+            '203.0.113.11'
+        );
+
+        self::assertFalse($result->deliveryFailed());
+        self::assertSame(1, $this->countOutbox('password_reset'));
+        $outbox = $this->pdo->query(
+            'SELECT id, status, attempts, action_token_id, sent_at '
+            . 'FROM ls_webadmin_outbox'
+        )->fetch(PDO::FETCH_ASSOC);
+        self::assertSame([
+            'id' => $outboxId,
+            'status' => 'pending',
+            'attempts' => 0,
+            'action_token_id' => null,
+            'sent_at' => null,
+        ], $outbox);
     }
 
     public function testBindingStoresOnlyHashesUsesDistinctCsrfAndDoesNotConsumeToken(): void
@@ -870,7 +1029,8 @@ final class CredentialActionServiceTest extends TestCase
             $this->uuids,
             $this->hasher,
             $this->tokens,
-            $policy ?? new CredentialActionRateLimitPolicy()
+            $policy ?? new CredentialActionRateLimitPolicy(),
+            $this->mailSender
         );
     }
 
@@ -1110,6 +1270,33 @@ final class CredentialActionServiceTest extends TestCase
         );
         foreach ($migration->statementsFor('sqlite', $scope) as $sql) {
             self::assertNotFalse($pdo->exec($sql));
+        }
+    }
+}
+
+final class CredentialActionTestPasswordResetMailSender implements
+    PasswordResetMailSenderInterface
+{
+    /** @var list<PasswordResetDelivery> */
+    public array $deliveries = [];
+    public bool $fail = false;
+    public bool $transactionObserved = false;
+    public ?Closure $onSend = null;
+
+    public function __construct(private readonly PDO $pdo)
+    {
+    }
+
+    public function send(PasswordResetDelivery $delivery): void
+    {
+        $this->transactionObserved = $this->transactionObserved
+            || $this->pdo->inTransaction();
+        if ($this->onSend !== null) {
+            ($this->onSend)($delivery);
+        }
+        $this->deliveries[] = $delivery;
+        if ($this->fail) {
+            throw new RuntimeException('Sensitive SMTP diagnostic.');
         }
     }
 }

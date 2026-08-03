@@ -1344,6 +1344,7 @@
             "sha256:a4365a81ed2d706054d7fc1a25ab344f9237047254b2cb78e3eec58a5e390fd4"
         ],
         "stubs/App/controllers/hero03.php": [
+            "sha256:78fce85b80ab459bd86dc6c979ccb2e0664fdc07e8d204f6ea371cf99cdfd72b",
             "sha256:e4a04b1f8d04ea69d43f6dce111ac0738cd4720c07d87820298121d785b576b5"
         ],
         "stubs/App/controllers/hero04.php": [
@@ -1658,7 +1659,8 @@
             "sha256:f991d1b934d9bc1fb43a024a567ebd1cc6a47c3b88c024fd3737b0145af85d5d"
         ],
         "stubs/App/templates/_hero03.html": [
-            "sha256:0c0bb2051ff152f8093f123f64ac3631f3030970f6c64544ec21b60324491a31"
+            "sha256:0c0bb2051ff152f8093f123f64ac3631f3030970f6c64544ec21b60324491a31",
+            "sha256:d564bc9205484d89d9647e59f89a5655f9424f8042cb4b9e936861b53289abbd"
         ],
         "stubs/App/templates/_hero04.html": [
             "sha256:d624745fccf36f79f281250426c1993b0283dd718bc4f8c497f129f359b28a23"

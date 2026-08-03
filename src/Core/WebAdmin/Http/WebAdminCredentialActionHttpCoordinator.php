@@ -137,19 +137,22 @@ final class WebAdminCredentialActionHttpCoordinator
             $expireAuthCookie = true;
         }
 
-        $this->runtime->credentialActions()->requestPasswordReset(
+        // Consume the form session before contacting SMTP. A slow transport
+        // must not leave the same CSRF/session pair reusable for a second POST.
+        $this->runtime->authentication()->revokeSession($sessionToken);
+        $result = $this->runtime->credentialActions()->requestPasswordReset(
             (string) $request->form('email'),
             $request->clientIp() ?? '',
             $request->header('user-agent'),
             'und'
         );
-        // The form session is single-use at the HTTP boundary. Repetition
-        // starts from a new generic form and remains rate-limited in domain.
-        $this->runtime->authentication()->revokeSession($sessionToken);
 
         $response = $this->responses->withExpiredPreAuthenticationCookie(
             $this->responses->redirect(
-                $this->responses->rootPath() . '/password/forgot/sent'
+                $this->responses->rootPath()
+                    . ($result->deliveryFailed()
+                        ? '/password/forgot/unavailable'
+                        : '/password/forgot/sent')
             )
         );
 
@@ -170,6 +173,23 @@ final class WebAdminCredentialActionHttpCoordinator
         return $this->responses->html(
             200,
             $this->renderer->forgotPasswordSent(
+                $this->responses->rootPath()
+            )
+        );
+    }
+
+    public function forgotPasswordUnavailable(Request $request): Response
+    {
+        if (!$this->requestPolicy->acceptsSafeNavigation($request)) {
+            return $this->responses->plain(400, 'Bad request');
+        }
+        if ($request->method() === 'HEAD') {
+            return $this->responses->html(200, '');
+        }
+
+        return $this->responses->html(
+            200,
+            $this->renderer->forgotPasswordUnavailable(
                 $this->responses->rootPath()
             )
         );

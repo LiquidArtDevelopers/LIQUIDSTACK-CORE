@@ -1,10 +1,16 @@
 # Correo y outbox de WebAdmin
 
-WebAdmin entrega invitaciones y recuperaciones mediante un outbox
-transaccional y un comando CLI finito. Ningún request HTTP abre una conexión
-SMTP y `composer update` nunca envía correo. El bootstrap y la solicitud de
-recuperación solo crean trabajo `pending`; un scheduler ejecuta el dispatcher
-de forma separada.
+WebAdmin separa dos vías de entrega. La recuperación de contraseña intenta
+enviar su correo de forma síncrona desde la propia solicitud y no crea una fila
+en el outbox. Solo confirma el éxito en la UI cuando SMTP acepta el mensaje; si
+falla, muestra un error genérico y el usuario puede repetir la solicitud. No
+queda un correo pendiente de un comando manual o de un cron.
+
+Las invitaciones de bootstrap y de editores sí usan un outbox transaccional y
+un comando CLI finito. `composer update` nunca envía correo. CORE no instala
+actualmente un scheduler: hasta que cada producción implante el
+[scheduler pendiente](mejoras-pendientes/webadmin-mail-scheduler-produccion.md),
+el operador despacha esas invitaciones de forma explícita.
 
 ## Configuración SMTP productiva
 
@@ -44,10 +50,10 @@ consumidor. No deben colocarse en `App/config/modules/webadmin.php`, el
 repositorio, argumentos CLI, unidades de scheduler visibles o logs.
 
 `MAIL_ADMIN`, `MAIL_LAD` y `MAIL_LAD_BIS` son destinatarios propios de los
-formularios del proyecto. WebAdmin no los consulta: cada invitación o
-recuperación se dirige únicamente al destinatario validado que contiene su
-outbox, sin CC ni BCC. Ninguna de esas variables puede actuar como credencial
-SMTP, remitente o copia de un enlace de acceso.
+formularios del proyecto. WebAdmin no los consulta: cada invitación se dirige
+únicamente al destinatario validado de su outbox y cada recuperación al de la
+solicitud síncrona, siempre sin CC ni BCC. Ninguna de esas variables puede
+actuar como credencial SMTP, remitente o copia de un enlace de acceso.
 
 ### Compatibilidad con el bloque general anterior
 
@@ -140,11 +146,14 @@ con almacenamiento temporal y ambos listeners ligados a loopback:
 mailpit --smtp 127.0.0.1:1025 --listen 127.0.0.1:8025 --max 50 --max-age 24h --disable-version-check
 ```
 
-No se configura relay ni forwarding. Antes del dispatch se comprueba
-manualmente `http://127.0.0.1:8025`; después, una invocación explícita del
-comando entrega al capturador el mensaje que contiene el enlace. No existe un
-comando que imprima tokens: el valor bruto conserva su ciclo normal
-outbox/mensaje/ACK y nunca aparece en la salida CLI. Al volver a
+No se configura relay ni forwarding. Para probar invitaciones, antes del
+dispatch se comprueba manualmente `http://127.0.0.1:8025`; después, una
+invocación explícita del comando entrega al capturador el mensaje que contiene
+el enlace. La recuperación contacta el mismo capturador al enviar su formulario
+y no necesita ejecutar el comando. No existe una utilidad que imprima tokens:
+el valor bruto de una invitación conserva su ciclo outbox/mensaje/ACK y el de
+una recuperación solo vive durante su entrega síncrona. Ninguno aparece en la
+salida CLI. Al volver a
 `DEV_MODE=0`, aunque el resto de claves permanezca en un `.env` local, el
 dispatcher queda bloqueado.
 
@@ -157,9 +166,10 @@ composer liquidstack:doctor --format=json
 
 El informe separa `mail_ready` y `mail_blockers` de `runtime_ready` y
 `bootstrap_ready`. Una configuración de correo ausente no debe abrir el
-dispatcher, pero tampoco bloquea por sí sola el login o un bootstrap que solo
-encola trabajo. `mail_ready` valida el transporte, no sustituye el preflight
-completo: el comando exige además selector activo, entorno legible,
+dispatcher ni permite confirmar una recuperación síncrona, pero tampoco
+bloquea por sí sola el login o un bootstrap que solo encola invitaciones.
+`mail_ready` valida el transporte, no sustituye el preflight completo: el
+comando exige además selector activo, entorno legible,
 `zend.exception_ignore_args=On`, ruta efectiva segura, conexión PDO y esquema
 WebAdmin aplicado. Tampoco prueba que el proceso SMTP local o remoto esté
 escuchando; esa disponibilidad se verifica antes de consumir intentos del
@@ -176,7 +186,8 @@ composer liquidstack:webadmin:mail:dispatch --limit=20 --format=json
 `--limit` indica cuántas filas como máximo se examinan en esa ejecución. Su
 valor permitido es 1–100 y el default es 20. El comando es deliberadamente
 one-shot: procesa un lote y termina; no implementa un daemon ni espera entre
-reintentos.
+reintentos. Una recuperación de contraseña nueva no entra en este lote y
+nunca debe resolverse invocando el comando.
 
 Los códigos de salida son:
 
@@ -191,7 +202,13 @@ enviados, reintentos, fallos permanentes y resultados cercados. Un código `1`
 no autoriza a imprimir destinatarios, tokens, credenciales SMTP, DSN, SQL,
 excepciones internas ni respuestas del servidor de correo.
 
-## Programación one-shot
+## Programación one-shot futura
+
+CORE todavía no provisiona una tarea recurrente. El contrato operativo que se
+deberá implantar por proyecto está registrado como
+[mejora pendiente](mejoras-pendientes/webadmin-mail-scheduler-produccion.md).
+El siguiente ejemplo es orientativo para esa adopción futura, no un requisito
+ya automatizado por el paquete.
 
 Ejemplo orientativo para un scheduler Unix cada minuto, usando el ejecutable y
 la ruta reales del despliegue:
@@ -212,13 +229,14 @@ contadores seguros, alertar ante fallos repetidos y volver a invocar el comando
 en el siguiente intervalo; no debe construir un bucle infinito alrededor de
 una misma ejecución.
 
-## Entrega, reintentos y leases
+## Entrega, reintentos y leases del outbox
 
-Cada claim se confirma en DB antes de contactar SMTP. En ese momento se crea
-un token criptográfico de acción, se guarda solo su hash y el valor bruto vive
-únicamente en memoria el tiempo necesario para construir y enviar el mensaje.
-La invitación emitida es válida 72 horas; la recuperación de contraseña, 30
-minutos.
+Cada claim de invitación se confirma en DB antes de contactar SMTP. En ese
+momento se crea un token criptográfico de acción, se guarda solo su hash y el
+valor bruto vive únicamente en memoria el tiempo necesario para construir y
+enviar el mensaje. La invitación emitida es válida 72 horas. El enlace de
+recuperación síncrono conserva sus 30 minutos de validez, pero no participa en
+claims, leases ni reintentos del outbox.
 
 El worker dispone de un lease de 300 segundos. Su lock secreto y el contador
 de intento cercan el ACK y el registro de fallo: un worker atrasado no puede
@@ -243,7 +261,8 @@ contrato de retry sin almacenar su diagnóstico privado.
 
 ## Semántica de entrega: al menos una vez
 
-El outbox ofrece entrega **at-least-once**, no exactly-once. Existe una ventana
+El outbox de invitaciones ofrece entrega **at-least-once**, no exactly-once.
+Existe una ventana
 inevitable: SMTP puede aceptar el correo y el proceso puede caer antes de
 persistir el ACK `sent`. Al caducar el lease, otra ejecución reintentará y el
 destinatario podría recibir un duplicado.
@@ -279,11 +298,14 @@ No se manipulan manualmente hashes, locks o estados del outbox. Ante fallos:
    bloqueador indicado, sin copiar valores al informe;
 2. confirmar conectividad y política del proveedor SMTP fuera de los logs de
    aplicación;
-3. dejar que `available_at` y el scheduler gestionen los intentos pendientes;
+3. mientras el scheduler siga pendiente, volver a ejecutar el dispatcher
+   explícito cuando `available_at` permita otro intento;
 4. si una invitación bootstrap ya quedó `sent` sin activar o `failed` terminal,
    usar el reenvío explícito documentado en
    [Bootstrap inicial de WebAdmin](webadmin-bootstrap.md), y después despachar
    el nuevo lote.
 
 No se usa `--resend-invites` para saltarse el backoff de filas aún `pending` o
-`processing`, ni se reencola por SQL manual una recuperación de contraseña.
+`processing`. Una recuperación de contraseña fallida no se reencola ni se
+repara por SQL: la UI informa del fallo y el usuario inicia una solicitud
+nueva.

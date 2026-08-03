@@ -22,6 +22,7 @@ final class WebAdminHttpControllerFacadeTest extends TestCase
         'editEditor',
         'forgotPasswordForm',
         'forgotPasswordSent',
+        'forgotPasswordUnavailable',
         'inviteEditor',
         'inviteEditorForm',
         'login',

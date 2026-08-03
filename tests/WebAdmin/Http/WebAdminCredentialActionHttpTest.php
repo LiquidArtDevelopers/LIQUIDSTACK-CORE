@@ -12,8 +12,10 @@ use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\CredentialAction\CredentialActionRepository;
 use App\Core\WebAdmin\CredentialAction\CredentialActionService;
+use App\Core\WebAdmin\CredentialAction\PasswordResetDelivery;
 use App\Core\WebAdmin\Http\WebAdminHttpController;
 use App\Core\WebAdmin\Http\WebAdminHttpRuntime;
+use App\Core\WebAdmin\Mail\PasswordResetMailSenderInterface;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Security\PasswordHasher;
 use App\Core\WebAdmin\Security\SecureTokenGenerator;
@@ -34,6 +36,7 @@ final class WebAdminCredentialActionHttpTest extends TestCase
     private WebAdminConfig $config;
     private WebAdminAuthenticationService $authentication;
     private CredentialActionService $credentialActions;
+    private WebAdminCredentialHttpPasswordResetMailSender $mailSender;
     private WebAdminHttpController $controller;
     private string $previousExceptionTraceSetting;
 
@@ -90,6 +93,8 @@ final class WebAdminCredentialActionHttpTest extends TestCase
             $this->hasher,
             $this->tokens
         );
+        $this->mailSender =
+            new WebAdminCredentialHttpPasswordResetMailSender();
         $this->credentialActions = new CredentialActionService(
             new CredentialActionRepository($this->pdo, $tables),
             $this->config,
@@ -97,7 +102,8 @@ final class WebAdminCredentialActionHttpTest extends TestCase
             $this->clock,
             $uuids,
             $this->hasher,
-            $this->tokens
+            $this->tokens,
+            passwordResetMailSender: $this->mailSender
         );
         $this->controller = new WebAdminHttpController(
             new WebAdminHttpRuntime(
@@ -123,7 +129,7 @@ final class WebAdminCredentialActionHttpTest extends TestCase
         );
     }
 
-    public function testForgotPasswordUsesPreauthCsrfAndNeverEnumeratesIdentity(): void
+    public function testForgotPasswordUsesPreauthCsrfAndKeepsNormalOutcomesGeneric(): void
     {
         $this->seedUser('known@example.test', 'active');
 
@@ -142,6 +148,11 @@ final class WebAdminCredentialActionHttpTest extends TestCase
             'Lax'
         );
         $knownCsrf = $this->hiddenCsrf($knownForm->body());
+        $this->mailSender->onSend = function () use ($knownSession): void {
+            self::assertNotNull(
+                $this->sessionByToken($knownSession)['revoked_at']
+            );
+        };
 
         $wrongCookie = $this->controller->requestPasswordReset($this->post(
             '/admin/password/forgot',
@@ -174,7 +185,8 @@ final class WebAdminCredentialActionHttpTest extends TestCase
             'LS_WEBADMIN_PREAUTH',
             'Lax'
         );
-        self::assertSame(1, $this->tableCount('outbox'));
+        self::assertSame(0, $this->tableCount('outbox'));
+        self::assertCount(1, $this->mailSender->deliveries);
         self::assertNotNull($this->sessionByToken($knownSession)['revoked_at']);
 
         $missingForm = $this->controller->forgotPasswordForm(
@@ -200,7 +212,8 @@ final class WebAdminCredentialActionHttpTest extends TestCase
             $missing->headers()['Location']
         );
         self::assertSame($knownExpiredCookie, $this->onlyCookie($missing));
-        self::assertSame(1, $this->tableCount('outbox'));
+        self::assertSame(0, $this->tableCount('outbox'));
+        self::assertCount(1, $this->mailSender->deliveries);
         foreach (['known@example.test', 'absent@example.test'] as $email) {
             self::assertStringNotContainsString(
                 $email,
@@ -226,7 +239,62 @@ final class WebAdminCredentialActionHttpTest extends TestCase
             'LS_WEBADMIN_PREAUTH',
             'Lax'
         );
-        self::assertSame(1, $this->tableCount('outbox'));
+        self::assertSame(0, $this->tableCount('outbox'));
+    }
+
+    public function testPasswordResetTransportFailureShowsOnlyGenericRetryResult(): void
+    {
+        $this->seedUser('smtp-failure@example.test', 'active');
+        $this->mailSender->fail = true;
+        $form = $this->controller->forgotPasswordForm(
+            $this->get('/admin/password/forgot')
+        );
+        [$preauth] = $this->cookieFrom($form, 'LS_WEBADMIN_PREAUTH');
+
+        $failed = $this->controller->requestPasswordReset($this->post(
+            '/admin/password/forgot',
+            [
+                'csrf' => $this->hiddenCsrf($form->body()),
+                'email' => 'smtp-failure@example.test',
+            ],
+            ['LS_WEBADMIN_PREAUTH' => $preauth]
+        ));
+
+        self::assertSame(303, $failed->status());
+        self::assertSame(
+            '/admin/password/forgot/unavailable',
+            $failed->headers()['Location']
+        );
+        $this->assertExpiredSecureHostOnlyCookie(
+            $this->onlyCookie($failed),
+            'LS_WEBADMIN_PREAUTH',
+            'Lax'
+        );
+        self::assertSame(0, $this->tableCount('outbox'));
+        self::assertSame(1, $this->tableCount('action_tokens'));
+        $action = $this->pdo->query(
+            'SELECT delivered_at, revoked_at FROM ls_webadmin_action_tokens'
+        )->fetch(PDO::FETCH_ASSOC);
+        self::assertIsArray($action);
+        self::assertNull($action['delivered_at']);
+        self::assertNotNull($action['revoked_at']);
+
+        $result = $this->controller->forgotPasswordUnavailable(
+            $this->get('/admin/password/forgot/unavailable')
+        );
+        self::assertSame(200, $result->status());
+        $this->assertHtmlSecurityHeaders($result);
+        self::assertStringContainsString(
+            '/admin/password/forgot',
+            $result->body()
+        );
+        foreach ([
+            'smtp-failure@example.test',
+            'SMTP',
+            'Sensitive transport diagnostic',
+        ] as $detail) {
+            self::assertStringNotContainsString($detail, $result->body());
+        }
     }
 
     public function testCredentialLinkBindsToCleanUrlAndSeparateSecureCookie(): void
@@ -1073,6 +1141,26 @@ final class WebAdminCredentialActionHttpTest extends TestCase
         return (int) $this->pdo->query(
             'SELECT COUNT(*) FROM "ls_webadmin_' . $suffix . '"'
         )->fetchColumn();
+    }
+}
+
+final class WebAdminCredentialHttpPasswordResetMailSender implements
+    PasswordResetMailSenderInterface
+{
+    /** @var list<PasswordResetDelivery> */
+    public array $deliveries = [];
+    public bool $fail = false;
+    public ?Closure $onSend = null;
+
+    public function send(PasswordResetDelivery $delivery): void
+    {
+        if ($this->onSend !== null) {
+            ($this->onSend)();
+        }
+        $this->deliveries[] = $delivery;
+        if ($this->fail) {
+            throw new RuntimeException('Sensitive transport diagnostic.');
+        }
     }
 }
 

@@ -14,10 +14,14 @@ use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Http\WebAdminHttpRuntime;
 use App\Core\WebAdmin\Http\WebAdminHttpRuntimeException;
 use App\Core\WebAdmin\Http\WebAdminHttpRuntimeFactory;
+use App\Core\WebAdmin\Mail\WebAdminMailConfiguration;
+use App\Core\WebAdmin\Mail\WebAdminMailMessage;
+use App\Core\WebAdmin\Mail\WebAdminMailTransportInterface;
 use App\Core\WebAdmin\Media\Http\WebAdminMediaHttpRuntime;
 use App\Core\WebAdmin\Media\Http\WebAdminMediaHttpRuntimeException;
 use App\Core\WebAdmin\Media\Http\WebAdminMediaHttpRuntimeFactory;
 use App\Core\WebAdmin\Media\PrivateMediaStorage;
+use App\Core\WebAdmin\Security\PasswordHasher;
 use App\Core\WebAdmin\UserManagement\ActiveModuleSet;
 use App\Core\WebAdmin\UserManagement\UserManagementService;
 use PHPUnit\Framework\TestCase;
@@ -32,6 +36,18 @@ final class HttpRuntimePdoFactory implements PdoConnectionFactoryInterface
     public function connect(): PDO
     {
         return $this->pdo;
+    }
+}
+
+final class HttpRuntimeRecordingMailTransport implements
+    WebAdminMailTransportInterface
+{
+    /** @var list<WebAdminMailMessage> */
+    public array $messages = [];
+
+    public function send(WebAdminMailMessage $message): void
+    {
+        $this->messages[] = $message;
     }
 }
 
@@ -313,6 +329,116 @@ final class WebAdminHttpRuntimeFactoryTest extends TestCase
         }
     }
 
+    public function testMissingAndInvalidSmtpNeverBlockTheHttpRuntime(): void
+    {
+        $this->applyMigrations();
+        $transportResolverCalls = 0;
+        $factory = new WebAdminHttpRuntimeFactory(
+            coreRoot: dirname(__DIR__, 3),
+            connectionFactoryResolver: fn (): PdoConnectionFactoryInterface =>
+                new HttpRuntimePdoFactory($this->pdo),
+            mailTransportResolver: static function () use (
+                &$transportResolverCalls
+            ): WebAdminMailTransportInterface {
+                ++$transportResolverCalls;
+                throw new RuntimeException(
+                    'The transport resolver must not receive invalid mail.'
+                );
+            }
+        );
+        $invalid = $this->validSmtpEnvironment();
+        $invalid[WebAdminMailConfiguration::GENERAL_SMTP_PORT_ENV] =
+            'private-invalid-port-value';
+
+        foreach ([$this->environment(), $invalid] as $environment) {
+            $runtime = $factory->create(
+                new ModuleRuntimeContext($this->projectRoot, $environment),
+                WebAdminConfig::defaults()
+            );
+
+            self::assertInstanceOf(WebAdminHttpRuntime::class, $runtime);
+            self::assertSame(
+                WebAdminConfig::DEFAULT_COOKIE_NAME,
+                $runtime->config()->cookieName()
+            );
+        }
+
+        self::assertSame(0, $transportResolverCalls);
+    }
+
+    public function testValidSmtpComposesOneImmediateResetMessageWithoutOutbox(): void
+    {
+        $this->applyMigrations();
+        $this->seedActiveUser('reset-owner@example.test');
+        $transport = new HttpRuntimeRecordingMailTransport();
+        $transportResolverCalls = 0;
+        $factory = new WebAdminHttpRuntimeFactory(
+            coreRoot: dirname(__DIR__, 3),
+            connectionFactoryResolver: fn (): PdoConnectionFactoryInterface =>
+                new HttpRuntimePdoFactory($this->pdo),
+            mailTransportResolver: static function (
+                WebAdminMailConfiguration $configuration
+            ) use (
+                $transport,
+                &$transportResolverCalls
+            ): WebAdminMailTransportInterface {
+                ++$transportResolverCalls;
+                self::assertSame(
+                    WebAdminMailConfiguration::SOURCE_GENERAL_MAIL,
+                    $configuration->source()
+                );
+
+                return $transport;
+            }
+        );
+        $runtime = $factory->create(
+            new ModuleRuntimeContext(
+                $this->projectRoot,
+                $this->validSmtpEnvironment()
+            ),
+            WebAdminConfig::defaults()
+        );
+
+        $result = $runtime->credentialActions()->requestPasswordReset(
+            'reset-owner@example.test',
+            '192.0.2.60',
+            'Factory integration test',
+            'es-ES'
+        );
+
+        self::assertFalse($result->deliveryFailed());
+        self::assertSame(1, $transportResolverCalls);
+        self::assertCount(1, $transport->messages);
+        $message = $transport->messages[0];
+        self::assertInstanceOf(WebAdminMailMessage::class, $message);
+        self::assertSame(
+            'reset-owner@example.test',
+            $message->recipientEmail()
+        );
+        self::assertStringContainsString(
+            'http://localhost:1309/admin/password/reset?token=',
+            $message->textBody()
+        );
+        self::assertSame(0, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_webadmin_outbox'
+        )->fetchColumn());
+
+        self::assertSame(1, preg_match(
+            '#/admin/password/reset\?token=([A-Za-z0-9_-]{43})#',
+            $message->textBody(),
+            $matches
+        ));
+        $action = $this->pdo->query(
+            "SELECT purpose, token_hash, delivered_at, revoked_at "
+            . "FROM ls_webadmin_action_tokens"
+        )->fetch(PDO::FETCH_ASSOC);
+        self::assertIsArray($action);
+        self::assertSame('password_reset', $action['purpose']);
+        self::assertSame(hash('sha256', $matches[1]), $action['token_hash']);
+        self::assertNotNull($action['delivered_at']);
+        self::assertNull($action['revoked_at']);
+    }
+
     public function testMediaRuntimeRequiresExplicitlyInitializedStorage(): void
     {
         $this->applyMigrations();
@@ -367,6 +493,69 @@ final class WebAdminHttpRuntimeFactoryTest extends TestCase
         ), '=');
 
         return [WebAdminHttpRuntimeFactory::SECURITY_KEY_ENV => $key];
+    }
+
+    /** @return array<string, string> */
+    private function validSmtpEnvironment(): array
+    {
+        return $this->environment() + [
+            'RAIZ' => 'http://localhost:1309',
+            'DEV_MODE' => '1',
+            WebAdminMailConfiguration::TRANSPORT_ENV =>
+                WebAdminMailConfiguration::TRANSPORT_SMTP,
+            WebAdminMailConfiguration::GENERAL_SMTP_HOST_ENV =>
+                'smtp.example.test',
+            WebAdminMailConfiguration::GENERAL_SMTP_PORT_ENV => '465',
+            WebAdminMailConfiguration::GENERAL_SMTP_ENCRYPTION_ENV =>
+                'smtps',
+            WebAdminMailConfiguration::GENERAL_SMTP_USERNAME_ENV =>
+                'no-reply@example.test',
+            WebAdminMailConfiguration::GENERAL_SMTP_PASSWORD_ENV =>
+                'test-password-never-used',
+            WebAdminMailConfiguration::GENERAL_FROM_NAME_ENV =>
+                'LiquidStack test',
+        ];
+    }
+
+    private function seedActiveUser(string $email): int
+    {
+        $timestamp = (new DateTimeImmutable(
+            'now',
+            new DateTimeZone('UTC')
+        ))->format('Y-m-d H:i:s.u');
+        $statement = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_users '
+            . '(public_id, email_canonical, status, auth_version, invited_at, '
+            . 'activated_at, suspended_at, created_at, updated_at) VALUES '
+            . '(:public_id, :email, \'active\', 1, :invited_at, '
+            . ':activated_at, NULL, :created_at, :updated_at)'
+        );
+        $statement->execute([
+            'public_id' => '74000000-0000-4000-8000-000000000001',
+            'email' => $email,
+            'invited_at' => $timestamp,
+            'activated_at' => $timestamp,
+            'created_at' => $timestamp,
+            'updated_at' => $timestamp,
+        ]);
+        $userId = (int) $this->pdo->lastInsertId();
+        $credential = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_credentials '
+            . '(user_id, password_hash, password_set_at, created_at, '
+            . 'updated_at) VALUES (:user_id, :password_hash, '
+            . ':password_set_at, :created_at, :updated_at)'
+        );
+        $credential->execute([
+            'user_id' => $userId,
+            'password_hash' => PasswordHasher::productive()->hash(
+                'Factory integration password'
+            ),
+            'password_set_at' => $timestamp,
+            'created_at' => $timestamp,
+            'updated_at' => $timestamp,
+        ]);
+
+        return $userId;
     }
 
     private function liquidStackWebAdminConfig(): WebAdminConfig

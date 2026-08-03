@@ -720,7 +720,9 @@ final class ModuleDoctor
             )
             : DiagnosticCheck::warning(
                 'webadmin.environment.mail',
-                'El correo WebAdmin no está preparado; login sigue disponible, pero invitaciones y recuperaciones no podrán despacharse.'
+                'El correo WebAdmin no está preparado; login sigue '
+                . 'disponible, pero las invitaciones no podrán despacharse '
+                . 'y una recuperación elegible fallará de forma genérica.'
             );
 
         $phpSecurity = $payload['environment']['php_security'] ?? [];

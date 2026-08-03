@@ -78,8 +78,9 @@ panel no debe exponerse hasta que el runtime HTTP esté listo.
 
 El bootstrap solo **encola** las invitaciones. Para crearlas, enviarlas y
 marcarlas como entregadas hay que ejecutar después el dispatcher. En producción
-se programa como tarea one-shot recurrente; véase
-[Correo y outbox de WebAdmin](webadmin-mail-outbox.md).
+se invoca actualmente de forma explícita; su programación recurrente sigue el
+[scheduler pendiente](mejoras-pendientes/webadmin-mail-scheduler-produccion.md).
+Véase también [Correo y outbox de WebAdmin](webadmin-mail-outbox.md).
 
 ## Reenvío explícito de invitaciones iniciales
 

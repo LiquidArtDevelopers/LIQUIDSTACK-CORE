@@ -1,9 +1,9 @@
 <?php
 /**
  * Directrices de copy para hero03:
- * - Contenido {hero03-content}: logo + H2 centrado.
- * - H2: 3-7 palabras.
- * - Texto frontal: 2-4 palabras, muy breve (H1).
+ * - Contenido {hero03-content}: logo + H1 centrado.
+ * - H1: 3-7 palabras.
+ * - Texto frontal decorativo: 2-4 palabras, muy breve.
  * - Imagen: alt/title 4-10 palabras descriptivas.
  */
 function controller_hero03(int $i = 0, array $params = []): string
@@ -89,7 +89,7 @@ function controller_hero03(int $i = 0, array $params = []): string
 
     $brandHtml = '<div class="hero03-brand">'
         . '<img class="hero03-logo" data-lang="' . $logoKey . '" src="' . $logoSrc . '" alt="' . $logoAlt . '" title="' . $logoTitle . '" loading="eager" decoding="async">'
-        . '<h2 class="hero03-title" data-lang="' . $titleKey . '">' . $titleText . '</h2>'
+        . '<h1 class="hero03-title" data-lang="' . $titleKey . '">' . $titleText . '</h1>'
         . '</div>';
 
     $vars = [
@@ -99,7 +99,6 @@ function controller_hero03(int $i = 0, array $params = []): string
         '{col-count}'      => (string) $itemsCount,
         '{front-text-dl}'  => $frontKey,
         '{front-text}'     => $frontHtml,
-        '{front-text-plain}' => $frontText,
         '{bg-dl}'          => $bgKey,
         '{bg-src}'         => $bgSrc,
         '{bg-alt}'         => $bgAlt,

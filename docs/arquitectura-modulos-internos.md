@@ -357,7 +357,9 @@ general `MAIL_*` sin mostrar valores; conserva como unidad indivisible el
 namespace WebAdmin anterior para instalaciones que aún no lo hayan migrado.
 Que el transporte no esté listo bloquea el dispatcher del outbox, pero no
 convierte por sí solo en no disponible el login ni el bootstrap que únicamente
-encola invitaciones.
+encola invitaciones. La recuperación de contraseña usa el mismo contrato SMTP
+en una entrega síncrona sin outbox; si el transporte no confirma el mensaje,
+la UI informa de un fallo genérico y permite repetir la solicitud.
 
 La readiness de medios es otro eje independiente y no bloquea el runtime base
 de WebAdmin. Tras aplicar `0002_webadmin_media_library`, el operador ejecuta
@@ -430,11 +432,18 @@ solo valida el registro exacto de migraciones y semillas operativas acotadas;
 la auditoría exhaustiva del DDL permanece en `doctor` y
 `migrate --dry-run`.
 
-El runtime implementa login, logout, panel mínimo, solicitud no enumerable de
+El runtime implementa login, logout, panel mínimo, solicitud genérica de
 recuperación, activación y restablecimiento. Separa cookies autenticada,
 preautenticada y de acción; la primera navegación con token se vincula y usa
-un `303` hacia una URL sin query. La entrega se ejecuta fuera de HTTP mediante
-un outbox y un comando one-shot con lease, fencing y reintentos acotados. Los
+un `303` hacia una URL sin query. La recuperación intenta entregar el correo
+de forma síncrona y no lo encola. Las invitaciones se ejecutan fuera de HTTP
+mediante un outbox y un comando one-shot con lease, fencing y reintentos
+acotados; su scheduler de producción sigue
+[pendiente](mejoras-pendientes/webadmin-mail-scheduler-produccion.md). Los
+resultados ordinarios de recuperación no revelan el estado de la identidad;
+la pantalla distinta solicitada para un fallo SMTP elegible constituye un
+compromiso explícito frente a enumeración estricta y nunca incluye detalles
+técnicos ni el correo. Los
 contratos operativos completos están en
 [autenticación](webadmin-authentication.md),
 [bootstrap](webadmin-bootstrap.md) y

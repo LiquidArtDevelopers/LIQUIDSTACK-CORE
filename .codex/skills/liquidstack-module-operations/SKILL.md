@@ -106,10 +106,11 @@ return [
   fallar cerrado. No inferir host, puerto, dirección remitente ni credenciales,
   y nunca derivar el origen de `Host` o cabeceras `Forwarded`.
 - Tratar `MAIL_ADMIN`, `MAIL_LAD` y `MAIL_LAD_BIS` exclusivamente como
-  destinatarios de formularios. WebAdmin obtiene el único destinatario de
-  cada mensaje desde su outbox y no añade CC/BCC; esas variables no pueden
-  autenticar SMTP, definir el remitente ni recibir invitaciones o enlaces de
-  recuperación por copia.
+  destinatarios de formularios. WebAdmin obtiene el destinatario de la
+  identidad canónica validada —desde el outbox para invitaciones y desde la
+  solicitud elegible para recuperación— y no añade CC/BCC; esas variables no
+  pueden autenticar SMTP, definir el remitente ni recibir invitaciones o
+  enlaces de recuperación por copia.
 - Admitir `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`, el bloque dedicado
   `LIQUIDSTACK_WEBADMIN_SMTP_*` y `LIQUIDSTACK_WEBADMIN_MAIL_FROM_*` solo como
   compatibilidad del perfil `smtp`. Si cualquier clave SMTP/FROM legacy está
@@ -159,10 +160,11 @@ composer liquidstack:migrate --dry-run
   separado de `bootstrap_ready` (incluye los dos correos, pero no la clave
   HTTP).
 - Entender `mail_ready` y `mail_blockers` como un eje adicional: una
-  configuración SMTP ausente bloquea el dispatcher, no el login ni el
-  bootstrap que solo encola trabajo. `mail_ready` valida configuración, no
-  conectividad; comprobar que el capturador local escucha antes del dispatch
-  para no consumir un intento del outbox.
+  configuración SMTP ausente bloquea el dispatcher y hace fallar de forma
+  genérica una recuperación elegible, pero no el login ni el bootstrap que
+  solo encola trabajo. `mail_ready` valida configuración, no conectividad;
+  comprobar que el capturador local escucha antes de probar cualquiera de los
+  dos flujos.
 - Usar `--plan` para revisar el catálogo sin conexión y `--dry-run` para
   comprobar el estado real de la DB sin escribir.
 - Tratar `--plan` como un preflight exclusivamente de metadatos modulares y de
@@ -204,9 +206,12 @@ composer liquidstack:migrate --dry-run
    `liquidstack:webadmin:mail:dispatch`. `--apply`, `media:init` y bootstrap
    exigen sus propias confirmaciones; el dispatch es una invocación explícita
    con efecto SMTP y bootstrap únicamente encola invitaciones.
-2. Programar `liquidstack:webadmin:mail:dispatch` como tarea one-shot
-   recurrente, con `--limit` entre 1 y 100. No convertirlo en daemon ni
-   registrar destinatarios, tokens o diagnósticos SMTP.
+2. Mientras no exista scheduler de producción, ejecutar el dispatcher
+   manualmente cuando haya invitaciones pendientes. El cron futuro será una
+   tarea one-shot por proyecto con `--limit` entre 1 y 100; no instalarlo desde
+   Composer, convertirlo en daemon ni registrar destinatarios, tokens o
+   diagnósticos SMTP. Seguir
+   `docs/mejoras-pendientes/webadmin-mail-scheduler-produccion.md`.
 3. Asumir entrega al menos una vez: una caída después de que SMTP acepte el
    mensaje y antes del ACK puede causar un duplicado. No alterar manualmente
    locks, hashes ni estados para simular exactly-once.
@@ -217,6 +222,14 @@ composer liquidstack:migrate --dry-run
 5. Redaccionar el parámetro `token` de `/activate` y `/password/reset` en los
    access logs del edge, servidor web y APM. El `303` limpia la navegación
    posterior, no el log de la primera petición.
+6. La recuperación de contraseña es síncrona: crea el token, cierra la
+   transacción, intenta exactamente un envío SMTP y solo después marca el
+   enlace como entregado. Nunca crea una fila de outbox. Si el transporte no
+   confirma el envío, revoca el token y ofrece una pantalla genérica de
+   reintento sin correo, host, causa ni diagnóstico técnico. Esa respuesta
+   diferenciada y el tiempo SMTP reducen la no enumeración estricta durante
+   fallos; no describir el flujo como completamente indistinguible y unificar
+   resultados si un proyecto productivo exige esa propiedad.
 
 ## Gestionar editores
 
@@ -360,6 +373,12 @@ composer liquidstack:migrate --dry-run
   claves WebAdmin SMTP/FROM legacy. En local debe prevalecer la `RAIZ`
   loopback. No derivar el origen de `Host`, `Forwarded` ni del request. Blog no
   debe depender de que el transporte SMTP esté listo.
+- Mantener fuera del MVP las notificaciones de nuevas publicaciones a
+  suscriptores. Cuando se implemente, usar campañas y outbox propios de Blog,
+  consentimiento auditable, bajas, lotes acotados, límites, reintentos y un
+  cron one-shot por proyecto para no saturar SMTP; nunca enviar el lote dentro
+  del POST de publicación ni reutilizar el flujo síncrono de recuperación.
+  Seguir `docs/mejoras-pendientes/blog-notificaciones-suscriptores.md`.
 - Aplicar en orden `doctor`, `migrate --plan`, `migrate --dry-run`, backup
   recuperable de DB y storage, autorización expresa, `migrate --apply`,
   `media:init`, `webadmin:bootstrap`, un segundo `doctor` y QA HTTP. No confundir

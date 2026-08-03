@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\WebAdmin\CredentialAction;
 
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
+use App\Core\WebAdmin\Mail\PasswordResetMailSenderInterface;
 use App\Core\WebAdmin\Security\ConstantTime;
 use App\Core\WebAdmin\Security\EmailAddress;
 use App\Core\WebAdmin\Security\ExceptionTraceGuard;
@@ -18,6 +19,7 @@ use App\Core\WebAdmin\Support\WebAdminLocale;
 use DateTimeImmutable;
 use DateTimeZone;
 use InvalidArgumentException;
+use Throwable;
 
 /**
  * Credential recovery/activation domain, isolated from login sessions.
@@ -48,7 +50,9 @@ final class CredentialActionService
         private readonly SecureTokenGenerator $tokenGenerator =
             new SecureTokenGenerator(),
         private readonly CredentialActionRateLimitPolicy $rateLimitPolicy =
-            new CredentialActionRateLimitPolicy()
+            new CredentialActionRateLimitPolicy(),
+        private readonly ?PasswordResetMailSenderInterface
+            $passwordResetMailSender = null
     ) {
         ExceptionTraceGuard::assertEnabled();
         $this->passwordHasher = $passwordHasher
@@ -64,9 +68,9 @@ final class CredentialActionService
     }
 
     /**
-     * Always returns the exact same public result. Only an eligible active
-     * identity can gain an outbox entry; invalid, absent, suspended, invited,
-     * duplicate and rate-limited requests remain indistinguishable.
+     * Invalid, absent, suspended, invited and rate-limited identities remain
+     * indistinguishable. An eligible identity gets one short-lived token and
+     * one immediate SMTP attempt; this path never creates outbox work.
      */
     public function requestPasswordReset(
         #[\SensitiveParameter] string $email,
@@ -88,14 +92,14 @@ final class CredentialActionService
         $userAgentHash = $this->userAgentSubjectHash($userAgent);
         $safeLocale = $this->safeLocale($locale);
 
-        $this->repository->transaction(function () use (
+        $delivery = $this->repository->transaction(function () use (
             $canonicalEmail,
             $identifierHash,
             $ipHash,
             $userAgentHash,
             $safeLocale,
             $now
-        ): void {
+        ): ?PasswordResetDelivery {
             $identifierLimit = $this->readRateLimit(
                 self::RESET_IDENTIFIER_ACTION,
                 $identifierHash,
@@ -129,18 +133,39 @@ final class CredentialActionService
             );
             $eligible = !$limited && $this->isResetRequestEligible($user);
             $targetPublicId = null;
+            $delivery = null;
             if ($eligible) {
                 $userId = $this->positiveInteger($user['user_id'] ?? null);
+                $authVersion = $this->positiveInteger(
+                    $user['user_auth_version'] ?? null
+                );
                 $targetPublicId = $this->uuidValue(
                     $user['user_public_id'] ?? null
                 );
-                if (!$this->repository->hasOpenPasswordResetOutbox($userId)) {
-                    $this->repository->insertPasswordResetOutbox(
+                $rawToken = $this->tokenGenerator->generate();
+                $this->repository->revokeLivePasswordResetTokens(
+                    $userId,
+                    $now
+                );
+                $actionTokenId =
+                    $this->repository->insertPasswordResetActionToken(
                         $userId,
-                        $safeLocale,
-                        $now
+                        $this->tokenGenerator->hashForStorage($rawToken),
+                        $authVersion,
+                        $now,
+                        $this->addSeconds(
+                            $now,
+                            self::ACTION_ABSOLUTE_TTL_SECONDS
+                        )
                     );
-                }
+                $delivery = new PasswordResetDelivery(
+                    $actionTokenId,
+                    $userId,
+                    $authVersion,
+                    $this->stringValue($user['email_canonical'] ?? null),
+                    $safeLocale,
+                    $rawToken
+                );
             }
 
             // Once either fixed bucket is already blocked, suppress further
@@ -160,9 +185,206 @@ final class CredentialActionService
                     $now
                 );
             }
+
+            return $delivery;
         });
 
-        return new PasswordResetRequestResult();
+        if ($delivery === null) {
+            return new PasswordResetRequestResult();
+        }
+
+        if ($this->passwordResetMailSender === null) {
+            $this->revokePasswordResetDelivery($delivery);
+
+            return new PasswordResetRequestResult(true);
+        }
+
+        try {
+            // SMTP must never hold database locks or an open transaction.
+            $this->passwordResetMailSender->send($delivery);
+        } catch (Throwable) {
+            $this->revokePasswordResetDelivery($delivery);
+
+            return new PasswordResetRequestResult(true);
+        }
+
+        return new PasswordResetRequestResult(
+            !$this->acknowledgePasswordResetDelivery($delivery)
+        );
+    }
+
+    private function acknowledgePasswordResetDelivery(
+        PasswordResetDelivery $delivery
+    ): bool {
+        try {
+            return $this->repository->transaction(function () use (
+                $delivery
+            ): bool {
+                $now = $this->now();
+                $user = $this->repository->findUserCredentialByIdForUpdate(
+                    $delivery->userId()
+                );
+                $action = $this->repository->findActionByIdForUpdate(
+                    $delivery->actionTokenId()
+                );
+                if (!$this->isAcknowledgablePasswordResetDelivery(
+                    $delivery,
+                    $user,
+                    $action,
+                    $now
+                )) {
+                    if ($this->passwordResetActionBelongsToDelivery(
+                        $delivery,
+                        $action
+                    )) {
+                        $this->repository->revokePasswordResetActionToken(
+                            $delivery->actionTokenId(),
+                            $delivery->userId(),
+                            $now
+                        );
+                    }
+
+                    return false;
+                }
+
+                $delivered =
+                    $this->repository->markPasswordResetActionDelivered(
+                        $delivery->actionTokenId(),
+                        $delivery->userId(),
+                        $delivery->authVersion(),
+                        $this->tokenGenerator->hashForStorage(
+                            $delivery->rawToken()
+                        ),
+                        $now
+                    );
+                if (!$delivered) {
+                    $this->repository->revokePasswordResetActionToken(
+                        $delivery->actionTokenId(),
+                        $delivery->userId(),
+                        $now
+                    );
+                }
+
+                return $delivered;
+            });
+        } catch (Throwable) {
+            // A token without delivered_at is unusable. Revocation is still
+            // attempted so failed sends do not accumulate live credentials.
+            $this->revokePasswordResetDelivery($delivery);
+
+            return false;
+        }
+    }
+
+    private function revokePasswordResetDelivery(
+        PasswordResetDelivery $delivery
+    ): void {
+        try {
+            $this->repository->transaction(function () use (
+                $delivery
+            ): void {
+                $user = $this->repository->findUserCredentialByIdForUpdate(
+                    $delivery->userId()
+                );
+                if ($user === null) {
+                    return;
+                }
+                $action = $this->repository->findActionByIdForUpdate(
+                    $delivery->actionTokenId()
+                );
+                if (!$this->passwordResetActionBelongsToDelivery(
+                    $delivery,
+                    $action
+                )) {
+                    return;
+                }
+
+                $this->repository->revokePasswordResetActionToken(
+                    $delivery->actionTokenId(),
+                    $delivery->userId(),
+                    $this->now()
+                );
+            });
+        } catch (Throwable) {
+            // Never expose cleanup/storage diagnostics through recovery UI.
+        }
+    }
+
+    /**
+     * @param array<string, mixed>|null $user
+     * @param array<string, mixed>|null $action
+     */
+    private function isAcknowledgablePasswordResetDelivery(
+        PasswordResetDelivery $delivery,
+        ?array $user,
+        ?array $action,
+        DateTimeImmutable $now
+    ): bool {
+        if (
+            !$this->isResetRequestEligible($user)
+            || !$this->passwordResetActionBelongsToDelivery(
+                $delivery,
+                $action
+            )
+            || ($action['delivered_at'] ?? null) !== null
+            || ($action['used_at'] ?? null) !== null
+            || ($action['token_revoked_at'] ?? null) !== null
+            || ($action['email_canonical'] ?? null)
+                !== $delivery->recipientEmail()
+        ) {
+            return false;
+        }
+
+        try {
+            return $this->positiveInteger(
+                $user['user_auth_version'] ?? null
+            ) === $delivery->authVersion()
+                && $this->positiveInteger(
+                    $action['token_auth_version'] ?? null
+                ) === $delivery->authVersion()
+                && CredentialActionRepository::parseTimestamp(
+                    $action['token_created_at'] ?? null
+                ) <= $now
+                && CredentialActionRepository::parseTimestamp(
+                    $action['expires_at'] ?? null
+                ) > $now;
+        } catch (
+            CredentialActionStorageException
+            | InvalidArgumentException
+        ) {
+            return false;
+        }
+    }
+
+    /** @param array<string, mixed>|null $action */
+    private function passwordResetActionBelongsToDelivery(
+        PasswordResetDelivery $delivery,
+        ?array $action
+    ): bool {
+        if ($action === null) {
+            return false;
+        }
+
+        try {
+            return $this->positiveInteger(
+                $action['action_token_id'] ?? null
+            ) === $delivery->actionTokenId()
+                && $this->positiveInteger(
+                    $action['user_id'] ?? null
+                ) === $delivery->userId()
+                && ($action['purpose'] ?? null) === self::PASSWORD_RESET
+                && ConstantTime::equals(
+                    (string) ($action['token_hash'] ?? ''),
+                    $this->tokenGenerator->hashForStorage(
+                        $delivery->rawToken()
+                    )
+                );
+        } catch (
+            CredentialActionStorageException
+            | InvalidArgumentException
+        ) {
+            return false;
+        }
     }
 
     /**

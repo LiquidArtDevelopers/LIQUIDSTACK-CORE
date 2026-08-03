@@ -94,6 +94,7 @@ final class WebAdminHtmlRendererTest extends TestCase
             $this->renderer->editorOperationCompleted('/admin'),
             $this->renderer->forgotPassword('/admin', 'csrf'),
             $this->renderer->forgotPasswordSent('/admin'),
+            $this->renderer->forgotPasswordUnavailable('/admin'),
             $this->renderer->credentialAction(
                 '/admin',
                 'invite',
@@ -601,6 +602,24 @@ final class WebAdminHtmlRendererTest extends TestCase
         self::assertStringContainsString('<a href="/admin/login">', $html);
         self::assertStringNotContainsString('<form', $html);
         self::assertStringNotContainsString('name="email"', $html);
+    }
+
+    public function testForgotPasswordUnavailableIsGenericAndOffersRetry(): void
+    {
+        $html = $this->renderer->forgotPasswordUnavailable('/admin');
+
+        self::assertStringContainsString(
+            'role="alert" aria-live="assertive"',
+            $html
+        );
+        self::assertStringContainsString(
+            '<a href="/admin/password/forgot">Volver a intentarlo</a>',
+            $html
+        );
+        self::assertStringContainsString('<a href="/admin/login">', $html);
+        foreach (['SMTP', 'PHPMailer', 'recipient', 'name="email"'] as $detail) {
+            self::assertStringNotContainsString($detail, $html);
+        }
     }
 
     /**

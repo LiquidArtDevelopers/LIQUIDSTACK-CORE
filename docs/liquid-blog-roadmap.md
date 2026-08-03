@@ -28,7 +28,8 @@ Implementado:
 - login, logout, invitación, alta inicial, recuperación y cambio de clave;
 - alta, suspensión, reactivación y permisos delegables de editores;
 - navegación única de WebAdmin filtrada por capacidades;
-- correo asíncrono mediante outbox y diagnóstico operativo.
+- recuperación de contraseña con entrega síncrona sin cola, invitaciones
+  mediante outbox one-shot y diagnóstico operativo.
 
 ### 2. Biblioteca compartida de medios
 
@@ -188,7 +189,15 @@ El sitemap dinámico ya es la fuente técnica inmediata de URLs. Una petición a
 un buscador será complementaria y nunca condicionará la publicación ni se
 presentará como garantía de rastreo o indexación.
 
-### 9. Plantillas, recursos y maquetador
+### 9. Suscriptores y notificaciones de publicación
+
+El MVP actual no registra suscriptores ni envía correo al publicar. Un corte
+posterior añadirá consentimiento y baja, campañas idempotentes, un outbox
+separado del correo de acceso, lotes y límites acotados, reintentos y un cron
+por proyecto. El diseño completo está registrado como
+[pendiente](mejoras-pendientes/blog-notificaciones-suscriptores.md).
+
+### 10. Plantillas, recursos y maquetador
 
 - Nuevas plantillas de artículo basadas en recursos de showroom.
 - Más recursos públicos Blog: relacionados, archivos y nuevas composiciones
@@ -197,7 +206,7 @@ presentará como garantía de rastreo o indexación.
 - Maquetador futuro de secciones, filas, columnas y módulos, construido sobre
   un esquema versionado y sin romper los documentos v1.
 
-### 10. Gestión del resto de la web
+### 11. Gestión del resto de la web
 
 La biblioteca de medios, identidades, permisos y auditoría de WebAdmin podrán
 servir a un futuro editor de contenido estático. Ese trabajo no se mezclará con

@@ -247,5 +247,10 @@ Antes de entregar:
 7. Inspeccionar el recurso en navegador en mobile, tablet y desktop cuando esté disponible.
 8. Auditar que ningún SCSS de recurso use `color04+` ni `filterColor*`.
 9. Comparar `git status --short` y confirmar que no se tocó copy o trabajo ajeno.
+10. Si el recurso se ha creado o modificado directamente en CORE, aplicar la
+    rutina de `liquidstack-resource-migration` para regenerar y validar
+    `manifests/managed-file-history.json` después del último cambio y antes
+    del commit o release. No editar ese historial desde el consumidor ni
+    confundirlo con `.liquidstack/core/managed-files.json`.
 
 Cuando el recurso quede estable y reutilizable, usar la skill `liquidstack-resource-migration` para promoverlo a CORE.

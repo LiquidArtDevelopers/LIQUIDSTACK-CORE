@@ -1,6 +1,6 @@
 ---
 name: liquidstack-resource-migration
-description: Migración y promoción de recursos entre un proyecto LiquidStack consumidor, liquidstack/core, el laboratorio BASE y proyectos React. Usar al copiar recursos, convertir diseños, promover un recurso probado a CORE, portar GSAP/Three/Draggable, registrar templates/showroom o comprobar qué debe viajar mediante Composer.
+description: Migración y promoción de recursos entre un proyecto LiquidStack consumidor, liquidstack/core, el laboratorio BASE y proyectos React. Usar al copiar recursos, convertir diseños, promover un recurso probado a CORE, portar GSAP/Three/Draggable, registrar templates/showroom, regenerar el historial de huellas gestionadas o comprobar qué debe viajar mediante Composer.
 ---
 
 # LiquidStack Resource Migration
@@ -121,6 +121,40 @@ nuevo, pero Composer debe conservar cualquier fichero homónimo ya existente en
 `public/assets/img/logos`; el branding del consumidor nunca se sobrescribe
 desde CORE.
 
+### Historial de ficheros gestionados en CORE
+
+Todo alta o cambio de un fichero que CORE sincroniza con política gestionada
+debe registrar también su huella actual en
+`manifests/managed-file-history.json`. Esto incluye, entre otros,
+controladores, templates, SCSS, JS, vistas e imágenes distribuidas. El
+manifiesto permite reconocer versiones canónicas anteriores sin confundirlas
+con personalizaciones del consumidor.
+
+Ejecutar desde la raíz de CORE, después de cerrar todos los cambios gestionados
+y antes de crear o enmendar el commit de release:
+
+```powershell
+php tools/build-managed-file-history.php
+php tools/build-managed-file-history.php --check
+php vendor/bin/phpunit --configuration phpunit.xml.dist --do-not-cache-result --filter ManagedFileManifestTest
+```
+
+- Usar siempre el generador; no editar a mano el JSON, sustituir arrays ni
+  retirar huellas anteriores. El script recompone el historial desde las
+  etiquetas, el working tree y los baselines legacy.
+- Revisar el diff del manifiesto y confirmar que las nuevas huellas corresponden
+  exclusivamente a los ficheros gestionados del lote. Si aparecen cambios
+  ajenos, detenerse e identificar primero a su propietario.
+- Regenerar al final: un cambio posterior en controlador, template, SCSS, JS o
+  cualquier otro origen gestionado invalida de nuevo la huella.
+- No confundir este manifiesto de CORE con
+  `.liquidstack/core/managed-files.json`, que es estado de sincronización de
+  cada proyecto consumidor y no se regenera con esta herramienta.
+- Si `composer release` informa de una huella ausente, no reintentar a ciegas:
+  comprobar rama, commit, tags y remoto; regenerar, inspeccionar y añadir el
+  manifiesto al mismo lote. Si el commit sigue solo local, enmendarlo
+  únicamente cuando corresponda y repetir primero el test dirigido.
+
 CORE no debe copiar ni sobrescribir `App/config/routes/get.php` o
 `App/config/rutas.js` completos: contienen rutas propias de cada consumidor.
 Si se incorpora `/showroom`, registrar o documentar en cada proyecto una ruta
@@ -159,6 +193,8 @@ consumidor. Verificar que `/languages/update` siga apuntando a
 9. Confirmar que el config del fixture conserva sus valores y recibe solo las
    variables cromáticas ausentes, y que una segunda sincronización es
    idempotente.
+10. Regenerar y validar `manifests/managed-file-history.json` después del
+    último cambio gestionado y antes de ejecutar `composer release`.
 
 No probar un `composer update` destructivo sobre BASE si tiene cambios locales que colisionan.
 

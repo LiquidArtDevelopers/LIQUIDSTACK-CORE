@@ -330,6 +330,23 @@ final class WebAdminHtmlRenderer
         );
     }
 
+    public function forgotPasswordUnavailable(string $basePath): string
+    {
+        return $this->document(
+            'No se pudo completar la solicitud',
+            '<main><article aria-labelledby="webadmin-forgot-unavailable-title">'
+            . '<h1 id="webadmin-forgot-unavailable-title">No se pudo completar '
+            . 'la solicitud</h1>'
+            . '<p role="alert" aria-live="assertive">No hemos podido enviar '
+            . 'las instrucciones en este momento. Int&eacute;ntalo de nuevo.</p>'
+            . '<p><a href="' . $this->path($basePath, '/password/forgot')
+            . '">Volver a intentarlo</a></p>'
+            . '<p><a href="' . $this->path($basePath, '/login')
+            . '">Volver al acceso</a></p>'
+            . '</article></main>'
+        );
+    }
+
     public function credentialAction(
         string $basePath,
         string $purpose,

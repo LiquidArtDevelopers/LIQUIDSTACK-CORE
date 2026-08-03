@@ -18,6 +18,13 @@ use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\CredentialAction\CredentialActionRepository;
 use App\Core\WebAdmin\CredentialAction\CredentialActionService;
+use App\Core\WebAdmin\Mail\ImmediatePasswordResetMailSender;
+use App\Core\WebAdmin\Mail\PasswordResetMailSenderInterface;
+use App\Core\WebAdmin\Mail\WebAdminCredentialMailMessageFactory;
+use App\Core\WebAdmin\Mail\WebAdminMailConfiguration;
+use App\Core\WebAdmin\Mail\WebAdminMailConfigurationLoader;
+use App\Core\WebAdmin\Mail\WebAdminMailTransportFactory;
+use App\Core\WebAdmin\Mail\WebAdminMailTransportInterface;
 use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Security\ExceptionTraceGuard;
@@ -39,15 +46,20 @@ final class WebAdminHttpRuntimeFactory implements
 
     /** @var Closure(array<string, mixed>, string): PdoConnectionFactoryInterface */
     private readonly Closure $connectionFactoryResolver;
+
+    /** @var Closure(WebAdminMailConfiguration): WebAdminMailTransportInterface */
+    private readonly Closure $mailTransportResolver;
     private readonly ConfiguredModuleDatabaseConnectionResolver $databaseConnectionResolver;
 
     /**
      * @param null|callable(array<string, mixed>, string): PdoConnectionFactoryInterface $connectionFactoryResolver
+     * @param null|callable(WebAdminMailConfiguration): WebAdminMailTransportInterface $mailTransportResolver
      */
     public function __construct(
         private readonly ?string $coreRoot = null,
         ?callable $connectionFactoryResolver = null,
-        ?ConfiguredModuleDatabaseConnectionResolver $databaseConnectionResolver = null
+        ?ConfiguredModuleDatabaseConnectionResolver $databaseConnectionResolver = null,
+        ?callable $mailTransportResolver = null
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
             ? static fn (
@@ -61,6 +73,12 @@ final class WebAdminHttpRuntimeFactory implements
             : Closure::fromCallable($connectionFactoryResolver);
         $this->databaseConnectionResolver = $databaseConnectionResolver
             ?? new ConfiguredModuleDatabaseConnectionResolver();
+        $this->mailTransportResolver = $mailTransportResolver === null
+            ? static fn (
+                WebAdminMailConfiguration $configuration
+            ): WebAdminMailTransportInterface =>
+                (new WebAdminMailTransportFactory())->create($configuration)
+            : Closure::fromCallable($mailTransportResolver);
     }
 
     public function create(
@@ -158,7 +176,12 @@ final class WebAdminHttpRuntimeFactory implements
                     $securityKey,
                     $clock,
                     $uuidGenerator,
-                    $passwordHasher
+                    $passwordHasher,
+                    passwordResetMailSender:
+                        $this->passwordResetMailSender(
+                            $environment,
+                            $config->basePath()
+                        )
                 ),
                 new UserManagementService(
                     new UserManagementRepository($pdo, $tables),
@@ -177,6 +200,33 @@ final class WebAdminHttpRuntimeFactory implements
             throw new WebAdminHttpRuntimeException(
                 'webadmin.runtime_unavailable'
             );
+        }
+    }
+
+    /** @param array<string, mixed> $environment */
+    private function passwordResetMailSender(
+        array $environment,
+        string $basePath
+    ): ?PasswordResetMailSenderInterface {
+        try {
+            $mailConfiguration =
+                (new WebAdminMailConfigurationLoader())->load($environment);
+            $transport = ($this->mailTransportResolver)($mailConfiguration);
+            if (!$transport instanceof WebAdminMailTransportInterface) {
+                return null;
+            }
+
+            return new ImmediatePasswordResetMailSender(
+                new WebAdminCredentialMailMessageFactory(
+                    $mailConfiguration,
+                    $basePath
+                ),
+                $transport
+            );
+        } catch (Throwable) {
+            // Invalid SMTP affects only an eligible recovery attempt. Login,
+            // navigation and every unrelated WebAdmin capability stay usable.
+            return null;
         }
     }
 

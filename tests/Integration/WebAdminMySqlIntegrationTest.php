@@ -21,6 +21,8 @@ use App\Core\WebAdmin\Bootstrap\WebAdminBootstrapService;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\CredentialAction\CredentialActionRepository;
 use App\Core\WebAdmin\CredentialAction\CredentialActionService;
+use App\Core\WebAdmin\CredentialAction\PasswordResetDelivery;
+use App\Core\WebAdmin\Mail\PasswordResetMailSenderInterface;
 use App\Core\WebAdmin\Outbox\WebAdminOutboxRepository;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Security\PasswordHasher;
@@ -1069,28 +1071,26 @@ final class WebAdminMySqlIntegrationTest extends TestCase
         WebAdminAuthenticationService $authentication,
         #[\SensitiveParameter] string $authenticatedToken
     ): string {
-        $actions = $this->credentialActions($connection);
-        $actions->requestPasswordReset(
+        $mailSender = new WebAdminMySqlPasswordResetMailSender($connection);
+        $actions = $this->credentialActions($connection, $mailSender);
+        $result = $actions->requestPasswordReset(
             self::SITE_EMAIL,
             '127.0.0.1',
             'LiquidStack MySQL integration test',
             'und'
         );
-
-        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-        $outbox = new WebAdminOutboxRepository(
-            $connection,
-            WebAdminTableNames::fromPdo($connection, self::TABLE_PREFIX)
-        );
-        $claim = $outbox->claimNext($now);
-        self::assertFalse($claim->isNone());
-        $lease = $claim->lease();
-        self::assertSame('password_reset', $lease->kind());
-        self::assertSame(self::SITE_EMAIL, $lease->recipientEmail());
-        self::assertTrue($outbox->acknowledge($lease, $now));
+        self::assertFalse($result->deliveryFailed());
+        self::assertCount(1, $mailSender->deliveries);
+        self::assertFalse($mailSender->transactionObserved);
+        $delivery = $mailSender->deliveries[0];
+        self::assertSame(self::SITE_EMAIL, $delivery->recipientEmail());
+        self::assertSame(0, (int) $connection->query(
+            "SELECT COUNT(*) FROM ls_webadmin_outbox "
+            . "WHERE kind = 'password_reset'"
+        )->fetchColumn());
 
         $bound = $actions->bindActionToken(
-            $lease->revealActionToken(),
+            $delivery->rawToken(),
             CredentialActionService::PASSWORD_RESET
         );
         self::assertNotNull($bound);
@@ -1704,25 +1704,18 @@ final class WebAdminMySqlIntegrationTest extends TestCase
             $userId
         );
 
-        $actions = $this->credentialActions($connection);
-        $actions->requestPasswordReset(
+        $mailSender = new WebAdminMySqlPasswordResetMailSender($connection);
+        $actions = $this->credentialActions($connection, $mailSender);
+        $result = $actions->requestPasswordReset(
             self::SITE_EMAIL,
             '127.0.0.1',
             'LiquidStack MySQL lock-order integration test',
             'und'
         );
-        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-        $outbox = new WebAdminOutboxRepository(
-            $connection,
-            WebAdminTableNames::fromPdo($connection, self::TABLE_PREFIX)
-        );
-        $claim = $outbox->claimNext($now);
-        self::assertFalse($claim->isNone());
-        $lease = $claim->lease();
-        self::assertSame('password_reset', $lease->kind());
-        self::assertTrue($outbox->acknowledge($lease, $now));
+        self::assertFalse($result->deliveryFailed());
+        self::assertCount(1, $mailSender->deliveries);
         $bound = $actions->bindActionToken(
-            $lease->revealActionToken(),
+            $mailSender->deliveries[0]->rawToken(),
             CredentialActionService::PASSWORD_RESET
         );
         self::assertNotNull($bound);
@@ -1850,7 +1843,8 @@ final class WebAdminMySqlIntegrationTest extends TestCase
     }
 
     private function credentialActions(
-        PDO $connection
+        PDO $connection,
+        ?PasswordResetMailSenderInterface $mailSender = null
     ): CredentialActionService {
         $tables = WebAdminTableNames::fromPdo(
             $connection,
@@ -1867,7 +1861,8 @@ final class WebAdminMySqlIntegrationTest extends TestCase
             new SystemClock(),
             new RandomUuidV4Generator(),
             PasswordHasher::productive(),
-            new SecureTokenGenerator()
+            new SecureTokenGenerator(),
+            passwordResetMailSender: $mailSender
         );
     }
 
@@ -2039,6 +2034,25 @@ final class WebAdminMySqlIntegrationTest extends TestCase
                 'Could not remove the temporary module project.'
             );
         }
+    }
+}
+
+final class WebAdminMySqlPasswordResetMailSender implements
+    PasswordResetMailSenderInterface
+{
+    /** @var list<PasswordResetDelivery> */
+    public array $deliveries = [];
+    public bool $transactionObserved = false;
+
+    public function __construct(private readonly PDO $connection)
+    {
+    }
+
+    public function send(PasswordResetDelivery $delivery): void
+    {
+        $this->transactionObserved = $this->transactionObserved
+            || $this->connection->inTransaction();
+        $this->deliveries[] = $delivery;
     }
 }
 

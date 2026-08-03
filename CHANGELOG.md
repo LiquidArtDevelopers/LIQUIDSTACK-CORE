@@ -4,6 +4,15 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Cambiado
+- Se fija la frontera operativa del correo modular: la recuperación de
+  contraseña entrega de forma síncrona, no crea trabajo en el outbox y muestra
+  un fallo genérico si SMTP no confirma el mensaje; las invitaciones conservan
+  el dispatcher one-shot. La automatización de ese dispatcher mediante un
+  scheduler queda registrada como adopción futura por proyecto, nunca como un
+  efecto de Composer.
+- Se documenta como trabajo expresamente posterior al MVP la notificación de
+  publicaciones Blog a suscriptores, con consentimiento, campañas, outbox
+  separado, lotes y límites acotados, reintentos y cron propio por consumidor.
 - El perfil `smtp` de WebAdmin comparte ahora el contrato general
   `MAIL_HOST`, `MAIL_PORT`, `MAIL_ENCRYPTION`, `MAIL_USERNAME`,
   `MAIL_PASSWORD` y `MAIL_FROM_NAME`. `MAIL_USERNAME` autentica y es también
@@ -24,8 +33,17 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   semilla inmutable a sincronización atómica por huella: CORE actualiza las
   versiones históricas intactas y preserva como grupo cualquier
   personalización local.
+- Las skills de desarrollo y migración exigen regenerar y validar
+  `manifests/managed-file-history.json` después del último cambio de un
+  recurso gestionado y antes de publicar CORE. La rutina distingue ese
+  historial canónico del estado local `.liquidstack/core/managed-files.json`
+  de cada consumidor.
 
 ### Corregido
+- `hero03` conserva un único H1 semántico en el bloque de marca y convierte
+  su texto frontal animado en contenido decorativo oculto a tecnologías de
+  asistencia; el historial gestionado reconoce tanto esta versión como las
+  huellas anteriores del controlador y el template.
 - Las subvistas segmentadas de `/showroom` y `/templates` vuelven a respetar
   la composición semántica y visual del stack: agrupan recursos `article` y
   módulos autónomos dentro de `section`, mantienen fuera los recursos cuya
