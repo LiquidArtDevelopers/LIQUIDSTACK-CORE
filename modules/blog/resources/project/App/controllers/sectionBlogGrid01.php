@@ -67,12 +67,84 @@ function controller_sectionBlogGrid01(
     $requestedItems = $hasExplicitLimit ? (int) $params['items'] : null;
     unset($params['items']);
 
+    $injectedHeading = is_string($params['{header-primary}'] ?? null)
+        ? trim($params['{header-primary}'])
+        : '';
     $headerLevels = resolve_header_levels($params, '{header-primary}', 2);
     $primaryTag = 'h' . $headerLevels['base'];
     $itemTag = 'h' . $headerLevels['child'];
     $headingId = $idPrefix . '-heading';
+    if ($injectedHeading !== '') {
+        $matchedHeading = false;
+        $injectedHeading = (string) preg_replace_callback(
+            '/<h([1-6])\b([^>]*)>/i',
+            static function (array $matches) use (
+                &$headingId,
+                &$matchedHeading,
+                $escapeAttribute
+            ): string {
+                $matchedHeading = true;
+                $attributes = $matches[2];
+                if (
+                    preg_match(
+                        '/\bid\s*=\s*(["\'])([A-Za-z][A-Za-z0-9_-]*)\1/i',
+                        $attributes,
+                        $idMatch
+                    ) === 1
+                ) {
+                    $headingId = $idMatch[2];
+
+                    return '<h' . $matches[1] . $attributes . '>';
+                }
+
+                $idAttribute = ' id="'
+                    . $escapeAttribute($headingId)
+                    . '"';
+                if (
+                    preg_match('/\bid\s*=\s*(["\']).*?\1/i', $attributes)
+                        === 1
+                ) {
+                    $attributes = (string) preg_replace(
+                        '/\bid\s*=\s*(["\']).*?\1/i',
+                        trim($idAttribute),
+                        $attributes,
+                        1
+                    );
+                    $idAttribute = '';
+                }
+
+                return '<h' . $matches[1] . $idAttribute . $attributes . '>';
+            },
+            $injectedHeading,
+            1
+        );
+        if (!$matchedHeading) {
+            $injectedHeading = '';
+        }
+    }
+    unset($params['{header-primary}']);
     $headerKey = "sectionBlogGrid01_{$pad}_headerPrimary";
-    $headerText = $readField($readEntry($headerKey), 'text');
+    $hasHeaderText = array_key_exists('header_text', $params);
+    $headerText = $hasHeaderText
+        ? trim((string) $params['header_text'])
+        : $readField($readEntry($headerKey), 'text');
+    unset($params['header_text']);
+    if ($headerText === '') {
+        $headerText = $readField($readEntry($headerKey), 'text');
+    }
+    $headerLang = trim((string) ($params['header_lang'] ?? ''));
+    unset($params['header_lang']);
+    if (
+        $headerLang !== ''
+        && preg_match('/\A[A-Za-z0-9_.-]+\z/', $headerLang) !== 1
+    ) {
+        $headerLang = '';
+    }
+    $headerLanguageAttribute = $headerLang !== ''
+        ? ' data-lang="' . $escapeAttribute($headerLang) . '"'
+        : ($hasHeaderText
+            ? ''
+            : ' data-lang="' . $escapeAttribute($headerKey) . '"');
 
     $language = strtolower((string) ($GLOBALS['lang'] ?? 'es'));
     $formatDate = static function (
@@ -103,6 +175,9 @@ function controller_sectionBlogGrid01(
         ];
     };
     $validUrl = static function (string $url): bool {
+        if (str_contains($url, '\\')) {
+            return false;
+        }
         if (
             str_starts_with($url, '/')
             && !str_starts_with($url, '//')
@@ -231,11 +306,13 @@ function controller_sectionBlogGrid01(
         '{heading-id}' => $escapeAttribute($headingId),
         '{classVar}' => "sectionBlogGrid01_{$pad}_classVar",
         '{items-count}' => (string) count($itemsData),
-        '{header-primary}' => '<' . $primaryTag
-            . ' id="' . $escapeAttribute($headingId) . '"'
-            . ' data-lang="' . $escapeAttribute($headerKey) . '">'
-            . $escapeText($headerText)
-            . '</' . $primaryTag . '>',
+        '{header-primary}' => $injectedHeading !== ''
+            ? $injectedHeading
+            : '<' . $primaryTag
+                . ' id="' . $escapeAttribute($headingId) . '"'
+                . $headerLanguageAttribute . '>'
+                . $escapeText($headerText)
+                . '</' . $primaryTag . '>',
         '{items}' => $itemsHtml,
     ];
 

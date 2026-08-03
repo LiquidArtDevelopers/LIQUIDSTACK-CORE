@@ -189,6 +189,10 @@ final class BlogPublicStructuredDeliveryTest extends TestCase
             "img-src 'self' data:",
             $structured->headers()['Content-Security-Policy']
         );
+        self::assertStringContainsString(
+            'frame-src https://www.youtube-nocookie.com',
+            $structured->headers()['Content-Security-Policy']
+        );
 
         $legacy = $this->controller->article('en', 'legacy-matrix');
         self::assertNotNull($legacy);

@@ -11,6 +11,7 @@ use App\Core\Blog\Http\BlogPublicHttpRuntime;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeException;
 use App\Core\Blog\Http\BlogPublicHtmlRenderer;
 use App\Core\Blog\Persistence\PdoBlogRepository;
+use App\Core\Http\Request;
 use App\Core\Modules\Blog\BlogMigrationProvider;
 use App\Core\Modules\Migrations\MigrationDefinition;
 use App\Core\Modules\Migrations\MigrationScope;
@@ -126,13 +127,24 @@ final class BlogPublicHttpControllerTest extends TestCase
             '<h1>Matrix &amp; sistemas</h1>',
             $article->body()
         );
-        self::assertStringNotContainsString('<script', $article->body());
+        self::assertStringContainsString(
+            '<script src="/assets/modules/blog/blog-public.js" defer></script>',
+            $article->body()
+        );
         self::assertStringContainsString(
             "default-src 'none'",
             $article->headers()['Content-Security-Policy']
         );
         self::assertStringContainsString(
             "style-src 'self'",
+            $article->headers()['Content-Security-Policy']
+        );
+        self::assertStringContainsString(
+            "script-src 'self'",
+            $article->headers()['Content-Security-Policy']
+        );
+        self::assertStringContainsString(
+            'frame-src https://www.youtube-nocookie.com',
             $article->headers()['Content-Security-Policy']
         );
 
@@ -158,6 +170,66 @@ final class BlogPublicHttpControllerTest extends TestCase
             '/noticias/matrix',
             $this->controller->sitemap()->body()
         );
+    }
+
+    public function testSitemapUsesAStrongConditionalEtagAndSafeHeaders(): void
+    {
+        $created = $this->service->createPost(
+            $this->actorGate(),
+            'es',
+            $this->draft()
+        );
+        $this->service->publish(
+            $this->actorGate(),
+            $created->postPublicId(),
+            'es',
+            $created->lockVersion()
+        );
+
+        $fresh = $this->controller->sitemap($this->sitemapRequest('GET'));
+        self::assertSame(200, $fresh->status());
+        self::assertMatchesRegularExpression(
+            '/\A"[0-9a-f]{64}"\z/',
+            $fresh->headers()['ETag']
+        );
+        self::assertSame(
+            (string) strlen($fresh->body()),
+            $fresh->headers()['Content-Length']
+        );
+        self::assertSame(
+            'public, no-cache, must-revalidate',
+            $fresh->headers()['Cache-Control']
+        );
+        self::assertSame('DENY', $fresh->headers()['X-Frame-Options']);
+        self::assertStringContainsString(
+            "frame-ancestors 'none'",
+            $fresh->headers()['Content-Security-Policy']
+        );
+
+        $etag = $fresh->headers()['ETag'];
+        $notModified = $this->controller->sitemap(
+            $this->sitemapRequest('GET', '"different", W/' . $etag)
+        );
+        self::assertSame(304, $notModified->status());
+        self::assertSame('', $notModified->body());
+        self::assertSame($etag, $notModified->headers()['ETag']);
+        self::assertArrayNotHasKey(
+            'Content-Length',
+            $notModified->headers()
+        );
+        self::assertArrayNotHasKey('Content-Type', $notModified->headers());
+
+        $wildcard = $this->controller->sitemap(
+            $this->sitemapRequest('HEAD', '*')
+        );
+        self::assertSame(304, $wildcard->status());
+        self::assertSame('', $wildcard->body());
+
+        $nonMatching = $this->controller->sitemap(
+            $this->sitemapRequest('GET', 'W/ "malformed"')
+        );
+        self::assertSame(200, $nonMatching->status());
+        self::assertSame($etag, $nonMatching->headers()['ETag']);
     }
 
     public function testProjectShellOwnsCspWhileDefensiveHeadersRemain(): void
@@ -447,6 +519,21 @@ PHP);
             'hreflang="x-default" href="https://example.test/en/news/matrix-en"',
             $this->controller->sitemap()->body()
         );
+    }
+
+    private function sitemapRequest(
+        string $method,
+        ?string $ifNoneMatch = null
+    ): Request {
+        $headers = $ifNoneMatch === null
+            ? []
+            : ['If-None-Match' => $ifNoneMatch];
+
+        return Request::fromInput([
+            'REQUEST_METHOD' => $method,
+            'REQUEST_URI' => '/blog-sitemap.xml',
+            'HTTPS' => 'on',
+        ], headers: $headers);
     }
 
     private function draft(): BlogDraft

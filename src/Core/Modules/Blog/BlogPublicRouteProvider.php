@@ -150,7 +150,7 @@ final class BlogPublicRouteProvider implements
             return null;
         }
 
-        return $this->controller()->sitemap();
+        return $this->controller()->sitemap($request);
     }
 
     private function media(Request $request): Response

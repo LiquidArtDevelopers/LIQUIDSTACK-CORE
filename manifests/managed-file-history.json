@@ -11,7 +11,80 @@
             "sha256:9c9e24f13769b4c3dee66f877b3938f0bb1f296e8f8e37668a7628542ceb246d"
         ],
         "modules/blog/published/assets/blog-public.css": [
-            "sha256:22b655580846599dd10238c3f2ccf2d7a20f571e673d9383ef521b08bc7d751a"
+            "sha256:22b655580846599dd10238c3f2ccf2d7a20f571e673d9383ef521b08bc7d751a",
+            "sha256:af4e43bf33fc453ec61812415bfbfbfc513331f76d607a58a1331a63c9ad6bec"
+        ],
+        "modules/blog/published/assets/blog-public.js": [
+            "sha256:0a98db292b9c4efcf7b38a624bff1af30aacfc4de63084112ddc8e9c20b1180a"
+        ],
+        "modules/blog/resources/project/App/controllers/_moduleBlogResources.php": [
+            "sha256:6f0984b2ba817226b7018da5c0c276a7b6bb68a2304d808dcc9f25565312fd35"
+        ],
+        "modules/blog/resources/project/App/controllers/moduleBlogFilters01.php": [
+            "sha256:3309e4373178dfb28f5c845c9f2546956716afd859b21b40984294d700d40571"
+        ],
+        "modules/blog/resources/project/App/controllers/sectionBlogFeatured01.php": [
+            "sha256:bf6ee6723beaac311a91f35b623d0162922c95c7f31f1fc5c53131a5cba81d1a"
+        ],
+        "modules/blog/resources/project/App/controllers/sectionBlogGrid01.php": [
+            "sha256:16c9c3d07d7e0537700b2cf6c51dcf2146fc09a1b336a06f9fbfaf8cd75c5030",
+            "sha256:4718d6f875d41b8e9b433946078a231c7bcf832c44e500b69d0d5e4e01a60bf6"
+        ],
+        "modules/blog/resources/project/App/controllers/sectionBlogList01.php": [
+            "sha256:e14f551ea17fa84bee822c8e6c7045540d2884956dd57ef136eb036fd5969b7c"
+        ],
+        "modules/blog/resources/project/App/controllers/sectionBlogSlider01.php": [
+            "sha256:6e3aac167cc6749bb3ab51f28a620520ce728ef1ae540ad12042679965f36842"
+        ],
+        "modules/blog/resources/project/App/templates/_moduleBlogFilters01.html": [
+            "sha256:2d3ecbffb0910e27bf69a4d24b87b0e46beb7ebccdf2a9a5b0f33e69722a91e5"
+        ],
+        "modules/blog/resources/project/App/templates/_sectionBlogFeatured01.html": [
+            "sha256:970000ef3fd6c21fc9d0bbfe7cc93b9023cef34c2a40ebd78c12ebd98c85ed86"
+        ],
+        "modules/blog/resources/project/App/templates/_sectionBlogGrid01.html": [
+            "sha256:4af1404a51b2fef875b548e369d91e172d638bf497211318b1fc6c861f737a38"
+        ],
+        "modules/blog/resources/project/App/templates/_sectionBlogList01.html": [
+            "sha256:17415736191e55744e61af669a269e26b4c70178cbe94d39ca956704a673ca07"
+        ],
+        "modules/blog/resources/project/App/templates/_sectionBlogSlider01.html": [
+            "sha256:0c2b061e3da0de147dad3ee268f8c1c98815d7c9d8db192095d924c6ee020af1"
+        ],
+        "modules/blog/resources/project/App/views/showroom/_blog.php": [
+            "sha256:5e52cfd9a8d96503e209cce2dbdd6241475d1966454f957ddcd8d5d01679129c",
+            "sha256:d31b36f2431c4d97efcd97f1456a9eabebf93739f5021b34e75e764ab677c7b0"
+        ],
+        "modules/blog/resources/project/src/js/resources/_moduleBlogFilters01.js": [
+            "sha256:06c66a2fa08a4263db76d07655e78f87c7c75bd4ee40e82a8ad17fdfab7570a4"
+        ],
+        "modules/blog/resources/project/src/js/resources/_sectionBlogSlider01.js": [
+            "sha256:7eef5112a166386373285ec6aefd1daebbfe2e1dc0268cd022c3f0dab6923a13"
+        ],
+        "modules/blog/resources/project/src/js/showroom/blog.js": [
+            "sha256:2ad33b5a309c65ebbd4ffd0fa26c6cf6638920ad8335460c7d008260bbc0f3d1",
+            "sha256:3cccfd0606cec03147953483d303b09410aff8b9c4b4784c00a13e45c33f2151"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_moduleBlogFilters01.scss": [
+            "sha256:fac49e61fd7be2067c81563fe8484778e7237666f579fbef4635b7362499919d"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_sectionBlogFeatured01.scss": [
+            "sha256:bf1bebbe45fd6908e1346e44e495f2c55afd9e9f87bfb8505fc115a92ca82f7d"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_sectionBlogGrid01.scss": [
+            "sha256:1238dc8bc068548d9ab6a5a9473572bbecdf366efe3b16155aa8b97827b8bb19",
+            "sha256:25e528e5a7b1609bb1510d55283fdc65f3676fcfd6c7533239a220e824dee1e2",
+            "sha256:3326a2b8777f7681e3c2adaaaccd5c3b5b2e1ccb23e5842636d29a8cfd155e3f"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_sectionBlogList01.scss": [
+            "sha256:a581bd9357d05b19a4fea75bbb17bdfcbd2fd7fd19cab9ff45d0e461a261b9dd"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_sectionBlogSlider01.scss": [
+            "sha256:f997994ea3fe3566d162ee2869f1399ca89ab85f36f51e2243cade0cfedb188f"
+        ],
+        "modules/blog/resources/project/src/scss/showroom/blog.scss": [
+            "sha256:50346325f24453e9d3d9b4a814baf5a87b51632c954e83255fc9e39073012e1c",
+            "sha256:8ad671c20ce95534bda20339f4baa88608368e3a4097a5aff077762ce2914e44"
         ],
         "modules/webadmin/published/assets/webadmin.css": [
             "sha256:901f1fd301f89ab0fa2d4a5377360b21e3142a33b904eb59b9b1df7c5005fff7"
@@ -988,6 +1061,7 @@
             "sha256:010498479187a4cab4cbf177d95d2e0623b2d9e8452e0f8b4aa45001fa48144b",
             "sha256:055b8b45f9a8814848d4a1a2b55039947bd43c16f81879d4f3abb90f52c9c9c6",
             "sha256:0c0f3fa4cc826e19bfc31d75e004034c0b2cc40f073ec6dac28a38446bcdddf7",
+            "sha256:14def8c767a0933e7c9e1cd8e8aa968c1e51e9eaf51afcb2c11befb5544d13bf",
             "sha256:34ebbda5b56a193b549a5f492386106cc4a2d9f18adc25c91f16b80593274b1d",
             "sha256:4727fb9dc24a5f6ad80aa1488dfe01f9c98b9cb3b6baff29e82acb0addc70844",
             "sha256:495ab52971721c3bd7f2d2df4df191429a47553032afb5a7b6de6de708c0b956",
@@ -1746,7 +1820,8 @@
             "sha256:62aa4f4cfb3e852bb31df5640f9194c665ebefca456640745c455ae9ebb59188",
             "sha256:833aeddb7d9ef2c0b6ffc0ba49a4be908dacb47d4146da3dd2ef2213012cc41c",
             "sha256:c08275f5de2a37fb5668c2d1458bf17cd723282bd08fcc98c533db2e766d9cc3",
-            "sha256:cddce0b517497066e6f5c21bf4e29133773aa2fb1aba32450db44db6f5711a9d"
+            "sha256:cddce0b517497066e6f5c21bf4e29133773aa2fb1aba32450db44db6f5711a9d",
+            "sha256:d3e24e8bd127a99d03cc6e48db01e5a64c3b8680eb5f9abdbfaa53eaa4e76798"
         ],
         "stubs/App/views/_templates.php": [
             "sha256:17c63b1c6105d1ce64658202a9ef3863903543859bc7c016e239c6a7a3a080fe",

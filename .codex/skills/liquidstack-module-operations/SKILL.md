@@ -366,6 +366,10 @@ composer liquidstack:migrate --dry-run
   plantilla nueva exige ampliar registro, validación, renderer, editor,
   persistencia y pruebas como un único contrato; no aceptar claves arbitrarias
   llegadas del formulario.
+- Mantener las imágenes de contenido y anchas con `loading="lazy"`. La única
+  imagen `cover`, garantizada como primer bloque por el esquema, debe usar
+  `loading="eager"` y `fetchpriority="high"` para que un shell project-owned
+  pueda tratarla como LCP sin duplicar la portada.
 - Al abrir un artículo legacy, proyectar `body_text` a un documento temporal sin
   escribir. Adoptarlo solo cuando el usuario guarda el editor estructurado. A
   partir de esa adopción, bloquear el guardado plano para que no existan dos
@@ -409,13 +413,73 @@ composer liquidstack:migrate --dry-run
 - Servir el sitemap desde la DB de producción. Nunca reescribir
   `public/sitemap.xml`, `robots.txt`, Git o el deploy al publicar. Consultar como
   máximo 50.001 filas para admitir 50.000 y fallar cerrado ante overflow, sin
-  truncar silenciosamente.
+  truncar silenciosamente; limitar además el XML final a 50 MiB. Conservar el
+  `ETag` fuerte, `Cache-Control: public, no-cache, must-revalidate` y la
+  revalidación `If-None-Match` de `GET`/`HEAD`. No inferir un `Last-Modified`
+  global mediante `MAX(updated_at)`, porque puede retroceder al retirar URLs.
+- Para índices project-owned, crear una sola instancia con
+  `BlogPublicFeedFactory` y reutilizarla para cards generales, filtros y cards
+  por categoría. `BlogCategoryPublicFeedFactory` es compatibilidad legacy, no
+  debe combinarse con el factory general dentro de la misma petición.
+- Convertir la query GET pública en un `BlogPublicCatalogQuery` acotado y usar
+  `BlogPublicFeed::cardsForQuery()`. Mantener `category_mode` en la allowlist
+  `any|all`, un máximo de diez categorías simultáneas y los límites de
+  búsqueda,
+  paginación y exclusión del value object; no pasar arrays o SQL construidos
+  desde el request al repositorio.
+- En la mejora progresiva de `moduleBlogFilters01`, conservar la serialización
+  del GET nativo, comprobar la validez HTML antes de cada fetch, invalidar una
+  respuesta anterior en cuanto cambia la búsqueda y sincronizar resultados,
+  `title`, robots y canonical desde el nuevo SSR. Las búsquedas pausadas de una
+  misma secuencia usan `pushState` una vez y después `replaceState`; cambios de
+  categoría crean entradas nuevas y `popstate` nunca escribe historial.
+- Un índice project-owned puede optimizar esa mejora respondiendo al header
+  exacto `X-LiquidStack-Partial: blog-results` con un documento mínimo que
+  conserve el mismo formulario, `#blog-results`, `title`, robots y canonical.
+  Debe enviar `Vary: X-LiquidStack-Partial` y mantener el HTML completo como
+  respuesta normal y fallback; la petición parcial no define un segundo
+  contrato de datos ni una ruta distinta.
 - Mantener `blog-admin.css` y `blog-editor.js` bajo
   `modules/blog/published/assets`; el manifiesto los sincroniza como assets
   module-managed en `public/assets/modules/blog`. No integrarlos en el bundle
   general ni convertirlos en ficheros project-owned. Revisar `blog.assets` en
   `doctor`: un destino ausente o inválido debe bloquear con
   `assets.missing_or_invalid`, sin intentar reparar DB o storage.
+- Mantener la familia visual Blog bajo
+  `modules/blog/resources/project/`, replicando las rutas estándar del
+  consumidor. Declarar cada identificador en la allowlist `resources` del
+  manifiesto y publicar solo sus ficheros exactos de controlador, template,
+  SCSS y JS, más el helper y los hooks exactos de showroom. Agrupar cada
+  recurso de forma cohesiva con `managed_hash`; no devolverlo al catálogo base
+  ni ampliar el permiso a directorios completos. Un stack sin el selector Blog
+  no debe recibir `moduleBlogFilters01`, `sectionBlogGrid01`,
+  `sectionBlogList01`, `sectionBlogFeatured01` o `sectionBlogSlider01`.
+- Mantener `resource-support` como grupo independiente y su helper como API
+  estable y aditiva: no retirar ni cambiar las firmas de
+  `liquidstack_blog_resource_context()`,
+  `liquidstack_blog_resource_escape()`, `liquidstack_blog_resource_card()` o
+  `liquidstack_blog_resource_heading()`, ni las claves existentes del contexto.
+  Un cambio incompatible exige helper versionado o migración coordinada de la
+  familia; no congelar todos los recursos en un único grupo por conveniencia.
+- Si el contrato de `src/scss/_config.scss` no está disponible, publicar solo
+  los assets autocontenidos de cada módulo bajo sus namespaces
+  `public/assets/modules/<id>`, `src/js/modules/<id>` y
+  `src/scss/modules/<id>`. Omitir conjuntamente en ese ciclo todos los recursos
+  estándar y hooks de showroom para no dejar contratos visuales parciales; la
+  siguiente actualización con el config reparado debe instalar el conjunto.
+- Mantener los controladores visuales libres de PDO, prefijos e IDs internos.
+  Reciben únicamente arrays de presentación. Los fixtures Matrix pertenecen
+  al showroom y nunca actúan como fallback de la DB pública. Al trasladar un
+  fichero gestionado desde CORE base al módulo, reconocer solo huellas legacy
+  verificadas bajo el nuevo source ID; conservar cualquier copia desconocida.
+- Tratar `blog-public.js` como el runtime progresivo module-owned de los
+  bloques públicos. Un bloque YouTube conserva siempre su enlace externo SSR;
+  el script solo puede impedir esa navegación ante un clic primario sin
+  modificadores y después de comprobar `cookie_social=true`. El iframe debe
+  usar exclusivamente `youtube-nocookie.com`, nacer tras el clic y retirarse
+  al revocar consentimiento. No precargar miniaturas de terceros. El fallback
+  standalone carga el asset con `script-src 'self'`; cada shell project-owned
+  debe cargarlo con su nonce y limitar `frame-src` al mismo origen.
 - Probar SQLite aislado y, ante cambios de DDL, repositorio, locks o auditoría,
   la integración opt-in MySQL/MariaDB. Cubrir create/add-locale/save/publish/
   unpublish, categorías, documento canónico, adopción legacy, revisiones,
@@ -433,7 +497,18 @@ composer liquidstack:migrate --dry-run
 2. Mantener providers ejecutables solo para módulos activos y validar su interfaz, `moduleId` y construcción sin argumentos cuando corresponda.
 3. Resolver rutas operativas antes del bootstrap, sesión y router multidioma legacy. Una ruta no reclamada debe continuar exactamente por el flujo anterior.
 4. Hacer que una configuración inválida falle cerrada dentro de su namespace sin derribar rutas públicas ni revelar la causa al visitante.
-5. Mantener `project_files` limitado a namespaces de assets del módulo. Rutas, `.env`, configuración, sitemap y datos siguen siendo project-owned.
+5. Mantener `project_files` limitado a namespaces de assets del módulo y, si el
+   manifiesto declara una allowlist `resources`, a los ficheros estándar y
+   hooks exactos habilitados por ella. Rutas, `.env`, configuración, sitemap,
+   vistas públicas, medios y datos siguen siendo project-owned.
+   Los ficheros `managed_hash` que deban avanzar juntos tienen que compartir
+   un `group`: el sincronizador adquiere el lock del proyecto, recarga estado,
+   prepara staging+journal y revierte el grupo completo ante un fallo. Un
+   journal pendiente debe recuperarse antes de planificar; si la huella de un
+   destino es desconocida o el rollback no queda demostrado, detener Composer
+   y conservar sus backups, nunca continuar ni escribir estado. No agrupar
+   semillas, fusiones JSON o recursos independientes para obtener una
+   atomicidad que no necesitan.
 6. Registrar toda migración con ID estable, checksum, orden por dependencias y
    carácter destructivo. Su aplicación debe seguir siendo explícita, bloqueada
    y auditable; `doctor` y `--dry-run` nunca escriben.

@@ -611,7 +611,7 @@ final class InstallerResourceSyncTest extends TestCase
             $this->projectRoot . '/App/tools/php-dev-router.php'
         );
         self::assertStringContainsString(
-            'Se omiten los recursos base cuyo contrato SCSS',
+            'Se omiten los recursos estándar base y modulares cuyo contrato SCSS',
             $this->io->getOutput()
         );
         self::assertStringNotContainsString(

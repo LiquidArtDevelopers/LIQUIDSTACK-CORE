@@ -1,0 +1,27 @@
+<form id="{form-id}" class="moduleBlogFilters01" action="{action}" method="get" role="search" data-blog-filter-form data-blog-results-target="{target-selector}">
+    <div class="moduleBlogFilters01-search">
+        <label for="{search-id}">{search-label}</label>
+        <input id="{search-id}" type="search" name="q" value="{query}" placeholder="{search-placeholder}" minlength="2" maxlength="120" autocomplete="off">
+    </div>
+
+    <fieldset{categories-hidden}>
+        <legend>{categories-label}</legend>
+        <div class="moduleBlogFilters01-categories">
+            {filters}
+        </div>
+    </fieldset>
+
+    <div class="moduleBlogFilters01-mode"{categories-hidden}>
+        <label for="{mode-id}">{mode-label}</label>
+        <select id="{mode-id}" name="category_mode"{mode-disabled}>
+            <option value="any"{mode-any-selected}>{mode-any}</option>
+            <option value="all"{mode-all-selected}>{mode-all}</option>
+        </select>
+    </div>
+
+    <div class="moduleBlogFilters01-actions">
+        <button type="submit">{submit-label}</button>
+        <a href="{action}">{clear-label}</a>
+    </div>
+    <p class="moduleBlogFilters01-status" aria-live="polite" aria-atomic="true" data-blog-filter-status data-message="{status-label}"></p>
+</form>

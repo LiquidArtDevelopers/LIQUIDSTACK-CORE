@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Core\Support\Paths;
 use PHPUnit\Framework\TestCase;
 
-require_once dirname(__DIR__) . '/Support/ShowroomCatalogFixture.php';
 use function App\Core\Support\controller;
 
 final class SectionBlogGrid01ContractTest extends TestCase
@@ -21,8 +20,8 @@ final class SectionBlogGrid01ContractTest extends TestCase
         $this->originalCwd = (string) getcwd();
         $this->originalProjectRoot = Paths::projectRoot();
 
-        Paths::setProjectRoot(self::coreRoot() . '/stubs');
-        chdir(Paths::publicPath());
+        Paths::setProjectRoot(self::moduleProjectRoot());
+        chdir(self::coreRoot());
         $this->setGlobal('lang', 'es');
 
         foreach ($this->readCatalog('es') as $key => $value) {
@@ -77,6 +76,56 @@ final class SectionBlogGrid01ContractTest extends TestCase
         self::assertCount(2, $xpath->query('//article/h5'));
         self::assertCount(2, $xpath->query('//section/div/article'));
         self::assertCount(0, $xpath->query('//section//section'));
+    }
+
+    public function testInjectedHeadingKeepsItsAccessibleRelationship(): void
+    {
+        $item = [[
+            'url' => '/es/noticias/matrix',
+            'h1' => 'Matrix',
+            'excerpt' => 'Una entrada de prueba.',
+            'published_at' => '2026-01-10 12:00:00',
+        ]];
+        $withExistingId = controller('sectionBlogGrid01', 2, [
+            '{header-primary}' => '<h4 id="custom-grid-heading">'
+                . 'Encabezado externo</h4>',
+            'items_data' => $item,
+        ]);
+        $existingXpath = $this->createXpath($withExistingId);
+
+        self::assertCount(
+            1,
+            $existingXpath->query(
+                '/html/body/section[@aria-labelledby="custom-grid-heading"]'
+            )
+        );
+        self::assertCount(
+            1,
+            $existingXpath->query('//h4[@id="custom-grid-heading"]')
+        );
+        self::assertCount(1, $existingXpath->query('//article/h5'));
+
+        $withoutId = controller('sectionBlogGrid01', 3, [
+            '{header-primary}' => '<h3 class="external-heading">'
+                . 'Otro encabezado</h3>',
+            'items_data' => $item,
+        ]);
+        $generatedXpath = $this->createXpath($withoutId);
+        self::assertCount(
+            1,
+            $generatedXpath->query(
+                '/html/body/section['
+                    . '@aria-labelledby="sectionBlogGrid01-03-heading"'
+                    . ']'
+            )
+        );
+        self::assertCount(
+            1,
+            $generatedXpath->query(
+                '//h3[@id="sectionBlogGrid01-03-heading"]'
+            )
+        );
+        self::assertCount(1, $generatedXpath->query('//article/h4'));
     }
 
     public function testProjectedPublicItemsRenderEscapedWithoutLanguageHooks(): void
@@ -144,18 +193,26 @@ final class SectionBlogGrid01ContractTest extends TestCase
                     'excerpt' => 'Invalid date.',
                     'published_at' => 'not-a-date',
                 ],
+                [
+                    'url' => '/\\evil.example',
+                    'h1' => 'Backslash unsafe',
+                    'excerpt' => 'Unsafe URL.',
+                    'published_at' => '2026-01-01',
+                ],
             ],
         ]);
 
         self::assertCount(0, $this->createXpath($invalid)->query('//article'));
         self::assertStringNotContainsString('Unsafe', $invalid);
+        self::assertStringNotContainsString('Backslash unsafe', $invalid);
         self::assertStringNotContainsString('La llamada que despertó a Neo', $invalid);
     }
 
     public function testControllerIsProjectionOnlyAndContainsNoDatabaseAccess(): void
     {
         $controller = (string) file_get_contents(
-            self::coreRoot() . '/stubs/App/controllers/sectionBlogGrid01.php'
+            self::moduleProjectRoot()
+                . '/App/controllers/sectionBlogGrid01.php'
         );
 
         foreach ([
@@ -176,7 +233,8 @@ final class SectionBlogGrid01ContractTest extends TestCase
     public function testKeyboardFocusUsesTheAccessibleBaseColor(): void
     {
         $scss = (string) file_get_contents(
-            self::coreRoot() . '/resources/scss/_sectionBlogGrid01.scss'
+            self::moduleProjectRoot()
+                . '/src/scss/resources/_sectionBlogGrid01.scss'
         );
 
         self::assertStringContainsString(
@@ -244,11 +302,15 @@ final class SectionBlogGrid01ContractTest extends TestCase
     public function testBlogShowroomRegistrationIsCompleteAndHasNoResourceJs(): void
     {
         $root = self::coreRoot();
-        $showroom = ShowroomCatalogFixture::corePhp($root);
-        $javascript = ShowroomCatalogFixture::javascript($root);
-        $scss = ShowroomCatalogFixture::scss($root);
+        $showroom = (string) file_get_contents(
+            self::moduleProjectRoot() . '/App/views/showroom/_blog.php'
+        );
+        $javascript = (string) file_get_contents($root . '/src/js/templates.js');
+        $scss = (string) file_get_contents(
+            self::moduleProjectRoot() . '/src/scss/showroom/blog.scss'
+        );
         $partial = (string) file_get_contents(
-            $root . '/stubs/App/views/showroom/_blog.php'
+            self::moduleProjectRoot() . '/App/views/showroom/_blog.php'
         );
 
         self::assertSame(
@@ -265,7 +327,11 @@ final class SectionBlogGrid01ContractTest extends TestCase
         );
         self::assertSame(
             1,
-            substr_count($javascript, "import('./showroom/blog.js')")
+            substr_count($javascript, "import.meta.glob('./showroom/*.js')")
+        );
+        self::assertStringNotContainsString(
+            "import('./showroom/blog.js')",
+            $javascript
         );
         self::assertFileDoesNotExist(
             $root . '/resources/js/_sectionBlogGrid01.js'
@@ -275,7 +341,8 @@ final class SectionBlogGrid01ContractTest extends TestCase
     public function testStylesAreMobileFirstAndUseOnlyCoreColors(): void
     {
         $scss = (string) file_get_contents(
-            self::coreRoot() . '/resources/scss/_sectionBlogGrid01.scss'
+            self::moduleProjectRoot()
+                . '/src/scss/resources/_sectionBlogGrid01.scss'
         );
 
         self::assertStringContainsString("@use '../config' as c;", $scss);
@@ -337,5 +404,10 @@ final class SectionBlogGrid01ContractTest extends TestCase
     private static function coreRoot(): string
     {
         return dirname(__DIR__, 2);
+    }
+
+    private static function moduleProjectRoot(): string
+    {
+        return self::coreRoot() . '/modules/blog/resources/project';
     }
 }

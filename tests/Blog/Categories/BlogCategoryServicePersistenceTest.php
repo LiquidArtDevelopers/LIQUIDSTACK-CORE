@@ -13,6 +13,7 @@ use App\Core\Blog\Categories\BlogCategoryPublicProjectionService;
 use App\Core\Blog\Categories\BlogCategoryService;
 use App\Core\Blog\Categories\Persistence\BlogCategoryRepositoryInterface;
 use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
+use App\Core\Blog\Categories\PublishedCategoryFilter;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Modules\Blog\BlogMigrationProvider;
 use App\Core\Modules\Migrations\MigrationScope;
@@ -278,6 +279,110 @@ final class BlogCategoryServicePersistenceTest extends TestCase
         self::assertArrayNotHasKey('public_id', $filters[0]);
         self::assertArrayNotHasKey('post_public_id', $cards[0]);
         self::assertArrayNotHasKey('category_id', $cards[0]);
+    }
+
+    public function testPublicFiltersFailClosedInsteadOfTruncatingOverflow(): void
+    {
+        $postPublicId = $this->insertPost(true);
+        $postLookup = $this->pdo->prepare(
+            'SELECT id FROM ls_blog_posts WHERE public_id = ?'
+        );
+        $postLookup->execute([$postPublicId]);
+        $postId = (int) $postLookup->fetchColumn();
+        $categoryLookup = $this->pdo->prepare(
+            'SELECT id FROM ls_blog_categories WHERE public_id = ?'
+        );
+        $assignment = $this->pdo->prepare(
+            'INSERT INTO ls_blog_post_categories '
+            . '(public_id, post_id, category_id, '
+            . 'assigned_by_user_public_id) VALUES (?, ?, ?, ?)'
+        );
+
+        for (
+            $sequence = 1;
+            $sequence <= BlogCategoryRepositoryInterface::MAX_PUBLIC_FILTERS;
+            ++$sequence
+        ) {
+            $categoryPublicId = $this->insertCategory($sequence);
+            $categoryLookup->execute([$categoryPublicId]);
+            $assignment->execute([
+                sprintf(
+                    '82000000-0000-4000-8000-%012x',
+                    $sequence
+                ),
+                $postId,
+                (int) $categoryLookup->fetchColumn(),
+                self::ACTOR,
+            ]);
+        }
+        $projection = new BlogCategoryPublicProjectionService(
+            BlogConfig::defaults(['es']),
+            $this->repository
+        );
+        self::assertCount(
+            BlogCategoryRepositoryInterface::MAX_PUBLIC_FILTERS,
+            $projection->filtersForLocale('es')
+        );
+
+        $overflowSequence =
+            BlogCategoryRepositoryInterface::MAX_PUBLIC_FILTERS + 1;
+        $overflowCategory = $this->insertCategory($overflowSequence);
+        $categoryLookup->execute([$overflowCategory]);
+        $assignment->execute([
+            sprintf(
+                '82000000-0000-4000-8000-%012x',
+                $overflowSequence
+            ),
+            $postId,
+            (int) $categoryLookup->fetchColumn(),
+            self::ACTOR,
+        ]);
+
+        try {
+            $projection->filtersForLocale('es');
+            self::fail('A public filter overflow must not be truncated.');
+        } catch (BlogCategoryException $exception) {
+            self::assertSame(
+                BlogCategoryException::STORAGE_UNAVAILABLE,
+                $exception->issueCode()
+            );
+        }
+    }
+
+    public function testProjectionAlsoBoundsAlternativeRepositoryAdapters(): void
+    {
+        $filter = new PublishedCategoryFilter(
+            '83000000-0000-4000-8000-000000000001',
+            'es',
+            'matrix',
+            'Matrix',
+            1
+        );
+        $repository = $this->createMock(
+            BlogCategoryRepositoryInterface::class
+        );
+        $repository->expects(self::once())
+            ->method('publicFilters')
+            ->with('es')
+            ->willReturn(array_fill(
+                0,
+                BlogCategoryRepositoryInterface::MAX_PUBLIC_FILTERS + 1,
+                $filter
+            ));
+        $projection = new BlogCategoryPublicProjectionService(
+            BlogConfig::defaults(['es']),
+            $repository
+        );
+
+        try {
+            $projection->filtersForLocale('es');
+            self::fail('An alternative adapter cannot bypass the public cap.');
+        } catch (BlogCategoryException $exception) {
+            self::assertSame(
+                BlogCategoryException::STORAGE_UNAVAILABLE,
+                $exception->issueCode()
+            );
+        }
     }
 
     /** @return callable(PDO): string */

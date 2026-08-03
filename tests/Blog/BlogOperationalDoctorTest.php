@@ -63,6 +63,10 @@ final class BlogOperationalDoctorTest extends TestCase
             $this->coreRoot . '/modules/blog/published/assets',
             $this->projectRoot . '/public/assets/modules/blog'
         );
+        $this->filesystem->mirror(
+            $this->coreRoot . '/modules/blog/resources/project',
+            $this->projectRoot
+        );
         $this->filesystem->dumpFile(
             $this->projectRoot . '/composer.json',
             json_encode([
@@ -152,6 +156,12 @@ final class BlogOperationalDoctorTest extends TestCase
         );
         self::assertSame('ready', $blog['dependency']['status']);
         self::assertSame('applied', $blog['database']['status']);
+        self::assertSame([
+            'public/assets/modules/blog/blog-admin.css',
+            'public/assets/modules/blog/blog-editor.js',
+            'public/assets/modules/blog/blog-public.css',
+            'public/assets/modules/blog/blog-public.js',
+        ], $blog['assets']['required']);
         self::assertTrue($blog['readiness']['blog_ready']);
         self::assertSame([], $blog['readiness']['blockers']);
         self::assertSame($before, $this->databaseSnapshot());
@@ -206,7 +216,8 @@ final class BlogOperationalDoctorTest extends TestCase
     public function testMissingBlogAssetsBlockReadinessWithoutAWrite(): void
     {
         $this->filesystem->remove(
-            $this->projectRoot . '/public/assets/modules/blog'
+            $this->projectRoot
+                . '/public/assets/modules/blog/blog-public.js'
         );
         $before = $this->databaseSnapshot();
 
@@ -230,10 +241,46 @@ final class BlogOperationalDoctorTest extends TestCase
             $blog['readiness']['blockers']
         );
         self::assertSame(
-            ['public/assets/modules/blog'],
+            ['public/assets/modules/blog/blog-public.js'],
             $blog['assets']['missing']
         );
         self::assertSame($before, $this->databaseSnapshot());
+    }
+
+    public function testOptionalBlogResourcesCanBeAbsentWithoutBlocking(): void
+    {
+        $this->filesystem->remove([
+            $this->projectRoot . '/App/controllers',
+            $this->projectRoot . '/App/templates',
+            $this->projectRoot . '/App/views/showroom',
+            $this->projectRoot . '/src/js/resources',
+            $this->projectRoot . '/src/js/showroom',
+            $this->projectRoot . '/src/scss/resources',
+            $this->projectRoot . '/src/scss/showroom',
+        ]);
+
+        $report = (new ModuleDoctor(
+            migrationRuntimeFactory:
+                new BlogOperationalDoctorRuntimeFactoryFixture(
+                    new MigrationCommandRuntime(
+                        $this->pdo,
+                        $this->catalog,
+                        $this->scopes
+                    )
+                )
+        ))->inspect($this->projectRoot, $this->coreRoot);
+        $blog = $report->toArray()['module_diagnostics']['blog'];
+
+        self::assertTrue($report->isHealthy());
+        self::assertTrue($blog['assets']['ready']);
+        self::assertSame([], $blog['assets']['missing']);
+        self::assertSame([
+            'public/assets/modules/blog/blog-admin.css',
+            'public/assets/modules/blog/blog-editor.js',
+            'public/assets/modules/blog/blog-public.css',
+            'public/assets/modules/blog/blog-public.js',
+        ], $blog['assets']['required']);
+        self::assertTrue($blog['readiness']['blog_ready']);
     }
 
     private function securityKey(): string

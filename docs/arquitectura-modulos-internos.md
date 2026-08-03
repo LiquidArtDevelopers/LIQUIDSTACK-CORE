@@ -67,11 +67,34 @@ está activo.
 
 ## Sincronización y propiedad de datos
 
-El PHP de los módulos permanece en CORE, bajo `vendor`, y no se duplica en el
-proyecto. Solo los ficheros declarados expresamente en `project_files` pueden
-publicarse. Sus destinos quedan limitados al namespace propio del módulo en
-`public/assets/modules`, `src/js/modules` o `src/scss/modules`; un manifiesto
-no puede apuntar a rutas, configuración, datos ni contenido del cliente. Esa
+El PHP de dominio de los módulos permanece en CORE, bajo `vendor`, y no se
+duplica en el proyecto. Solo los ficheros declarados expresamente en
+`project_files` pueden publicarse. La superficie ordinaria queda limitada al
+namespace propio del módulo en `public/assets/modules`, `src/js/modules` o
+`src/scss/modules`.
+
+Un módulo puede declarar además una lista cerrada `resources` para publicar
+recursos visuales LiquidStack en sus rutas estándar. Cada identificador se
+valida y habilita exclusivamente sus ficheros exactos de controlador, template,
+SCSS y JS; no concede acceso a directorios completos ni a recursos no
+declarados. El módulo puede sumar su helper de familia y los tres hooks exactos
+de showroom. En Blog la fuente canónica vive bajo
+`modules/blog/resources/project/`, replicando la estructura final del
+consumidor.
+
+El diagnóstico operativo distingue ambas superficies. Solo considera
+obligatorios los targets module-owned situados bajo
+`public/assets/modules/<id>`, `src/js/modules/<id>` o
+`src/scss/modules/<id>`; si el manifiesto publica un directorio, resuelve sus
+ficheros fuente exactos y comprueba cada destino final. Un directorio runtime
+vacío, enlazado o cuyo source atraviese un enlace se rechaza antes del
+diagnóstico del consumidor. Controladores,
+templates, recursos SCSS/JS y hooks de showroom permanecen fuera de ese gate:
+pueden no haberse instalado por el contrato SCSS o haberse preservado de forma
+legítima sin declarar inoperativo el runtime PHP del módulo.
+
+Un manifiesto no puede apuntar por esta vía a rutas, `.env`, configuración,
+sitemap, DB, storage, medios, copy ni vistas públicas del cliente. Esa
 publicación reutiliza el sincronizador seguro de CORE:
 
 - instala ficheros ausentes;
@@ -81,8 +104,49 @@ publicación reutiliza el sincronizador seguro de CORE:
 - no ejecuta migraciones durante `composer install` o `composer update`.
 
 Cada entrada publicada forma un grupo de actualización independiente por
-defecto. Un manifiesto puede dar el mismo `group` a varias entradas que deban
-actualizarse atómicamente, sin congelar por ello todos los assets del módulo.
+defecto. Un manifiesto puede dar el mismo `group` al controlador, template,
+SCSS y JS de un recurso para actualizarlos atómicamente, sin congelar por ello
+los demás recursos ni todos los assets del módulo. Los cambios de ownership
+desde el catálogo base solo reconocen huellas históricas verificadas bajo el
+nuevo source ID modular; una copia desconocida o personalizada se conserva.
+
+La atomicidad de `managed_hash` se aplica bajo un lock exclusivo por proyecto;
+el estado se recarga después de adquirirlo para que dos procesos no decidan con
+la misma proyección obsoleta. Primero todos los orígenes mutables del grupo se
+copian y verifican en un staging corto bajo
+`.liquidstack/core/sync-transactions`; un journal atómico con estados
+`staging`, `prepared` y `committed` mapea cada destino, backup y SHA-256 exacto.
+Después los destinos
+reconocidos se apartan a backup y se promueven los ficheros preparados.
+
+Un fallo en cualquier escritura elimina solo destinos cuya huella demuestra
+que proceden del staging y restaura cada original antes de registrar huellas o
+contabilizar altas/actualizaciones. Una edición concurrente desconocida nunca
+se borra. Si PHP se interrumpe, el siguiente `apply()` recupera obligatoriamente
+los journals `prepared` o finaliza el cleanup de los `committed` antes de
+planificar. Los backups viven en el mismo volumen del proyecto para que
+`rename` sea seguro en Windows. Si incluso la restauración falla, Composer se
+detiene, no escribe estado ni continúa otros grupos y conserva journal y
+backups para recuperación. El lock reside en el temporal del sistema y el
+staging contiene un `.gitignore` interno que excluye journals y backups; solo
+`.liquidstack/core/managed-files.json` se versiona. Las políticas
+`install_if_missing`, `merge_json_additive` y los ficheros sin grupo conservan
+su flujo independiente.
+
+El helper común de una familia puede tener un grupo granular propio únicamente
+si su API pública es estable y aditiva. En Blog, `resource-support` conserva
+las cuatro funciones de normalización, escape, card y encabezado, sus firmas y
+las claves existentes del contexto. Un cambio incompatible requiere versionar
+el helper o migrar coordinadamente todos sus consumidores; no debe forzar a
+agrupar y congelar recursos independientes.
+
+Los recursos estándar modulares comparten el gate del contrato SCSS base. Si
+`src/scss/_config.scss` no puede verificarse, el instalador omite durante ese
+ciclo todos sus controladores, templates, SCSS, JS y hooks de showroom, y
+publica solamente los assets autocontenidos bajo los namespaces propios
+`public/assets/modules/<id>`, `src/js/modules/<id>` y
+`src/scss/modules/<id>`. De este modo no deja una familia visual parcial; tras
+reparar el contrato, una actualización posterior publica el conjunto completo.
 
 Desactivar o retirar un selector deja de registrar el módulo, pero nunca borra
 tablas, usuarios, artículos, medios, uploads, configuración ni ficheros ya
@@ -427,22 +491,34 @@ standalone de consumidores existentes. Las claves `article-basic-01` y
 `article-cover-01` siguen siendo contratos de documento y portada; nuevas
 composiciones visuales mediante recursos LiquidStack permanecen aditivas.
 
-El bloque YouTube conserva por ahora un enlace externo accesible y no crea un
-iframe. Un futuro runtime Lite YouTube inline deberá mantener ese fallback y
-consultar CookieLAD antes de cargar contenido social. La frontera de sesión
-pública ya está implementada: el detalle modular no hereda la sesión legacy y
-el índice project-owned puede declarar `session => false` en su ruta estática
-dentro del prefijo Blog. Sigue pendiente compartir una única proyección pública
-para evitar conexiones PDO redundantes cuando el índice compone filtros y
-cards.
+El bloque YouTube conserva un enlace externo accesible y el asset module-owned
+`blog-public.js` lo mejora progresivamente. Solo un clic primario sin
+modificadores y con `cookie_social=true` crea un iframe de
+`youtube-nocookie.com`; sin JavaScript o consentimiento la navegación externa
+permanece intacta, y revocar el permiso desmonta cualquier iframe activo. La
+CSP standalone permite exclusivamente el script propio y ese origen de frame;
+un shell project-owned debe declarar el mismo contrato con su nonce. La
+frontera de sesión pública ya está implementada: el detalle modular no hereda
+la sesión legacy y el índice project-owned puede declarar `session => false`
+en su ruta estática dentro del prefijo Blog. `BlogPublicFeedFactory` comparte
+ya una única conexión y runtime para cards generales, filtros y cards por
+categoría; el factory específico de categorías se conserva como adaptador
+compatible.
 
-`sectionBlogGrid01` es la primera frontera visual y su showroom ya se oculta
-cuando Blog no está activo, pero sus ficheros de recurso todavía viajan dentro
-del catálogo base. Antes de ampliar la familia se implementará ownership
-selectivo para que controladores, templates, SCSS, JS, fixtures y catálogos
-propios de Blog se sincronicen únicamente con `liquidstack/blog`.
+La primera familia visual Blog ya usa ownership selectivo. Incluye
+`moduleBlogFilters01`, `sectionBlogGrid01`, `sectionBlogList01`,
+`sectionBlogFeatured01` y `sectionBlogSlider01`, junto a su helper y hooks de
+showroom. Controladores, templates, SCSS y JS se publican únicamente cuando
+está activo `liquidstack/blog`; un proyecto core-only o WebAdmin-only no recibe
+esos ficheros. Las claves Matrix legacy de los catálogos base se conservan de
+forma aditiva durante la transición y no son contenido público de DB.
 
-Siguen fuera de este corte la búsqueda avanzada, la traducción IA, las
+La búsqueda pública y los filtros de categorías `any|all` ya están
+implementados mediante `BlogPublicCatalogQuery` y
+`BlogPublicFeed::cardsForQuery()`, con SSR funcional y mejora progresiva. Las
+vistas de archivo, los relacionados y RSS permanecen fuera de este corte.
+
+Siguen fuera de este corte el análisis de búsqueda avanzado, la traducción IA, las
 plantillas visuales adicionales, los formatos de medios aún no admitidos, la
 localización independiente de la interfaz WebAdmin, la edición HTML avanzada
 protegida y el editor de páginas. El detalle de estos siguientes cortes está en

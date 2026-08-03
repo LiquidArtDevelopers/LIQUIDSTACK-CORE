@@ -36,6 +36,7 @@ final class ModuleDefinition
         private readonly string $packageName,
         private readonly array $dependencies,
         private readonly array $providers,
+        private readonly array $resources,
         private readonly array $projectFiles,
         private readonly string $root
     ) {
@@ -93,13 +94,20 @@ final class ModuleDefinition
         $packageName = self::requiredPackageName($manifest, $manifestPath);
         $dependencies = self::parseDependencies($manifest, $manifestPath);
         $providers = self::parseProviders($manifest, $manifestPath);
-        $projectFiles = self::parseProjectFiles($manifest, $manifestPath, $id);
+        $resources = self::parseResources($manifest, $manifestPath);
+        $projectFiles = self::parseProjectFiles(
+            $manifest,
+            $manifestPath,
+            $id,
+            $resources
+        );
 
         return new self(
             $id,
             $packageName,
             $dependencies,
             $providers,
+            $resources,
             $projectFiles,
             dirname($manifestPath)
         );
@@ -144,6 +152,12 @@ final class ModuleDefinition
     public function projectFiles(): array
     {
         return $this->projectFiles;
+    }
+
+    /** @return list<string> */
+    public function resources(): array
+    {
+        return $this->resources;
     }
 
     public function root(): string
@@ -307,7 +321,8 @@ final class ModuleDefinition
     private static function parseProjectFiles(
         array $manifest,
         string $manifestPath,
-        string $id
+        string $id,
+        array $resources
     ): array {
         $values = $manifest['project_files'] ?? [];
         if (!is_array($values) || !array_is_list($values)) {
@@ -385,7 +400,9 @@ final class ModuleDefinition
             self::assertNamespacedProjectTarget(
                 $target,
                 $id,
-                $manifestPath
+                $manifestPath,
+                $type,
+                $resources
             );
             self::assertUniqueProjectTarget(
                 $target,
@@ -406,6 +423,42 @@ final class ModuleDefinition
         }
 
         return $files;
+    }
+
+    /**
+     * @param array<string, mixed> $manifest
+     * @return list<string>
+     */
+    private static function parseResources(
+        array $manifest,
+        string $manifestPath
+    ): array {
+        $values = $manifest['resources'] ?? [];
+        if (!is_array($values) || !array_is_list($values)) {
+            throw new RuntimeException(sprintf(
+                'El campo resources de %s debe ser una lista.',
+                $manifestPath
+            ));
+        }
+
+        $resources = [];
+        foreach ($values as $value) {
+            if (
+                !is_string($value)
+                || preg_match(
+                    '/\A(?:art|hero|module|nav|sect|section)[A-Za-z0-9]+\z/',
+                    $value
+                ) !== 1
+            ) {
+                throw new RuntimeException(sprintf(
+                    'Recurso de mÃ³dulo invÃ¡lido en %s.',
+                    $manifestPath
+                ));
+            }
+            $resources[] = $value;
+        }
+
+        return array_values(array_unique($resources));
     }
 
     private static function relativePath(
@@ -474,7 +527,9 @@ final class ModuleDefinition
     private static function assertNamespacedProjectTarget(
         string $target,
         string $id,
-        string $manifestPath
+        string $manifestPath,
+        string $type,
+        array $resources
     ): void {
         $roots = [
             'public/assets/modules/' . $id,
@@ -485,6 +540,35 @@ final class ModuleDefinition
         foreach ($roots as $root) {
             if ($target === $root || str_starts_with($target, $root . '/')) {
                 return;
+            }
+        }
+
+        if ($type === 'file') {
+            $moduleClassId = implode('', array_map(
+                static fn (string $part): string => ucfirst($part),
+                explode('-', $id)
+            ));
+            $moduleHooks = [
+                'App/controllers/_module'
+                    . $moduleClassId
+                    . 'Resources.php',
+                'App/views/showroom/_' . $id . '.php',
+                'src/js/showroom/' . $id . '.js',
+                'src/scss/showroom/' . $id . '.scss',
+            ];
+            if (in_array($target, $moduleHooks, true)) {
+                return;
+            }
+
+            foreach ($resources as $resource) {
+                if (in_array($target, [
+                    'App/controllers/' . $resource . '.php',
+                    'App/templates/_' . $resource . '.html',
+                    'src/scss/resources/_' . $resource . '.scss',
+                    'src/js/resources/_' . $resource . '.js',
+                ], true)) {
+                    return;
+                }
             }
         }
 

@@ -6,6 +6,7 @@ namespace App\Core\Blog\Http;
 
 use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogPostVariant;
+use App\Core\Http\Request;
 use App\Core\Http\Response;
 use Throwable;
 
@@ -112,7 +113,7 @@ final class BlogPublicHttpController
         }
     }
 
-    public function sitemap(): Response
+    public function sitemap(?Request $request = null): Response
     {
         try {
             $xml = $this->sitemapRenderer->render(
@@ -120,20 +121,73 @@ final class BlogPublicHttpController
                 $this->runtime->config(),
                 $this->runtime->origin()
             );
+            $etag = '"' . hash('sha256', $xml) . '"';
+            if (
+                $request instanceof Request
+                && $this->matchesIfNoneMatch($request, $etag)
+            ) {
+                return new Response(304, '', $this->sitemapHeaders($etag));
+            }
 
-            return new Response(200, $xml, [
-                'Content-Type' => 'application/xml; charset=utf-8',
-                'Cache-Control' => 'no-cache, must-revalidate',
-                'Content-Security-Policy' => "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
-                'Referrer-Policy' => 'no-referrer',
-                'X-Content-Type-Options' => 'nosniff',
-                'Cross-Origin-Resource-Policy' => 'same-origin',
-            ]);
+            return new Response(
+                200,
+                $xml,
+                $this->sitemapHeaders($etag, strlen($xml))
+            );
         } catch (BlogPublicHttpRuntimeException $exception) {
             throw $exception;
         } catch (Throwable) {
             throw new BlogPublicHttpRuntimeException();
         }
+    }
+
+    /** @return array<string, string> */
+    private function sitemapHeaders(
+        string $etag,
+        ?int $contentLength = null
+    ): array {
+        $headers = [
+            'Cache-Control' => 'public, no-cache, must-revalidate',
+            'ETag' => $etag,
+            'Content-Security-Policy' =>
+                "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+            'Referrer-Policy' => 'no-referrer',
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Frame-Options' => 'DENY',
+            'Cross-Origin-Resource-Policy' => 'same-origin',
+        ];
+        if ($contentLength !== null) {
+            $headers = [
+                'Content-Type' => 'application/xml; charset=utf-8',
+                'Content-Length' => (string) $contentLength,
+            ] + $headers;
+        }
+
+        return $headers;
+    }
+
+    private function matchesIfNoneMatch(Request $request, string $etag): bool
+    {
+        if (
+            !$request->hasValidHeaders()
+            || !in_array($request->method(), ['GET', 'HEAD'], true)
+        ) {
+            return false;
+        }
+        $value = $request->header('If-None-Match');
+        if ($value === null) {
+            return false;
+        }
+        if (trim($value) === '*') {
+            return true;
+        }
+
+        return preg_match(
+            '/(?:\A|,)[\x20\x09]*(?:W\/)?'
+                . preg_quote($etag, '/')
+                . '[\x20\x09]*(?=,|\z)/D',
+            $value
+        ) === 1;
     }
 
     /** @return array<string, string> */
@@ -154,8 +208,11 @@ final class BlogPublicHttpController
         if (!$this->articleRenderer->usesProjectArticleView()) {
             $headers['Content-Security-Policy'] =
                 "default-src 'none'; style-src 'self'; "
-                . "img-src 'self' data:; frame-ancestors 'none'; "
-                . "base-uri 'none'; form-action 'none'";
+                . "script-src 'self'; script-src-attr 'none'; "
+                . "img-src 'self' data:; "
+                . "frame-src https://www.youtube-nocookie.com; "
+                . "frame-ancestors 'none'; base-uri 'none'; "
+                . "form-action 'none'";
         }
 
         return $headers;

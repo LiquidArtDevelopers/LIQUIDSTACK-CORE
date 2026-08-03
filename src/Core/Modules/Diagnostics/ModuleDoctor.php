@@ -34,7 +34,9 @@ final class ModuleDoctor
             new ProjectEnvironmentLoader(),
         private readonly ?MigrationCommandRuntimeFactoryInterface $migrationRuntimeFactory = null,
         private readonly BlogDiagnosticService $blogDiagnostics =
-            new BlogDiagnosticService()
+            new BlogDiagnosticService(),
+        private readonly RequiredModuleRuntimeAssetResolver $runtimeAssets =
+            new RequiredModuleRuntimeAssetResolver()
     ) {
     }
 
@@ -177,9 +179,8 @@ final class ModuleDoctor
                 $webAdminReport = $this->webAdminDiagnostics->inspect(
                     $projectRoot,
                     $environment,
-                    array_map(
-                        static fn (array $file): string => $file['target'],
-                        $catalog->get('webadmin')->projectFiles()
+                    $this->runtimeAssets->resolve(
+                        $catalog->get('webadmin')
                     ),
                     $databaseDiagnostic
                 );
@@ -245,9 +246,8 @@ final class ModuleDoctor
                         ? $databasePlan
                         : null,
                     $inspectDatabase,
-                    array_map(
-                        static fn (array $file): string => $file['target'],
-                        $catalog->get('blog')->projectFiles()
+                    $this->runtimeAssets->resolve(
+                        $catalog->get('blog')
                     )
                 );
                 $blogPayload = $blogReport->toArray();

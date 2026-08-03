@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogService;
+use App\Core\Blog\Categories\BlogCategoryException;
+use App\Core\Blog\Categories\BlogCategoryPublicProjectionService;
+use App\Core\Blog\Categories\Persistence\BlogCategoryRepositoryInterface;
+use App\Core\Blog\Categories\PublishedCategoryFilter;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Http\BlogPublicHttpRuntime;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeFactoryInterface;
 use App\Core\Blog\Persistence\BlogRepositoryInterface;
 use App\Core\Blog\PublishedPostCard;
+use App\Core\Blog\PublicFeed\BlogPublicCatalogQuery;
+use App\Core\Blog\PublicFeed\BlogPublicCatalogRepositoryInterface;
 use App\Core\Blog\PublicFeed\BlogPublicFeed;
 use App\Core\Blog\PublicFeed\BlogPublicFeedFactory;
 use App\Core\Modules\ModuleRuntimeContext;
@@ -61,13 +67,34 @@ final class BlogPublicFeedTest extends TestCase
     {
         $repository = $this->createMock(BlogRepositoryInterface::class);
         $repository->method('listPublishedCards')->willReturn([]);
+        $categoryRepository = $this->createMock(
+            BlogCategoryRepositoryInterface::class
+        );
+        $categoryRepository->expects(self::once())
+            ->method('publicFilters')
+            ->with('es')
+            ->willReturn([new PublishedCategoryFilter(
+                '11111111-1111-4111-8111-111111111111',
+                'es',
+                'matrix',
+                'Matrix',
+                1
+            )]);
+        $categoryRepository->expects(self::once())
+            ->method('publicPostCards')
+            ->with('es', 'matrix', 4, 2)
+            ->willReturn([$this->card()]);
         $runtime = new BlogPublicHttpRuntime(
             $this->config(),
             BlogPublicOrigin::fromEnvironment([
                 'DEV_MODE' => '1',
                 'RAIZ' => 'http://localhost:1309',
             ]),
-            new BlogService($repository)
+            new BlogService($repository),
+            categoryProjection: new BlogCategoryPublicProjectionService(
+                $this->config(),
+                $categoryRepository
+            )
         );
         $runtimeFactory = $this->createMock(
             BlogPublicHttpRuntimeFactoryInterface::class
@@ -88,6 +115,87 @@ final class BlogPublicFeedTest extends TestCase
         );
 
         self::assertSame([], $feed->cards('es'));
+        self::assertSame('matrix', $feed->filtersForLocale('es')[0]['slug']);
+        self::assertSame(
+            '/es/noticias/matrix-despierta',
+            $feed->postsForFilter('es', 'matrix', 4, 2)[0]['url']
+        );
+    }
+
+    public function testUnifiedFeedFailsClosedWhenCategoryProjectionIsUnavailable(): void
+    {
+        $feed = new BlogPublicFeed(
+            $this->config(),
+            new BlogService($this->createMock(BlogRepositoryInterface::class))
+        );
+
+        try {
+            $feed->filtersForLocale('es');
+            self::fail('The missing category projection must fail closed.');
+        } catch (BlogCategoryException $exception) {
+            self::assertSame(
+                BlogCategoryException::STORAGE_UNAVAILABLE,
+                $exception->issueCode()
+            );
+        }
+    }
+
+    public function testCardsForQueryUsesTheBoundedCatalogReadModel(): void
+    {
+        $query = new BlogPublicCatalogQuery(
+            'es',
+            'matrix',
+            ['noticias', 'cine'],
+            BlogPublicCatalogQuery::MODE_ALL,
+            9,
+            3,
+            'matrix-anterior'
+        );
+        $catalog = $this->createMock(
+            BlogPublicCatalogRepositoryInterface::class
+        );
+        $catalog->expects(self::once())
+            ->method('search')
+            ->with(self::identicalTo($query))
+            ->willReturn([$this->card()]);
+        $legacyRepository = $this->createMock(
+            BlogRepositoryInterface::class
+        );
+        $legacyRepository->expects(self::never())
+            ->method('listPublishedCards');
+        $feed = new BlogPublicFeed(
+            $this->config(),
+            new BlogService($legacyRepository),
+            catalogRepository: $catalog
+        );
+
+        self::assertSame([[
+            'locale' => 'es',
+            'slug' => 'matrix-despierta',
+            'url' => '/es/noticias/matrix-despierta',
+            'h1' => 'Matrix despierta',
+            'excerpt' => 'Neo descubre que el mundo no es lo que parece.',
+            'published_at' => '2030-01-02T12:00:00+00:00',
+            'updated_at' => '2030-01-03T13:00:00+00:00',
+        ]], $feed->cardsForQuery($query));
+    }
+
+    public function testCardsForQueryFailsClosedWithoutCatalogRepository(): void
+    {
+        $feed = new BlogPublicFeed(
+            $this->config(),
+            new BlogService($this->createMock(BlogRepositoryInterface::class))
+        );
+
+        try {
+            $feed->cardsForQuery(new BlogPublicCatalogQuery('es'));
+            self::fail('A missing catalog repository must fail closed.');
+        } catch (BlogException $exception) {
+            self::assertSame(
+                BlogException::STORAGE_UNAVAILABLE,
+                $exception->issueCode()
+            );
+        }
     }
 
     private function config(): BlogConfig

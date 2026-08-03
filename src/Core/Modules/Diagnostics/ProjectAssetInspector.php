@@ -71,13 +71,13 @@ final class ProjectAssetInspector
             $asset
         );
         $real = realpath($path);
-        if ($real === false || (!is_file($real) && !is_dir($real))) {
+        if ($real === false || !is_file($real)) {
             return false;
         }
 
         $rootPrefix = rtrim(str_replace('\\', '/', $root), '/') . '/';
         $realNormalized = str_replace('\\', '/', $real);
-        $candidate = $realNormalized . (is_dir($real) ? '/' : '');
+        $candidate = $realNormalized;
 
         if (DIRECTORY_SEPARATOR === '\\') {
             $rootPrefix = strtolower($rootPrefix);

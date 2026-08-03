@@ -153,6 +153,10 @@ final class WebAdminOperationalDoctorTest extends TestCase
         );
         self::assertSame('applied', $webAdmin['readiness']['migrations']);
         self::assertSame('sqlite', $webAdmin['database']['connection']['driver']);
+        self::assertSame([
+            'public/assets/modules/webadmin/webadmin.css',
+            'public/assets/modules/webadmin/webadmin.js',
+        ], $webAdmin['assets']['required']);
         self::assertContains(
             'webadmin.runtime.password_policy',
             array_column($payload['checks'], 'id')
@@ -198,6 +202,36 @@ final class WebAdminOperationalDoctorTest extends TestCase
             'sensitive-dsn-and-password-must-not-leak',
             $encoded
         );
+    }
+
+    public function testMissingRuntimeAssetBlocksWebAdminReadiness(): void
+    {
+        $this->filesystem->remove(
+            $this->projectRoot
+                . '/public/assets/modules/webadmin/webadmin.js'
+        );
+        $before = $this->databaseSnapshot();
+        $runtime = new MigrationCommandRuntime(
+            $this->pdo,
+            $this->catalog,
+            $this->scopes
+        );
+
+        $report = (new ModuleDoctor(
+            migrationRuntimeFactory: new OperationalDoctorRuntimeFactory(
+                $runtime
+            )
+        ))->inspect($this->projectRoot, $this->coreRoot);
+        $webAdmin = $report->toArray()['module_diagnostics']['webadmin'];
+
+        self::assertFalse($report->isHealthy());
+        self::assertFalse($webAdmin['assets']['ready']);
+        self::assertSame(
+            ['public/assets/modules/webadmin/webadmin.js'],
+            $webAdmin['assets']['missing']
+        );
+        self::assertFalse($webAdmin['readiness']['runtime_ready']);
+        self::assertSame($before, $this->databaseSnapshot());
     }
 
     private function securityKey(): string

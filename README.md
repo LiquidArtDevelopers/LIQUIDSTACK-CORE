@@ -26,6 +26,16 @@ Al ejecutar `composer install` o `composer update` en un proyecto que consume es
    - Si un controlador, template, SCSS, JS o asset de un recurso contiene una
      personalización desconocida, se conserva el grupo completo del recurso.
      Así no se mezclan piezas de contratos incompatibles.
+   - Las escrituras `managed_hash` que comparten grupo se preparan completas
+     antes de modificar el consumidor. Un lock exclusivo por proyecto obliga a
+     recargar primero el estado más reciente; cada operación mantiene además un
+     journal atómico y backups temporales en el mismo volumen. Si falla una
+     promoción, restaura el grupo antes de actualizar estadísticas o estado; si
+     PHP se interrumpe, la siguiente ejecución recupera el journal antes de
+     planificar. Una restauración incierta detiene Composer y conserva la copia
+     recuperable. Esto evita dejar, por ejemplo, un controlador nuevo con su
+     template o SCSS anterior, también en Windows. Lock, journals y backups no
+     entran en Git; solo `managed-files.json` sigue siendo estado versionable.
    - La sincronización nunca borra ficheros del consumidor.
    - Los JSON de idiomas se fusionan recursivamente: CORE añade claves y
      propiedades ausentes, pero no sustituye ningún valor existente, incluidos
@@ -497,12 +507,28 @@ durante un update. El contrato de
 rutas, categorías, editor, revisiones, medios, estados y permisos está en
 [Liquid Blog](docs/liquid-blog.md).
 
-`blog-admin.css`, `blog-editor.js` y `blog-public.css` viven en
+`blog-admin.css`, `blog-editor.js`, `blog-public.css` y `blog-public.js` viven en
 `modules/blog/published/assets` y se sincronizan hacia
 `public/assets/modules/blog` mediante el manifiesto del módulo. No forman parte
-del bundle general ni son configuración project-owned. `doctor` informa su
-estado en `blog.assets`; si falta un destino gestionado o es inválido, incluye
-el blocker `assets.missing_or_invalid`.
+del bundle general ni son configuración project-owned. `doctor` expande ese
+directorio y comprueba individualmente esos cuatro ficheros runtime en
+`blog.assets`; si falta un destino gestionado o es inválido, incluye el blocker
+`assets.missing_or_invalid`. La familia de recursos y sus hooks de showroom se
+distribuyen selectivamente y no forman parte de este gate operativo.
+
+La familia visual pública también es selectiva. Su fuente canónica vive bajo
+`modules/blog/resources/project/` y el manifiesto publica, solo con
+`liquidstack/blog`, `moduleBlogFilters01`, `sectionBlogGrid01`,
+`sectionBlogList01`, `sectionBlogFeatured01` y `sectionBlogSlider01`, junto a
+su helper y hooks de showroom. Cada recurso agrupa controlador, template, SCSS
+y JS como una unidad gestionada; una copia local desconocida se preserva y un
+proyecto core-only o WebAdmin-only no recibe esos ficheros. Los ejemplos Matrix
+pertenecen exclusivamente al showroom y nunca sustituyen contenido de la DB.
+El helper común mantiene una API estable y aditiva en su propio grupo, de modo
+que una personalización de un recurso no congela los demás. Si el contrato
+SCSS del consumidor no puede verificarse, CORE conserva los assets
+autocontenidos del módulo pero aplaza conjuntamente esta familia visual y sus
+hooks hasta una actualización posterior con `_config.scss` reparado.
 
 La frontera HTTP exige HTTPS fuera del laboratorio. `npm run lad` puede usar
 HTTP únicamente con `DEV_MODE=1`, una `RAIZ` loopback, coincidencia exacta de

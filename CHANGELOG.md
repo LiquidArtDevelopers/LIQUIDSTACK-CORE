@@ -4,6 +4,35 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Corregido
+- La imagen de portada de `article-cover-01` deja de cargarse de forma tardía:
+  el renderer conserva `lazy` para imágenes de contenido y anchas, pero marca
+  el único bloque `cover` inicial como `eager` y `fetchpriority="high"` para no
+  penalizar el LCP de los shells públicos que lo usan como hero.
+- `doctor` ya no trata controladores, templates, SCSS, JS ni hooks de showroom
+  opcionales como assets operativos obligatorios de un módulo. El diagnóstico
+  limita `webadmin.assets` y `blog.assets` a los namespaces runtime gestionados
+  por el módulo y expande cada directorio declarado a sus ficheros fuente
+  exactos; así detecta la ausencia de un bundle concreto sin bloquear un
+  proyecto que haya retenido legítimamente la familia visual estándar. Un
+  directorio runtime vacío o cuyo source atraviese un enlace falla cerrado.
+  En destino, cada ruta exigida debe resolver además a un fichero regular; un
+  directorio con nombre `.js` o `.css` ya no produce un falso positivo.
+- Los ficheros `managed_hash` de un mismo grupo se publican ahora mediante
+  lock por proyecto, staging, journal y backup en el volumen del consumidor.
+  Si falla una promoción, CORE revierte conjuntamente altas y actualizaciones,
+  conserva intacto el manifiesto de estado y permite reintentar sin mezclar
+  versiones; una interrupción se recupera antes del siguiente plan y un
+  rollback incierto detiene Composer conservando sus backups. La restauración
+  solo retira huellas exactas del staging, contempla `rename` en Windows y sus
+  temporales quedan excluidos de Git.
+- La búsqueda pública Blog mide ahora el texto normalizado en caracteres
+  Unicode —2 a 120 tras un techo defensivo de 480 bytes—, limita el offset a
+  10.000 y compara correctamente mayúsculas acentuadas en SQLite mediante un
+  casefold determinista registrado una vez por conexión. Los filtros públicos
+  de categorías consultan una fila adicional y fallan cerrados al superar 100,
+  sin truncar silenciosamente el catálogo. `moduleBlogFilters01` ordena primero
+  cualquier selección válida y muestra como máximo diez categorías, el mismo
+  techo que acepta la consulta GET incluso sin JavaScript.
 - El sitemap estático deja de asignar la hora de cada build como `lastmod` a
   todas las rutas. Como el stack no conoce una fecha de modificación real para
   ese contenido project-owned, omite el elemento opcional y produce XML
@@ -48,7 +77,11 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   restaura el foco tras reordenar, añadir o eliminar contenido, reanuncia
   mensajes idénticos en su región viva y corrige el copy de YouTube. El recurso
   `sectionBlogGrid01` usa foco y hover con contraste suficiente y permite
-  cortar títulos o extractos largos sin desbordar el viewport.
+  cortar títulos o extractos largos sin desbordar el viewport. Las cuatro
+  secciones Blog conservan además un `{header-primary}` externo, escalan sus
+  cards relativamente y mantienen `aria-labelledby` unido al ID real. Los
+  enlaces internos y la acción del filtro rechazan barras invertidas para que
+  el navegador no pueda normalizarlas como un origen externo.
 - Los artículos Blog publicados generan robots, canonical, Open Graph y Twitter
   Card, y comparten con el sitemap un conjunto `hreflang`/`x-default` formado
   solo por variantes publicadas. La imagen social se limita a la portada formal
@@ -79,6 +112,25 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   y los artículos continúan usando la resolución pública tardía.
 
 ### Añadido
+- Proyección pública Blog unificada: una instancia de
+  `BlogPublicFeedFactory` comparte runtime y conexión PDO para cards generales,
+  filtros y cards por categoría. El factory específico anterior permanece
+  compatible. El sitemap dinámico suma un `ETag` fuerte, revalidación
+  `If-None-Match` correcta para `GET`/`HEAD`, respuestas `304` sin cuerpo,
+  `Content-Length` verificable y un límite estricto de 50 MiB.
+- Familia visual Blog con ownership selectivo: `moduleBlogFilters01`,
+  `sectionBlogGrid01`, `sectionBlogList01`, `sectionBlogFeatured01` y
+  `sectionBlogSlider01` publican controlador, template, SCSS y JS únicamente
+  al activar `liquidstack/blog`. Sus grupos gestionados preservan
+  personalizaciones locales de forma coherente, el showroom usa fixtures
+  Matrix sin fallback de DB y las copias base anteriores migran solo cuando
+  coinciden con una huella histórica verificada.
+- Runtime público Lite YouTube gestionado por el módulo Blog. Conserva el
+  enlace externo SSR sin JavaScript o consentimiento, no crea el iframe
+  `youtube-nocookie.com` hasta un clic primario con `cookie_social=true`, no
+  precarga miniaturas de terceros y desmonta la reproducción si CookieLAD
+  revoca el permiso. El fallback standalone y los shells project-owned usan
+  CSP acotadas y el asset se distribuye solo al activar `liquidstack/blog`.
 - La hoja de ruta Blog conserva como requisitos explícitos los fixtures de las
   cuatro películas Matrix, la semántica de filtros de categorías `any/all`, la
   futura caché condicional del sitemap y los límites de elegibilidad de Google

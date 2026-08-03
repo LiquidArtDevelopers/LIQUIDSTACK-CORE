@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace App\Core\Blog\Http;
 
 use App\Core\Blog\BlogService;
+use App\Core\Blog\Categories\BlogCategoryPublicProjectionService;
+use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
 use App\Core\Blog\Configuration\BlogConfigLoader;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Persistence\PdoBlogRepository;
+use App\Core\Blog\PublicFeed\PdoBlogPublicCatalogRepository;
 use App\Core\Blog\PublicDelivery\BlogPublicMediaDelivery;
 use App\Core\Blog\PublicDelivery\PdoBlogPublicMediaRepository;
 use App\Core\Blog\StructuredContent\Persistence\PdoBlogStructuredContentRepository;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Modules\Blog\BlogHttpSchemaGate;
+use App\Core\Modules\Blog\BlogCategoryHttpSchemaGate;
 use App\Core\Modules\Blog\BlogMigrationRequirements;
 use App\Core\Modules\Blog\BlogStructuredContentSchemaGate;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
@@ -45,6 +49,8 @@ final class BlogPublicHttpRuntimeFactory implements
             new ConfiguredMigrationScopeFactory(),
         private readonly BlogHttpSchemaGate $schemaGate =
             new BlogHttpSchemaGate(),
+        private readonly BlogCategoryHttpSchemaGate $categorySchemaGate =
+            new BlogCategoryHttpSchemaGate(),
         ?ConfiguredModuleDatabaseConnectionResolver $databaseConnectionResolver = null,
         private readonly BlogStructuredContentSchemaGate
             $structuredContentSchemaGate =
@@ -135,6 +141,20 @@ final class BlogPublicHttpRuntimeFactory implements
 
             $structuredContent = null;
             $mediaDelivery = null;
+            $categorySchemaReady = $this->categorySchemaGate->isPublicReady(
+                $pdo,
+                $registry,
+                $scopes
+            );
+            $categoryProjection = $categorySchemaReady
+                ? new BlogCategoryPublicProjectionService(
+                    $config,
+                    new PdoBlogCategoryRepository($pdo, $blogScope)
+                )
+                : null;
+            $catalogRepository = $categorySchemaReady
+                ? new PdoBlogPublicCatalogRepository($pdo, $blogScope)
+                : null;
             $structuredMigrationApplied = $this->migrationFeatureGate->isReady(
                 $pdo,
                 $registry,
@@ -199,7 +219,9 @@ final class BlogPublicHttpRuntimeFactory implements
                 $origin,
                 new BlogService(new PdoBlogRepository($pdo, $blogScope)),
                 $structuredContent,
-                $mediaDelivery
+                $mediaDelivery,
+                $categoryProjection,
+                $catalogRepository
             );
         } catch (BlogPublicHttpRuntimeException $exception) {
             throw $exception;

@@ -335,6 +335,9 @@ final class BlogDiagnosticServiceTest extends TestCase
             $this->root . '/public/blog-admin.css',
             '/* fixture */'
         );
+        $this->filesystem->mkdir(
+            $this->root . '/public/directory-masquerading-as-runtime.js'
+        );
 
         $report = (new BlogDiagnosticService())->inspect(
             $this->root,
@@ -347,6 +350,7 @@ final class BlogDiagnosticServiceTest extends TestCase
             [
                 'public/blog-admin.css',
                 'public/missing.js',
+                'public/directory-masquerading-as-runtime.js',
                 '../outside-project.txt',
             ]
         );
@@ -354,7 +358,10 @@ final class BlogDiagnosticServiceTest extends TestCase
 
         self::assertFalse($report->isReady());
         self::assertSame(
-            ['public/missing.js'],
+            [
+                'public/missing.js',
+                'public/directory-masquerading-as-runtime.js',
+            ],
             $data['assets']['missing']
         );
         self::assertSame(

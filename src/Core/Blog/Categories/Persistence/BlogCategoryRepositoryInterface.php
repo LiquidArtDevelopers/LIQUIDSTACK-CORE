@@ -13,6 +13,10 @@ use PDO;
 
 interface BlogCategoryRepositoryInterface
 {
+    public const MAX_PUBLIC_FILTERS = 100;
+    public const PUBLIC_FILTER_OVERFLOW_QUERY_LIMIT =
+        self::MAX_PUBLIC_FILTERS + 1;
+
     /** @template T @param callable(PDO): T $operation @return T */
     public function transactional(callable $operation): mixed;
 

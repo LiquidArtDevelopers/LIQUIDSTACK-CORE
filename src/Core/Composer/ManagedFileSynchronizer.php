@@ -16,6 +16,8 @@ final class ManagedFileSynchronizer
     private const HISTORY_SCHEMA = 1;
     private const STATE_SCHEMA = 1;
     private const STATE_RELATIVE_PATH = '.liquidstack/core/managed-files.json';
+    private const TRANSACTION_RELATIVE_PATH =
+        '.liquidstack/core/sync-transactions';
 
     private Filesystem $filesystem;
 
@@ -70,20 +72,17 @@ final class ManagedFileSynchronizer
         private readonly string $packageRoot,
         private readonly IOInterface $io,
         ?string $historyPath = null,
-        ?string $statePath = null
+        ?string $statePath = null,
+        ?Filesystem $filesystem = null
     ) {
-        $this->filesystem = new Filesystem();
+        $this->filesystem = $filesystem ?? new Filesystem();
         $this->loadHistory(
             $historyPath
                 ?? $this->packageRoot
                     . '/manifests/managed-file-history.json'
         );
-        $this->loadState(
-            $statePath
-                ?? $this->projectRoot
-                    . '/'
-                    . self::STATE_RELATIVE_PATH
-        );
+        $this->statePath = $statePath
+            ?? $this->projectRoot . '/' . self::STATE_RELATIVE_PATH;
     }
 
     public function queueFile(
@@ -189,29 +188,47 @@ final class ManagedFileSynchronizer
 
     public function apply(): void
     {
-        if ($this->queue === []) {
-            $this->writeSummary();
-            return;
-        }
+        $lock = $this->acquireProjectLock();
 
+        try {
+            $this->recoverInterruptedTransactions();
+            $this->reloadStateUnderLock();
+            if ($this->queue === []) {
+                $this->writeSummary();
+                return;
+            }
+            $this->applyUnderLock();
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    private function applyUnderLock(): void
+    {
         ksort($this->queue, SORT_STRING);
 
-        /**
-         * @var array<string, array{
-         *     action: string,
-         *     reason: string,
-         *     source_fingerprints: list<string>
-         * }>
-         */
+        /** @var array<string, array<string, mixed>> $plans */
         $plans = [];
 
-        /**
-         * @var array<string, true>
-         */
+        /** @var array<string, true> $blockedGroups */
         $blockedGroups = [];
 
         foreach ($this->queue as $queueKey => $item) {
             $plan = $this->planItem($item);
+            if (
+                $item['policy'] === ManagedFileRegistry::POLICY_MANAGED
+                && $item['group'] !== null
+            ) {
+                $targetExists = file_exists($item['target'])
+                    || is_link($item['target']);
+                $plan['target_exists'] = $targetExists;
+                $plan['target_hash'] = $targetExists
+                    && is_file($item['target'])
+                    && !is_link($item['target'])
+                    ? $this->rawFileHash($item['target'])
+                    : null;
+            }
             $plans[$queueKey] = $plan;
 
             if (
@@ -227,27 +244,894 @@ final class ManagedFileSynchronizer
             }
         }
 
-        foreach ($this->queue as $queueKey => $item) {
-            $plan = $plans[$queueKey];
+        /** @var array<string, array<string, array<string, mixed>>> $managedGroups */
+        $managedGroups = [];
 
+        foreach ($this->queue as $queueKey => $item) {
             if (
                 $item['policy'] === ManagedFileRegistry::POLICY_MANAGED
                 && $item['group'] !== null
-                && isset($blockedGroups[$item['group']])
-                && $plan['action'] !== 'error'
             ) {
-                $plan['action'] = 'preserve_group';
-                $plan['reason'] = sprintf(
-                    'el grupo %s contiene personalizaciones locales',
-                    $item['group']
-                );
+                $managedGroups[$item['group']][$queueKey] = [
+                    'item' => $item,
+                    'plan' => $plans[$queueKey],
+                ];
+            }
+        }
+
+        /** @var array<string, true> $appliedGroups */
+        $appliedGroups = [];
+
+        foreach ($this->queue as $queueKey => $item) {
+            if (
+                $item['policy'] !== ManagedFileRegistry::POLICY_MANAGED
+                || $item['group'] === null
+            ) {
+                $this->applyPlan($item, $plans[$queueKey]);
+                continue;
             }
 
-            $this->applyPlan($item, $plan);
+            $group = $item['group'];
+            if (isset($appliedGroups[$group])) {
+                continue;
+            }
+            $appliedGroups[$group] = true;
+
+            $entries = $managedGroups[$group];
+            if (isset($blockedGroups[$group])) {
+                foreach ($entries as $entry) {
+                    $plan = $entry['plan'];
+                    if ($plan['action'] !== 'error') {
+                        $plan['action'] = 'preserve_group';
+                        $plan['reason'] = sprintf(
+                            'el grupo %s contiene personalizaciones locales',
+                            $group
+                        );
+                    }
+
+                    $this->applyPlan($entry['item'], $plan);
+                }
+                continue;
+            }
+
+            $this->applyManagedGroup($group, $entries);
         }
 
         $this->writeState();
         $this->writeSummary();
+    }
+
+    /** @param array<string, array<string, mixed>> $entries */
+    private function applyManagedGroup(string $group, array $entries): void
+    {
+        $mutations = array_filter(
+            $entries,
+            static fn (array $entry): bool => in_array(
+                $entry['plan']['action'],
+                ['add', 'update'],
+                true
+            )
+        );
+
+        if ($mutations === []) {
+            foreach ($entries as $entry) {
+                $this->applyPlan($entry['item'], $entry['plan']);
+            }
+            return;
+        }
+
+        $transactionRoot = '';
+        $stateBefore = $this->stateFiles;
+        $statsBefore = $this->stats;
+
+        try {
+            $transactionRoot = $this->createTransactionRoot($group);
+            $files = [];
+            $index = 0;
+
+            foreach ($mutations as $queueKey => $entry) {
+                ++$index;
+                $item = $entry['item'];
+                $plan = $entry['plan'];
+                $target = $this->projectTargetForId($item['target_id']);
+                if (!$this->samePath($target, $item['target'])) {
+                    throw new \RuntimeException(sprintf(
+                        'el destino %s no pertenece a su ruta de proyecto',
+                        $item['target_id']
+                    ));
+                }
+                $staged = $transactionRoot
+                    . DIRECTORY_SEPARATOR
+                    . 'staged'
+                    . DIRECTORY_SEPARATOR
+                    . $index;
+                $backup = $transactionRoot
+                    . DIRECTORY_SEPARATOR
+                    . 'backup'
+                    . DIRECTORY_SEPARATOR
+                    . $index;
+
+                $this->filesystem->copy($item['source'], $staged, true);
+                $expectedHash = $this->rawFileHash($item['source']);
+                if (
+                    !is_file($staged)
+                    || is_link($staged)
+                    || $this->rawFileHash($staged) !== $expectedHash
+                ) {
+                    throw new \RuntimeException(sprintf(
+                        'el staging de %s no coincide con el origen',
+                        $item['target_id']
+                    ));
+                }
+
+                $files[$queueKey] = [
+                    'target' => $target,
+                    'target_id' => $item['target_id'],
+                    'staged' => $staged,
+                    'backup' => $backup,
+                    'had_target' => $plan['action'] === 'update',
+                    'original_hash' => $plan['target_hash'] ?? null,
+                    'expected_hash' => $expectedHash,
+                    'slot' => $index,
+                ];
+
+                if (
+                    $files[$queueKey]['had_target']
+                    && !is_string($files[$queueKey]['original_hash'])
+                ) {
+                    throw new \RuntimeException(sprintf(
+                        'no se pudo fijar la huella original de %s',
+                        $item['target_id']
+                    ));
+                }
+            }
+
+            // Revalidar justo antes de la primera escritura evita sustituir
+            // una personalización concurrente usando un plan ya obsoleto.
+            foreach ($entries as $queueKey => $entry) {
+                if (
+                    !$this->entryMatchesPlanSnapshot($entry)
+                    || isset($files[$queueKey])
+                        && $this->rawFileHash($entry['item']['source'])
+                            !== $files[$queueKey]['expected_hash']
+                ) {
+                    throw new \RuntimeException(sprintf(
+                        'el destino %s cambió durante la sincronización',
+                        $entry['item']['target_id']
+                    ));
+                }
+
+                if (isset($files[$queueKey])) {
+                    $this->filesystem->mkdir(
+                        dirname($files[$queueKey]['target']),
+                        0775
+                    );
+                }
+            }
+
+            $this->writeTransactionJournal(
+                $transactionRoot,
+                $group,
+                'prepared',
+                $files
+            );
+
+            // En Windows no se puede confiar en sustituir un fichero abierto
+            // mediante rename. Apartar primero todos los originales deja cada
+            // destino libre y conserva una copia recuperable en el mismo
+            // volumen que el proyecto.
+            foreach ($mutations as $queueKey => $entry) {
+                if (!$files[$queueKey]['had_target']) {
+                    continue;
+                }
+
+                $this->filesystem->rename(
+                    $files[$queueKey]['target'],
+                    $files[$queueKey]['backup']
+                );
+                if (
+                    !is_file($files[$queueKey]['backup'])
+                    || is_link($files[$queueKey]['backup'])
+                    || $this->rawFileHash($files[$queueKey]['backup'])
+                        !== $files[$queueKey]['original_hash']
+                ) {
+                    throw new \RuntimeException(sprintf(
+                        'el original %s cambio al crear su backup',
+                        $entry['item']['target_id']
+                    ));
+                }
+            }
+
+            foreach ($mutations as $queueKey => $entry) {
+                if (
+                    file_exists($files[$queueKey]['target'])
+                    || is_link($files[$queueKey]['target'])
+                ) {
+                    throw new \RuntimeException(sprintf(
+                        'el destino %s reaparecio antes de instalarlo',
+                        $entry['item']['target_id']
+                    ));
+                }
+                $this->filesystem->rename(
+                    $files[$queueKey]['staged'],
+                    $files[$queueKey]['target']
+                );
+            }
+
+            foreach ($entries as $queueKey => $entry) {
+                if (isset($files[$queueKey])) {
+                    continue;
+                }
+                if (!$this->entryMatchesPlanSnapshot($entry)) {
+                    throw new \RuntimeException(sprintf(
+                        'el destino %s cambio antes del commit del grupo',
+                        $entry['item']['target_id']
+                    ));
+                }
+            }
+
+            foreach ($files as $file) {
+                if (
+                    !is_file($file['target'])
+                    || is_link($file['target'])
+                    || $this->rawFileHash($file['target'])
+                        !== $file['expected_hash']
+                    || $file['had_target']
+                        && (
+                            !is_file($file['backup'])
+                            || is_link($file['backup'])
+                            || $this->rawFileHash($file['backup'])
+                                !== $file['original_hash']
+                        )
+                ) {
+                    throw new \RuntimeException(sprintf(
+                        'la transaccion de %s cambio antes del commit',
+                        $file['target_id']
+                    ));
+                }
+            }
+
+            $this->writeTransactionJournal(
+                $transactionRoot,
+                $group,
+                'committed',
+                $files
+            );
+
+            foreach ($entries as $entry) {
+                $this->recordSuccessfulManagedPlan(
+                    $entry['item'],
+                    $entry['plan']
+                );
+            }
+            $this->removeTransactionRoot($transactionRoot);
+        } catch (\Throwable $exception) {
+            $this->stateFiles = $stateBefore;
+            $this->stats = $statsBefore;
+
+            if ($transactionRoot !== '') {
+                try {
+                    $this->recoverTransactionRoot($transactionRoot);
+                } catch (\Throwable $rollbackException) {
+                    ++$this->stats['errors'];
+                    $message = sprintf(
+                        'No se pudo sincronizar ni restaurar por completo el grupo %s. Copia recuperable: %s. Fallo inicial: %s. Fallo de restauración: %s',
+                        $group,
+                        $transactionRoot,
+                        $exception->getMessage(),
+                        $rollbackException->getMessage()
+                    );
+                    $this->io->writeError(sprintf(
+                        '<error>%s</error>',
+                        $message
+                    ));
+                    throw new \RuntimeException(
+                        $message,
+                        0,
+                        $rollbackException
+                    );
+                }
+            }
+
+            ++$this->stats['errors'];
+            $this->io->writeError(sprintf(
+                '<error>No se pudo sincronizar el grupo %s; se restauraron todos sus ficheros: %s</error>',
+                $group,
+                $exception->getMessage()
+            ));
+        }
+    }
+
+    /** @param array<string, mixed> $entry */
+    private function entryMatchesPlanSnapshot(array $entry): bool
+    {
+        $currentPlan = $this->planItem($entry['item']);
+        $targetExists = file_exists($entry['item']['target'])
+            || is_link($entry['item']['target']);
+        $targetHash = $targetExists
+            && is_file($entry['item']['target'])
+            && !is_link($entry['item']['target'])
+            ? $this->rawFileHash($entry['item']['target'])
+            : null;
+
+        return $currentPlan['action'] === $entry['plan']['action']
+            && $targetExists === ($entry['plan']['target_exists'] ?? null)
+            && $targetHash === ($entry['plan']['target_hash'] ?? null)
+            && $this->sameFileHashSet(
+                $currentPlan['source_fingerprints'],
+                $entry['plan']['source_fingerprints']
+            );
+    }
+
+    /** @return resource */
+    private function acquireProjectLock()
+    {
+        $canonicalRoot = realpath($this->projectRoot);
+        if ($canonicalRoot === false) {
+            throw new \RuntimeException(
+                'no se pudo resolver el proyecto para bloquear la sincronización'
+            );
+        }
+        $canonicalRoot = str_replace('\\', '/', $canonicalRoot);
+        if (PHP_OS_FAMILY === 'Windows') {
+            $canonicalRoot = strtolower($canonicalRoot);
+        }
+
+        $lockPath = rtrim(sys_get_temp_dir(), '/\\')
+            . DIRECTORY_SEPARATOR
+            . 'liquidstack-core-sync-'
+            . hash('sha256', $canonicalRoot)
+            . '.lock';
+        if (
+            is_link($lockPath)
+            || (file_exists($lockPath) && !is_file($lockPath))
+        ) {
+            throw new \RuntimeException(
+                'el lock de sincronización no es un fichero regular'
+            );
+        }
+
+        $lock = @fopen($lockPath, 'c+b');
+        if ($lock === false || !flock($lock, LOCK_EX)) {
+            if (is_resource($lock)) {
+                fclose($lock);
+            }
+            throw new \RuntimeException(
+                'no se pudo adquirir el lock de sincronización del proyecto'
+            );
+        }
+
+        return $lock;
+    }
+
+    private function reloadStateUnderLock(): void
+    {
+        $this->stateFiles = [];
+        $this->stateWritable = true;
+        $this->loadState($this->statePath);
+    }
+
+    private function recoverInterruptedTransactions(): void
+    {
+        $root = $this->transactionBasePath();
+        if ($this->hasLinkedPathComponent($root)) {
+            throw new \RuntimeException(
+                'la ruta de transacciones contiene un enlace'
+            );
+        }
+        if (!file_exists($root) && !is_link($root)) {
+            return;
+        }
+        if (!is_dir($root) || is_link($root)) {
+            throw new \RuntimeException(
+                'la ruta de transacciones pendientes no es un directorio regular'
+            );
+        }
+        $this->ensureTransactionGitIgnore($root);
+
+        $entries = scandir($root);
+        if ($entries === false) {
+            throw new \RuntimeException(
+                'no se pudieron inspeccionar las transacciones pendientes'
+            );
+        }
+
+        foreach ($entries as $entry) {
+            if (
+                $entry === '.'
+                || $entry === '..'
+                || $entry === '.gitignore'
+            ) {
+                continue;
+            }
+            $transactionRoot = $root . DIRECTORY_SEPARATOR . $entry;
+            if (
+                preg_match('/\A[a-f0-9]{24}\z/', $entry) !== 1
+                || !is_dir($transactionRoot)
+                || is_link($transactionRoot)
+            ) {
+                throw new \RuntimeException(sprintf(
+                    'entrada de transacción no reconocida: %s',
+                    $entry
+                ));
+            }
+
+            $this->recoverTransactionRoot($transactionRoot);
+        }
+    }
+
+    private function createTransactionRoot(string $group): string
+    {
+        $root = $this->transactionBasePath();
+        if ($this->hasLinkedPathComponent($root)) {
+            throw new \RuntimeException(
+                'la ruta de transacciones contiene un enlace'
+            );
+        }
+        $this->filesystem->mkdir($root, 0775);
+        $this->ensureTransactionGitIgnore($root);
+
+        do {
+            $transactionRoot = $root
+                . DIRECTORY_SEPARATOR
+                . bin2hex(random_bytes(12));
+        } while (file_exists($transactionRoot) || is_link($transactionRoot));
+
+        $this->filesystem->mkdir($transactionRoot, 0775);
+        $this->writeTransactionJournal(
+            $transactionRoot,
+            $group,
+            'staging',
+            []
+        );
+        $this->filesystem->mkdir([
+            $transactionRoot . DIRECTORY_SEPARATOR . 'staged',
+            $transactionRoot . DIRECTORY_SEPARATOR . 'backup',
+        ], 0775);
+
+        return $transactionRoot;
+    }
+
+    private function transactionBasePath(): string
+    {
+        return rtrim($this->projectRoot, '/\\')
+            . DIRECTORY_SEPARATOR
+            . str_replace(
+                '/',
+                DIRECTORY_SEPARATOR,
+                self::TRANSACTION_RELATIVE_PATH
+            );
+    }
+
+    private function ensureTransactionGitIgnore(string $root): void
+    {
+        $path = $root . DIRECTORY_SEPARATOR . '.gitignore';
+        $contents = "*\n";
+        if (is_file($path) && !is_link($path)) {
+            if (file_get_contents($path) !== $contents) {
+                throw new \RuntimeException(
+                    'el .gitignore de transacciones contiene cambios locales'
+                );
+            }
+            return;
+        }
+        if (file_exists($path) || is_link($path)) {
+            throw new \RuntimeException(
+                'el .gitignore de transacciones no es regular'
+            );
+        }
+        $this->filesystem->dumpFile($path, $contents);
+    }
+
+    /** @param array<string, array<string, mixed>> $files */
+    private function writeTransactionJournal(
+        string $transactionRoot,
+        string $group,
+        string $status,
+        array $files
+    ): void {
+        $journalFiles = [];
+        foreach ($files as $file) {
+            $journalFiles[] = [
+                'target_id' => $file['target_id'],
+                'slot' => $file['slot'],
+                'had_target' => $file['had_target'],
+                'original_hash' => $file['original_hash'],
+                'expected_hash' => $file['expected_hash'],
+            ];
+        }
+
+        $encoded = json_encode([
+            'schema' => 1,
+            'group' => $group,
+            'status' => $status,
+            'files' => $journalFiles,
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)
+            . PHP_EOL;
+        $this->filesystem->dumpFile(
+            $transactionRoot . DIRECTORY_SEPARATOR . 'journal.json',
+            $encoded
+        );
+    }
+
+    private function recoverTransactionRoot(string $transactionRoot): void
+    {
+        $journalPath = $transactionRoot
+            . DIRECTORY_SEPARATOR
+            . 'journal.json';
+        if (!is_file($journalPath) || is_link($journalPath)) {
+            $entries = !is_link($transactionRoot) && is_dir($transactionRoot)
+                ? scandir($transactionRoot)
+                : false;
+            if ($entries !== false && count($entries) === 2) {
+                $this->removeTransactionRoot($transactionRoot, true);
+                return;
+            }
+            throw new \RuntimeException(
+                'la transacción pendiente no contiene un journal regular'
+            );
+        }
+        $journal = $this->decodeJsonFile($journalPath);
+        if (
+            !is_array($journal)
+            || ($journal['schema'] ?? null) !== 1
+            || !is_string($journal['group'] ?? null)
+            || !in_array(
+                $journal['status'] ?? null,
+                ['staging', 'prepared', 'committed'],
+                true
+            )
+            || !is_array($journal['files'] ?? null)
+            || !array_is_list($journal['files'])
+        ) {
+            throw new \RuntimeException(
+                'el journal de la transacción pendiente es inválido'
+            );
+        }
+
+        if ($journal['status'] === 'staging') {
+            $this->removeTransactionRoot($transactionRoot, true);
+            return;
+        }
+
+        $files = $this->transactionFilesFromJournal(
+            $transactionRoot,
+            $journal['files']
+        );
+        if ($journal['status'] === 'committed') {
+            foreach ($files as $file) {
+                if (
+                    !is_file($file['target'])
+                    || is_link($file['target'])
+                    || $this->rawFileHash($file['target'])
+                        !== $file['expected_hash']
+                ) {
+                    throw new \RuntimeException(sprintf(
+                        'el destino confirmado %s ya no coincide con el journal',
+                        $file['target_id']
+                    ));
+                }
+
+                $backupExists = file_exists($file['backup'])
+                    || is_link($file['backup']);
+                if (
+                    $backupExists
+                    && (
+                        !$file['had_target']
+                        || !is_file($file['backup'])
+                        || is_link($file['backup'])
+                        || $this->rawFileHash($file['backup'])
+                            !== $file['original_hash']
+                    )
+                ) {
+                    throw new \RuntimeException(sprintf(
+                        'el backup confirmado de %s no coincide con el journal',
+                        $file['target_id']
+                    ));
+                }
+            }
+            $this->removeTransactionRoot($transactionRoot, true);
+            return;
+        }
+
+        $errors = $this->rollbackTransactionFiles($files);
+        if ($errors !== []) {
+            throw new \RuntimeException(implode('; ', $errors));
+        }
+        $this->removeTransactionRoot($transactionRoot, true);
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function transactionFilesFromJournal(
+        string $transactionRoot,
+        array $journalFiles
+    ): array {
+        $files = [];
+        $targets = [];
+        $slots = [];
+
+        foreach ($journalFiles as $entry) {
+            if (
+                !is_array($entry)
+                || !is_string($entry['target_id'] ?? null)
+                || !is_int($entry['slot'] ?? null)
+                || $entry['slot'] < 1
+                || !is_bool($entry['had_target'] ?? null)
+                || !array_key_exists('original_hash', $entry)
+                || (
+                    $entry['had_target']
+                        ? !$this->isRawFileHash($entry['original_hash'])
+                        : $entry['original_hash'] !== null
+                )
+                || !$this->isRawFileHash($entry['expected_hash'] ?? null)
+            ) {
+                throw new \RuntimeException(
+                    'el journal contiene una entrada de fichero inválida'
+                );
+            }
+
+            if (isset($slots[$entry['slot']])) {
+                throw new \RuntimeException(
+                    'el journal repite un slot de transaccion'
+                );
+            }
+            $slots[$entry['slot']] = true;
+
+            $targetId = ManagedFileRegistry::normalizePath(
+                $entry['target_id']
+            );
+            $target = $this->projectTargetForId($targetId);
+            $targetKey = str_replace('\\', '/', $target);
+            if (PHP_OS_FAMILY === 'Windows') {
+                $targetKey = strtolower($targetKey);
+            }
+            if (isset($targets[$targetKey])) {
+                throw new \RuntimeException(
+                    'el journal repite un destino de proyecto'
+                );
+            }
+            $targets[$targetKey] = true;
+
+            $files[] = [
+                'target' => $target,
+                'target_id' => $targetId,
+                'staged' => $transactionRoot
+                    . DIRECTORY_SEPARATOR
+                    . 'staged'
+                    . DIRECTORY_SEPARATOR
+                    . $entry['slot'],
+                'backup' => $transactionRoot
+                    . DIRECTORY_SEPARATOR
+                    . 'backup'
+                    . DIRECTORY_SEPARATOR
+                    . $entry['slot'],
+                'had_target' => $entry['had_target'],
+                'original_hash' => $entry['original_hash'],
+                'expected_hash' => $entry['expected_hash'],
+                'slot' => $entry['slot'],
+            ];
+        }
+
+        return $files;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $files
+     * @return list<string>
+     */
+    private function rollbackTransactionFiles(array $files): array
+    {
+        $errors = [];
+
+        foreach (array_reverse($files) as $file) {
+            $targetExists = file_exists($file['target'])
+                || is_link($file['target']);
+            $backupExists = file_exists($file['backup'])
+                || is_link($file['backup']);
+            $targetHash = $targetExists
+                && is_file($file['target'])
+                && !is_link($file['target'])
+                ? $this->rawFileHash($file['target'])
+                : null;
+            $targetIsInstalled = $targetHash === $file['expected_hash'];
+            $targetIsOriginal = $file['had_target']
+                && $targetHash === $file['original_hash'];
+
+            if ($backupExists) {
+                if (
+                    !$file['had_target']
+                    || !is_file($file['backup'])
+                    || is_link($file['backup'])
+                    || $this->rawFileHash($file['backup'])
+                        !== $file['original_hash']
+                ) {
+                    $errors[] = sprintf(
+                        'el backup de %s no coincide con el original',
+                        $file['target_id']
+                    );
+                    continue;
+                }
+                if ($targetIsOriginal) {
+                    continue;
+                }
+                if ($targetExists && !$targetIsInstalled) {
+                    $errors[] = sprintf(
+                        'se preservó contenido concurrente en %s',
+                        $file['target_id']
+                    );
+                    continue;
+                }
+
+                try {
+                    if ($targetIsInstalled) {
+                        $this->filesystem->remove($file['target']);
+                    }
+                    $this->filesystem->rename(
+                        $file['backup'],
+                        $file['target']
+                    );
+                    if (
+                        !is_file($file['target'])
+                        || is_link($file['target'])
+                        || $this->rawFileHash($file['target'])
+                            !== $file['original_hash']
+                    ) {
+                        throw new \RuntimeException(sprintf(
+                            'el original restaurado de %s no coincide',
+                            $file['target_id']
+                        ));
+                    }
+                } catch (\Throwable $exception) {
+                    $errors[] = $exception->getMessage();
+                }
+                continue;
+            }
+
+            if ($file['had_target']) {
+                if ($targetIsOriginal) {
+                    continue;
+                }
+                if (!$targetExists || $targetIsInstalled) {
+                    $errors[] = sprintf(
+                        'no se encontró el original recuperable de %s',
+                        $file['target_id']
+                    );
+                } else {
+                    $errors[] = sprintf(
+                        'se preservo contenido concurrente en %s',
+                        $file['target_id']
+                    );
+                }
+                continue;
+            }
+
+            if (!$targetExists) {
+                continue;
+            }
+            if (!$targetIsInstalled) {
+                $errors[] = sprintf(
+                    'se preservó contenido concurrente en %s',
+                    $file['target_id']
+                );
+                continue;
+            }
+
+            try {
+                $this->filesystem->remove($file['target']);
+            } catch (\Throwable $exception) {
+                $errors[] = $exception->getMessage();
+            }
+        }
+
+        return $errors;
+    }
+
+    private function projectTargetForId(string $targetId): string
+    {
+        $targetId = ManagedFileRegistry::normalizePath($targetId);
+        $segments = explode('/', $targetId);
+        if (
+            $targetId === ''
+            || preg_match('/\A[A-Za-z]:\//', $targetId) === 1
+            || preg_match('/[\x00-\x1F\x7F:]/', $targetId) === 1
+            || in_array('', $segments, true)
+            || in_array('.', $segments, true)
+            || in_array('..', $segments, true)
+        ) {
+            throw new \RuntimeException(
+                'el journal contiene un destino fuera del proyecto'
+            );
+        }
+
+        $target = rtrim($this->projectRoot, '/\\')
+            . DIRECTORY_SEPARATOR
+            . str_replace('/', DIRECTORY_SEPARATOR, $targetId);
+        if ($this->hasLinkedPathComponent($target)) {
+            throw new \RuntimeException(
+                'el journal contiene una ruta enlazada o externa'
+            );
+        }
+
+        return $target;
+    }
+
+    private function rawFileHash(string $path): string
+    {
+        $hash = @hash_file('sha256', $path);
+        if (!is_string($hash)) {
+            throw new \RuntimeException(sprintf(
+                'no se pudo calcular la huella exacta de %s',
+                $path
+            ));
+        }
+
+        return 'sha256:' . $hash;
+    }
+
+    private function isRawFileHash(mixed $hash): bool
+    {
+        return is_string($hash)
+            && preg_match('/\Asha256:[a-f0-9]{64}\z/', $hash) === 1;
+    }
+
+    private function removeTransactionRoot(
+        string $transactionRoot,
+        bool $strict = false
+    ): void {
+        try {
+            // El journal se retira al final. Si PHP se interrumpe durante el
+            // cleanup, la siguiente ejecución conserva todavía el mapa de
+            // recuperación o encuentra un scaffold completamente vacío.
+            $this->filesystem->remove([
+                $transactionRoot . DIRECTORY_SEPARATOR . 'staged',
+                $transactionRoot . DIRECTORY_SEPARATOR . 'backup',
+            ]);
+            $this->filesystem->remove(
+                $transactionRoot . DIRECTORY_SEPARATOR . 'journal.json'
+            );
+            $this->filesystem->remove($transactionRoot);
+        } catch (\Throwable $exception) {
+            if ($strict) {
+                throw $exception;
+            }
+            ++$this->stats['errors'];
+            $this->io->writeError(sprintf(
+                '<warning>No se pudo retirar el staging de CORE %s: %s</warning>',
+                $transactionRoot,
+                $exception->getMessage()
+            ));
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $item
+     * @param array<string, mixed> $plan
+     */
+    private function recordSuccessfulManagedPlan(
+        array $item,
+        array $plan
+    ): void {
+        if ($plan['action'] === 'add') {
+            ++$this->stats['added'];
+        } elseif ($plan['action'] === 'update') {
+            ++$this->stats['updated'];
+        } else {
+            ++$this->stats['unchanged'];
+        }
+
+        $this->recordState($item, $plan['source_fingerprints']);
+    }
+
+    /**
+     * @param list<string> $left
+     * @param list<string> $right
+     */
+    private function sameFileHashSet(array $left, array $right): bool
+    {
+        sort($left, SORT_STRING);
+        sort($right, SORT_STRING);
+
+        return $left === $right;
     }
 
     /**
@@ -1321,6 +2205,13 @@ final class ManagedFileSynchronizer
             '/'
         );
         $current = $this->projectRoot;
+        $resolvedRoot = realpath($current);
+        if (
+            $resolvedRoot !== false
+            && !$this->samePath($current, $resolvedRoot)
+        ) {
+            return true;
+        }
 
         foreach (explode('/', $relative) as $segment) {
             if ($segment === '') {
@@ -1329,7 +2220,12 @@ final class ManagedFileSynchronizer
 
             $current .= DIRECTORY_SEPARATOR . $segment;
 
-            if (is_link($current)) {
+            $resolved = realpath($current);
+            if (
+                is_link($current)
+                || $resolved !== false
+                    && !$this->samePath($current, $resolved)
+            ) {
                 return true;
             }
         }

@@ -125,6 +125,68 @@ final class ModuleCatalogTest extends TestCase
         ModuleCatalog::fromModulesRoot($this->fixtureRoot);
     }
 
+    public function testManifestCanPublishOnlyExplicitlyDeclaredResources(): void
+    {
+        $manifest = $this->manifest('blog', 'liquidstack/blog');
+        $manifest['resources'] = ['sectionBlogGrid01'];
+        $manifest['project_files'] = [
+            [
+                'source' => 'published/_moduleBlogResources.php',
+                'target' => 'App/controllers/_moduleBlogResources.php',
+            ],
+            [
+                'source' => 'published/sectionBlogGrid01.php',
+                'target' => 'App/controllers/sectionBlogGrid01.php',
+            ],
+            [
+                'source' => 'published/_sectionBlogGrid01.html',
+                'target' => 'App/templates/_sectionBlogGrid01.html',
+            ],
+            [
+                'source' => 'published/_sectionBlogGrid01.scss',
+                'target' => 'src/scss/resources/_sectionBlogGrid01.scss',
+            ],
+            [
+                'source' => 'published/_blog.php',
+                'target' => 'App/views/showroom/_blog.php',
+            ],
+        ];
+        $this->writeManifest('blog', $manifest);
+
+        $definition = ModuleCatalog::fromModulesRoot(
+            $this->fixtureRoot
+        )->get('blog');
+
+        self::assertSame(['sectionBlogGrid01'], $definition->resources());
+        self::assertCount(5, $definition->projectFiles());
+    }
+
+    public function testManifestRejectsUndeclaredResourceAndForeignShowroomHook(): void
+    {
+        $manifest = $this->manifest('blog', 'liquidstack/blog');
+        $manifest['resources'] = ['sectionBlogGrid01'];
+        $manifest['project_files'] = [[
+            'source' => 'published/sectionBlogList01.php',
+            'target' => 'App/controllers/sectionBlogList01.php',
+        ]];
+        $this->writeManifest('blog', $manifest);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('no pertenece al espacio');
+        ModuleCatalog::fromModulesRoot($this->fixtureRoot);
+    }
+
+    public function testManifestRejectsInvalidResourceIdentifiers(): void
+    {
+        $manifest = $this->manifest('blog', 'liquidstack/blog');
+        $manifest['resources'] = ['../sectionBlogGrid01'];
+        $this->writeManifest('blog', $manifest);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Recurso de m');
+        ModuleCatalog::fromModulesRoot($this->fixtureRoot);
+    }
+
     public function testManifestRequiresCanonicalLowercaseAssetNamespace(): void
     {
         $manifest = $this->manifest(

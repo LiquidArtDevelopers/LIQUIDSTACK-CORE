@@ -255,6 +255,11 @@ final class BlogDocumentHtmlRendererTest extends TestCase
             $html
         );
         self::assertStringContainsString('sizes="100vw"', $html);
+        self::assertStringContainsString(
+            'loading="eager" fetchpriority="high" decoding="async"',
+            $html
+        );
+        self::assertStringNotContainsString('loading="lazy"', $html);
     }
 
     public function testEmptyBasicDocumentRendersAnEmptyBodyContainer(): void

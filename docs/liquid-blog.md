@@ -243,9 +243,15 @@ módulo hacia `public/assets/modules/blog`. El editor funciona con HTML SSR y
 controles seguros; JavaScript facilita añadir, editar, mover y retirar bloques,
 pero el servidor vuelve a validar el documento completo. Estos assets no son
 configuración project-owned ni deben duplicarse en el bundle general del stack.
-`doctor` inspecciona los `project_files` declarados por `modules/blog`, expone
-el estado como `blog.assets` y añade `assets.missing_or_invalid` a los blockers
-si falta un asset gestionado o su destino es inválido.
+`doctor` inspecciona únicamente los assets runtime module-owned declarados bajo
+`public/assets/modules/blog`, `src/js/modules/blog` o
+`src/scss/modules/blog`. Un target de directorio se expande desde su fuente a
+cada fichero exacto —actualmente los cuatro bundles publicados— antes de
+comprobar el proyecto. El estado se expone como `blog.assets` y añade
+`assets.missing_or_invalid` a los blockers si falta uno de esos ficheros o su
+destino es inválido. Los recursos visuales estándar y hooks de showroom son
+selectivos: su ausencia legítima no rebaja por sí sola la disponibilidad del
+runtime Blog.
 
 ## Resolución pública y prioridad
 
@@ -307,8 +313,9 @@ La vista project-owned es responsable del documento, head, assets y CSP. CORE
 conserva el resto de cabeceras defensivas, pero no impone su CSP cerrada sobre
 ese shell. Si no se configura vista, el HTML standalone y sus metadatos siguen
 siendo el fallback compatible; enlaza el asset gestionado
-`/assets/modules/blog/blog-public.css` y usa una CSP cerrada que solo amplía
-`style-src 'self'` para cargarlo.
+`/assets/modules/blog/blog-public.css` y el runtime gestionado
+`/assets/modules/blog/blog-public.js`. Su CSP permite exclusivamente estilos y
+scripts del mismo origen y frames de `youtube-nocookie.com`.
 
 Si el shell reutiliza la navegación global del proyecto, debe enlazar cada
 idioma al valor publicado de `languageNavigationUrls()` y activar
@@ -320,6 +327,26 @@ CookieLAD y realiza una navegación normal al `href` localizado. No consulta
 clics modificados, `target` y `download` conservan el comportamiento nativo. Su
 función de limpieza debe ejecutarse en HMR o al desmontar el entrypoint.
 
+Los bloques YouTube conservan siempre un enlace externo accesible como
+contenido SSR y fallback cuando JavaScript no está disponible o no existe
+consentimiento social. El runtime module-owned
+`/assets/modules/blog/blog-public.js` solo intercepta un clic primario sin
+modificadores cuando `cookie_social=true`; valida de nuevo el ID y el segundo de
+inicio y crea entonces un iframe de `youtube-nocookie.com`. No solicita
+miniaturas ni ningún otro recurso de Google o YouTube antes de ese clic. Un
+cambio de consentimiento, el retorno de foco o la restauración de la página
+vuelven a leer la cookie y retiran inmediatamente cualquier iframe cuando el
+permiso deja de existir. El runtime usa listeners abortables, admite varias
+instancias y destruye una instalación anterior antes de reinicializarse.
+
+El fallback standalone limita su CSP a `script-src 'self'` y
+`frame-src https://www.youtube-nocookie.com`. Un `public_article_view` sigue
+siendo propietario de sus assets y CSP: debe cargar el mismo script gestionado
+con el nonce de su shell y permitir exclusivamente ese origen en `frame-src`.
+Ampliar la directiva no carga contenido ni sustituye el gate de CookieLAD; el
+iframe continúa dependiendo a la vez del consentimiento y de una acción del
+usuario.
+
 Las imágenes estructuradas se entregan como AVIF responsive desde el namespace
 fijo `/_liquidstack/blog-media/{uuid}/{width}.avif`. La frontera pública solo
 sirve una variante si el asset está referenciado por el documento actual de un
@@ -330,13 +357,96 @@ sin revelar la causa. Este namespace se declara como prefijo pre-bootstrap: sus
 respuestas válidas y sus 404 uniformes evitan tanto la redirección multidioma
 legacy como la creación de sesión, también en `HEAD`.
 
-Las vistas project-owned obtienen filtros y cards por categoría mediante
-`BlogCategoryPublicFeedFactory`. La frontera valida `0001+0003` sin depender
-de las capacidades administrativas de `0004`, ejecuta consultas acotadas sin
-N+1 y devuelve exclusivamente arrays
+El renderer mantiene `loading="lazy"` para imágenes de contenido y anchas. La
+imagen `cover` de `article-cover-01` es la única excepción: el esquema garantiza
+que sea el primer bloque y se emite con `loading="eager"` y
+`fetchpriority="high"`, porque el shell puede convertirla en su pieza LCP sin
+duplicarla ni introducir otra fuente de verdad.
+
+Las vistas project-owned pueden obtener cards generales, filtros y cards por
+categoría desde una única instancia creada por `BlogPublicFeedFactory`. Ese
+feed comparte el mismo runtime y la misma conexión PDO durante la petición.
+`BlogCategoryPublicFeedFactory` permanece como adaptador compatible para
+consumidores anteriores. La proyección de categorías valida `0001+0003` sin
+depender de las capacidades administrativas de `0004`, ejecuta consultas
+acotadas sin N+1 y devuelve como máximo 100 filtros. La consulta lee 101 para
+detectar el desbordamiento y falla cerrada en lugar de truncar silenciosamente
+el catálogo. La proyección devuelve exclusivamente arrays
 de presentación: locale, slug, nombre y contador para filtros; y locale, slug,
 URL, H1, extracto y fechas para cards. PDO, prefijos, IDs numéricos y UUIDs no
 cruzan hacia los recursos.
+
+La vista consumidora construye un `BlogPublicCatalogQuery` acotado y lo entrega
+a `BlogPublicFeed::cardsForQuery()`. El query valida hasta 480 bytes de entrada,
+normaliza los espacios y admite búsquedas no vacías de 2 a 120 caracteres
+Unicode; acepta hasta diez slugs de categoría, modo allowlisted `any|all`, un
+máximo de 50 filas, offset público de hasta 10.000 y exclusión opcional. El
+repositorio aplica todos los filtros en una consulta preparada. Cuando una
+vista necesita detectar la página siguiente, solicita expresamente una fila
+adicional dentro de ese límite y no la expone como card. SQLite registra una
+función determinista de
+casefold Unicode una sola vez por conexión; MySQL conserva su conversión
+Unicode nativa. El formulario SSR sigue siendo
+funcional sin JavaScript y `moduleBlogFilters01` mejora progresivamente el
+mismo GET mediante `fetch`, cancelación de peticiones e historial del
+navegador. La mejora conserva la paridad del GET nativo, invalida respuestas
+obsoletas durante el debounce, usa una única entrada reemplazable para cada
+secuencia de búsqueda viva y sincroniza `title`, robots y canonical con el SSR
+recibido.
+
+La proyección puede devolver hasta 100 categorías para otros consumidores,
+pero `moduleBlogFilters01` muestra como máximo diez controles: ante un enlace
+con filtros válidos, sitúa primero las categorías seleccionadas y completa el
+resto en el orden del catálogo. Así el formulario SSR nunca ofrece más
+selecciones simultáneas de las que acepta el query ni construye URLs extremas.
+
+El índice project-owned puede reducir el cuerpo de esas peticiones cuando
+recibe el header exacto `X-LiquidStack-Partial: blog-results`. La respuesta
+continúa siendo HTML SSR e incluye el mismo formulario, `#blog-results`,
+`title`, robots y canonical; no introduce un endpoint JSON ni una segunda
+fuente de verdad. El proyecto debe enviar `Vary: X-LiquidStack-Partial` y
+conservar siempre el documento completo para navegación normal, JavaScript
+desactivado y cualquier cliente que no solicite la variante parcial.
+
+### Recursos visuales y showroom selectivos
+
+El manifiesto de Blog declara una allowlist `resources` y publica la familia
+visual únicamente cuando el selector `liquidstack/blog` está activo:
+
+- `moduleBlogFilters01`, formulario GET funcional sin JavaScript y mejora
+  progresiva abortable para búsqueda, categorías `any|all` e historial;
+- `sectionBlogGrid01`, rejilla de cards;
+- `sectionBlogList01`, listado editorial;
+- `sectionBlogFeatured01`, entrada destacada con secundarias;
+- `sectionBlogSlider01`, carrusel horizontal accesible y responsive.
+
+Los recursos reciben arrays de presentación; nunca PDO, prefijos, IDs internos
+ni secretos. Su fuente canónica replica la estructura del consumidor bajo
+`modules/blog/resources/project/`. Controlador, template, SCSS y JS de cada
+recurso comparten un grupo gestionado, mientras helper y hooks de showroom
+conservan grupos propios. Así una personalización local bloquea únicamente su
+unidad coherente y no toda la familia.
+
+El grupo independiente `resource-support` no rebaja ese aislamiento: su helper
+es una API de presentación común y estable. Las funciones
+`liquidstack_blog_resource_context()`,
+`liquidstack_blog_resource_escape()`, `liquidstack_blog_resource_card()` y
+`liquidstack_blog_resource_heading()`, sus firmas y las claves ya devueltas por
+el contexto solo pueden evolucionar de forma aditiva. Un cambio incompatible
+exige un helper versionado o una migración coordinada de toda la familia; no se
+publica silenciosamente bajo el mismo contrato.
+
+La familia visual requiere el contrato SCSS estándar del consumidor. Si CORE
+no puede leer, completar o verificar `src/scss/_config.scss`, ese ciclo publica
+los assets autocontenidos del módulo bajo `public/assets/modules/blog`,
+`src/js/modules/blog` y `src/scss/modules/blog`, pero retiene conjuntamente
+controladores, templates, SCSS, JS y hooks de showroom estándar. Una
+actualización posterior con el contrato reparado instala la familia completa.
+
+El showroom usa cuatro fixtures Matrix localizados y no inserta ni ofrece ese
+copy como fallback en la DB pública. Las claves legacy de `templates` se
+mantienen aditivamente durante la transición. Un stack sin Blog no recibe los
+controladores, templates, estilos, runtimes ni hooks de esta categoría.
 
 ## SEO técnico de artículos públicos
 
@@ -375,13 +485,24 @@ catálogo GET no puede inspeccionarse de forma completa, declina la fase
 pre-bootstrap y recupera la resolución normal con prioridad project-owned. Esta
 excepción no adelanta las URLs de artículo, aunque una respuesta pública tardía
 también permanece sin sesión.
-El documento admite como máximo 50.000 URLs: la consulta obtiene hasta 50.001
-candidatas para detectar el desbordamiento y responder con un fallo genérico,
-sin cargar un conjunto ilimitado ni truncarlo silenciosamente.
+El documento admite como máximo 50.000 URLs y 50 MiB sin comprimir: la consulta
+obtiene hasta 50.001 candidatas para detectar el desbordamiento y el renderer
+verifica el tamaño final antes de responder. Cualquiera de los dos excesos
+produce un fallo genérico, sin truncar silenciosamente.
 El XML declara el namespace XHTML. Cada URL contiene los alternates de todas
 las variantes publicadas del mismo post y el mismo `x-default` que su HTML.
 Las equivalencias se agrupan por el UUID estable del post, nunca por posición,
 título o parecido entre slugs.
+
+Una respuesta válida incluye un `ETag` fuerte derivado de los bytes exactos del
+XML y `Cache-Control: public, no-cache, must-revalidate`. `GET` y `HEAD`
+atienden `If-None-Match`, incluida la comparación débil permitida para lecturas,
+y devuelven `304` sin cuerpo cuando coincide. El endpoint vuelve a consultar la
+DB antes de revalidar, de modo que publicar o retirar invalida el resultado de
+forma inmediata. No se usa `Last-Modified` como validador global: el máximo
+`updated_at` puede retroceder al retirar la URL más reciente. La caché
+last-known-good persistente queda supeditada al contrato descrito en
+[su diseño pendiente](mejoras-pendientes/blog-sitemap-last-known-good-cache.md).
 
 Una ruta o fichero project-owned con el mismo path bloquea `sitemap_ready` y se
 muestra en `doctor`; no se reemplaza automáticamente. Desactivar el selector
@@ -446,15 +567,7 @@ mensajes PDO.
 
 Quedan expresamente para cortes posteriores:
 
-- etiquetas, buscador reactivo completo, archivos, relacionados, RSS y
-  comentarios;
-- reproducción Lite YouTube inline gobernada por consentimiento social de
-  CookieLAD; el enlace externo accesible continúa siendo el fallback sin
-  consentimiento ni JavaScript;
-- recursos visuales Blog `module-owned`, sincronizados únicamente cuando el
-  selector `liquidstack/blog` esté activo;
-- proyección pública compartida que evite conexiones PDO redundantes en índices
-  que combinan filtros, categorías y cards;
+- etiquetas, vistas de archivo, relacionados, RSS y comentarios;
 - crop, focal point, vídeo local, audio, reemplazo y garbage collection de
   medios;
 - nuevas plantillas editoriales y el maquetador libre de secciones, filas y
@@ -466,7 +579,7 @@ Quedan expresamente para cortes posteriores:
 - localización independiente de la interfaz WebAdmin;
 - edición HTML avanzada, saneada, auditable, restaurable y limitada a una
   capacidad específica;
-- ampliación del catálogo de recursos Blog con sliders, relacionados y otras
+- ampliación del catálogo de recursos Blog con relacionados, archivos y otras
   composiciones dinámicas.
 
 El documento JSON v1, sus revisiones, el agregado, las variantes, permisos,

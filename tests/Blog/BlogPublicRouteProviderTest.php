@@ -281,6 +281,26 @@ PHP
             'Content-Security-Policy',
             $response->headers()
         );
+
+        $sitemap = $routes->dispatch(Request::fromServer([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/news-sitemap.xml',
+            'HTTPS' => 'on',
+        ]));
+        self::assertNotNull($sitemap);
+        self::assertSame(200, $sitemap->status());
+        $etag = $sitemap->headers()['ETag'];
+        $conditionalHead = $routes->dispatch(Request::fromServer([
+            'REQUEST_METHOD' => 'HEAD',
+            'REQUEST_URI' => '/news-sitemap.xml',
+            'HTTPS' => 'on',
+            'HTTP_IF_NONE_MATCH' => $etag,
+        ]));
+        self::assertNotNull($conditionalHead);
+        self::assertSame(304, $conditionalHead->status());
+        self::assertSame('', $conditionalHead->body());
+        self::assertSame($etag, $conditionalHead->headers()['ETag']);
+        self::assertSame(1, $factory->calls);
     }
 
     public function testInvalidOrTraversingMediaRequestsNeverOpenRuntime(): void

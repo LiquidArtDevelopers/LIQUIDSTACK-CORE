@@ -1,6 +1,25 @@
 {
     "schema": 1,
     "files": {
+        "modules/blog/resources/project/App/controllers/sectionBlogGrid01.php": [
+            "sha256:4718d6f875d41b8e9b433946078a231c7bcf832c44e500b69d0d5e4e01a60bf6"
+        ],
+        "modules/blog/resources/project/App/templates/_sectionBlogGrid01.html": [
+            "sha256:4af1404a51b2fef875b548e369d91e172d638bf497211318b1fc6c861f737a38"
+        ],
+        "modules/blog/resources/project/App/views/showroom/_blog.php": [
+            "sha256:d31b36f2431c4d97efcd97f1456a9eabebf93739f5021b34e75e764ab677c7b0"
+        ],
+        "modules/blog/resources/project/src/js/showroom/blog.js": [
+            "sha256:3cccfd0606cec03147953483d303b09410aff8b9c4b4784c00a13e45c33f2151"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_sectionBlogGrid01.scss": [
+            "sha256:1238dc8bc068548d9ab6a5a9473572bbecdf366efe3b16155aa8b97827b8bb19",
+            "sha256:25e528e5a7b1609bb1510d55283fdc65f3676fcfd6c7533239a220e824dee1e2"
+        ],
+        "modules/blog/resources/project/src/scss/showroom/blog.scss": [
+            "sha256:8ad671c20ce95534bda20339f4baa88608368e3a4097a5aff077762ce2914e44"
+        ],
         "resources/img/system/check-OK.svg": [
             "sha256:5936c8374a7485768a0672cc115b6b15153c9cf68c3eede2d9e10d64f7b6d235",
             "sha256:aa2a5c2f4ea3647b041f198024a2041cc5c94200eff5f25f7c5d8c0f993daaa0"

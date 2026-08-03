@@ -18,6 +18,8 @@ final class BlogPublicHtmlRenderer
 {
     public const STANDALONE_STYLESHEET =
         '/assets/modules/blog/blog-public.css';
+    public const STANDALONE_SCRIPT =
+        '/assets/modules/blog/blog-public.js';
 
     private readonly ?string $projectArticleView;
 
@@ -282,6 +284,8 @@ final class BlogPublicHtmlRenderer
                     . $this->escape($article->coverImageUrl()) . '">')
             . '<link rel="stylesheet" href="'
             . self::STANDALONE_STYLESHEET . '">'
+            . '<script src="' . self::STANDALONE_SCRIPT
+            . '" defer></script>'
             . '</head><body>'
             . '<main><article><header><h1>'
             . $this->escape($article->h1()) . '</h1><p>'

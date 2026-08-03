@@ -43,17 +43,10 @@ const installShowroomNavPin = () => {
 };
 const cleanupShowroomNavPin = installShowroomNavPin();
 
-const categoryLoaders = {
-  heroes: () => import('./showroom/heroes.js'),
-  particles: () => import('./showroom/particles.js'),
-  'gsap-specials': () => import('./showroom/gsap-specials.js'),
-  common: () => import('./showroom/common.js'),
-  'cards-grids': () => import('./showroom/cards-grids.js'),
-  media: () => import('./showroom/media.js'),
-  'forms-interactive': () => import('./showroom/forms-interactive.js'),
-  'modules-sections': () => import('./showroom/modules-sections.js'),
-  blog: () => import('./showroom/blog.js'),
-};
+// El glob se resuelve al compilar el proyecto consumidor. Las categorías de
+// módulos opcionales solo entran en el bundle cuando Composer las ha
+// publicado; CORE no mantiene imports literales hacia módulos ausentes.
+const categoryLoaders = import.meta.glob('./showroom/*.js');
 
 // Extensión reservada para BASE y consumidores. Un fichero local como
 // src/js/showroom/local/particles.js puede añadir su init y su SCSS sin
@@ -75,7 +68,7 @@ const initRequestedCategory = async () => {
   const category = document.body?.dataset.showroomCategory ?? 'index';
 
   try {
-    await runModule(categoryLoaders[category]);
+    await runModule(categoryLoaders[`./showroom/${category}.js`]);
 
     const localLoader =
       localCategoryLoaders[`./showroom/local/${category}.js`];

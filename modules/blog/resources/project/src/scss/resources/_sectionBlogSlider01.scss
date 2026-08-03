@@ -1,0 +1,161 @@
+@use '../config' as c;
+
+.sectionBlogSlider01 {
+    width: 100%;
+    padding: clamp(3rem, 8vw, 6rem) 0;
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 3rem);
+    color: c.$color01;
+    background: c.$color00bis;
+
+    .sectionBlogSlider01-heading {
+        width: min(calc(100% - (2 * c.$padMin)), c.$textMax);
+        margin-inline: auto;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .sectionBlogSlider01-controls {
+        display: flex;
+        gap: 0.5rem;
+
+        &[hidden] {
+            display: none;
+        }
+
+        button {
+            width: 2.75rem;
+            height: 2.75rem;
+            border: 1px solid c.$color02;
+            border-radius: 50%;
+            color: c.$color02;
+            background: c.$color00;
+            cursor: pointer;
+
+            &:hover {
+                color: c.$color00;
+                background: c.$color02;
+            }
+
+            &:focus-visible {
+                outline: 0.18rem solid c.$color02;
+                outline-offset: 0.2rem;
+            }
+
+            &:disabled {
+                opacity: 0.4;
+                cursor: default;
+            }
+        }
+    }
+
+    .sectionBlogSlider01-viewport {
+        width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scrollbar-width: thin;
+        scroll-snap-type: inline mandatory;
+        scroll-padding-inline: c.$padMin;
+
+        &:focus-visible {
+            outline: 0.18rem solid c.$color02;
+            outline-offset: -0.18rem;
+        }
+    }
+
+    .sectionBlogSlider01-track {
+        width: max-content;
+        padding-inline: c.$padMin;
+        display: flex;
+        gap: clamp(1rem, 3vw, 2rem);
+    }
+
+    .sectionBlogSlider01-item {
+        width: min(82vw, 24rem);
+        min-width: 0;
+        min-height: 19rem;
+        padding: clamp(1.25rem, 4vw, 2rem);
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        border: 1px solid c.$color01bis4;
+        border-radius: 1rem;
+        background: c.$color00;
+        scroll-snap-align: start;
+
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            margin: 0;
+            font-size: clamp(1.25rem, 4vw, 1.75rem);
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+
+            a {
+                color: c.$color02;
+                text-decoration: none;
+
+                &:hover {
+                    color: c.$color01;
+                    text-decoration: underline;
+                    text-underline-offset: 0.18em;
+                }
+
+                &:focus-visible {
+                    border-radius: 0.15rem;
+                    outline: 0.18rem solid c.$color02;
+                    outline-offset: 0.2rem;
+                }
+            }
+        }
+    }
+
+    .sectionBlogSlider01-date {
+        order: -1;
+        color: c.$color01bis;
+        font-family: c.$fuente02;
+        font-size: 0.8rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .sectionBlogSlider01-excerpt {
+        color: c.$color01bis;
+        overflow-wrap: anywhere;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .sectionBlogSlider01-viewport {
+            scroll-behavior: auto;
+        }
+    }
+
+    @media (min-width: c.$tablet) {
+        .sectionBlogSlider01-heading {
+            width: min(calc(100% - (2 * c.$padMax)), c.$textMax);
+        }
+
+        .sectionBlogSlider01-viewport {
+            scroll-padding-inline: c.$padMax;
+        }
+
+        .sectionBlogSlider01-track {
+            padding-inline: c.$padMax;
+        }
+
+        .sectionBlogSlider01-item {
+            width: min(42vw, 26rem);
+        }
+    }
+
+    @media (min-width: c.$desktop) {
+        .sectionBlogSlider01-item {
+            width: min(30vw, 27rem);
+        }
+    }
+}

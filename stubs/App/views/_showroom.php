@@ -344,7 +344,12 @@ $showroomCategoryDescription = static function (
                         require __DIR__ . '/showroom/_modules-sections.php';
                         break;
                     case 'blog':
-                        require __DIR__ . '/showroom/_blog.php';
+                        $blogShowroomPartial = __DIR__
+                            . '/showroom/_blog.php';
+                        if (is_file($blogShowroomPartial)) {
+                            require $blogShowroomPartial;
+                        }
+                        unset($blogShowroomPartial);
                         break;
                 }
 

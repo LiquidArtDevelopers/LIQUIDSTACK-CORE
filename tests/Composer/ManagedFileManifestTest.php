@@ -91,6 +91,14 @@ final class ManagedFileManifestTest extends TestCase
             'addTaggedModuleSources',
             $builder
         );
+        self::assertStringContainsString(
+            '$currentModuleManagedFiles',
+            $builder
+        );
+        self::assertStringContainsString(
+            '$isDeclaredModuleManaged',
+            $builder
+        );
     }
 
     public function testVerifiedBaseLegacyFilesRemainRecognized(): void

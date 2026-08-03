@@ -1,0 +1,109 @@
+@use '../config' as c;
+
+.sectionBlogFeatured01 {
+    width: 100%;
+    padding: clamp(3rem, 8vw, 6rem) c.$padMin;
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 3rem);
+    color: c.$color00;
+    background: c.$color01;
+
+    > h1,
+    > h2,
+    > h3,
+    > h4,
+    > h5,
+    > h6,
+    .sectionBlogFeatured01-layout {
+        width: min(100%, c.$textMax);
+        margin-inline: auto;
+    }
+
+    .sectionBlogFeatured01-layout,
+    .sectionBlogFeatured01-secondary {
+        display: grid;
+        gap: clamp(1rem, 3vw, 2rem);
+    }
+
+    .sectionBlogFeatured01-item {
+        min-width: 0;
+        padding: clamp(1.25rem, 4vw, 2rem);
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+        border: 1px solid c.$color00bis3;
+        border-radius: 1rem;
+        background: c.$color01bis2;
+
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            margin: 0;
+            font-size: clamp(1.25rem, 4vw, 1.8rem);
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+
+            a {
+                color: c.$color00;
+                text-decoration-color: transparent;
+                text-underline-offset: 0.18em;
+
+                &:hover {
+                    color: c.$color03;
+                    text-decoration-color: currentColor;
+                }
+
+                &:focus-visible {
+                    border-radius: 0.15rem;
+                    outline: 0.18rem solid c.$color03;
+                    outline-offset: 0.2rem;
+                }
+            }
+        }
+
+        &.sectionBlogFeatured01-item--featured {
+            height: 100%;
+            justify-content: flex-end;
+            border-color: c.$color02;
+            background: c.$color02;
+
+            h2,
+            h3,
+            h4,
+            h5,
+            h6 {
+                font-size: clamp(1.75rem, 6vw, 3.5rem);
+            }
+
+            .sectionBlogFeatured01-date,
+            .sectionBlogFeatured01-excerpt {
+                color: c.$color00;
+            }
+        }
+    }
+
+    .sectionBlogFeatured01-date {
+        order: -1;
+        color: c.$color00bis1;
+        font-family: c.$fuente02;
+        font-size: 0.8rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .sectionBlogFeatured01-excerpt {
+        color: c.$color00bis1;
+        overflow-wrap: anywhere;
+    }
+
+    @media (min-width: c.$tablet) {
+        padding-inline: c.$padMax;
+
+        .sectionBlogFeatured01-layout {
+            grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr);
+            align-items: stretch;
+        }
+    }
+}

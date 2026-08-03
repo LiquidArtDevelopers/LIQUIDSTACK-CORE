@@ -24,7 +24,7 @@
         display: grid;
         grid-template-columns: repeat(
             auto-fit,
-            minmax(min(100%, 18rem), 1fr)
+            minmax(min(100%, 16rem), 1fr)
         );
         gap: clamp(1rem, 3vw, 2rem);
     }
@@ -103,14 +103,26 @@
 
     @media (min-width: c.$tablet) {
         padding-inline: c.$padMax;
+
+        &.sectionBlogGrid01--items-4 {
+            .sectionBlogGrid01-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
     }
 
     @media (min-width: c.$desktop) {
         .sectionBlogGrid01-grid {
             grid-template-columns: repeat(
                 auto-fit,
-                minmax(min(100%, 20rem), 1fr)
+                minmax(min(100%, 16.5rem), 1fr)
             );
+        }
+
+        &.sectionBlogGrid01--items-4 {
+            .sectionBlogGrid01-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
         }
     }
 }

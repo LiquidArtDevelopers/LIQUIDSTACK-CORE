@@ -26,10 +26,20 @@ final class BlogCategoryPublicProjectionService
     {
         $locale = BlogCategoryInput::locale($locale);
         try {
+            $filters = $this->repository->publicFilters($locale);
+            if (
+                count($filters)
+                    > BlogCategoryRepositoryInterface::MAX_PUBLIC_FILTERS
+            ) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::STORAGE_UNAVAILABLE
+                );
+            }
+
             return array_map(
                 static fn (PublishedCategoryFilter $filter): array =>
                     $filter->toResourceData(),
-                $this->repository->publicFilters($locale)
+                $filters
             );
         } catch (BlogCategoryException $exception) {
             throw $exception;

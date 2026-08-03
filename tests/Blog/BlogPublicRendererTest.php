@@ -35,7 +35,10 @@ final class BlogPublicRendererTest extends TestCase
             $html
         );
         self::assertStringContainsString('<p>Second &amp; final</p>', $html);
-        self::assertStringNotContainsString('<script', $html);
+        self::assertStringContainsString(
+            '<script src="/assets/modules/blog/blog-public.js" defer></script>',
+            $html
+        );
         self::assertSame(1, substr_count($html, '<h1>'));
         self::assertStringContainsString(
             '<meta name="robots" content="index,follow">',
@@ -266,6 +269,45 @@ PHP);
             $xml,
             'hreflang="x-default" href="https://canonical.example.test/noticias/matrix"'
         ));
+    }
+
+    public function testSitemapFailsClosedBeforeExceedingItsByteLimit(): void
+    {
+        $renderer = new BlogSitemapRenderer(maxDocumentBytes: 128);
+        $entry = new BlogSitemapEntry(
+            'es',
+            'matrix',
+            new DateTimeImmutable('2026-01-01T00:00:00Z'),
+            new DateTimeImmutable('2026-01-02T09:15:00Z'),
+            '11111111-1111-4111-8111-111111111111'
+        );
+
+        try {
+            $renderer->render(
+                [$entry],
+                new BlogConfig(
+                    ['es' => '/noticias'],
+                    '/blog-sitemap.xml',
+                    'ls_blog_',
+                    'fixture'
+                ),
+                BlogPublicOrigin::fromEnvironment([
+                    BlogPublicOrigin::ENV =>
+                        'https://canonical.example.test',
+                ])
+            );
+            self::fail('An oversized sitemap must fail closed.');
+        } catch (BlogException $exception) {
+            self::assertSame(
+                BlogException::SITEMAP_OVERFLOW,
+                $exception->issueCode()
+            );
+        }
+
+        self::assertSame(
+            50 * 1024 * 1024,
+            BlogSitemapRenderer::MAX_DOCUMENT_BYTES
+        );
     }
 
     public function testStructuredCoverProvidesAbsoluteSocialImageAndAlternates(): void

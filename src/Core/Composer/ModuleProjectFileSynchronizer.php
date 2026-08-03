@@ -20,7 +20,8 @@ final class ModuleProjectFileSynchronizer
 
     public function queue(
         ModuleSelection $selection,
-        ManagedFileSynchronizer $synchronizer
+        ManagedFileSynchronizer $synchronizer,
+        bool $includeStandardResources = true
     ): void {
         $preparedModules = [];
         $selectionIsValid = true;
@@ -30,6 +31,16 @@ final class ModuleProjectFileSynchronizer
             $moduleIsValid = true;
 
             foreach ($definition->projectFiles() as $entry) {
+                if (
+                    !$includeStandardResources
+                    && !$this->isNamespacedModuleAsset(
+                        $entry['target'],
+                        $definition->id()
+                    )
+                ) {
+                    continue;
+                }
+
                 $source = $definition->root()
                     . DIRECTORY_SEPARATOR
                     . str_replace('/', DIRECTORY_SEPARATOR, $entry['source']);
@@ -276,5 +287,22 @@ final class ModuleProjectFileSynchronizer
         $path = $normalize($path);
 
         return $path === $root || str_starts_with($path, $root . '/');
+    }
+
+    private function isNamespacedModuleAsset(
+        string $target,
+        string $moduleId
+    ): bool {
+        foreach ([
+            'public/assets/modules/' . $moduleId,
+            'src/js/modules/' . $moduleId,
+            'src/scss/modules/' . $moduleId,
+        ] as $root) {
+            if ($target === $root || str_starts_with($target, $root . '/')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Core\Blog\Http;
 
 use App\Core\Blog\BlogService;
+use App\Core\Blog\Categories\BlogCategoryPublicProjectionService;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\PublicDelivery\BlogPublicMediaDelivery;
 use App\Core\Blog\PublicDelivery\BlogPublicMediaFile;
 use App\Core\Blog\PublicDelivery\BlogUnavailableImageResolver;
+use App\Core\Blog\PublicFeed\BlogPublicCatalogRepositoryInterface;
 use App\Core\Blog\StructuredContent\Persistence\BlogStructuredContentRepositoryInterface;
 use App\Core\Blog\StructuredContent\Persistence\BlogStructuredDocumentRecord;
 use App\Core\Blog\StructuredContent\Rendering\BlogImageResolverInterface;
@@ -22,7 +24,11 @@ final class BlogPublicHttpRuntime
         private readonly BlogService $service,
         private readonly ?BlogStructuredContentRepositoryInterface
             $structuredContent = null,
-        private readonly ?BlogPublicMediaDelivery $mediaDelivery = null
+        private readonly ?BlogPublicMediaDelivery $mediaDelivery = null,
+        private readonly ?BlogCategoryPublicProjectionService
+            $categoryProjection = null,
+        private readonly ?BlogPublicCatalogRepositoryInterface
+            $catalogRepository = null
     ) {
     }
 
@@ -39,6 +45,16 @@ final class BlogPublicHttpRuntime
     public function service(): BlogService
     {
         return $this->service;
+    }
+
+    public function categoryProjection(): ?BlogCategoryPublicProjectionService
+    {
+        return $this->categoryProjection;
+    }
+
+    public function catalogRepository(): ?BlogPublicCatalogRepositoryInterface
+    {
+        return $this->catalogRepository;
     }
 
     public function structuredDocument(
@@ -74,6 +90,8 @@ final class BlogPublicHttpRuntime
             'origin' => '[redacted]',
             'structured_content' => $this->structuredContent !== null,
             'public_media' => $this->mediaDelivery !== null,
+            'category_projection' => $this->categoryProjection !== null,
+            'catalog_repository' => $this->catalogRepository !== null,
         ];
     }
 }

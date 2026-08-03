@@ -53,10 +53,12 @@ Implementado mediante `0001` a `0004` del scope Blog:
   extracto, estado, preview y publicación independientes;
 - categorías localizadas, lock optimista, asignación a artículos y proyección
   pública para filtros y cards;
-- índice project-owned por idioma y recurso Blog reutilizable, con fixtures
-  Matrix solo en showroom. El catálogo de demostración cubrirá las cuatro
-  películas de la saga principal para poder probar listados, paginación,
-  categorías y relacionados sin insertar fallback dummy en la DB pública;
+- índice project-owned por idioma y recursos Blog reutilizables, con cuatro
+  fixtures Matrix solo en showroom para probar rejilla, listado, destacado,
+  slider y filtros sin insertar fallback dummy en la DB pública;
+- ownership selectivo de `moduleBlogFilters01`, `sectionBlogGrid01`,
+  `sectionBlogList01`, `sectionBlogFeatured01` y `sectionBlogSlider01`: el
+  manifiesto publica su ecosistema únicamente con `liquidstack/blog`;
 - sitemap dinámico respaldado por la DB del entorno, sin escribir archivos ni
   necesitar deploy al publicar o retirar una URL;
 - canonical, robots, Open Graph, Twitter Card y alternates `hreflang`/`x-default`
@@ -82,6 +84,9 @@ Implementado mediante `0005_blog_structured_content` y la biblioteca Media:
   adoptadas;
 - imágenes AVIF públicas solo cuando están referenciadas por el documento
   actual de una variante publicada;
+- runtime Lite YouTube module-owned que conserva el enlace externo SSR, no
+  crea el iframe hasta un clic con consentimiento `cookie_social=true` y lo
+  retira si CookieLAD revoca el permiso;
 - assets del editor gestionados por el manifiesto del módulo y comprobados por
   `doctor` mediante `blog.assets` y el blocker
   `assets.missing_or_invalid`.
@@ -108,13 +113,16 @@ legacy. Los siguientes pasos son:
   SSR cuando un consumidor no haya adoptado todavía el nuevo shell;
 - ampliar de forma aditiva el runtime público de bloques sin acoplarlo al bundle
   administrativo ni introducir dependencias en el fallback;
-- mantener el enlace externo accesible de YouTube como fallback y añadir, si
-  se activa reproducción inline, un runtime Lite YouTube que solo cree el
-  iframe después de consentimiento social válido de CookieLAD;
-- reunir, cuando sea posible, cards y categorías en una proyección pública
-  acotada para evitar runtimes PDO duplicados por petición.
-- definir caché condicional para el sitemap dinámico mediante `ETag` y/o
-  `Last-Modified`, con invalidación al publicar o retirar variantes. Una caída
+- extender a futuros relacionados y archivos la proyección pública unificada
+  que ya consumen los recursos base: cards generales, filtros y cards por
+  categoría comparten un solo runtime y PDO, mientras el factory anterior
+  sigue siendo compatible;
+- completar la caché last-known-good del sitemap. La revalidación condicional
+  mediante `ETag`, `GET`/`HEAD` e `If-None-Match`, junto al límite de 50 MiB,
+  ya está implementada. La persistencia exige invalidación transaccional al
+  publicar o retirar según el
+  [contrato pendiente](mejoras-pendientes/blog-sitemap-last-known-good-cache.md).
+  Una caída
   temporal de DB podrá servir únicamente una última respuesta válida,
   explícitamente acotada y observable; nunca inventará URLs ni expondrá
   borradores.
@@ -145,13 +153,30 @@ seguirá siendo editable y publicable de forma independiente.
 
 ### 8. Descubrimiento e indexación
 
-- Búsqueda y filtros reactivos mediante `fetch`, conservando HTML inicial
-  funcional sin JavaScript.
-- Relacionados, destacados, archivos, RSS y nuevos recursos dinámicos.
-- Los recursos que admitan varias categorías declararán de forma explícita si
-  el filtro usa semántica `category_mode=any` (cualquier categoría) o
-  `category_mode=all` (todas); el backend aplicará una allowlist y límites, y
-  el HTML inicial seguirá siendo navegable sin JavaScript.
+Ya está implementada la búsqueda pública con filtros múltiples de categorías
+`any|all`: la vista crea un `BlogPublicCatalogQuery`, obtiene las cards mediante
+`BlogPublicFeed::cardsForQuery()` y conserva el formulario GET SSR como
+fallback. La consulta limita la búsqueda normalizada a 2–120 caracteres
+Unicode, diez categorías simultáneas, 50 resultados y un offset de 10.000;
+los filtros
+localizados fallan cerrados si superan el máximo público de 100.
+`moduleBlogFilters01` añade `fetch` abortable, debounce, historial y
+región viva sin convertir JavaScript en requisito.
+
+- Relacionados, archivos, RSS y nuevos recursos dinámicos.
+- Antes de usar el catálogo en volúmenes altos, sustituir la búsqueda
+  `LIKE` sobre H1, extracto y cuerpo por un read model o índice de texto
+  completo compatible con MySQL/MariaDB, con límites de coste y frecuencia.
+  Los límites actuales acotan entrada y salida, pero no evitan que la DB
+  examine el cuerpo de todas las variantes publicadas candidatas.
+- Antes de superar 100 categorías con entradas publicadas en un mismo idioma,
+  añadir un guard operativo/write-side o una proyección de filtros paginada.
+  Hoy las categorías sin entradas publicadas no cruzan los `JOIN` del feed,
+  pero un locale que exceda ese techo falla cerrado para no presentar un
+  catálogo parcial como si fuese completo.
+- Los futuros recursos que admitan varias categorías reutilizarán la semántica
+  ya validada `category_mode=any` (cualquier categoría) o
+  `category_mode=all` (todas), su allowlist y sus límites.
 - Integración con Search Console para observación e inspección y, solo cuando
   el tipo de contenido y la política vigente de Google lo permitan, con una
   API de solicitud de indexación. No se tratará la Indexing API como una API
@@ -166,11 +191,8 @@ presentará como garantía de rastreo o indexación.
 ### 9. Plantillas, recursos y maquetador
 
 - Nuevas plantillas de artículo basadas en recursos de showroom.
-- Más recursos públicos Blog: sliders, relacionados y composiciones filtradas.
-- Hacer que controladores, templates, SCSS, JS, fixtures y catálogos propios de
-  Blog sean `module-owned` y se sincronicen únicamente con el selector
-  `liquidstack/blog`; ocultar solo la subruta de showroom no constituye
-  distribución selectiva suficiente.
+- Más recursos públicos Blog: relacionados, archivos y nuevas composiciones
+  filtradas.
 - Vídeo local servido desde una frontera Media segura.
 - Maquetador futuro de secciones, filas, columnas y módulos, construido sobre
   un esquema versionado y sin romper los documentos v1.

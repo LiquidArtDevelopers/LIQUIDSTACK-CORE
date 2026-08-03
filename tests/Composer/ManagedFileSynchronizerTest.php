@@ -7,6 +7,7 @@ use App\Core\Composer\ManagedFileSynchronizer;
 use Composer\IO\BufferIO;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Process\Process;
 
 final class ManagedFileSynchronizerTest extends TestCase
 {
@@ -213,6 +214,528 @@ final class ManagedFileSynchronizerTest extends TestCase
             '<article>sample</article>',
             file_get_contents($templateTarget)
         );
+    }
+
+    public function testManagedGroupRemovesNewFilesWhenLaterWriteFails(): void
+    {
+        $addedSource = $this->packageRoot . '/modules/blog/added.php';
+        $updatedSource = $this->packageRoot . '/modules/blog/updated.php';
+        $addedTarget = $this->projectRoot . '/App/controllers/added.php';
+        $updatedTarget = $this->projectRoot . '/App/controllers/updated.php';
+        $group = 'module:blog:mixed-atomic-test';
+
+        $this->writeFile($updatedSource, 'updated-v1');
+        $initial = $this->synchronizer();
+        $this->queueManagedTestFile(
+            $initial,
+            $updatedSource,
+            $updatedTarget,
+            'updated.php',
+            $group
+        );
+        $initial->apply();
+
+        $statePath = $this->projectRoot
+            . '/.liquidstack/core/managed-files.json';
+        $initialState = (string) file_get_contents($statePath);
+        $this->writeFile($addedSource, 'added-v1');
+        $this->writeFile($updatedSource, 'updated-v2');
+
+        $failed = $this->synchronizer(
+            $this->filesystemFailingPromotionTo($updatedTarget)
+        );
+        $this->queueManagedTestFile(
+            $failed,
+            $addedSource,
+            $addedTarget,
+            'added.php',
+            $group
+        );
+        $this->queueManagedTestFile(
+            $failed,
+            $updatedSource,
+            $updatedTarget,
+            'updated.php',
+            $group
+        );
+        $failed->apply();
+
+        self::assertFileDoesNotExist($addedTarget);
+        self::assertSame('updated-v1', file_get_contents($updatedTarget));
+        self::assertSame($initialState, file_get_contents($statePath));
+        self::assertSame(0, $failed->stats()['added']);
+        self::assertSame(0, $failed->stats()['updated']);
+        self::assertSame(1, $failed->stats()['errors']);
+        $this->assertTransactionDirectoryIsEmpty();
+    }
+
+    public function testUngroupedManagedFileStillAppliesAfterGroupFailure(): void
+    {
+        $firstSource = $this->packageRoot . '/modules/blog/first.php';
+        $secondSource = $this->packageRoot . '/modules/blog/second.php';
+        $standaloneSource = $this->packageRoot . '/modules/blog/standalone.php';
+        $firstTarget = $this->projectRoot . '/App/controllers/first.php';
+        $secondTarget = $this->projectRoot . '/App/controllers/second.php';
+        $standaloneTarget = $this->projectRoot
+            . '/public/assets/modules/blog/standalone.php';
+        $group = 'module:blog:failed-test';
+
+        $this->writeFile($firstSource, 'first');
+        $this->writeFile($secondSource, 'second');
+        $this->writeFile($standaloneSource, 'standalone');
+
+        $sync = $this->synchronizer(
+            $this->filesystemFailingPromotionTo($secondTarget)
+        );
+        $this->queueManagedTestFile(
+            $sync,
+            $firstSource,
+            $firstTarget,
+            'first.php',
+            $group
+        );
+        $this->queueManagedTestFile(
+            $sync,
+            $secondSource,
+            $secondTarget,
+            'second.php',
+            $group
+        );
+        $sync->queueFile(
+            $standaloneSource,
+            $standaloneTarget,
+            'modules/blog/standalone.php',
+            'public/assets/modules/blog/standalone.php',
+            ManagedFileRegistry::POLICY_MANAGED,
+            null
+        );
+        $sync->apply();
+
+        self::assertFileDoesNotExist($firstTarget);
+        self::assertFileDoesNotExist($secondTarget);
+        self::assertSame(
+            'standalone',
+            file_get_contents($standaloneTarget)
+        );
+        self::assertSame(1, $sync->stats()['added']);
+        self::assertSame(1, $sync->stats()['errors']);
+    }
+
+    public function testInterruptedPreparedTransactionIsRecoveredWithEmptyQueue(): void
+    {
+        $targetId = 'App/controllers/interrupted.php';
+        $target = $this->projectRoot . '/' . $targetId;
+        $transactionRoot = $this->projectRoot
+            . '/.liquidstack/core/sync-transactions/'
+            . str_repeat('a', 24);
+
+        $this->writeFile($target, 'new-interrupted');
+        $this->writeFile(
+            $transactionRoot . '/backup/1',
+            'original-before-interruption'
+        );
+        $this->writeFile(
+            $transactionRoot . '/journal.json',
+            json_encode([
+                'schema' => 1,
+                'group' => 'module:blog:interrupted-test',
+                'status' => 'prepared',
+                'files' => [[
+                    'target_id' => $targetId,
+                    'slot' => 1,
+                    'had_target' => true,
+                    'original_hash' => 'sha256:'
+                        . hash('sha256', 'original-before-interruption'),
+                    'expected_hash' => 'sha256:'
+                        . hash('sha256', 'new-interrupted'),
+                ]],
+            ],
+                JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR
+            ) . PHP_EOL
+        );
+
+        $sync = $this->synchronizer();
+        $sync->apply();
+
+        self::assertSame(
+            'original-before-interruption',
+            file_get_contents($target)
+        );
+        self::assertDirectoryDoesNotExist($transactionRoot);
+    }
+
+    public function testRecoveryRejectsLinkedTransactionPath(): void
+    {
+        $external = $this->root . '/linked-runtime';
+        $link = $this->projectRoot . '/.liquidstack';
+        $this->filesystem->mkdir($external);
+        $linked = @symlink($external, $link);
+        if (!$linked && PHP_OS_FAMILY === 'Windows') {
+            $process = new Process([
+                'powershell.exe',
+                '-NoProfile',
+                '-NonInteractive',
+                '-Command',
+                "New-Item -ItemType Junction -LiteralPath '"
+                    . str_replace("'", "''", $link)
+                    . "' -Target '"
+                    . str_replace("'", "''", $external)
+                    . "' | Out-Null",
+            ]);
+            $process->run();
+            $linked = $process->isSuccessful() && is_dir($link);
+        }
+        if (!$linked) {
+            self::markTestSkipped(
+                'El entorno no permite crear enlaces de directorio.'
+            );
+        }
+
+        try {
+            $this->synchronizer()->apply();
+            self::fail('Recovery no debe atravesar un enlace de directorio.');
+        } catch (RuntimeException $exception) {
+            self::assertStringContainsString(
+                'contiene un enlace',
+                $exception->getMessage()
+            );
+        } finally {
+            PHP_OS_FAMILY === 'Windows' ? @rmdir($link) : @unlink($link);
+        }
+    }
+
+    public function testInterruptedCommittedTransactionIsFinalizedNotRolledBack(): void
+    {
+        $targetId = 'App/controllers/committed.php';
+        $target = $this->projectRoot . '/' . $targetId;
+        $safeSource = $this->packageRoot . '/modules/blog/safe.php';
+        $safeTarget = $this->projectRoot
+            . '/public/assets/modules/blog/safe.php';
+        $transactionRoot = $this->projectRoot
+            . '/.liquidstack/core/sync-transactions/'
+            . str_repeat('b', 24);
+
+        $this->writeFile($target, 'committed-new');
+        $this->writeFile($transactionRoot . '/backup/1', 'previous');
+        $this->writeFile(
+            $transactionRoot . '/journal.json',
+            json_encode([
+                'schema' => 1,
+                'group' => 'module:blog:committed-test',
+                'status' => 'committed',
+                'files' => [[
+                    'target_id' => $targetId,
+                    'slot' => 1,
+                    'had_target' => true,
+                    'original_hash' => 'sha256:'
+                        . hash('sha256', 'previous'),
+                    'expected_hash' => 'sha256:'
+                        . hash('sha256', 'committed-new'),
+                ]],
+            ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . PHP_EOL
+        );
+        $this->writeFile($safeSource, 'safe');
+
+        $sync = $this->synchronizer();
+        $sync->queueFile(
+            $safeSource,
+            $safeTarget,
+            'modules/blog/safe.php',
+            'public/assets/modules/blog/safe.php',
+            ManagedFileRegistry::POLICY_MANAGED,
+            null
+        );
+        $sync->apply();
+
+        self::assertSame('committed-new', file_get_contents($target));
+        self::assertDirectoryDoesNotExist($transactionRoot);
+    }
+
+    public function testLockedWindowsStyleBackupFailureRestoresEarlierTargets(): void
+    {
+        $pair = $this->updatedManagedPair(
+            'module:blog:locked-target-test'
+        );
+
+        $sync = $this->synchronizer(
+            $this->filesystemFailingBackupOf($pair['second_target'])
+        );
+        $this->queueManagedPair($sync, $pair);
+        $sync->apply();
+
+        self::assertSame('first-v1', file_get_contents($pair['first_target']));
+        self::assertSame(
+            'second-v1',
+            file_get_contents($pair['second_target'])
+        );
+        self::assertSame(1, $sync->stats()['errors']);
+        self::assertSame(0, $sync->stats()['updated']);
+        $this->assertTransactionDirectoryIsEmpty();
+    }
+
+    public function testTargetMutationDuringBackupIsPreservedAndFatal(): void
+    {
+        $source = $this->packageRoot . '/modules/blog/raced.php';
+        $target = $this->projectRoot . '/App/controllers/raced.php';
+        $group = 'module:blog:backup-race-test';
+        $this->writeFile($source, 'version-one');
+
+        $initial = $this->synchronizer();
+        $this->queueManagedTestFile(
+            $initial,
+            $source,
+            $target,
+            'raced.php',
+            $group
+        );
+        $initial->apply();
+        $statePath = $this->projectRoot
+            . '/.liquidstack/core/managed-files.json';
+        $initialState = (string) file_get_contents($statePath);
+        $this->writeFile($source, 'version-two');
+
+        $sync = $this->synchronizer(
+            $this->filesystemChangingTargetBeforeBackup($target)
+        );
+        $this->queueManagedTestFile(
+            $sync,
+            $source,
+            $target,
+            'raced.php',
+            $group
+        );
+
+        try {
+            $sync->apply();
+            self::fail('La mutacion durante el backup debe ser fatal.');
+        } catch (RuntimeException $exception) {
+            self::assertStringContainsString(
+                'ni restaurar por completo',
+                $exception->getMessage()
+            );
+        }
+
+        self::assertFileDoesNotExist($target);
+        self::assertSame($initialState, file_get_contents($statePath));
+        self::assertSame(
+            'concurrent-during-backup',
+            file_get_contents(
+                $this->onlyPendingTransactionRoot() . '/backup/1'
+            )
+        );
+    }
+
+    public function testTargetCreatedBetweenBackupAndInstallIsPreserved(): void
+    {
+        $source = $this->packageRoot . '/modules/blog/gap.php';
+        $target = $this->projectRoot . '/App/controllers/gap.php';
+        $group = 'module:blog:install-gap-test';
+        $this->writeFile($source, 'gap-v1');
+        $initial = $this->synchronizer();
+        $this->queueManagedTestFile(
+            $initial,
+            $source,
+            $target,
+            'gap.php',
+            $group
+        );
+        $initial->apply();
+        $statePath = $this->projectRoot
+            . '/.liquidstack/core/managed-files.json';
+        $initialState = (string) file_get_contents($statePath);
+        $this->writeFile($source, 'gap-v2');
+
+        $sync = $this->synchronizer(
+            $this->filesystemCreatingTargetAfterBackup($target)
+        );
+        $this->queueManagedTestFile(
+            $sync,
+            $source,
+            $target,
+            'gap.php',
+            $group
+        );
+
+        try {
+            $sync->apply();
+            self::fail('Un destino recreado durante el hueco debe abortar.');
+        } catch (RuntimeException $exception) {
+            self::assertStringContainsString(
+                'ni restaurar por completo',
+                $exception->getMessage()
+            );
+            self::assertStringContainsString(
+                'reaparecio antes de instalarlo',
+                $exception->getMessage()
+            );
+        }
+
+        self::assertSame('concurrent-in-gap', file_get_contents($target));
+        self::assertSame($initialState, file_get_contents($statePath));
+        self::assertSame(
+            'gap-v1',
+            file_get_contents(
+                $this->onlyPendingTransactionRoot() . '/backup/1'
+            )
+        );
+    }
+
+    public function testConcurrentChangeToUnchangedGroupMemberAbortsCommit(): void
+    {
+        $pair = $this->updatedManagedPair(
+            'module:blog:unchanged-race-test',
+            false
+        );
+        $statePath = $this->projectRoot
+            . '/.liquidstack/core/managed-files.json';
+        $initialState = (string) file_get_contents($statePath);
+        $sync = $this->synchronizer(
+            $this->filesystemChangingTargetDuringBackup(
+                $pair['second_target'],
+                $pair['first_target']
+            )
+        );
+        $this->queueManagedPair($sync, $pair);
+
+        $sync->apply();
+
+        self::assertSame(
+            'concurrent-unchanged',
+            file_get_contents($pair['first_target'])
+        );
+        self::assertSame(
+            'second-v1',
+            file_get_contents($pair['second_target'])
+        );
+        self::assertSame($initialState, file_get_contents($statePath));
+        self::assertSame(1, $sync->stats()['errors']);
+        self::assertSame(0, $sync->stats()['updated']);
+        $this->assertTransactionDirectoryIsEmpty();
+    }
+
+    public function testRollbackFailureIsFatalAndKeepsJournalAndState(): void
+    {
+        $pair = $this->updatedManagedPair(
+            'module:blog:fatal-rollback-test'
+        );
+        $laterSource = $this->packageRoot . '/modules/blog/later.php';
+        $laterTarget = $this->projectRoot
+            . '/public/assets/modules/blog/later.php';
+
+        $statePath = $this->projectRoot
+            . '/.liquidstack/core/managed-files.json';
+        $initialState = (string) file_get_contents($statePath);
+        $this->writeFile($laterSource, 'later');
+
+        $sync = $this->synchronizer(
+            $this->filesystemFailingPromotionAndRestoreTo(
+                $pair['second_target']
+            )
+        );
+        $this->queueManagedPair($sync, $pair);
+        $sync->queueFile(
+            $laterSource,
+            $laterTarget,
+            'modules/blog/later.php',
+            'public/assets/modules/blog/later.php',
+            ManagedFileRegistry::POLICY_MANAGED,
+            null
+        );
+
+        try {
+            $sync->apply();
+            self::fail('Un rollback incompleto debe abortar Composer.');
+        } catch (RuntimeException $exception) {
+            self::assertStringContainsString(
+                'ni restaurar por completo',
+                $exception->getMessage()
+            );
+        }
+
+        self::assertSame($initialState, file_get_contents($statePath));
+        self::assertFileDoesNotExist($laterTarget);
+        self::assertSame('first-v1', file_get_contents($pair['first_target']));
+        self::assertFileDoesNotExist($pair['second_target']);
+        $transactionRoot = $this->onlyPendingTransactionRoot();
+        self::assertFileExists($transactionRoot . '/journal.json');
+        self::assertFileExists($transactionRoot . '/backup/2');
+        self::assertSame(
+            "*\n",
+            file_get_contents(dirname($transactionRoot) . '/.gitignore')
+        );
+    }
+
+    public function testConcurrentTargetContentIsNeverDeletedByRollback(): void
+    {
+        $pair = $this->updatedManagedPair(
+            'module:blog:concurrent-test'
+        );
+
+        $sync = $this->synchronizer(
+            $this->filesystemChangingTargetBeforeFailure(
+                $pair['second_target'],
+                $pair['first_target']
+            )
+        );
+        $this->queueManagedPair($sync, $pair);
+
+        try {
+            $sync->apply();
+            self::fail('El contenido concurrente debe bloquear el rollback.');
+        } catch (RuntimeException $exception) {
+            self::assertStringContainsString(
+                'contenido concurrente',
+                $exception->getMessage()
+            );
+        }
+
+        self::assertSame(
+            'concurrent-local',
+            file_get_contents($pair['first_target'])
+        );
+        self::assertSame(
+            'second-v1',
+            file_get_contents($pair['second_target'])
+        );
+        self::assertFileExists(
+            $this->onlyPendingTransactionRoot() . '/backup/1'
+        );
+    }
+
+    public function testStateIsReloadedAfterWaitingForProjectLock(): void
+    {
+        $source = $this->packageRoot . '/modules/blog/reloaded.php';
+        $target = $this->projectRoot . '/App/controllers/reloaded.php';
+        $group = 'module:blog:state-reload-test';
+        $this->writeFile($source, 'version-one');
+
+        // Se construye antes que el primer sincronizador escriba su estado:
+        // reproduce una segunda ejecución que esperaba el lock con una
+        // proyección obsoleta cargada en memoria.
+        $waiting = $this->synchronizer();
+        $this->queueManagedTestFile(
+            $waiting,
+            $source,
+            $target,
+            'reloaded.php',
+            $group
+        );
+
+        $initial = $this->synchronizer();
+        $this->queueManagedTestFile(
+            $initial,
+            $source,
+            $target,
+            'reloaded.php',
+            $group
+        );
+        $initial->apply();
+        $this->writeFile($source, 'version-two');
+
+        $waiting->apply();
+
+        self::assertSame('version-two', file_get_contents($target));
+        self::assertSame(1, $waiting->stats()['updated']);
     }
 
     public function testHistoricalFingerprintRecognizesWindowsLineEndings(): void
@@ -454,13 +977,349 @@ final class ManagedFileSynchronizerTest extends TestCase
         );
     }
 
-    private function synchronizer(): ManagedFileSynchronizer
+    private function synchronizer(
+        ?Filesystem $filesystem = null
+    ): ManagedFileSynchronizer
     {
         return new ManagedFileSynchronizer(
             $this->projectRoot,
             $this->packageRoot,
-            $this->io
+            $this->io,
+            null,
+            null,
+            $filesystem
         );
+    }
+
+    private function filesystemFailingPromotionTo(
+        string $failedTarget
+    ): Filesystem {
+        $failedTarget = $this->normalizeTestPath($failedTarget);
+        $failed = false;
+
+        return $this->filesystemWithRenameHook(
+            static function (string $origin, string $target) use (
+                &$failed,
+                $failedTarget
+            ): void {
+                if (
+                    !$failed
+                    && $target === $failedTarget
+                    && str_contains($origin, '/sync-transactions/')
+                    && str_contains($origin, '/staged/')
+                ) {
+                    $failed = true;
+                    throw new RuntimeException('fallo de escritura inyectado');
+                }
+            }
+        );
+    }
+
+    private function filesystemFailingPromotionAndRestoreTo(
+        string $failedTarget
+    ): Filesystem {
+        $failedTarget = $this->normalizeTestPath($failedTarget);
+        $promotionFailed = false;
+        $restoreFailed = false;
+
+        return $this->filesystemWithRenameHook(
+            static function (string $origin, string $target) use (
+                &$promotionFailed,
+                &$restoreFailed,
+                $failedTarget
+            ): void {
+                if (
+                    $target === $failedTarget
+                    && !$promotionFailed
+                    && str_contains($origin, '/staged/')
+                ) {
+                    $promotionFailed = true;
+                    throw new RuntimeException('fallo de promocion inyectado');
+                }
+                if (
+                    $target === $failedTarget
+                    && !$restoreFailed
+                    && str_contains($origin, '/backup/')
+                ) {
+                    $restoreFailed = true;
+                    throw new RuntimeException(
+                        'fallo de restauracion inyectado'
+                    );
+                }
+            }
+        );
+    }
+
+    private function filesystemFailingBackupOf(
+        string $failedTarget
+    ): Filesystem {
+        $failedTarget = $this->normalizeTestPath($failedTarget);
+        $failed = false;
+
+        return $this->filesystemWithRenameHook(
+            static function (string $origin, string $target) use (
+                &$failed,
+                $failedTarget
+            ): void {
+                if (
+                    !$failed
+                    && $origin === $failedTarget
+                    && str_contains($target, '/backup/')
+                ) {
+                    $failed = true;
+                    throw new RuntimeException(
+                        'acceso denegado al target bloqueado'
+                    );
+                }
+            }
+        );
+    }
+
+    private function filesystemChangingTargetBeforeFailure(
+        string $failedTarget,
+        string $concurrentTarget
+    ): Filesystem {
+        $failedTarget = $this->normalizeTestPath($failedTarget);
+        $failed = false;
+
+        return $this->filesystemWithRenameHook(
+            static function (string $origin, string $target) use (
+                &$failed,
+                $failedTarget,
+                $concurrentTarget
+            ): void {
+                if (
+                    !$failed
+                    && $target === $failedTarget
+                    && str_contains($origin, '/staged/')
+                ) {
+                    $failed = true;
+                    file_put_contents($concurrentTarget, 'concurrent-local');
+                    throw new RuntimeException(
+                        'fallo posterior a edicion concurrente'
+                    );
+                }
+            }
+        );
+    }
+
+    private function filesystemChangingTargetBeforeBackup(
+        string $changedTarget
+    ): Filesystem {
+        $normalizedTarget = $this->normalizeTestPath($changedTarget);
+        $changed = false;
+
+        return $this->filesystemWithRenameHook(
+            static function (string $origin, string $target) use (
+                &$changed,
+                $changedTarget,
+                $normalizedTarget
+            ): void {
+                if (
+                    !$changed
+                    && $origin === $normalizedTarget
+                    && str_contains($target, '/backup/')
+                ) {
+                    $changed = true;
+                    file_put_contents(
+                        $changedTarget,
+                        'concurrent-during-backup'
+                    );
+                }
+            }
+        );
+    }
+
+    private function filesystemChangingTargetDuringBackup(
+        string $backupTarget,
+        string $changedTarget
+    ): Filesystem {
+        $backupTarget = $this->normalizeTestPath($backupTarget);
+        $changed = false;
+
+        return $this->filesystemWithRenameHook(
+            static function (string $origin, string $target) use (
+                &$changed,
+                $backupTarget,
+                $changedTarget
+            ): void {
+                if (
+                    !$changed
+                    && $origin === $backupTarget
+                    && str_contains($target, '/backup/')
+                ) {
+                    $changed = true;
+                    file_put_contents(
+                        $changedTarget,
+                        'concurrent-unchanged'
+                    );
+                }
+            }
+        );
+    }
+
+    private function filesystemCreatingTargetAfterBackup(
+        string $changedTarget
+    ): Filesystem {
+        $normalizedTarget = $this->normalizeTestPath($changedTarget);
+        $changed = false;
+
+        return $this->filesystemWithRenameHook(
+            static function (
+                string $origin,
+                string $target,
+                string $phase
+            ) use (&$changed, $changedTarget, $normalizedTarget): void {
+                if (
+                    !$changed
+                    && $phase === 'after'
+                    && $origin === $normalizedTarget
+                    && str_contains($target, '/backup/')
+                ) {
+                    $changed = true;
+                    file_put_contents($changedTarget, 'concurrent-in-gap');
+                }
+            }
+        );
+    }
+
+    private function filesystemWithRenameHook(\Closure $hook): Filesystem
+    {
+        return new class ($hook) extends Filesystem {
+            public function __construct(
+                private readonly \Closure $hook
+            ) {
+            }
+
+            public function rename(
+                string $origin,
+                string $target,
+                bool $overwrite = false
+            ) {
+                $normalize = static fn (string $path): string => strtolower(
+                    str_replace('\\', '/', $path)
+                );
+                $originKey = $normalize($origin);
+                $targetKey = $normalize($target);
+                ($this->hook)($originKey, $targetKey, 'before');
+                parent::rename($origin, $target, $overwrite);
+                ($this->hook)($originKey, $targetKey, 'after');
+            }
+        };
+    }
+
+    private function normalizeTestPath(string $path): string
+    {
+        return strtolower(str_replace('\\', '/', $path));
+    }
+
+    /**
+     * @return array{
+     *     group: string,
+     *     first_source: string,
+     *     second_source: string,
+     *     first_target: string,
+     *     second_target: string
+     * }
+     */
+    private function updatedManagedPair(
+        string $group,
+        bool $updateFirst = true
+    ): array
+    {
+        $pair = [
+            'group' => $group,
+            'first_source' => $this->packageRoot
+                . '/modules/blog/first.php',
+            'second_source' => $this->packageRoot
+                . '/modules/blog/second.php',
+            'first_target' => $this->projectRoot
+                . '/App/controllers/first.php',
+            'second_target' => $this->projectRoot
+                . '/App/controllers/second.php',
+        ];
+        $this->writeFile($pair['first_source'], 'first-v1');
+        $this->writeFile($pair['second_source'], 'second-v1');
+
+        $initial = $this->synchronizer();
+        $this->queueManagedPair($initial, $pair);
+        $initial->apply();
+        if ($updateFirst) {
+            $this->writeFile($pair['first_source'], 'first-v2');
+        }
+        $this->writeFile($pair['second_source'], 'second-v2');
+
+        return $pair;
+    }
+
+    /** @param array<string, string> $pair */
+    private function queueManagedPair(
+        ManagedFileSynchronizer $synchronizer,
+        array $pair
+    ): void {
+        $this->queueManagedTestFile(
+            $synchronizer,
+            $pair['first_source'],
+            $pair['first_target'],
+            'first.php',
+            $pair['group']
+        );
+        $this->queueManagedTestFile(
+            $synchronizer,
+            $pair['second_source'],
+            $pair['second_target'],
+            'second.php',
+            $pair['group']
+        );
+    }
+
+    private function queueManagedTestFile(
+        ManagedFileSynchronizer $synchronizer,
+        string $source,
+        string $target,
+        string $fileName,
+        string $group
+    ): void {
+        $synchronizer->queueFile(
+            $source,
+            $target,
+            'modules/blog/' . $fileName,
+            'App/controllers/' . $fileName,
+            ManagedFileRegistry::POLICY_MANAGED,
+            $group
+        );
+    }
+
+    private function assertTransactionDirectoryIsEmpty(): void
+    {
+        $directory = $this->projectRoot
+            . '/.liquidstack/core/sync-transactions';
+        if (!is_dir($directory)) {
+            self::assertDirectoryDoesNotExist($directory);
+            return;
+        }
+
+        self::assertSame(
+            ['.gitignore'],
+            array_values(array_diff(scandir($directory) ?: [], ['.', '..']))
+        );
+        self::assertSame(
+            "*\n",
+            file_get_contents($directory . '/.gitignore')
+        );
+    }
+
+    private function onlyPendingTransactionRoot(): string
+    {
+        $directory = $this->projectRoot
+            . '/.liquidstack/core/sync-transactions';
+        $entries = array_values(array_diff(
+            scandir($directory) ?: [],
+            ['.', '..', '.gitignore']
+        ));
+        self::assertCount(1, $entries);
+
+        return $directory . '/' . $entries[0];
     }
 
     /**

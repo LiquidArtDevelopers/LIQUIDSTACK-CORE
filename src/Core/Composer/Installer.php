@@ -40,7 +40,7 @@ class Installer
         $scssContractReady = self::syncScssConfigContract($event);
         if (!$scssContractReady) {
             $event->getIO()->writeError(
-                '<warning>Se omiten los recursos base cuyo contrato SCSS no está garantizado; los módulos internos se resolverán de forma independiente.</warning>'
+                '<warning>Se omiten los recursos estándar base y modulares cuyo contrato SCSS no está garantizado; los módulos internos se resolverán de forma independiente y publicarán solo sus assets autocontenidos.</warning>'
             );
         }
 
@@ -56,7 +56,11 @@ class Installer
             self::syncProjectAssets($event, $synchronizer);
             self::queueResources($event, $synchronizer);
         }
-        self::queueInternalModules($event, $synchronizer);
+        self::queueInternalModules(
+            $event,
+            $synchronizer,
+            $scssContractReady
+        );
         $synchronizer->apply();
 
         if (!$scssContractReady) {
@@ -766,7 +770,8 @@ class Installer
 
     private static function queueInternalModules(
         Event $event,
-        ManagedFileSynchronizer $synchronizer
+        ManagedFileSynchronizer $synchronizer,
+        bool $includeStandardResources = true
     ): void {
         $io = $event->getIO();
         $projectRoot = self::resolveProjectRoot($event);
@@ -794,7 +799,8 @@ class Installer
 
         (new ModuleProjectFileSynchronizer($projectRoot, $io))->queue(
             $selection,
-            $synchronizer
+            $synchronizer,
+            $includeStandardResources
         );
     }
 

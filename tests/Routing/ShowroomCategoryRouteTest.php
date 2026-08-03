@@ -83,7 +83,7 @@ final class ShowroomCategoryRouteTest extends TestCase
         }
     }
 
-    public function testSegmentedCatalogHasNineLiteralPartialsAndNoShellH1(): void
+    public function testSegmentedCatalogHasBaseAndOptionalModulePartials(): void
     {
         $root = dirname(__DIR__, 2);
         $shell = (string) file_get_contents(
@@ -108,7 +108,7 @@ final class ShowroomCategoryRouteTest extends TestCase
             $alias
         );
 
-        foreach (self::CATEGORIES as $category) {
+        foreach (self::BASE_CATEGORIES as $category) {
             $partialName = '_' . $category . '.php';
             $partialPath = $root . '/stubs/App/views/showroom/' . $partialName;
 
@@ -126,6 +126,16 @@ final class ShowroomCategoryRouteTest extends TestCase
                 $root . "/src/scss/showroom/{$category}.scss"
             );
         }
+
+        $moduleProject = $root . '/modules/blog/resources/project';
+        self::assertFileExists(
+            $moduleProject . '/App/views/showroom/_blog.php'
+        );
+        self::assertFileExists($moduleProject . '/src/js/showroom/blog.js');
+        self::assertFileExists($moduleProject . '/src/scss/showroom/blog.scss');
+        self::assertStringContainsString("case 'blog':", $shell);
+        self::assertStringContainsString(". '/showroom/_blog.php';", $shell);
+        self::assertStringContainsString('is_file($blogShowroomPartial)', $shell);
     }
 
     public function testBlogCategoryAndRouteRequireTheDirectBlogSelector(): void
@@ -326,7 +336,7 @@ final class ShowroomCategoryRouteTest extends TestCase
             $shell
         );
 
-        foreach (ShowroomCategoryRoute::CATEGORIES as $category) {
+        foreach (self::BASE_CATEGORIES as $category) {
             self::assertFileExists(
                 $root . "/stubs/App/views/showroom/_{$category}.php"
             );
@@ -337,6 +347,13 @@ final class ShowroomCategoryRouteTest extends TestCase
                 $root . "/src/scss/showroom/{$category}.scss"
             );
         }
+
+        $moduleProject = $root . '/modules/blog/resources/project';
+        self::assertFileExists(
+            $moduleProject . '/App/views/showroom/_blog.php'
+        );
+        self::assertFileExists($moduleProject . '/src/js/showroom/blog.js');
+        self::assertFileExists($moduleProject . '/src/scss/showroom/blog.scss');
     }
 
     public function testDynamicEntrypointLoadsOnlyTheRequestedCategoryAndLocalHook(): void
@@ -344,13 +361,17 @@ final class ShowroomCategoryRouteTest extends TestCase
         $root = dirname(__DIR__, 2);
         $entrypoint = (string) file_get_contents($root . '/src/js/templates.js');
 
+        self::assertSame(
+            1,
+            substr_count(
+                $entrypoint,
+                "import.meta.glob('./showroom/*.js')"
+            )
+        );
         foreach (self::CATEGORIES as $category) {
-            self::assertSame(
-                1,
-                substr_count(
-                    $entrypoint,
-                    "import('./showroom/{$category}.js')"
-                )
+            self::assertStringNotContainsString(
+                "import('./showroom/{$category}.js')",
+                $entrypoint
             );
         }
 

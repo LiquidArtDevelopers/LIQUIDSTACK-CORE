@@ -58,8 +58,68 @@ final class InstallerModuleHookTest extends TestCase
             'Módulos LiquidStack activos: core, webadmin, blog.',
             $io->getOutput()
         );
+        self::assertFileExists(
+            $this->projectRoot
+                . '/public/assets/modules/blog/blog-public.css'
+        );
         self::assertDirectoryDoesNotExist(
             $this->projectRoot . '/App/controllers'
         );
+        foreach ([
+            'App/templates/_sectionBlogGrid01.html',
+            'App/views/showroom/_blog.php',
+            'src/js/resources/_moduleBlogFilters01.js',
+            'src/js/showroom/blog.js',
+            'src/scss/resources/_sectionBlogGrid01.scss',
+            'src/scss/showroom/blog.scss',
+        ] as $relative) {
+            self::assertFileDoesNotExist(
+                $this->projectRoot . '/' . $relative,
+                $relative
+            );
+        }
+    }
+
+    public function testPostUpdatePublishesTheCompleteBlogFamilyWithScssContract(): void
+    {
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/src/scss/_config.scss',
+            '$color00: #fff;' . PHP_EOL
+        );
+        $config = new Config(false, $this->projectRoot);
+        $config->merge(['config' => [
+            'vendor-dir' => $this->projectRoot . '/vendor',
+        ]]);
+        $composer = new Composer();
+        $composer->setConfig($config);
+        $io = new BufferIO();
+
+        Installer::postUpdate(new Event('post-update-cmd', $composer, $io));
+
+        self::assertFileExists(
+            $this->projectRoot
+                . '/public/assets/modules/blog/blog-public.css'
+        );
+        foreach ([
+            'App/controllers/_moduleBlogResources.php',
+            'App/controllers/moduleBlogFilters01.php',
+            'App/controllers/sectionBlogFeatured01.php',
+            'App/controllers/sectionBlogGrid01.php',
+            'App/controllers/sectionBlogList01.php',
+            'App/controllers/sectionBlogSlider01.php',
+            'App/templates/_moduleBlogFilters01.html',
+            'App/views/showroom/_blog.php',
+            'src/js/resources/_moduleBlogFilters01.js',
+            'src/js/resources/_sectionBlogSlider01.js',
+            'src/js/showroom/blog.js',
+            'src/scss/resources/_moduleBlogFilters01.scss',
+            'src/scss/resources/_sectionBlogGrid01.scss',
+            'src/scss/showroom/blog.scss',
+        ] as $relative) {
+            self::assertFileExists(
+                $this->projectRoot . '/' . $relative,
+                $relative
+            );
+        }
     }
 }

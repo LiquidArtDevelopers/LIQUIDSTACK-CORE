@@ -25,6 +25,11 @@ $legacyBaselinesPath = $root
     . '/manifests/managed-file-legacy-baselines.json';
 
 try {
+    $currentModuleManagedFiles =
+        ModulePublishedSourceFinder::currentManagedFiles(
+            ModuleCatalog::fromCoreRoot($root)
+        );
+
     $tagsRaw = runGit($root, [
         'tag',
         '--list',
@@ -136,11 +141,7 @@ try {
         }
     }
 
-    foreach (
-        ModulePublishedSourceFinder::currentManagedFiles(
-            ModuleCatalog::fromCoreRoot($root)
-        ) as $sourceId => $sourcePath
-    ) {
+    foreach ($currentModuleManagedFiles as $sourceId => $sourcePath) {
         foreach (
             ManagedFileRegistry::fingerprintFile($sourcePath)
                 as $fingerprint
@@ -169,9 +170,15 @@ try {
         foreach ($legacyBaselines['files'] as $sourceId => $fingerprints) {
             $sourceId = ManagedFileRegistry::normalizePath((string) $sourceId);
 
+            $isBaseManaged = ManagedFileRegistry::policyForSource($sourceId)
+                === ManagedFileRegistry::POLICY_MANAGED;
+            $isDeclaredModuleManaged = array_key_exists(
+                $sourceId,
+                $currentModuleManagedFiles
+            );
+
             if (
-                ManagedFileRegistry::policyForSource($sourceId)
-                    !== ManagedFileRegistry::POLICY_MANAGED
+                (!$isBaseManaged && !$isDeclaredModuleManaged)
                 || !is_array($fingerprints)
             ) {
                 throw new RuntimeException(

@@ -31,6 +31,11 @@ final class BlogPublicFeedFactory
             )
         );
 
-        return new BlogPublicFeed($runtime->config(), $runtime->service());
+        return new BlogPublicFeed(
+            $runtime->config(),
+            $runtime->service(),
+            $runtime->categoryProjection(),
+            $runtime->catalogRepository()
+        );
     }
 }

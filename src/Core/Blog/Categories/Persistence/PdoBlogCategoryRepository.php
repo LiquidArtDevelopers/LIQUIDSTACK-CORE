@@ -440,6 +440,8 @@ final class PdoBlogCategoryRepository implements
 
     public function publicFilters(string $locale): array
     {
+        $queryLimit =
+            BlogCategoryRepositoryInterface::PUBLIC_FILTER_OVERFLOW_QUERY_LIMIT;
         $statement = $this->prepare(
             'SELECT c.public_id AS category_public_id, cl.locale, cl.slug, '
             . 'cl.name, COUNT(DISTINCT p.id) AS published_count FROM '
@@ -450,9 +452,17 @@ final class PdoBlogCategoryRepository implements
             . " pl ON pl.post_id = p.id AND pl.locale = cl.locale "
             . "AND pl.status = 'published' WHERE cl.locale = :locale "
             . 'GROUP BY c.id, c.public_id, cl.locale, cl.slug, cl.name '
-            . 'ORDER BY cl.name, c.public_id'
+            . 'ORDER BY cl.name, c.public_id LIMIT ' . $queryLimit
         );
         $this->execute($statement, ['locale' => $locale]);
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        if (
+            !is_array($rows)
+            || count($rows)
+                > BlogCategoryRepositoryInterface::MAX_PUBLIC_FILTERS
+        ) {
+            throw new BlogCategoryPersistenceException();
+        }
 
         return array_map(
             static fn (array $row): PublishedCategoryFilter =>
@@ -463,7 +473,7 @@ final class PdoBlogCategoryRepository implements
                     (string) $row['name'],
                     (int) $row['published_count']
                 ),
-            $statement->fetchAll(PDO::FETCH_ASSOC)
+            $rows
         );
     }
 

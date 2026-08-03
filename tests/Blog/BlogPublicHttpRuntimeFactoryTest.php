@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeException;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeFactory;
+use App\Core\Blog\PublicFeed\BlogPublicCatalogQuery;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationCatalog;
@@ -126,12 +127,16 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
         );
         $connection = new class($pdo) implements
             PdoConnectionFactoryInterface {
+            public int $calls = 0;
+
             public function __construct(private readonly PDO $pdo)
             {
             }
 
             public function connect(): PDO
             {
+                ++$this->calls;
+
                 return $this->pdo;
             }
         };
@@ -160,6 +165,17 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
         self::assertSame([], $runtime->service()->listPosts());
         self::assertSame('liquidstack', $receivedConnection);
         self::assertFalse($runtime->__debugInfo()['public_media']);
+        self::assertTrue($runtime->__debugInfo()['category_projection']);
+        self::assertTrue($runtime->__debugInfo()['catalog_repository']);
+        self::assertNotNull($runtime->categoryProjection());
+        self::assertNotNull($runtime->catalogRepository());
+        self::assertSame([], $runtime->categoryProjection()->filtersForLocale(
+            'es'
+        ));
+        self::assertSame([], $runtime->catalogRepository()?->search(
+            new BlogPublicCatalogQuery('es')
+        ));
+        self::assertSame(1, $connection->calls);
 
         $localEnvironment = [
             BlogPublicOrigin::ENV => 'https://example.test',
@@ -175,6 +191,7 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
             $localEnvironment
         ));
         self::assertTrue($mediaReadyRuntime->__debugInfo()['public_media']);
+        self::assertSame(2, $connection->calls);
 
         $pdo->exec(
             'CREATE TRIGGER ls_blog_corrupt_structured_gate '
@@ -210,6 +227,38 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
             [BlogPublicOrigin::ENV => 'https://example.test']
         ));
         self::assertSame([], $legacyRuntime->service()->listPosts());
+        self::assertTrue(
+            $legacyRuntime->__debugInfo()['category_projection']
+        );
+        self::assertTrue(
+            $legacyRuntime->__debugInfo()['catalog_repository']
+        );
+        self::assertNotNull($legacyRuntime->catalogRepository());
+
+        $pdo->exec(
+            "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
+            . "AND migration_id IN ('0003_blog_categories', "
+            . "'0004_blog_category_capabilities')"
+        );
+        foreach ([
+            'ls_blog_post_categories',
+            'ls_blog_category_locales',
+            'ls_blog_categories',
+        ] as $table) {
+            $pdo->exec('DROP TABLE ' . $table);
+        }
+        $baseRuntime = $factory->create(new ModuleRuntimeContext(
+            $this->root,
+            [BlogPublicOrigin::ENV => 'https://example.test']
+        ));
+        self::assertSame([], $baseRuntime->service()->listPosts());
+        self::assertFalse(
+            $baseRuntime->__debugInfo()['category_projection']
+        );
+        self::assertFalse(
+            $baseRuntime->__debugInfo()['catalog_repository']
+        );
+        self::assertNull($baseRuntime->catalogRepository());
     }
 
     public function testDatabaseConnectionMismatchFailsBeforeResolverAndConnector(): void

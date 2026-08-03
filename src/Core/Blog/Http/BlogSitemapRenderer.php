@@ -8,9 +8,25 @@ use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogSitemapEntry;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
+use InvalidArgumentException;
 
 final class BlogSitemapRenderer
 {
+    public const MAX_DOCUMENT_BYTES = 50 * 1024 * 1024;
+
+    public function __construct(
+        private readonly int $maxDocumentBytes = self::MAX_DOCUMENT_BYTES
+    ) {
+        if (
+            $maxDocumentBytes < 1
+            || $maxDocumentBytes > self::MAX_DOCUMENT_BYTES
+        ) {
+            throw new InvalidArgumentException(
+                'The Blog sitemap byte limit is invalid.'
+            );
+        }
+    }
+
     /** @param list<BlogSitemapEntry> $entries */
     public function render(
         array $entries,
@@ -78,7 +94,12 @@ final class BlogSitemapRenderer
         }
         $xml[] = '</urlset>';
 
-        return implode("\n", $xml) . "\n";
+        $document = implode("\n", $xml) . "\n";
+        if (strlen($document) > $this->maxDocumentBytes) {
+            throw new BlogException(BlogException::SITEMAP_OVERFLOW);
+        }
+
+        return $document;
     }
 
     /**

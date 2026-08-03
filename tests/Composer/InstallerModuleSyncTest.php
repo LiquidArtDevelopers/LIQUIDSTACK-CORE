@@ -186,6 +186,61 @@ final class InstallerModuleSyncTest extends TestCase
         );
     }
 
+    public function testDeclaredResourceFilesPublishAsOneManagedGroup(): void
+    {
+        $manifestPath = $this->modulesRoot . '/blog/module.json';
+        $manifest = json_decode(
+            (string) file_get_contents($manifestPath),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        $manifest['resources'] = ['sectionBlogGrid01'];
+        $manifest['project_files'] = [
+            [
+                'source' => 'resources/sectionBlogGrid01.php',
+                'target' => 'App/controllers/sectionBlogGrid01.php',
+                'group' => 'resource-sectionBlogGrid01',
+            ],
+            [
+                'source' => 'resources/_sectionBlogGrid01.html',
+                'target' => 'App/templates/_sectionBlogGrid01.html',
+                'group' => 'resource-sectionBlogGrid01',
+            ],
+        ];
+        $this->filesystem->dumpFile(
+            $manifestPath,
+            json_encode(
+                $manifest,
+                JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR
+            ) . PHP_EOL
+        );
+        $controllerSource = $this->modulesRoot
+            . '/blog/resources/sectionBlogGrid01.php';
+        $templateSource = $this->modulesRoot
+            . '/blog/resources/_sectionBlogGrid01.html';
+        $this->filesystem->dumpFile($controllerSource, 'controller-v1');
+        $this->filesystem->dumpFile($templateSource, 'template-v1');
+
+        $this->sync(['liquidstack/blog']);
+
+        $controllerTarget = $this->projectRoot
+            . '/App/controllers/sectionBlogGrid01.php';
+        $templateTarget = $this->projectRoot
+            . '/App/templates/_sectionBlogGrid01.html';
+        self::assertSame('controller-v1', file_get_contents($controllerTarget));
+        self::assertSame('template-v1', file_get_contents($templateTarget));
+
+        $this->filesystem->dumpFile($controllerTarget, 'local-controller');
+        $this->filesystem->dumpFile($controllerSource, 'controller-v2');
+        $this->filesystem->dumpFile($templateSource, 'template-v2');
+        $sync = $this->sync(['liquidstack/blog']);
+
+        self::assertSame('local-controller', file_get_contents($controllerTarget));
+        self::assertSame('template-v1', file_get_contents($templateTarget));
+        self::assertSame(2, $sync->stats()['preserved']);
+    }
+
     public function testNestedLinkedTargetCannotWriteOutsideProject(): void
     {
         $this->configureWebadminDirectoryEntry();

@@ -172,6 +172,9 @@ final class BlogDocumentHtmlRenderer
         $title = $block['title'] === null
             ? ''
             : ' title="' . $this->escape($block['title']) . '"';
+        $loading = $block['display'] === 'cover'
+            ? ' loading="eager" fetchpriority="high" decoding="async"'
+            : ' loading="lazy" decoding="async"';
 
         $html = '<figure id="' . $this->blockId($block['id'])
             . '" class="blogDocument__image ' . $displayClass . '">'
@@ -182,7 +185,7 @@ final class BlogDocumentHtmlRenderer
             . $this->escape($image->sourceUrl()) . '" width="'
             . $image->width() . '" height="' . $image->height()
             . '" alt="' . $this->escape($block['alt']) . '"'
-            . $title . ' loading="lazy" decoding="async">'
+            . $title . $loading . '>'
             . '</picture>';
         if ($block['caption'] !== null) {
             $html .= '<figcaption class="blogDocument__imageCaption">'
