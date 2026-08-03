@@ -15,13 +15,16 @@
         ?>
     </div>
 </section>
+<section>
+    <?php
+    echo controller('moduleH2Type02', 0);
+    echo controller('moduleTable01', 0, [
+        'items' => 3,
+        'list_items' => 3,
+    ]);
+    ?>
+</section>
 <?php
-
-echo controller('moduleH2Type02', 0);
-echo controller('moduleTable01', 0, [
-    'items' => 3,
-    'list_items' => 3,
-]);
 
 $section01Header = controller('moduleH2Type01', 0);
 $section01ButtonA = controller('moduleButtonType01', 0);
@@ -44,6 +47,10 @@ echo controller('sect02', 0, [
     '{c-button-secondary}' => $section02ButtonC,
     'items' => 3,
 ]);
-
-echo controller('moduleH2Type01', 3);
-echo controller('moduleTest', 0);
+?>
+<section>
+    <?php
+    echo controller('moduleH2Type01', 3);
+    echo controller('moduleTest', 0);
+    ?>
+</section>

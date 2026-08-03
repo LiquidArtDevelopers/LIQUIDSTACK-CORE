@@ -4,7 +4,9 @@
  */
 $cardsButtonPrimary = controller('moduleButtonType01', 0);
 $cardsButtonSecondary = controller('moduleButtonType02', 0);
-
+?>
+<section>
+<?php
 echo controller('art02', 0, [
     'items' => 8,
 ]);
@@ -141,3 +143,5 @@ echo controller('art34', 0, [
     '{b-content}' => $art34Paragraph,
     '{button-primary}' => $cardsButtonPrimary,
 ]);
+?>
+</section>

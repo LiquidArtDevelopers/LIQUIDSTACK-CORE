@@ -147,6 +147,9 @@ $blogShowroomLabels = [
 $blogShowroomItems = $blogShowroomCopy[$blogShowroomLanguage];
 $blogHeadings = $blogShowroomHeadings[$blogShowroomLanguage];
 
+?>
+<section>
+<?php
 echo controller('moduleBlogFilters01', 0, [
     'action' => match ($blogShowroomLanguage) {
         'en' => '/en/news',
@@ -160,7 +163,9 @@ echo controller('moduleBlogFilters01', 0, [
     ],
     'labels' => $blogShowroomLabels[$blogShowroomLanguage],
 ]);
-
+?>
+</section>
+<?php
 echo controller('sectionBlogGrid01', 0, [
     'items_data' => $blogShowroomItems,
     'items' => 4,

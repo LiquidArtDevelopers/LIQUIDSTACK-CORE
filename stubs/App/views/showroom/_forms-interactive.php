@@ -7,7 +7,9 @@ echo controller('sectTabs01', 0, [
     '{section-h2}' => $tabsHeader,
     'items' => 3,
 ]);
-
+?>
+<section>
+<?php
 // artForm01 mantiene su flujo completo, loader, validación y bloque lateral.
 echo controller('artForm01', 0);
 // Los tres módulos reutilizan de forma asíncrona el endpoint POST /form;
@@ -27,3 +29,5 @@ echo controller('moduleFormAuthPassword01', 0);
 // items controla el número de entradas de cada acordeón.
 echo controller('artAccordion01', 0, ['items' => 3]);
 echo controller('artAccordion02', 0, ['items' => 6]);
+?>
+</section>

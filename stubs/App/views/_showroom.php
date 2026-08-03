@@ -290,7 +290,7 @@ $showroomCategoryDescription = static function (
                 </nav>
 
                 <?php if ($showroomCategory === null): ?>
-                    <div class="showroomCatalog-index">
+                    <section class="showroomCatalog-index">
                         <?php foreach ($showroomCategories as $categorySlug => $categoryMeta): ?>
                             <article>
                                 <h2>
@@ -314,7 +314,7 @@ $showroomCategoryDescription = static function (
                                 ) ?></p>
                             </article>
                         <?php endforeach; ?>
-                    </div>
+                    </section>
                 <?php endif; ?>
 
                 <?php

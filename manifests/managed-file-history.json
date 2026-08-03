@@ -53,7 +53,8 @@
         ],
         "modules/blog/resources/project/App/views/showroom/_blog.php": [
             "sha256:5e52cfd9a8d96503e209cce2dbdd6241475d1966454f957ddcd8d5d01679129c",
-            "sha256:d31b36f2431c4d97efcd97f1456a9eabebf93739f5021b34e75e764ab677c7b0"
+            "sha256:d31b36f2431c4d97efcd97f1456a9eabebf93739f5021b34e75e764ab677c7b0",
+            "sha256:e95d141d0e1ecdaacdebd879a3d57d20cdfe8526b21e97a5ee576c3a923132aa"
         ],
         "modules/blog/resources/project/src/js/resources/_moduleBlogFilters01.js": [
             "sha256:06c66a2fa08a4263db76d07655e78f87c7c75bd4ee40e82a8ad17fdfab7570a4"
@@ -1829,7 +1830,8 @@
             "sha256:833aeddb7d9ef2c0b6ffc0ba49a4be908dacb47d4146da3dd2ef2213012cc41c",
             "sha256:c08275f5de2a37fb5668c2d1458bf17cd723282bd08fcc98c533db2e766d9cc3",
             "sha256:cddce0b517497066e6f5c21bf4e29133773aa2fb1aba32450db44db6f5711a9d",
-            "sha256:d3e24e8bd127a99d03cc6e48db01e5a64c3b8680eb5f9abdbfaa53eaa4e76798"
+            "sha256:d3e24e8bd127a99d03cc6e48db01e5a64c3b8680eb5f9abdbfaa53eaa4e76798",
+            "sha256:d4a447fee9ace2bfc09a236b71e919ec502a005035cca081087142d795cda07a"
         ],
         "stubs/App/views/_templates.php": [
             "sha256:17c63b1c6105d1ce64658202a9ef3863903543859bc7c016e239c6a7a3a080fe",
@@ -1846,25 +1848,32 @@
             "sha256:d31b36f2431c4d97efcd97f1456a9eabebf93739f5021b34e75e764ab677c7b0"
         ],
         "stubs/App/views/showroom/_cards-grids.php": [
+            "sha256:5c7d15155f34622e7adc83ad7503df2f1070635e4bf8aabcc4aa92444ab63d66",
             "sha256:ede69faed3c8ec6ec9785207e5dc9f8aaa7cdd076880cae3079b6641457b8ce0"
         ],
         "stubs/App/views/showroom/_common.php": [
-            "sha256:0276e695cdaf477532479ca7b959128ff5e1776dc093d7ef8ef152fee08daae0"
+            "sha256:0276e695cdaf477532479ca7b959128ff5e1776dc093d7ef8ef152fee08daae0",
+            "sha256:51fd88531ac5bd064a36b531ef3fb3e8b900ab773c819ac44c2c85c77d4cea29"
         ],
         "stubs/App/views/showroom/_forms-interactive.php": [
             "sha256:13bc98764cf891c4c7ebc89cfbd632a5fae2284fd67f8880e4aee5db3b715e0a",
-            "sha256:31e7255a3053c963a06c85019510e172900ac3a1b32c806c6d408b41f454436b"
+            "sha256:31e7255a3053c963a06c85019510e172900ac3a1b32c806c6d408b41f454436b",
+            "sha256:96413810af28851a97be58da6067d842261a2fde0815c74addc64125682534dd"
         ],
         "stubs/App/views/showroom/_gsap-specials.php": [
+            "sha256:1590383cd10966885a88df559c3355170a403e381d278c2615277fb2b5f87e4a",
             "sha256:f426a2419968a1ae996e05fe2f779e645c3886fa263b93b13dd63e0c88c5d927"
         ],
         "stubs/App/views/showroom/_heroes.php": [
+            "sha256:c3a05ca97788455120c9b8877e19287db72e453f92a3ed1edbf65cff2e4a2208",
             "sha256:f9e36a929679a224d99722aa8d73d63d2e709fc9ba34d1f00140ef4384202754"
         ],
         "stubs/App/views/showroom/_media.php": [
+            "sha256:731f6723244c0e093322c90785dc73ac9868a13b5c8d3cd06bbe36a98d2cd5b4",
             "sha256:9a47095a98c01f08791411db04a0965d438a9e4a722639a783bbd067faeeb86f"
         ],
         "stubs/App/views/showroom/_modules-sections.php": [
+            "sha256:0e214a960e6be0e2374b0555a0fffac5c9e44685073d90b8a77f62b3b641c16d",
             "sha256:c6bba5e5a36efc9a74f9170fdcb1e0b56d629573a4d7e20776e9e8d038085abf"
         ],
         "stubs/App/views/showroom/_particles.php": [

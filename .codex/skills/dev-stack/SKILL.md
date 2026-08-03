@@ -87,6 +87,13 @@ controller('nombre', $index, [
   `cards-grids`, `media`, `forms-interactive` o `modules-sections`. Comprobar
   que `/showroom/<categoria>` y `/templates/<categoria>` cargan el mismo
   catálogo.
+- En los partials del showroom, todo recurso cuya raíz renderizada sea
+  `article` y todo módulo emitido de forma autónoma deben pertenecer a una
+  `section`. Agrupar en una sola `section` los recursos consecutivos siempre
+  que sea posible; no crear una por cada recurso. Los recursos cuya raíz real
+  sea `section` deben quedar fuera de estas envolturas y nunca anidarse dentro
+  de otra `section`. Decidirlo por el HTML renderizado, no por el prefijo del
+  nombre, porque existen recursos legacy cuyo nombre y raíz no coinciden.
 - No añadir recursos directamente al shell `_showroom.php`. Un experimento
   local que aún no viaja a CORE debe usar `App/views/showroom/_local.php` y
   limitarse por `$showroomCategory`, sin modificar los ficheros gestionados.

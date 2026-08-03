@@ -4,7 +4,9 @@
  */
 $commonButtonPrimary = controller('moduleButtonType01', 0);
 $commonButtonSecondary = controller('moduleButtonType02', 0);
-
+?>
+<section>
+<?php
 echo controller('art01', 0, [
     '{a-button-secondary}' => $commonButtonSecondary,
     '{b-button-secondary}' => $commonButtonSecondary,
@@ -42,3 +44,5 @@ echo controller('art26', 0, [
 ]);
 
 echo controller('art29', 0);
+?>
+</section>

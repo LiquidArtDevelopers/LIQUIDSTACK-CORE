@@ -26,6 +26,10 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   personalización local.
 
 ### Corregido
+- Las subvistas segmentadas de `/showroom` y `/templates` vuelven a respetar
+  la composición semántica y visual del stack: agrupan recursos `article` y
+  módulos autónomos dentro de `section`, mantienen fuera los recursos cuya
+  raíz ya es `section` y usan una `section` para el índice de categorías.
 - La imagen de portada de `article-cover-01` deja de cargarse de forma tardía:
   el renderer conserva `lazy` para imágenes de contenido y anchas, pero marca
   el único bloque `cover` inicial como `eager` y `fetchpriority="high"` para no

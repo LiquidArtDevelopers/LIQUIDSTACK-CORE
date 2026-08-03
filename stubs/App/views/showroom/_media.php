@@ -2,6 +2,9 @@
 /**
  * Vídeo, imagen, sliders y galerías interactivas.
  */
+?>
+<section>
+<?php
 // art19: items 2-26. Wave controls: distortion 0.05-0.5,
 // chroma 0-2, damping 0.92-0.999, radius 0.02-0.2, force 0.2-3,
 // duration 0.45-8 s y sim 96-512.
@@ -58,3 +61,5 @@ echo controller('artVideo02', 0, [
 ]);
 
 echo controller('moduleImgType01', 0);
+?>
+</section>

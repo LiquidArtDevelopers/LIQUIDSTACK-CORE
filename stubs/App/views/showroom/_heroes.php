@@ -72,6 +72,11 @@ echo controller('hero07', 0, [
 ]);
 
 // moduleH1Type02 es el módulo H1 autónomo, centrado y sin escenario.
+?>
+<section>
+<?php
 echo controller('moduleH1Type02', 0, [
     '{a-button-primary}' => $heroButton,
 ]);
+?>
+</section>
