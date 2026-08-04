@@ -194,6 +194,10 @@
     background: var(--ls-webadmin-background-soft);
 }
 
+.webadmin .blogEditor__postHeader .blogEditor__localeBadge {
+    color: var(--ls-webadmin-surface-strong);
+}
+
 .webadmin .blogEditor__postHeader > :not(.blogEditor__visualBlock) {
     max-width: 60rem;
     position: relative;

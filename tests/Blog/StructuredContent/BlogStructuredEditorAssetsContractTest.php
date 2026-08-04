@@ -372,6 +372,34 @@ JS;
         }
     }
 
+    public function testLocaleBadgeUsesAHighContrastTokenOnTheDarkHeader(): void
+    {
+        self::assertMatchesRegularExpression(
+            '/\.webadmin \.blogEditor__postHeader '
+                . '\.blogEditor__localeBadge \{[^}]*'
+                . 'color:\s*var\(--ls-webadmin-surface-strong\);/s',
+            $this->stylesheet
+        );
+
+        $webadminStylesheet = $this->read(
+            dirname(__DIR__, 3)
+                . '/modules/webadmin/published/assets/webadmin.css'
+        );
+        $foreground = $this->hexToken(
+            $webadminStylesheet,
+            '--ls-webadmin-surface-strong'
+        );
+        $background = $this->hexToken(
+            $webadminStylesheet,
+            '--ls-webadmin-background-soft'
+        );
+
+        self::assertGreaterThanOrEqual(
+            4.5,
+            $this->contrastRatio($foreground, $background)
+        );
+    }
+
     /** @return array<int, mixed> */
     private function minimalRendererArguments(): array
     {
@@ -412,5 +440,51 @@ JS;
         self::assertIsString($contents);
 
         return $contents;
+    }
+
+    private function hexToken(string $stylesheet, string $token): string
+    {
+        $matched = preg_match(
+            '/' . preg_quote($token, '/') . ':\s*(#[0-9a-f]{6})/i',
+            $stylesheet,
+            $matches
+        );
+        self::assertSame(1, $matched);
+
+        return strtolower($matches[1]);
+    }
+
+    private function contrastRatio(string $foreground, string $background): float
+    {
+        $lighter = max(
+            $this->relativeLuminance($foreground),
+            $this->relativeLuminance($background)
+        );
+        $darker = min(
+            $this->relativeLuminance($foreground),
+            $this->relativeLuminance($background)
+        );
+
+        return ($lighter + 0.05) / ($darker + 0.05);
+    }
+
+    private function relativeLuminance(string $hex): float
+    {
+        $channels = [
+            hexdec(substr($hex, 1, 2)),
+            hexdec(substr($hex, 3, 2)),
+            hexdec(substr($hex, 5, 2)),
+        ];
+        $linear = array_map(static function (int $channel): float {
+            $normalized = $channel / 255;
+
+            return $normalized <= 0.04045
+                ? $normalized / 12.92
+                : (($normalized + 0.055) / 1.055) ** 2.4;
+        }, $channels);
+
+        return (0.2126 * $linear[0])
+            + (0.7152 * $linear[1])
+            + (0.0722 * $linear[2]);
     }
 }

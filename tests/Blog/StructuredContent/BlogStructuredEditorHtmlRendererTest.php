@@ -410,6 +410,33 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
         );
     }
 
+    public function testInternalMediaCatalogHasAStableIdAndIsNotSubmitted(): void
+    {
+        $document = $this->document();
+        $html = (new BlogStructuredEditorHtmlRenderer())->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $this->variant($document),
+            $document,
+            (new BlogDocumentCodec())->encode($document)
+        );
+
+        $matched = preg_match(
+            '/<select\b[^>]*data-blog-media-catalog[^>]*>/',
+            $html,
+            $catalog
+        );
+        self::assertSame(1, $matched);
+        self::assertStringContainsString(
+            'id="blog-editor-media-catalog"',
+            $catalog[0]
+        );
+        self::assertStringContainsString(' hidden', $catalog[0]);
+        self::assertStringContainsString('aria-hidden="true"', $catalog[0]);
+        self::assertStringContainsString('tabindex="-1"', $catalog[0]);
+        self::assertStringNotContainsString(' name=', $catalog[0]);
+    }
+
     public function testCanonicalJsonAndDocumentMustMatch(): void
     {
         $document = $this->document();

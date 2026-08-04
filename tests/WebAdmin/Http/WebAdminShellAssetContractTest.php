@@ -92,6 +92,21 @@ final class WebAdminShellAssetContractTest extends TestCase
         }
     }
 
+    public function testShellNavigationRemainsInOneColumnOnDesktop(): void
+    {
+        self::assertMatchesRegularExpression(
+            '/\.webadmin \.webadminShell-navList \{[^}]*'
+                . 'grid-template-columns:\s*minmax\(0,\s*1fr\);/s',
+            $this->css
+        );
+        self::assertMatchesRegularExpression(
+            '/@media \(min-width: 48rem\)[\s\S]*?'
+                . '\.webadmin nav ul \{[^}]*'
+                . 'grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s',
+            $this->css
+        );
+    }
+
     public function testServerMarkupKeepsContentAvailableBeforeEnhancement(): void
     {
         $html = (new WebAdminShellRenderer())->render(

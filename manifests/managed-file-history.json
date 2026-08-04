@@ -4,6 +4,7 @@
     "files": {
         "modules/blog/published/assets/blog-admin.css": [
             "sha256:24a1a32d47ab2b9d87d6eb1b078a1b06b7a3b1c66b75c65a8beac5a83ecd56a2",
+            "sha256:335d7e95960ceec56e47ec06d50b8c42a106086d73fc777b8d925a268be55dce",
             "sha256:4428ade23ed73ad06fb0c348998976eaab146bb61a85ca4530ed7a86cae95b85",
             "sha256:7bc4b30a678c219d583d0cfb25e3868347e7b1fa6db518b0ec4773158e8c3123",
             "sha256:baff29cfa103fe8c11ba4b2295c643985abcdce09e59e1360858549f9b6f7070",
@@ -131,6 +132,7 @@
             "sha256:431167fe8533720c79e99bf2d35742f7d15148c41665affecb6e286736bd8dc3",
             "sha256:54f16739291ddecfef5dcbed1d6233a2965ded000ebad2009b1577bc5a48b9e0",
             "sha256:901f1fd301f89ab0fa2d4a5377360b21e3142a33b904eb59b9b1df7c5005fff7",
+            "sha256:c6642b66a7ce0f400e332ee92d09c66cab5047e654a960693317002789818917",
             "sha256:d5d0c7d0bdb71dbbf686c9302aa384a6d4c46fa25265d76f69b04a6012ec14d3"
         ],
         "modules/webadmin/published/assets/webadmin.js": [
