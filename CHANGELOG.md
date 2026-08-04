@@ -4,6 +4,26 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Cambiado
+- Blog añade acciones editoriales atómicas: duplicación completa como borrador
+  y papelera recuperable mediante las migraciones append-only `0007`/`0008` y
+  `blog.articles.delete`. Documento actual, referencias y categorías se copian
+  con medios revalidados; trash/restore usan CSRF, capacidades, auditoría y
+  bloqueo optimista. Las variantes publicadas deben retirarse antes y no se
+  incorpora purge ni borrado permanente. La duplicación conserva compatibilidad
+  antes de `0007`, mientras la superficie de papelera queda feature-gated.
+- Blog incorpora analítica first-party opcional, desactivada por defecto y
+  condicionada a CookieLAD. Las migraciones append-only `0009`/`0010` añaden
+  sesiones y vistas pseudónimas y la capacidad `blog.analytics.view`, sin
+  persistir IP, User-Agent, referrer ni la sesión WebAdmin. El tracker se carga
+  desde un asset separado solo con marcador SSR y `cookie_analytics=true`,
+  mide tiempo visible/en foco, limpia identidad al revocar y usa endpoints
+  POST exactos pre-bootstrap sin `PHPSESSID`. Cada vista requiere un grant HMAC
+  SSR efímero que ata origen, ruta, localización y UUID de vista; las firmas
+  inválidas se rechazan antes de PDO y el HTML portador nunca se comparte en
+  caché. El listado privado consume un
+  reporte batch tipado. `retention_days` se aplica mediante el comando
+  explícito `liquidstack:blog:analytics:purge --yes`; CORE no activa la
+  colección, no aplica migraciones y no instala el cron de producción.
 - WebAdmin exige para toda contraseña nueva un mínimo de ocho caracteres
   Unicode y al menos una minúscula, una mayúscula, un número y un signo,
   conservando UTF-8 válido y un máximo de 1024 bytes. El login separa esa

@@ -174,7 +174,9 @@ const documentRef = {
   visibilityState: 'visible',
   addEventListener: documentBus.addEventListener,
   get cookie() { return cookie; },
+  set cookie(value) {},
   getElementById(id) { return id === 'video-caption' ? caption : null; },
+  querySelector() { return null; },
   querySelectorAll(selector) {
     return selector.includes('data-blog-youtube-mounted')
       && root.dataset.blogYoutubeMounted === 'true'
@@ -200,6 +202,7 @@ const documentRef = {
 };
 const windowRef = {
   addEventListener: windowBus.addEventListener,
+  location: { protocol: 'https:' },
 };
 const sandbox = {
   window: windowRef,

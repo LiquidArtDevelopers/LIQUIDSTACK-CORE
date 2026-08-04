@@ -471,6 +471,10 @@ final class WebAdminUserManagementHttpCoordinator
                 'Crear y editar artículos del Blog',
             'blog.capabilities.articles_publish' =>
                 'Publicar y retirar artículos del Blog',
+            'blog.capabilities.articles_delete' =>
+                'Enviar artículos del Blog a la papelera y restaurarlos',
+            'blog.capabilities.analytics_view' =>
+                'Consultar analítica del Blog',
             'blog.capabilities.categories_view' =>
                 'Consultar categorías del Blog',
             'blog.capabilities.categories_edit' =>

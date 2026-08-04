@@ -52,6 +52,14 @@ final class BlogPublicHttpController
             if ($canonicalSlug === null) {
                 throw new BlogPublicHttpRuntimeException();
             }
+            $canonicalPath = $base . '/' . $canonicalSlug;
+            $analyticsPageGrant = $this->runtime->analyticsPageGrant(
+                $variant->localizationPublicId(),
+                $canonicalPath
+            );
+            $analytics = $analyticsPageGrant === null
+                ? null
+                : $this->runtime->publicAnalyticsConfig();
             try {
                 $relatedArticles = $this->runtime->publicFeed()
                     ->cardsForRelated(new BlogPublicRelatedQuery(
@@ -67,16 +75,18 @@ final class BlogPublicHttpController
                 ? $this->articleRenderer->renderFromOrigin(
                     $variant,
                     $this->runtime->origin(),
-                    $base . '/' . $canonicalSlug,
+                    $canonicalPath,
                     $alternatePaths,
                     $xDefaultPath,
                     $languageNavigationPaths,
-                    $relatedArticles
+                    $relatedArticles,
+                    $analytics,
+                    $analyticsPageGrant
                 )
                 : $this->articleRenderer->renderStructuredFromOrigin(
                     $variant,
                     $this->runtime->origin(),
-                    $base . '/' . $canonicalSlug,
+                    $canonicalPath,
                     $structured->snapshot()->document(),
                     $this->runtime->imageResolver(
                         $variant->localizationPublicId()
@@ -84,13 +94,15 @@ final class BlogPublicHttpController
                     $alternatePaths,
                     $xDefaultPath,
                     $languageNavigationPaths,
-                    $relatedArticles
+                    $relatedArticles,
+                    $analytics,
+                    $analyticsPageGrant
                 );
 
             return new Response(
                 200,
                 $html,
-                $this->articleHeaders()
+                $this->articleHeaders($analyticsPageGrant !== null)
             );
         } catch (BlogException $exception) {
             if ($exception->issueCode() === BlogException::INVALID_INPUT) {
@@ -205,7 +217,7 @@ final class BlogPublicHttpController
     }
 
     /** @return array<string, string> */
-    private function articleHeaders(): array
+    private function articleHeaders(bool $containsAnalyticsGrant = false): array
     {
         $headers = [
             'Content-Type' => 'text/html; charset=utf-8',
@@ -218,11 +230,15 @@ final class BlogPublicHttpController
             'Cross-Origin-Opener-Policy' => 'same-origin',
             'Cross-Origin-Resource-Policy' => 'same-origin',
         ];
+        if ($containsAnalyticsGrant) {
+            $headers['Cache-Control'] = 'private, no-store';
+        }
 
         if (!$this->articleRenderer->usesProjectArticleView()) {
             $headers['Content-Security-Policy'] =
                 "default-src 'none'; style-src 'self'; "
                 . "script-src 'self'; script-src-attr 'none'; "
+                . "connect-src 'self'; "
                 . "img-src 'self' data:; "
                 . "frame-src https://www.youtube-nocookie.com; "
                 . "frame-ancestors 'none'; base-uri 'none'; "

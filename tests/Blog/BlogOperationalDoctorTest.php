@@ -157,10 +157,16 @@ final class BlogOperationalDoctorTest extends TestCase
         self::assertSame('ready', $blog['dependency']['status']);
         self::assertSame('applied', $blog['database']['status']);
         self::assertSame([
+            'public/assets/modules/blog/blog-admin-list.js',
             'public/assets/modules/blog/blog-admin.css',
+            'public/assets/modules/blog/blog-analytics.js',
             'public/assets/modules/blog/blog-editor.js',
             'public/assets/modules/blog/blog-public.css',
             'public/assets/modules/blog/blog-public.js',
+            'public/assets/modules/blog/flags/LICENSE.flag-icons.txt',
+            'public/assets/modules/blog/flags/es-pv.svg',
+            'public/assets/modules/blog/flags/es.svg',
+            'public/assets/modules/blog/flags/gb.svg',
         ], $blog['assets']['required']);
         self::assertTrue($blog['readiness']['blog_ready']);
         self::assertSame([], $blog['readiness']['blockers']);
@@ -275,10 +281,16 @@ final class BlogOperationalDoctorTest extends TestCase
         self::assertTrue($blog['assets']['ready']);
         self::assertSame([], $blog['assets']['missing']);
         self::assertSame([
+            'public/assets/modules/blog/blog-admin-list.js',
             'public/assets/modules/blog/blog-admin.css',
+            'public/assets/modules/blog/blog-analytics.js',
             'public/assets/modules/blog/blog-editor.js',
             'public/assets/modules/blog/blog-public.css',
             'public/assets/modules/blog/blog-public.js',
+            'public/assets/modules/blog/flags/LICENSE.flag-icons.txt',
+            'public/assets/modules/blog/flags/es-pv.svg',
+            'public/assets/modules/blog/flags/es.svg',
+            'public/assets/modules/blog/flags/gb.svg',
         ], $blog['assets']['required']);
         self::assertTrue($blog['readiness']['blog_ready']);
     }

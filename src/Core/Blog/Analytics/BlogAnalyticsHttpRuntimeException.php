@@ -1,0 +1,11 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Core\Blog\Analytics;
+
+use RuntimeException;
+
+final class BlogAnalyticsHttpRuntimeException extends RuntimeException
+{
+}

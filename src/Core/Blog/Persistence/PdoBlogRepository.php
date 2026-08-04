@@ -21,6 +21,7 @@ use Throwable;
 /** Portable PDO implementation for the Blog posts aggregate. */
 final class PdoBlogRepository implements
     BlogRepositoryInterface,
+    BlogEditorialActionRepositoryInterface,
     BlogPostLocaleCatalogRepositoryInterface,
     BlogPublishedSitemapRepositoryInterface
 {
@@ -30,11 +31,15 @@ final class PdoBlogRepository implements
     private readonly string $driver;
     private readonly string $posts;
     private readonly string $localizations;
+    private readonly string $tombstones;
+    private readonly string $categories;
+    private readonly string $postCategories;
     private bool $transactionActive = false;
 
     public function __construct(
         private readonly PDO $pdo,
-        MigrationScope $scope
+        MigrationScope $scope,
+        private readonly bool $postTombstonesEnabled = false
     ) {
         try {
             $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
@@ -71,11 +76,25 @@ final class PdoBlogRepository implements
                 'post_localizations',
                 $driver
             );
+            $this->tombstones = $scope->quotedTable(
+                'post_tombstones',
+                $driver
+            );
+            $this->categories = $scope->quotedTable('categories', $driver);
+            $this->postCategories = $scope->quotedTable(
+                'post_categories',
+                $driver
+            );
         } catch (BlogPersistenceException $exception) {
             throw $exception;
         } catch (Throwable) {
             throw new BlogPersistenceException();
         }
+    }
+
+    public function postTombstonesEnabled(): bool
+    {
+        return $this->postTombstonesEnabled;
     }
 
     public function transactional(callable $operation): mixed
@@ -241,6 +260,21 @@ final class PdoBlogRepository implements
         return $this->variantByPostAndLocale($postPublicId, $locale, true);
     }
 
+    public function lockTrashedVariant(
+        string $postPublicId,
+        string $locale
+    ): ?BlogPostVariant {
+        $this->assertEditorialActionsAvailable();
+        $this->assertTransaction();
+
+        return $this->variantByPostAndLocale(
+            $postPublicId,
+            $locale,
+            true,
+            true
+        );
+    }
+
     public function slugExists(
         string $locale,
         string $slug,
@@ -278,6 +312,7 @@ final class PdoBlogRepository implements
             . 'WHERE public_id = :public_id '
             . 'AND lock_version = :expected_lock_version '
             . 'AND status = :expected_status'
+            . $this->activeUpdatePredicate()
         );
         $this->executeConflictAware($statement, [
             'slug' => $draft->slug(),
@@ -314,6 +349,7 @@ final class PdoBlogRepository implements
             . 'WHERE public_id = :public_id '
             . 'AND lock_version = :expected_lock_version '
             . 'AND status = :expected_status'
+            . $this->activeUpdatePredicate()
         );
         $this->execute($statement, [
             'next_status' => $nextStatus,
@@ -348,6 +384,74 @@ final class PdoBlogRepository implements
         }
     }
 
+    public function insertTombstone(
+        string $localizationPublicId,
+        string $actorPublicId,
+        DateTimeImmutable $now
+    ): void {
+        $this->assertEditorialActionsAvailable();
+        $this->assertTransaction();
+        $statement = $this->prepare(
+            'INSERT INTO ' . $this->tombstones . ' '
+                . '(post_localization_id, trashed_by_user_public_id, '
+                . 'trashed_at) SELECT l.id, :actor_public_id, :trashed_at '
+                . 'FROM ' . $this->localizations . ' l '
+                . 'WHERE l.public_id = :localization_public_id '
+                . "AND l.status = 'draft'"
+        );
+        $this->execute($statement, [
+            'actor_public_id' => $actorPublicId,
+            'trashed_at' => self::format($now),
+            'localization_public_id' => $localizationPublicId,
+        ]);
+        if ($statement->rowCount() !== 1) {
+            throw new BlogPersistenceException();
+        }
+    }
+
+    public function deleteTombstone(string $localizationPublicId): bool
+    {
+        $this->assertEditorialActionsAvailable();
+        $this->assertTransaction();
+        $statement = $this->prepare(
+            'DELETE FROM ' . $this->tombstones . ' WHERE '
+                . 'post_localization_id = (SELECT id FROM '
+                . $this->localizations . ' WHERE public_id = '
+                . ':localization_public_id)'
+        );
+        $this->execute($statement, [
+            'localization_public_id' => $localizationPublicId,
+        ]);
+
+        return $statement->rowCount() === 1;
+    }
+
+    public function bumpVariantLock(
+        string $localizationPublicId,
+        int $expectedLockVersion,
+        string $actorPublicId,
+        DateTimeImmutable $now
+    ): bool {
+        $this->assertEditorialActionsAvailable();
+        $this->assertTransaction();
+        $statement = $this->prepare(
+            'UPDATE ' . $this->localizations . ' SET '
+                . 'lock_version = lock_version + 1, '
+                . 'updated_by_user_public_id = :actor_public_id, '
+                . 'updated_at = :updated_at WHERE public_id = :public_id '
+                . 'AND lock_version = :expected_lock_version '
+                . "AND status = 'draft'"
+        );
+        $this->execute($statement, [
+            'actor_public_id' => $actorPublicId,
+            'updated_at' => self::format($now),
+            'public_id' => $localizationPublicId,
+            'expected_lock_version' => $expectedLockVersion,
+        ]);
+
+        return $statement->rowCount() === 1;
+    }
+
     public function listSummaries(int $limit, int $offset): array
     {
         $statement = $this->prepare(
@@ -355,9 +459,49 @@ final class PdoBlogRepository implements
             . 'l.public_id AS localization_public_id, l.locale, l.slug, '
             . 'l.h1, l.status, l.published_at, l.lock_version, l.updated_at '
             . 'FROM ' . $this->posts . ' p JOIN ' . $this->localizations
-            . ' l ON l.post_id = p.id '
+            . ' l ON l.post_id = p.id WHERE 1 = 1'
+            . $this->activeVariantPredicate('l') . ' '
             . 'ORDER BY l.updated_at DESC, p.public_id ASC, l.locale ASC, '
             . 'l.public_id ASC LIMIT :list_limit OFFSET :list_offset'
+        );
+        try {
+            if (
+                !$statement->bindValue(':list_limit', $limit, PDO::PARAM_INT)
+                || !$statement->bindValue(
+                    ':list_offset',
+                    $offset,
+                    PDO::PARAM_INT
+                )
+                || !$statement->execute()
+            ) {
+                throw new BlogPersistenceException();
+            }
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+
+        return array_map(
+            fn (array $row): BlogPostSummary => $this->summaryFromRow($row),
+            $this->rows($statement->fetchAll(PDO::FETCH_ASSOC))
+        );
+    }
+
+    public function listTrashedSummaries(int $limit, int $offset): array
+    {
+        $this->assertEditorialActionsAvailable();
+        $statement = $this->prepare(
+            'SELECT p.public_id AS post_public_id, '
+                . 'l.public_id AS localization_public_id, l.locale, l.slug, '
+                . 'l.h1, l.status, l.published_at, l.lock_version, '
+                . 'l.updated_at FROM ' . $this->posts . ' p JOIN '
+                . $this->localizations . ' l ON l.post_id = p.id JOIN '
+                . $this->tombstones . ' t ON t.post_localization_id = l.id '
+                . "WHERE l.status = 'draft' "
+                . 'ORDER BY t.trashed_at DESC, p.public_id ASC, '
+                . 'l.locale ASC, l.public_id ASC '
+                . 'LIMIT :list_limit OFFSET :list_offset'
         );
         try {
             if (
@@ -456,7 +600,8 @@ final class PdoBlogRepository implements
         $row = $this->one(
             $this->variantSelect()
                 . ' WHERE l.locale = :locale AND l.slug = :slug '
-                . 'AND l.status = :status AND l.published_at IS NOT NULL',
+                . 'AND l.status = :status AND l.published_at IS NOT NULL'
+                . $this->activeVariantPredicate('l'),
             [
                 'locale' => $locale,
                 'slug' => $slug,
@@ -473,11 +618,13 @@ final class PdoBlogRepository implements
         int $offset
     ): array {
         $statement = $this->prepare(
-            'SELECT locale, slug, h1, excerpt, published_at, updated_at FROM '
-            . $this->localizations . ' WHERE locale = :locale '
-            . 'AND status = :status AND slug IS NOT NULL '
-            . 'AND excerpt IS NOT NULL AND published_at IS NOT NULL '
-            . 'ORDER BY published_at DESC, public_id ASC '
+            'SELECT l.locale, l.slug, l.h1, l.excerpt, l.published_at, '
+            . 'l.updated_at FROM ' . $this->localizations
+            . ' l WHERE l.locale = :locale '
+            . 'AND l.status = :status AND l.slug IS NOT NULL '
+            . 'AND l.excerpt IS NOT NULL AND l.published_at IS NOT NULL'
+            . $this->activeVariantPredicate('l') . ' '
+            . 'ORDER BY l.published_at DESC, l.public_id ASC '
             . 'LIMIT :list_limit OFFSET :list_offset'
         );
         try {
@@ -528,7 +675,8 @@ final class PdoBlogRepository implements
             . 'l.published_at, l.updated_at FROM ' . $this->posts . ' p '
             . 'JOIN ' . $this->localizations . ' l ON l.post_id = p.id '
             . 'WHERE l.status = :status AND l.slug IS NOT NULL '
-            . 'AND l.published_at IS NOT NULL '
+            . 'AND l.published_at IS NOT NULL'
+            . $this->activeVariantPredicate('l') . ' '
             . 'ORDER BY l.locale ASC, l.slug ASC, l.public_id ASC '
             . 'LIMIT :sitemap_limit'
         );
@@ -577,7 +725,8 @@ final class PdoBlogRepository implements
             . 'JOIN ' . $this->localizations . ' l ON l.post_id = p.id '
             . 'WHERE p.public_id = :post_public_id '
             . 'AND l.status = :status AND l.slug IS NOT NULL '
-            . 'AND l.published_at IS NOT NULL '
+            . 'AND l.published_at IS NOT NULL'
+            . $this->activeVariantPredicate('l') . ' '
             . 'ORDER BY l.locale ASC, l.slug ASC, l.public_id ASC '
             . 'LIMIT :alternate_limit'
         );
@@ -615,15 +764,111 @@ final class PdoBlogRepository implements
         );
     }
 
+    public function assignedCategoryPublicIds(
+        string $postPublicId,
+        int $limit
+    ): array {
+        $this->assertTransaction();
+        if ($limit < 1 || $limit > 101) {
+            throw new BlogPersistenceException();
+        }
+        $statement = $this->prepare(
+            'SELECT c.public_id FROM ' . $this->postCategories . ' pc JOIN '
+                . $this->posts . ' p ON p.id = pc.post_id JOIN '
+                . $this->categories . ' c ON c.id = pc.category_id '
+                . 'WHERE p.public_id = :post_public_id '
+                . 'ORDER BY c.public_id LIMIT :category_limit'
+                . $this->forUpdate()
+        );
+        try {
+            if (
+                !$statement->bindValue(
+                    ':post_public_id',
+                    $postPublicId,
+                    PDO::PARAM_STR
+                )
+                || !$statement->bindValue(
+                    ':category_limit',
+                    $limit,
+                    PDO::PARAM_INT
+                )
+                || !$statement->execute()
+            ) {
+                throw new BlogPersistenceException();
+            }
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+
+        $result = [];
+        foreach ($this->rows($statement->fetchAll(PDO::FETCH_ASSOC)) as $row) {
+            $value = $this->requiredString($row, 'public_id');
+            if (isset($result[$value])) {
+                throw new BlogPersistenceException();
+            }
+            $result[$value] = true;
+        }
+
+        return array_keys($result);
+    }
+
+    public function insertCategoryAssignments(
+        string $postPublicId,
+        array $assignmentPublicIdsByCategory,
+        string $actorPublicId,
+        DateTimeImmutable $now
+    ): void {
+        $this->assertTransaction();
+        if (count($assignmentPublicIdsByCategory) > 100) {
+            throw new BlogPersistenceException();
+        }
+        $timestamp = self::format($now);
+        foreach ($assignmentPublicIdsByCategory as $category => $assignment) {
+            if (!is_string($category) || !is_string($assignment)) {
+                throw new BlogPersistenceException();
+            }
+            $statement = $this->prepare(
+                'INSERT INTO ' . $this->postCategories . ' '
+                    . '(public_id, post_id, category_id, '
+                    . 'assigned_by_user_public_id, created_at, updated_at) '
+                    . 'SELECT :assignment_public_id, p.id, c.id, '
+                    . ':actor_public_id, :created_at, :updated_at FROM '
+                    . $this->posts . ' p CROSS JOIN ' . $this->categories
+                    . ' c WHERE p.public_id = :post_public_id '
+                    . 'AND c.public_id = :category_public_id'
+            );
+            $this->execute($statement, [
+                'assignment_public_id' => $assignment,
+                'actor_public_id' => $actorPublicId,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+                'post_public_id' => $postPublicId,
+                'category_public_id' => $category,
+            ]);
+            if ($statement->rowCount() !== 1) {
+                throw new BlogPersistenceException();
+            }
+        }
+    }
+
     private function variantByPostAndLocale(
         string $postPublicId,
         string $locale,
-        bool $lock
+        bool $lock,
+        bool $trashed = false
     ): ?BlogPostVariant {
+        if ($trashed) {
+            $this->assertEditorialActionsAvailable();
+        }
         $row = $this->one(
             $this->variantSelect()
                 . ' WHERE p.public_id = :post_public_id '
                 . 'AND l.locale = :locale'
+                . ($trashed
+                    ? $this->trashedVariantPredicate('l')
+                    : $this->activeVariantPredicate('l'))
                 . ($lock ? $this->forUpdate() : ''),
             ['post_public_id' => $postPublicId, 'locale' => $locale]
         );
@@ -880,6 +1125,41 @@ final class PdoBlogRepository implements
     private function forUpdate(): string
     {
         return $this->driver === 'mysql' ? ' FOR UPDATE' : '';
+    }
+
+    private function activeVariantPredicate(string $alias): string
+    {
+        if (!$this->postTombstonesEnabled) {
+            return '';
+        }
+
+        return ' AND NOT EXISTS (SELECT 1 FROM ' . $this->tombstones
+            . ' tombstone WHERE tombstone.post_localization_id = '
+            . $alias . '.id)';
+    }
+
+    private function trashedVariantPredicate(string $alias): string
+    {
+        return ' AND EXISTS (SELECT 1 FROM ' . $this->tombstones
+            . ' tombstone WHERE tombstone.post_localization_id = '
+            . $alias . '.id)';
+    }
+
+    private function activeUpdatePredicate(): string
+    {
+        if (!$this->postTombstonesEnabled) {
+            return '';
+        }
+
+        return ' AND id NOT IN (SELECT post_localization_id FROM '
+            . $this->tombstones . ')';
+    }
+
+    private function assertEditorialActionsAvailable(): void
+    {
+        if (!$this->postTombstonesEnabled) {
+            throw new BlogPersistenceException();
+        }
     }
 
     private function assertTransaction(): void

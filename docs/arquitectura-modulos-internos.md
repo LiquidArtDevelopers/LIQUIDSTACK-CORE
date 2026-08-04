@@ -528,12 +528,15 @@ activación y recuperación, el outbox SMTP, el diagnóstico operativo, el motor
 de migraciones, la gestión delegada de editores, la biblioteca de medios y su
 inicialización explícita constituyen el corte actual de WebAdmin.
 
-Blog 0001 a 0005 están implementados sobre esa base: migraciones propias y
+Blog 0001 a 0010 están implementados sobre esa base: migraciones propias y
 cross-scope, capacidades delegables, artículos con variantes localizadas,
 categorías, documentos estructurados y revisiones, borrador/publicación,
-bloqueo optimista, UI privada, auditoría atómica, consumo de Media, resolución
-pública tardía sin sesión legacy, medios por prefijo pre-bootstrap y sitemap
-DB-backed pre-bootstrap exacto.
+bloqueo optimista, duplicación completa, papelera recuperable por tombstones,
+UI privada, auditoría atómica, consumo de Media, analítica propia opcional,
+resolución pública tardía sin sesión legacy, medios por prefijo pre-bootstrap
+y sitemap DB-backed pre-bootstrap exacto. Las lecturas editoriales y públicas
+excluyen tombstones; no existe purga editorial y publicar exige restaurar y publicar de
+forma explícita.
 
 El editor proyecta el documento sobre un lienzo visual neutral, no sobre un
 segundo `main` ni un segundo H1 del documento administrativo. Conceptualmente

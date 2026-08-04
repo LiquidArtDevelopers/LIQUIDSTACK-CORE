@@ -23,6 +23,9 @@ final class BlogMutationAuditEvent
     public const RESTORE = 'restore';
     public const PUBLISH = 'publish';
     public const UNPUBLISH = 'unpublish';
+    public const DUPLICATE = 'duplicate';
+    public const TRASH = 'trash';
+    public const RESTORE_FROM_TRASH = 'restore_from_trash';
 
     private const OPERATIONS = [
         self::CREATE,
@@ -31,6 +34,9 @@ final class BlogMutationAuditEvent
         self::RESTORE,
         self::PUBLISH,
         self::UNPUBLISH,
+        self::DUPLICATE,
+        self::TRASH,
+        self::RESTORE_FROM_TRASH,
     ];
 
     private readonly DateTimeImmutable $occurredAt;

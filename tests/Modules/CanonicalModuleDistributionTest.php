@@ -70,9 +70,15 @@ final class CanonicalModuleDistributionTest extends TestCase
         );
         foreach ([
             'modules/blog/published/assets/blog-admin.css',
+            'modules/blog/published/assets/blog-admin-list.js',
+            'modules/blog/published/assets/blog-analytics.js',
             'modules/blog/published/assets/blog-editor.js',
             'modules/blog/published/assets/blog-public.css',
             'modules/blog/published/assets/blog-public.js',
+            'modules/blog/published/assets/flags/es.svg',
+            'modules/blog/published/assets/flags/es-pv.svg',
+            'modules/blog/published/assets/flags/gb.svg',
+            'modules/blog/published/assets/flags/LICENSE.flag-icons.txt',
             'modules/blog/resources/project/App/controllers/_moduleBlogResources.php',
             'modules/blog/resources/project/App/controllers/artBlogArticle01.php',
             'modules/blog/resources/project/App/templates/_artBlogArticle01.html',
@@ -97,6 +103,6 @@ final class CanonicalModuleDistributionTest extends TestCase
         ] as $source) {
             self::assertContains($source, $published);
         }
-        self::assertCount(36, $published);
+        self::assertCount(42, $published);
     }
 }

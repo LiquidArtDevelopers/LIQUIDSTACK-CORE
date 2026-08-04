@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Core\Blog\Http;
 
+use App\Core\Blog\Analytics\BlogAnalyticsPageGrantCodec;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Categories\BlogCategoryPublicProjectionService;
 use App\Core\Blog\Configuration\BlogConfig;
+use App\Core\Blog\Configuration\BlogAnalyticsConfig;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\PublicDelivery\BlogPublicMediaDelivery;
 use App\Core\Blog\PublicDelivery\BlogPublicMediaFile;
@@ -32,7 +34,10 @@ final class BlogPublicHttpRuntime
         private readonly ?BlogCategoryPublicProjectionService
             $categoryProjection = null,
         private readonly ?BlogPublicCatalogRepositoryInterface
-            $catalogRepository = null
+            $catalogRepository = null,
+        private readonly bool $analyticsCollectionReady = false,
+        private readonly ?BlogAnalyticsPageGrantCodec $analyticsPageGrants =
+            null
     ) {
     }
 
@@ -59,6 +64,35 @@ final class BlogPublicHttpRuntime
     public function catalogRepository(): ?BlogPublicCatalogRepositoryInterface
     {
         return $this->catalogRepository;
+    }
+
+    public function publicAnalyticsConfig(): ?BlogAnalyticsConfig
+    {
+        return $this->analyticsCollectionReady
+            && $this->analyticsPageGrants !== null
+            ? $this->config->analytics()
+            : null;
+    }
+
+    public function analyticsPageGrant(
+        string $localizationPublicId,
+        string $canonicalPath
+    ): ?string {
+        if (
+            !$this->analyticsCollectionReady
+            || $this->analyticsPageGrants === null
+        ) {
+            return null;
+        }
+
+        try {
+            return $this->analyticsPageGrants->issue(
+                $localizationPublicId,
+                $canonicalPath
+            );
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -117,6 +151,8 @@ final class BlogPublicHttpRuntime
             'category_projection' => $this->categoryProjection !== null,
             'catalog_repository' => $this->catalogRepository !== null,
             'public_feed' => $this->publicFeed !== null,
+            'analytics_collection' => $this->analyticsCollectionReady,
+            'analytics_page_grants' => $this->analyticsPageGrants !== null,
         ];
     }
 }

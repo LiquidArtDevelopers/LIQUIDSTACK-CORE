@@ -6,6 +6,7 @@ namespace App\Core\Blog\Http;
 
 use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogService;
+use App\Core\Blog\Analytics\BlogAnalyticsReportInterface;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Seo\BlogSeoAnalysisService;
 use App\Core\Blog\Seo\BlogSeoHttpRuntimeInterface;
@@ -23,7 +24,7 @@ use Closure;
 use PDO;
 use Throwable;
 
-final class BlogAdminHttpRuntime implements
+class BlogAdminHttpRuntime implements
     BlogAdminHttpRuntimeInterface,
     BlogStructuredEditorHttpRuntimeInterface,
     BlogStructuredEditorCategoryHttpRuntimeInterface,
@@ -53,7 +54,9 @@ final class BlogAdminHttpRuntime implements
         private readonly ?BlogSeoAnalysisService $seoAnalysis = null,
         ?WebAdminNavigationCatalog $navigation = null,
         private readonly ?BlogEditorCategoryCatalogInterface
-            $editorCategoryCatalog = null
+            $editorCategoryCatalog = null,
+        protected readonly ?BlogAnalyticsReportInterface
+            $optionalAnalyticsReport = null
     ) {
         $this->navigation = $navigation ?? new WebAdminNavigationCatalog();
     }
@@ -146,6 +149,11 @@ final class BlogAdminHttpRuntime implements
         }
 
         return $this->seoAnalysis;
+    }
+
+    protected function configuredAnalyticsReport(): ?BlogAnalyticsReportInterface
+    {
+        return $this->optionalAnalyticsReport;
     }
 
     /** @return Closure(PDO): string */

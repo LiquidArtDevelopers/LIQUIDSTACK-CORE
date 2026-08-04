@@ -11,6 +11,7 @@ use App\Core\Blog\Audit\WebAdminBlogMutationAuditAdapter;
 use App\Core\Blog\Http\BlogAdminHttpRuntime;
 use App\Core\Blog\Http\BlogAdminHttpRuntimeException;
 use App\Core\Blog\Http\BlogAdminHttpRuntimeFactory;
+use App\Core\Blog\Http\BlogAnalyticsAdminHttpRuntimeInterface;
 use App\Core\Blog\Http\BlogStructuredEditorCategoryHttpRuntimeInterface;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
@@ -132,6 +133,16 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
         );
 
         self::assertInstanceOf(BlogAdminHttpRuntime::class, $runtime);
+        self::assertInstanceOf(
+            BlogAnalyticsAdminHttpRuntimeInterface::class,
+            $runtime
+        );
+        self::assertSame([], $runtime->analyticsReport()
+            ->summariesForLocalizations(
+                [],
+                new DateTimeImmutable('2029-01-01T00:00:00Z'),
+                new DateTimeImmutable('2030-01-01T00:00:00Z')
+            ));
         self::assertInstanceOf(
             BlogStructuredEditorCategoryHttpRuntimeInterface::class,
             $runtime
@@ -368,6 +379,9 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             '54000000-0000-4000-8000-000000000005',
             '55000000-0000-4000-8000-000000000005',
             '56000000-0000-4000-8000-000000000005',
+            '57000000-0000-4000-8000-000000000005',
+            '58000000-0000-4000-8000-000000000005',
+            '59000000-0000-4000-8000-000000000005',
         ];
         $adapter = new WebAdminBlogMutationAuditAdapter(
             $this->pdo,
@@ -384,6 +398,9 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             BlogMutationAuditEvent::RESTORE,
             BlogMutationAuditEvent::PUBLISH,
             BlogMutationAuditEvent::UNPUBLISH,
+            BlogMutationAuditEvent::DUPLICATE,
+            BlogMutationAuditEvent::TRASH,
+            BlogMutationAuditEvent::RESTORE_FROM_TRASH,
         ];
         self::assertTrue($this->pdo->beginTransaction());
         foreach ($operations as $operation) {
@@ -408,9 +425,12 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             'blog.article.restored',
             'blog.article.published',
             'blog.article.unpublished',
+            'blog.article.duplicated',
+            'blog.article.trashed',
+            'blog.article.restored_from_trash',
         ], array_column($rows, 'event_code'));
         self::assertSame(
-            [null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null, null],
             array_column($rows, 'metadata_json')
         );
     }
@@ -472,6 +492,56 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             );
         }
         self::assertSame(1, $this->connectionCount);
+    }
+
+    public function testPendingDeleteCapabilityKeepsDuplicateButDisablesTrash(): void
+    {
+        $this->applyMigrations();
+        $this->seedAuthorizedActor();
+        $this->pdo->exec(
+            "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
+                . "AND migration_id IN ("
+                . "'0008_blog_article_delete_capability', "
+                . "'0009_blog_analytics', "
+                . "'0010_blog_analytics_view_capability')"
+        );
+        $runtime = $this->factory([
+            self::POST_PUBLIC_ID,
+            self::LOCALIZATION_PUBLIC_ID,
+            self::REQUEST_PUBLIC_ID,
+            '31000000-0000-4000-8000-000000000003',
+            '41000000-0000-4000-8000-000000000004',
+            '51000000-0000-4000-8000-000000000005',
+        ])->create(
+            $this->context(),
+            WebAdminConfig::defaults()
+        );
+        self::assertFalse($runtime->service()->trashAvailable());
+
+        $source = $runtime->service()->createPost(
+            $runtime->mutationGateAll(
+                $this->sessionToken,
+                $this->csrfToken,
+                ['blog.articles.edit', 'webadmin.media.view']
+            ),
+            'es',
+            $this->draft()
+        );
+        $copy = $runtime->service()->duplicatePost(
+            $runtime->mutationGateAll(
+                $this->sessionToken,
+                $this->csrfToken,
+                ['blog.articles.edit', 'webadmin.media.view']
+            ),
+            $source->postPublicId(),
+            'es',
+            1
+        );
+        self::assertSame(
+            'Copia de Matrix runtime article',
+            $copy->draft()->h1()
+        );
+        self::assertNull($copy->draft()->slug());
     }
 
     public function testInvalidSecurityKeyFailsBeforeConnectAndNeverLeaks(): void
@@ -643,7 +713,8 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
         self::assertSame(0, $this->connectionCount);
     }
 
-    private function factory(): BlogAdminHttpRuntimeFactory
+    /** @param list<string>|null $uuidSequence */
+    private function factory(?array $uuidSequence = null): BlogAdminHttpRuntimeFactory
     {
         return new BlogAdminHttpRuntimeFactory(
             coreRoot: dirname(__DIR__, 2),
@@ -653,11 +724,13 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
                 return new BlogAdminRuntimePdoFactory($this->pdo);
             },
             clock: $this->clock,
-            uuidGenerator: new BlogAdminRuntimeUuidSequence([
-                self::POST_PUBLIC_ID,
-                self::LOCALIZATION_PUBLIC_ID,
-                self::REQUEST_PUBLIC_ID,
-            ])
+            uuidGenerator: new BlogAdminRuntimeUuidSequence(
+                $uuidSequence ?? [
+                    self::POST_PUBLIC_ID,
+                    self::LOCALIZATION_PUBLIC_ID,
+                    self::REQUEST_PUBLIC_ID,
+                ]
+            )
         );
     }
 

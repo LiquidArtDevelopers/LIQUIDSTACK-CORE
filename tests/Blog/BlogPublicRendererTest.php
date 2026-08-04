@@ -7,6 +7,7 @@ use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogSitemapEntry;
 use App\Core\Blog\Configuration\BlogConfig;
+use App\Core\Blog\Configuration\BlogAnalyticsConfig;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Http\BlogPublicHtmlRenderer;
 use App\Core\Blog\Http\BlogSitemapRenderer;
@@ -488,6 +489,46 @@ PHP);
         self::assertStringContainsString(
             'hreflang="x-default" href="http://localhost:1309/en/news/matrix"',
             $html
+        );
+    }
+
+    public function testAnalyticsMarkerIsExplicitAndOptInOnly(): void
+    {
+        $renderer = new BlogPublicHtmlRenderer();
+        $disabled = $renderer->render(
+            $this->variant('Matrix body'),
+            'https://example.test/news/matrix'
+        );
+        $enabled = $renderer->render(
+            $this->variant('Matrix body'),
+            'https://example.test/news/matrix',
+            analytics: new BlogAnalyticsConfig(true, 120, 2400),
+            analyticsPageGrant: 'eyJ2IjoxfQ.' . str_repeat('a', 43)
+        );
+
+        self::assertStringNotContainsString(
+            'data-blog-analytics-enabled',
+            $disabled
+        );
+        self::assertStringContainsString(
+            'data-blog-analytics-enabled="true"',
+            $enabled
+        );
+        self::assertStringContainsString(
+            'data-blog-analytics-retention-days="120"',
+            $enabled
+        );
+        self::assertStringContainsString(
+            'data-blog-analytics-session-timeout="2400"',
+            $enabled
+        );
+        self::assertStringContainsString(
+            'data-blog-analytics-page-grant="eyJ2IjoxfQ.',
+            $enabled
+        );
+        self::assertStringNotContainsString(
+            '<script src="/assets/modules/blog/blog-analytics.js"',
+            $enabled
         );
     }
 

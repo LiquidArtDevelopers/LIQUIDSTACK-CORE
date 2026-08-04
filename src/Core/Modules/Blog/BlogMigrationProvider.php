@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Modules\Blog;
 
+use App\Core\Blog\Analytics\BlogAnalyticsCapabilities;
 use App\Core\Modules\Migrations\MigrationDefinition;
 use App\Core\Modules\Migrations\MigrationProviderInterface;
 
@@ -111,6 +112,356 @@ final class BlogMigrationProvider implements MigrationProviderInterface
                 '0005_blog_structured_content',
             ]
         );
+
+        yield MigrationDefinition::sql(
+            id: '0007_blog_post_tombstones',
+            description: 'Crea la papelera recuperable de variantes Blog.',
+            statementsByDriver: [
+                'mysql' => self::mysqlPostTombstoneStatements(),
+                'sqlite' => self::sqlitePostTombstoneStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogPostTombstoneMigrationPostconditionVerifier(),
+            supersedesPostconditions: [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+            ]
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0008_blog_article_delete_capability',
+            description: 'Registra la capacidad delegable de papelera Blog.',
+            statementsByDriver: [
+                'mysql' => self::mysqlArticleDeleteCapabilityStatements(),
+                'sqlite' => self::sqliteArticleDeleteCapabilityStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogArticleDeleteCapabilitySeedPostcondition(),
+            supersedesPostconditions: [
+                '0002_blog_capabilities',
+                '0004_blog_category_capabilities',
+            ],
+            targetScopeModuleId: 'webadmin'
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0009_blog_analytics',
+            description: 'Crea metricas propias y consentidas del Blog.',
+            statementsByDriver: [
+                'mysql' => self::mysqlAnalyticsStatements(),
+                'sqlite' => self::sqliteAnalyticsStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogAnalyticsMigrationPostconditionVerifier(),
+            supersedesPostconditions: [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+            ]
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0010_blog_analytics_view_capability',
+            description: 'Registra la capacidad de consulta de analitica Blog.',
+            statementsByDriver: [
+                'mysql' => self::mysqlAnalyticsCapabilityStatements(),
+                'sqlite' => self::sqliteAnalyticsCapabilityStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogAnalyticsCapabilitySeedPostcondition(),
+            supersedesPostconditions: [
+                '0002_blog_capabilities',
+                '0004_blog_category_capabilities',
+                '0008_blog_article_delete_capability',
+            ],
+            targetScopeModuleId: 'webadmin'
+        );
+    }
+
+    /** @return list<string> */
+    private static function mysqlAnalyticsStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:analytics_sessions}} (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `session_hash` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `visitor_hash` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `landing_localization_id` BIGINT UNSIGNED NOT NULL,
+    `is_returning` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    `pageview_count` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    `engagement_msec` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    `started_at` DATETIME(6) NOT NULL,
+    `last_activity_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_blog_as_session` (`session_hash`),
+    KEY `idx_blog_as_visitor_time` (`visitor_hash`, `started_at`),
+    KEY `idx_blog_as_landing_time` (`landing_localization_id`, `started_at`),
+    KEY `idx_blog_as_activity` (`last_activity_at`),
+    CONSTRAINT {{table:f_as_landing}} FOREIGN KEY (`landing_localization_id`)
+        REFERENCES {{table:post_localizations}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:c_as_session}} CHECK (
+        CHAR_LENGTH(`session_hash`) = 64 AND `session_hash` = LOWER(`session_hash`)
+    ),
+    CONSTRAINT {{table:c_as_visitor}} CHECK (
+        CHAR_LENGTH(`visitor_hash`) = 64 AND `visitor_hash` = LOWER(`visitor_hash`)
+    ),
+    CONSTRAINT {{table:c_as_returning}} CHECK (`is_returning` IN (0, 1)),
+    CONSTRAINT {{table:c_as_time}} CHECK (`last_activity_at` >= `started_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:analytics_views}} (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `session_id` BIGINT UNSIGNED NOT NULL,
+    `localization_id` BIGINT UNSIGNED NOT NULL,
+    `engagement_msec` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    `last_sequence` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    `started_at` DATETIME(6) NOT NULL,
+    `last_activity_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_blog_av_public` (`public_id`),
+    KEY `idx_blog_av_local_time` (`localization_id`, `started_at`),
+    KEY `idx_blog_av_session_time` (`session_id`, `started_at`),
+    CONSTRAINT {{table:f_av_session}} FOREIGN KEY (`session_id`)
+        REFERENCES {{table:analytics_sessions}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:f_av_local}} FOREIGN KEY (`localization_id`)
+        REFERENCES {{table:post_localizations}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:c_av_public}} CHECK (
+        CHAR_LENGTH(`public_id`) = 36 AND `public_id` = LOWER(`public_id`)
+    ),
+    CONSTRAINT {{table:c_av_time}} CHECK (`last_activity_at` >= `started_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteAnalyticsStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:analytics_sessions}} (
+    "id" INTEGER PRIMARY KEY,
+    "session_hash" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("session_hash") = 64
+        AND "session_hash" = lower("session_hash")
+        AND "session_hash" NOT GLOB '*[^0-9a-f]*'
+    ),
+    "visitor_hash" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("visitor_hash") = 64
+        AND "visitor_hash" = lower("visitor_hash")
+        AND "visitor_hash" NOT GLOB '*[^0-9a-f]*'
+    ),
+    "landing_localization_id" INTEGER NOT NULL
+        REFERENCES {{table:post_localizations}} ("id") ON DELETE CASCADE,
+    "is_returning" INTEGER NOT NULL DEFAULT 0
+        CHECK ("is_returning" IN (0, 1)),
+    "pageview_count" INTEGER NOT NULL DEFAULT 0
+        CHECK ("pageview_count" >= 0),
+    "engagement_msec" INTEGER NOT NULL DEFAULT 0
+        CHECK ("engagement_msec" >= 0),
+    "started_at" TEXT NOT NULL,
+    "last_activity_at" TEXT NOT NULL
+        CHECK ("last_activity_at" >= "started_at")
+)
+SQL,
+            'CREATE UNIQUE INDEX IF NOT EXISTS {{table:ux_as_session}} '
+                . 'ON {{table:analytics_sessions}} ("session_hash")',
+            'CREATE INDEX IF NOT EXISTS {{table:ix_as_visitor_time}} '
+                . 'ON {{table:analytics_sessions}} '
+                . '("visitor_hash", "started_at")',
+            'CREATE INDEX IF NOT EXISTS {{table:ix_as_landing_time}} '
+                . 'ON {{table:analytics_sessions}} '
+                . '("landing_localization_id", "started_at")',
+            'CREATE INDEX IF NOT EXISTS {{table:ix_as_activity}} '
+                . 'ON {{table:analytics_sessions}} ("last_activity_at")',
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:analytics_views}} (
+    "id" INTEGER PRIMARY KEY,
+    "public_id" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("public_id") = 36
+        AND "public_id" = lower("public_id")
+    ),
+    "session_id" INTEGER NOT NULL
+        REFERENCES {{table:analytics_sessions}} ("id") ON DELETE CASCADE,
+    "localization_id" INTEGER NOT NULL
+        REFERENCES {{table:post_localizations}} ("id") ON DELETE CASCADE,
+    "engagement_msec" INTEGER NOT NULL DEFAULT 0
+        CHECK ("engagement_msec" >= 0),
+    "last_sequence" INTEGER NOT NULL DEFAULT 0
+        CHECK ("last_sequence" >= 0),
+    "started_at" TEXT NOT NULL,
+    "last_activity_at" TEXT NOT NULL
+        CHECK ("last_activity_at" >= "started_at")
+)
+SQL,
+            'CREATE UNIQUE INDEX IF NOT EXISTS {{table:ux_av_public}} '
+                . 'ON {{table:analytics_views}} ("public_id")',
+            'CREATE INDEX IF NOT EXISTS {{table:ix_av_local_time}} '
+                . 'ON {{table:analytics_views}} '
+                . '("localization_id", "started_at")',
+            'CREATE INDEX IF NOT EXISTS {{table:ix_av_session_time}} '
+                . 'ON {{table:analytics_views}} '
+                . '("session_id", "started_at")',
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlAnalyticsCapabilityStatements(): array
+    {
+        $code = BlogAnalyticsCapabilities::VIEW;
+        $label = BlogAnalyticsCapabilities::VIEW_LABEL;
+
+        return [
+            "INSERT IGNORE INTO {{table:capabilities}} "
+                . "(`module_id`, `code`, `label_key`, `is_delegable`) "
+                . "VALUES ('blog', '{$code}', '{$label}', 1)",
+            "INSERT INTO {{table:role_capabilities}} "
+                . "(`role_id`, `capability_id`) SELECT `r`.`id`, `c`.`id` "
+                . "FROM {{table:roles}} AS `r` CROSS JOIN "
+                . "{{table:capabilities}} AS `c` WHERE `r`.`code` IN "
+                . "('system_superadmin', 'site_admin') AND "
+                . "`r`.`is_protected` = 1 AND `c`.`module_id` = 'blog' "
+                . "AND `c`.`code` = '{$code}' AND `c`.`label_key` = "
+                . "'{$label}' AND `c`.`is_delegable` = 1 "
+                . "ON DUPLICATE KEY UPDATE `role_id` = VALUES(`role_id`)",
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteAnalyticsCapabilityStatements(): array
+    {
+        $code = BlogAnalyticsCapabilities::VIEW;
+        $label = BlogAnalyticsCapabilities::VIEW_LABEL;
+
+        return [
+            "INSERT INTO {{table:capabilities}} "
+                . "(\"module_id\", \"code\", \"label_key\", \"is_delegable\") "
+                . "VALUES ('blog', '{$code}', '{$label}', 1) "
+                . 'ON CONFLICT("code") DO NOTHING',
+            "INSERT INTO {{table:role_capabilities}} "
+                . "(\"role_id\", \"capability_id\") SELECT \"r\".\"id\", "
+                . "\"c\".\"id\" FROM {{table:roles}} AS \"r\" CROSS JOIN "
+                . "{{table:capabilities}} AS \"c\" WHERE \"r\".\"code\" IN "
+                . "('system_superadmin', 'site_admin') AND "
+                . "\"r\".\"is_protected\" = 1 AND \"c\".\"module_id\" = "
+                . "'blog' AND \"c\".\"code\" = '{$code}' AND "
+                . "\"c\".\"label_key\" = '{$label}' AND "
+                . "\"c\".\"is_delegable\" = 1 "
+                . 'ON CONFLICT("role_id", "capability_id") DO NOTHING',
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlPostTombstoneStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:post_tombstones}} (
+    `post_localization_id` BIGINT UNSIGNED NOT NULL,
+    `trashed_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `trashed_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`post_localization_id`),
+    KEY `idx_blog_post_tombstone_time` (`trashed_at`, `post_localization_id`),
+    CONSTRAINT {{table:f_pt_localization}} FOREIGN KEY (`post_localization_id`)
+        REFERENCES {{table:post_localizations}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:c_pt_actor}} CHECK (
+        CHAR_LENGTH(`trashed_by_user_public_id`) = 36
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqlitePostTombstoneStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:post_tombstones}} (
+    "post_localization_id" INTEGER NOT NULL PRIMARY KEY
+        REFERENCES {{table:post_localizations}} ("id") ON DELETE CASCADE,
+    "trashed_by_user_public_id" TEXT COLLATE BINARY NOT NULL
+        CHECK (length("trashed_by_user_public_id") = 36),
+    "trashed_at" TEXT NOT NULL
+) WITHOUT ROWID
+SQL,
+            'CREATE INDEX IF NOT EXISTS {{table:ix_pt_time}} '
+                . 'ON {{table:post_tombstones}} '
+                . '("trashed_at", "post_localization_id")',
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlArticleDeleteCapabilityStatements(): array
+    {
+        return [
+            <<<'SQL'
+INSERT IGNORE INTO {{table:capabilities}}
+    (`module_id`, `code`, `label_key`, `is_delegable`)
+VALUES
+    ('blog', 'blog.articles.delete', 'blog.capabilities.articles_delete', 1)
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:role_capabilities}} (`role_id`, `capability_id`)
+SELECT `r`.`id`, `c`.`id`
+FROM {{table:roles}} AS `r`
+CROSS JOIN {{table:capabilities}} AS `c`
+WHERE `r`.`code` IN ('system_superadmin', 'site_admin')
+    AND `r`.`is_protected` = 1
+    AND `c`.`module_id` = 'blog'
+    AND `c`.`code` = 'blog.articles.delete'
+    AND `c`.`label_key` = 'blog.capabilities.articles_delete'
+    AND `c`.`is_delegable` = 1
+ON DUPLICATE KEY UPDATE
+    `role_id` = VALUES(`role_id`)
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteArticleDeleteCapabilityStatements(): array
+    {
+        return [
+            <<<'SQL'
+INSERT INTO {{table:capabilities}}
+    ("module_id", "code", "label_key", "is_delegable")
+VALUES
+    ('blog', 'blog.articles.delete', 'blog.capabilities.articles_delete', 1)
+ON CONFLICT("code") DO NOTHING
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:role_capabilities}} ("role_id", "capability_id")
+SELECT "r"."id", "c"."id"
+FROM {{table:roles}} AS "r"
+CROSS JOIN {{table:capabilities}} AS "c"
+WHERE "r"."code" IN ('system_superadmin', 'site_admin')
+    AND "r"."is_protected" = 1
+    AND "c"."module_id" = 'blog'
+    AND "c"."code" = 'blog.articles.delete'
+    AND "c"."label_key" = 'blog.capabilities.articles_delete'
+    AND "c"."is_delegable" = 1
+ON CONFLICT("role_id", "capability_id") DO NOTHING
+SQL,
+        ];
     }
 
     /** @return list<string> */

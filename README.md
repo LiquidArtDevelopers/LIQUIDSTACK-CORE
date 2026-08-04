@@ -161,6 +161,8 @@ composer liquidstack:webadmin:bootstrap
 composer liquidstack:webadmin:bootstrap --resend-invites
 composer liquidstack:webadmin:mail:dispatch
 composer liquidstack:webadmin:mail:dispatch --limit=20 --format=json
+composer liquidstack:blog:analytics:purge --yes
+composer liquidstack:blog:analytics:purge --yes --format=json
 ```
 
 `doctor` valida el catálogo, la selección, los providers tipados, la
@@ -453,8 +455,15 @@ independientes por idioma con slug, H1, title SEO, description, extracto,
 estado y versión de concurrencia. `0003_blog_categories` y
 `0004_blog_category_capabilities` añaden categorías localizadas, asignaciones y
 capacidades separadas. La UI vive bajo el prefijo WebAdmin efectivo
-(`/admin/blog` por defecto), no permite borrado y exige retirar una variante
-publicada antes de volver a editarla.
+(`/admin/blog` por defecto), permite duplicar como borrador y ofrece una
+papelera recuperable bajo `blog.articles.delete`. No existe borrado permanente
+de artículos: una variante publicada debe retirarse explícitamente antes de
+enviarla a la papelera.
+
+La analítica opcional del Blog es first-party, depende del consentimiento y no
+persiste IP, User-Agent ni referrer. Cada evento parte de un grant efímero
+firmado en el render SSR; el navegador no decide la URL, la localización ni el
+identificador de vista que se contabiliza.
 
 Las pantallas administrativas de gestión de WebAdmin y Blog comparten un shell
 de ancho completo con navegación lateral filtrada por capacidades, un único `main` y un

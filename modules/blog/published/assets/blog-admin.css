@@ -7,6 +7,65 @@
     gap: clamp(1.25rem, 3vw, 2.25rem);
 }
 
+.webadmin .blogAdminPage--index {
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+}
+
+.webadmin .blogAdminPage__primaryAction {
+    width: fit-content;
+}
+
+.webadmin .blogAdminPage__trashLink {
+    width: fit-content;
+    margin-block-start: -1rem;
+}
+
+.webadmin .blogAdminPage__primaryAction a {
+    min-height: 2.75rem;
+    padding: 0.7rem 1rem;
+    display: inline-flex;
+    align-items: center;
+    color: var(--ls-webadmin-surface-strong);
+    border-radius: 0.5rem;
+    background: var(--ls-webadmin-accent);
+    text-decoration: none;
+}
+
+.webadmin .blogAdminPage__analyticsFilter {
+    max-width: 32rem;
+    margin: 0;
+    display: grid;
+    grid-template-columns: minmax(10rem, 1fr) minmax(8rem, auto) auto;
+    align-items: end;
+    gap: 0.75rem;
+}
+
+.webadmin .blogAdminPage__analyticsFilter label {
+    grid-column: 1 / -1;
+}
+
+.webadmin .blogAdminPage__analyticsFilter select {
+    min-width: 0;
+}
+
+.webadmin .blogAdminPage__analyticsNotice {
+    color: var(--ls-webadmin-muted);
+    font-size: 0.9rem;
+}
+
+.webadmin .blogAdminPage__tableViewport {
+    width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    background: var(--ls-webadmin-surface-strong);
+}
+
+.webadmin .blogAdminPage__tableViewport:focus-visible {
+    outline-offset: 0.25rem;
+}
+
 .webadmin .blogAdminPage > h1 {
     max-width: 24ch;
     margin: 0;
@@ -67,6 +126,12 @@
     background: var(--ls-webadmin-surface-strong);
 }
 
+.webadmin .blogAdminPage--index table {
+    min-width: 75rem;
+    margin: 0;
+    display: table;
+}
+
 .webadmin .blogAdminPage table caption {
     padding-block-end: 0.75rem;
     color: var(--ls-webadmin-muted);
@@ -86,6 +151,107 @@
     max-width: 32rem;
 }
 
+.webadmin .blogAdminPage__locale {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    white-space: nowrap;
+}
+
+.webadmin .blogAdminPage__locale img {
+    width: 1.5rem;
+    height: 1.125rem;
+    display: block;
+    object-fit: cover;
+    box-shadow: 0 0 0 1px var(--ls-webadmin-border);
+}
+
+.webadmin .blogAdminPage__localeFallback {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: inline-grid;
+    place-items: center;
+    color: var(--ls-webadmin-muted);
+}
+
+.webadmin .blogAdminPage__rowActions {
+    min-width: 24rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.webadmin .blogAdminPage__inlineAction {
+    width: auto;
+    margin: 0;
+    display: inline-flex;
+}
+
+.webadmin .blogAdminPage__action {
+    min-height: 2.35rem;
+    padding: 0.5rem 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ls-webadmin-accent);
+    font-size: 0.86rem;
+    font-weight: 750;
+    line-height: 1.2;
+    border: 1px solid var(--ls-webadmin-border);
+    border-radius: 0.45rem;
+    background: var(--ls-webadmin-surface-strong);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.webadmin .blogAdminPage__action:not(.blogAdminPage__action--disabled):hover {
+    color: var(--ls-webadmin-surface-strong);
+    background: var(--ls-webadmin-accent-hover);
+}
+
+.webadmin .blogAdminPage__action--edit {
+    color: var(--ls-webadmin-surface-strong);
+    border-color: var(--ls-webadmin-accent);
+    background: var(--ls-webadmin-accent);
+}
+
+.webadmin button.blogAdminPage__action--duplicate {
+    color: var(--ls-webadmin-accent);
+    border: 1px solid var(--ls-webadmin-border);
+    border-radius: 0.45rem;
+    background: var(--ls-webadmin-surface-strong);
+}
+
+.webadmin button.blogAdminPage__action--delete {
+    color: var(--ls-webadmin-danger);
+    border: 1px solid currentColor;
+    border-radius: 0.45rem;
+    background: transparent;
+}
+
+.webadmin button.blogAdminPage__action--delete:hover {
+    color: var(--ls-webadmin-surface-strong);
+    background: var(--ls-webadmin-danger);
+}
+
+.webadmin .blogAdminPage__readOnly {
+    color: var(--ls-webadmin-muted);
+    font-size: 0.86rem;
+}
+
+.webadmin .blogAdminPage__action--disabled {
+    color: var(--ls-webadmin-muted);
+    border-style: dashed;
+    cursor: not-allowed;
+    opacity: 0.72;
+}
+
+.webadmin .blogAdminPage__action--disabled small {
+    margin-inline-start: 0.4rem;
+    font-size: 0.72rem;
+}
+
 .webadmin .blogAdminPage table a,
 .webadmin .blogAdminPage > p > a,
 .webadmin .blogAdminPage nav a {
@@ -93,10 +259,6 @@
 }
 
 @media (max-width: 52rem) {
-    .webadmin .blogAdminPage {
-        overflow-x: auto;
-    }
-
     .webadmin .blogAdminPage > form,
     .webadmin .blogAdminPage > [aria-label='Contenido publicado'] {
         padding: 1rem;

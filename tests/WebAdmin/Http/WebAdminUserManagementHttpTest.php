@@ -439,6 +439,18 @@ final class WebAdminUserManagementHttpTest extends TestCase
             ],
             [
                 'blog',
+                'blog.articles.delete',
+                'blog.capabilities.articles_delete',
+                'Enviar artículos del Blog a la papelera y restaurarlos',
+            ],
+            [
+                'blog',
+                'blog.analytics.view',
+                'blog.capabilities.analytics_view',
+                'Consultar analítica del Blog',
+            ],
+            [
+                'blog',
                 'blog.categories.view',
                 'blog.capabilities.categories_view',
                 'Consultar categorías del Blog',

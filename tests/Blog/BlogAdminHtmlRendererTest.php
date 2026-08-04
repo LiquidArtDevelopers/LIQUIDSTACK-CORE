@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Core\Blog\Analytics\BlogArticleAnalyticsSummary;
 use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogPostSummary;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Http\BlogAdminHtmlRenderer;
+use App\Core\Blog\Http\BlogLocalePresentation;
 use PHPUnit\Framework\TestCase;
 
 final class BlogAdminHtmlRendererTest extends TestCase
@@ -44,7 +46,26 @@ final class BlogAdminHtmlRendererTest extends TestCase
         );
         self::assertStringContainsString('/admin/blog/editor/preview', $html);
         self::assertStringContainsString('/admin/blog/editor?', $html);
-        self::assertStringContainsString('Vista previa guardada', $html);
+        self::assertStringContainsString('Vista previa', $html);
+        self::assertStringContainsString('>Editar</a>', $html);
+        self::assertStringContainsString('T&iacute;tulo', $html);
+        self::assertStringNotContainsString('scope="col">H1', $html);
+        self::assertStringContainsString(
+            '/assets/modules/blog/flags/es.svg',
+            $html
+        );
+        self::assertStringContainsString(
+            BlogLocalePresentation::label('es'),
+            $html
+        );
+        self::assertStringContainsString(
+            'blogAdminPage blogAdminPage--index',
+            $html
+        );
+        self::assertStringContainsString(
+            'blogAdminPage__tableViewport',
+            $html
+        );
         self::assertStringContainsString('/admin/blog/posts/new', $html);
     }
 
@@ -332,6 +353,218 @@ final class BlogAdminHtmlRendererTest extends TestCase
             '/admin/blog/posts/new',
             $withoutMedia
         );
+    }
+
+    public function testListDistinguishesPublicViewAndDraftPreviewAndOffersActions(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $draft = new BlogPostSummary(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'eu',
+            'matrix-zirriborroa',
+            'Matrix zirriborroa',
+            BlogPostVariant::DRAFT,
+            null,
+            2,
+            $now
+        );
+        $published = new BlogPostSummary(
+            '33333333-3333-4333-8333-333333333333',
+            '44444444-4444-4444-8444-444444444444',
+            'en',
+            'neo-awakens',
+            'Neo awakens',
+            BlogPostVariant::PUBLISHED,
+            $now,
+            4,
+            $now
+        );
+
+        $html = (new BlogAdminHtmlRenderer())->index(
+            '/admin/blog',
+            [$draft, $published],
+            true,
+            canPublish: true,
+            canViewMedia: true,
+            publicPaths: [
+                'eu' => '/eu/albisteak',
+                'en' => '/en/news',
+            ],
+            csrf: 'csrf-safe',
+            canDelete: true,
+            canDuplicate: true
+        );
+
+        self::assertStringContainsString('>Vista previa</a>', $html);
+        self::assertStringContainsString(
+            'href="/en/news/neo-awakens"',
+            $html
+        );
+        self::assertStringContainsString('>Vista web</a>', $html);
+        self::assertSame(2, substr_count(
+            $html,
+            'action="/admin/blog/posts/duplicate"'
+        ));
+        self::assertSame(1, substr_count(
+            $html,
+            'action="/admin/blog/posts/trash"'
+        ));
+        self::assertStringContainsString('>Duplicar</button>', $html);
+        self::assertStringContainsString('>Borrar</button>', $html);
+        self::assertStringContainsString('Retira primero</small>', $html);
+        self::assertStringContainsString(
+            '/assets/modules/blog/flags/es-pv.svg',
+            $html
+        );
+        self::assertStringContainsString('Euskera', $html);
+        self::assertStringContainsString(
+            '/assets/modules/blog/flags/gb.svg',
+            $html
+        );
+        self::assertStringContainsString(
+            BlogLocalePresentation::label('en'),
+            $html
+        );
+    }
+
+    public function testTrashListsRecoverableDraftsWithCsrfProtectedRestore(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $summary = new BlogPostSummary(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            'matrix',
+            'Matrix recuperable',
+            BlogPostVariant::DRAFT,
+            null,
+            7,
+            $now
+        );
+
+        $html = (new BlogAdminHtmlRenderer())->trash(
+            '/admin/blog',
+            [$summary],
+            0,
+            false,
+            'csrf-trash'
+        );
+
+        self::assertStringContainsString('Papelera del Blog', $html);
+        self::assertStringContainsString('Matrix recuperable', $html);
+        self::assertStringContainsString(
+            'action="/admin/blog/posts/restore"',
+            $html
+        );
+        self::assertStringContainsString(
+            'name="csrf" value="csrf-trash"',
+            $html
+        );
+        self::assertStringContainsString(
+            'name="lock_version" value="7"',
+            $html
+        );
+        self::assertStringContainsString('>Restaurar</button>', $html);
+    }
+
+    public function testListShowsConsentedAnalyticsWithExplicitBlogDefinitions(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $summary = new BlogPostSummary(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            'matrix',
+            'Matrix',
+            BlogPostVariant::PUBLISHED,
+            $now,
+            2,
+            $now
+        );
+        $metric = new BlogArticleAnalyticsSummary(
+            $summary->localizationPublicId(),
+            125,
+            80,
+            21,
+            65_000,
+            50,
+            38
+        );
+
+        $html = (new BlogAdminHtmlRenderer())->index(
+            '/admin/blog',
+            [$summary],
+            true,
+            canPublish: true,
+            canViewMedia: true,
+            analyticsByLocalization: [
+                $summary->localizationPublicId() => $metric,
+            ],
+            showAnalytics: true,
+            analyticsPeriodDays: 90,
+            hasNext: true
+        );
+
+        foreach ([
+            'Visitas',
+            'Visitantes &uacute;nicos',
+            'Habituales',
+            'Interacci&oacute;n media',
+            'Rebote del Blog',
+            '>125</td>',
+            '>80</td>',
+            '>21</td>',
+            '>1 min 05 s</td>',
+            '>24,0%</td>',
+            'visitantes que han aceptado',
+            'no se guarda la IP',
+            'id="blog-analytics-bounce-help"',
+            '?period=90&amp;offset=50',
+        ] as $expected) {
+            self::assertStringContainsString($expected, $html);
+        }
+    }
+
+    public function testAnalyticsWithoutLandingSessionsDoesNotClaimZeroBounce(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $summary = new BlogPostSummary(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            'matrix',
+            'Matrix',
+            BlogPostVariant::DRAFT,
+            null,
+            1,
+            $now
+        );
+        $metric = new BlogArticleAnalyticsSummary(
+            $summary->localizationPublicId(),
+            1,
+            1,
+            0,
+            0,
+            0,
+            0
+        );
+
+        $html = (new BlogAdminHtmlRenderer())->index(
+            '/admin/blog',
+            [$summary],
+            false,
+            analyticsByLocalization: [
+                $summary->localizationPublicId() => $metric,
+            ],
+            showAnalytics: true
+        );
+
+        self::assertStringContainsString(
+            'aria-label="Sin sesiones de entrada">&mdash;',
+            $html
+        );
+        self::assertStringNotContainsString('>0,0%</td>', $html);
     }
 
     public function testPublishedVariantMustBeWithdrawnBeforeEditing(): void

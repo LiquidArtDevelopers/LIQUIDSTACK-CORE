@@ -42,14 +42,18 @@ final class BlogCategoryMigrationPostconditionVerifier implements
         private readonly MySqlColumnDefaultNormalizer $defaultNormalizer =
             new MySqlColumnDefaultNormalizer(),
         bool $expectStructuredContentExtension = false,
-        bool $expectSitemapStateExtension = false
+        bool $expectSitemapStateExtension = false,
+        bool $expectPostTombstoneExtension = false,
+        bool $expectAnalyticsExtension = false
     ) {
         $this->baseVerifier = $baseVerifier
             ?? new BlogMigrationPostconditionVerifier(
                 expectCategoryExtension: true,
                 expectStructuredContentExtension:
                     $expectStructuredContentExtension,
-                expectSitemapStateExtension: $expectSitemapStateExtension
+                expectSitemapStateExtension: $expectSitemapStateExtension,
+                expectPostTombstoneExtension: $expectPostTombstoneExtension,
+                expectAnalyticsExtension: $expectAnalyticsExtension
             );
     }
 

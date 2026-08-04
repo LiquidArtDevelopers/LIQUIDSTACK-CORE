@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Blog\Http;
 
 use App\Core\Blog\Audit\WebAdminBlogMutationAuditAdapter;
+use App\Core\Blog\Analytics\PdoBlogAnalyticsRepository;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Categories\BlogCategoryService;
 use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
@@ -28,7 +29,10 @@ use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Modules\Blog\BlogHttpSchemaGate;
 use App\Core\Modules\Blog\BlogCategoryHttpSchemaGate;
+use App\Core\Modules\Blog\BlogPostTombstoneSchemaGate;
+use App\Core\Modules\Blog\BlogMigrationRequirements;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
+use App\Core\Modules\Migrations\MigrationFeatureGate;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
@@ -70,11 +74,13 @@ final class BlogAdminHttpRuntimeFactory implements
     private readonly BlogCategoryHttpSchemaGate $categorySchemaGate;
     private readonly WebAdminHttpSchemaGate $webAdminSchemaGate;
     private readonly WebAdminMediaHttpSchemaGate $webAdminMediaSchemaGate;
+    private readonly BlogPostTombstoneSchemaGate $postTombstoneSchemaGate;
     private readonly ClockInterface $clock;
     private readonly UuidGeneratorInterface $uuidGenerator;
     private readonly SecureTokenGenerator $tokenGenerator;
     private readonly BlogSitemapPublicationCoordinatorFactory
         $sitemapCoordinatorFactory;
+    private readonly MigrationFeatureGate $migrationFeatureGate;
 
     /**
      * @param null|callable(array<string, mixed>, string): PdoConnectionFactoryInterface $connectionFactoryResolver
@@ -93,7 +99,9 @@ final class BlogAdminHttpRuntimeFactory implements
         ?SecureTokenGenerator $tokenGenerator = null,
         ?BlogSitemapPublicationCoordinatorFactory
             $sitemapCoordinatorFactory = null,
-        ?BlogCategoryHttpSchemaGate $categorySchemaGate = null
+        ?BlogCategoryHttpSchemaGate $categorySchemaGate = null,
+        ?BlogPostTombstoneSchemaGate $postTombstoneSchemaGate = null,
+        ?MigrationFeatureGate $migrationFeatureGate = null
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
             ? static fn (
@@ -129,6 +137,10 @@ final class BlogAdminHttpRuntimeFactory implements
             ?? new BlogSitemapPublicationCoordinatorFactory();
         $this->categorySchemaGate = $categorySchemaGate
             ?? new BlogCategoryHttpSchemaGate();
+        $this->postTombstoneSchemaGate = $postTombstoneSchemaGate
+            ?? new BlogPostTombstoneSchemaGate();
+        $this->migrationFeatureGate = $migrationFeatureGate
+            ?? new MigrationFeatureGate();
     }
 
     public function create(
@@ -273,10 +285,28 @@ final class BlogAdminHttpRuntimeFactory implements
                 $this->tokenGenerator,
                 $passwordHasher
             );
-            $blogRepository = new PdoBlogRepository($pdo, $blogScope);
+            $postTombstonesReady = $this->postTombstoneSchemaGate->isReady(
+                $pdo,
+                $registry,
+                $scopes
+            ) && $this->migrationFeatureGate->isReady(
+                $pdo,
+                $registry,
+                $scopes,
+                BlogMigrationRequirements::editorialActions()
+            );
+            $blogRepository = new PdoBlogRepository(
+                $pdo,
+                $blogScope,
+                $postTombstonesReady
+            );
             $contentRepository = new PdoBlogStructuredContentRepository(
                 $pdo,
                 $blogScope
+            );
+            $mediaAvailability = new PdoWebAdminMediaAvailabilityAdapter(
+                $pdo,
+                $webAdminScope
             );
             $audit = new WebAdminBlogMutationAuditAdapter(
                 $pdo,
@@ -308,15 +338,14 @@ final class BlogAdminHttpRuntimeFactory implements
                     $pdo,
                     $contentRepository
                 ),
-                sitemapPublicationCoordinator: $sitemapCoordinator
+                sitemapPublicationCoordinator: $sitemapCoordinator,
+                structuredContentRepository: $contentRepository,
+                mediaAvailability: $mediaAvailability
             );
             $structuredEditor = new BlogStructuredEditorService(
                 $blogRepository,
                 $contentRepository,
-                new PdoWebAdminMediaAvailabilityAdapter(
-                    $pdo,
-                    $webAdminScope
-                ),
+                $mediaAvailability,
                 $this->uuidGenerator,
                 $this->clock,
                 $audit
@@ -335,7 +364,19 @@ final class BlogAdminHttpRuntimeFactory implements
                     )
                     : null;
 
-            return new BlogAdminHttpRuntime(
+            $analyticsReport = $this->migrationFeatureGate->isReady(
+                $pdo,
+                $registry,
+                $scopes,
+                BlogMigrationRequirements::analyticsAdministration()
+            )
+                ? new PdoBlogAnalyticsRepository($pdo, $blogScope)
+                : null;
+            $runtimeClass = $analyticsReport === null
+                ? BlogAdminHttpRuntime::class
+                : BlogAnalyticsAdminHttpRuntime::class;
+
+            return new $runtimeClass(
                 $projectRoot,
                 $languages,
                 $blogConfig,
@@ -362,7 +403,8 @@ final class BlogAdminHttpRuntimeFactory implements
                     new BlogSeoStaticPageInventory($projectRoot)
                 ),
                 WebAdminNavigationCatalogFactory::fromRegistry($registry),
-                $editorCategoryCatalog
+                $editorCategoryCatalog,
+                $analyticsReport
             );
         } catch (BlogAdminHttpRuntimeException $exception) {
             throw $exception;

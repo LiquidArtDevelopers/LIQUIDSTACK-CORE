@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Core\Modules\Blog\BlogHttpSchemaGate;
 use App\Core\Modules\Blog\BlogCategoryHttpSchemaGate;
+use App\Core\Modules\Blog\BlogPostTombstoneSchemaGate;
+use App\Core\Modules\Blog\BlogStructuredContentSchemaGate;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationCatalog;
 use App\Core\Modules\Migrations\MigrationRunner;
@@ -83,6 +85,54 @@ final class BlogHttpSchemaGateTest extends TestCase
         ));
     }
 
+    public function testExtendedSchemaGatesAcceptTheAnalyticsNamespace(): void
+    {
+        self::assertTrue((new BlogCategoryHttpSchemaGate())->isReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+        self::assertTrue((new BlogStructuredContentSchemaGate())->isReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+        self::assertTrue((new BlogPostTombstoneSchemaGate())->isReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+
+        $this->pdo->exec('DROP INDEX ls_blog_ix_pt_time');
+        self::assertFalse((new BlogPostTombstoneSchemaGate())->isReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+    }
+
+    public function testTombstoneGateRequiresItsRecordedMigration(): void
+    {
+        $this->pdo->exec(
+            "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
+                . "AND migration_id IN ('0007_blog_post_tombstones', "
+                . "'0008_blog_article_delete_capability', "
+                . "'0009_blog_analytics', "
+                . "'0010_blog_analytics_view_capability')"
+        );
+
+        self::assertFalse((new BlogPostTombstoneSchemaGate())->isReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+        self::assertTrue((new BlogHttpSchemaGate())->isPublicReady(
+            $this->pdo,
+            $this->registry,
+            $this->scopes
+        ));
+    }
+
     public function testMissingCapabilityAndWrongScopeFailClosed(): void
     {
         $this->pdo->exec(
@@ -111,9 +161,12 @@ final class BlogHttpSchemaGateTest extends TestCase
             "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
             . "AND migration_id IN ('0002_blog_capabilities', "
             . "'0003_blog_categories', '0004_blog_category_capabilities', "
-            . "'0005_blog_structured_content')"
-            . " OR (module_id = 'blog' AND migration_id = "
-            . "'0006_blog_sitemap_publication_state')"
+            . "'0005_blog_structured_content', "
+            . "'0006_blog_sitemap_publication_state', "
+            . "'0007_blog_post_tombstones', "
+            . "'0008_blog_article_delete_capability', "
+            . "'0009_blog_analytics', "
+            . "'0010_blog_analytics_view_capability')"
         );
         self::assertFalse((new BlogHttpSchemaGate())->isReady(
             $this->pdo,
@@ -135,9 +188,12 @@ final class BlogHttpSchemaGateTest extends TestCase
             "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
             . "AND migration_id IN ('0002_blog_capabilities', "
             . "'0003_blog_categories', '0004_blog_category_capabilities', "
-            . "'0005_blog_structured_content')"
-            . " OR (module_id = 'blog' AND migration_id = "
-            . "'0006_blog_sitemap_publication_state')"
+            . "'0005_blog_structured_content', "
+            . "'0006_blog_sitemap_publication_state', "
+            . "'0007_blog_post_tombstones', "
+            . "'0008_blog_article_delete_capability', "
+            . "'0009_blog_analytics', "
+            . "'0010_blog_analytics_view_capability')"
         );
         $gate = new BlogHttpSchemaGate();
 
@@ -167,9 +223,12 @@ final class BlogHttpSchemaGateTest extends TestCase
         $this->pdo->exec(
             "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
             . "AND migration_id IN ('0004_blog_category_capabilities', "
-            . "'0005_blog_structured_content')"
-            . " OR (module_id = 'blog' AND migration_id = "
-            . "'0006_blog_sitemap_publication_state')"
+            . "'0005_blog_structured_content', "
+            . "'0006_blog_sitemap_publication_state', "
+            . "'0007_blog_post_tombstones', "
+            . "'0008_blog_article_delete_capability', "
+            . "'0009_blog_analytics', "
+            . "'0010_blog_analytics_view_capability')"
         );
         self::assertFalse($categoryGate->isReady(
             $this->pdo,
@@ -199,9 +258,12 @@ final class BlogHttpSchemaGateTest extends TestCase
             "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
             . "AND migration_id IN ('0003_blog_categories', "
             . "'0004_blog_category_capabilities', "
-            . "'0005_blog_structured_content')"
-            . " OR (module_id = 'blog' AND migration_id = "
-            . "'0006_blog_sitemap_publication_state')"
+            . "'0005_blog_structured_content', "
+            . "'0006_blog_sitemap_publication_state', "
+            . "'0007_blog_post_tombstones', "
+            . "'0008_blog_article_delete_capability', "
+            . "'0009_blog_analytics', "
+            . "'0010_blog_analytics_view_capability')"
         );
         $this->pdo->exec(
             "DELETE FROM ls_webadmin_capabilities WHERE code IN "

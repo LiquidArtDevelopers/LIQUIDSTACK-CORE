@@ -6,6 +6,10 @@
     var TRIGGER_SELECTOR = '[data-blog-youtube-play]';
     var FRAME_SELECTOR = '[data-blog-youtube-frame]';
     var CONSENT_EVENT = 'cookielad:consent-change';
+    var ANALYTICS_RUNTIME_KEY = 'LiquidStackBlogAnalytics';
+    var ANALYTICS_SCRIPT_ID = 'liquidstack-blog-analytics';
+    var ANALYTICS_SCRIPT = '/assets/modules/blog/blog-analytics.js';
+    var ANALYTICS_MARKER = '[data-blog-analytics-enabled="true"]';
     var MAX_START_SECONDS = 86400;
     var VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 
@@ -42,6 +46,57 @@
 
     function hasSocialConsent() {
         return readCookie('cookie_social') === 'true';
+    }
+
+    function hasAnalyticsConsent() {
+        return readCookie('cookie_analytics') === 'true';
+    }
+
+    function clearAnalyticsIdentityCookies() {
+        var suffix = '; Path=/; Max-Age=0; SameSite=Lax'
+            + (windowRef.location.protocol === 'https:' ? '; Secure' : '');
+        documentRef.cookie = 'LS_BLOG_AV=' + suffix;
+        documentRef.cookie = 'LS_BLOG_AS=' + suffix;
+    }
+
+    function removeAnalyticsScript() {
+        var script = documentRef.getElementById(ANALYTICS_SCRIPT_ID);
+        if (script && typeof script.remove === 'function') {
+            script.remove();
+        }
+    }
+
+    function syncAnalyticsConsent() {
+        var marker = documentRef.querySelector(ANALYTICS_MARKER);
+        var runtime = windowRef[ANALYTICS_RUNTIME_KEY];
+        var pageGrant = marker
+            ? String(marker.getAttribute(
+                'data-blog-analytics-page-grant'
+            ) || '').trim()
+            : '';
+        var hasPageGrant = pageGrant.length <= 1024
+            && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/.test(pageGrant);
+        if (!marker || !hasPageGrant || !hasAnalyticsConsent()) {
+            if (runtime && typeof runtime.revoke === 'function') {
+                runtime.revoke();
+            }
+            clearAnalyticsIdentityCookies();
+            removeAnalyticsScript();
+            return;
+        }
+        if (runtime && typeof runtime.syncConsent === 'function') {
+            runtime.syncConsent();
+            return;
+        }
+        if (documentRef.getElementById(ANALYTICS_SCRIPT_ID)) {
+            return;
+        }
+        var script = documentRef.createElement('script');
+        script.id = ANALYTICS_SCRIPT_ID;
+        script.src = ANALYTICS_SCRIPT;
+        script.async = true;
+        script.setAttribute('data-liquidstack-blog-analytics', '');
+        (documentRef.head || documentRef.documentElement).appendChild(script);
     }
 
     function eventTargetElement(event) {
@@ -222,6 +277,11 @@
             listener
         );
         windowRef.addEventListener(
+            CONSENT_EVENT,
+            syncAnalyticsConsent,
+            listener
+        );
+        windowRef.addEventListener(
             'focus',
             removeFramesWithoutConsent,
             listener
@@ -238,6 +298,7 @@
         }, listener);
 
         removeFramesWithoutConsent();
+        syncAnalyticsConsent();
         return destroy;
     }
 
@@ -249,6 +310,12 @@
         Array.from(mounted.keys()).forEach(unmount);
         mounted.clear();
 
+        var analytics = windowRef[ANALYTICS_RUNTIME_KEY];
+        if (analytics && typeof analytics.destroy === 'function') {
+            analytics.destroy();
+        }
+        removeAnalyticsScript();
+
         if (windowRef[RUNTIME_KEY] === runtime) {
             delete windowRef[RUNTIME_KEY];
         }
@@ -257,7 +324,10 @@
     var runtime = {
         init: init,
         destroy: destroy,
-        syncConsent: removeFramesWithoutConsent
+        syncConsent: function () {
+            removeFramesWithoutConsent();
+            syncAnalyticsConsent();
+        }
     };
     windowRef[RUNTIME_KEY] = runtime;
     init();

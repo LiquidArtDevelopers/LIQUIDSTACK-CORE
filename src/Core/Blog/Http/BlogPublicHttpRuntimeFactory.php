@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Blog\Http;
 
+use App\Core\Blog\Analytics\BlogAnalyticsPageGrantCodec;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Categories\BlogCategoryPublicProjectionService;
 use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
@@ -16,10 +17,12 @@ use App\Core\Blog\PublicDelivery\PdoBlogPublicMediaRepository;
 use App\Core\Blog\StructuredContent\Persistence\PdoBlogStructuredContentRepository;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
+use App\Core\Environment\ProjectRuntimeProfile;
 use App\Core\Modules\Blog\BlogHttpSchemaGate;
 use App\Core\Modules\Blog\BlogCategoryHttpSchemaGate;
 use App\Core\Modules\Blog\BlogMigrationRequirements;
 use App\Core\Modules\Blog\BlogStructuredContentSchemaGate;
+use App\Core\Modules\Blog\BlogPostTombstoneSchemaGate;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationFeatureGate;
 use App\Core\Modules\ModuleRegistry;
@@ -27,6 +30,9 @@ use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Modules\ConfiguredModuleDatabaseConnectionResolver;
 use App\Core\Modules\WebAdmin\WebAdminMediaHttpSchemaGate;
 use App\Core\WebAdmin\Media\PrivateMediaStorage;
+use App\Core\WebAdmin\Configuration\WebAdminConfig;
+use App\Core\WebAdmin\Security\InvalidSecurityKey;
+use App\Core\WebAdmin\Security\SecurityKey;
 use Closure;
 use Throwable;
 
@@ -58,7 +64,9 @@ final class BlogPublicHttpRuntimeFactory implements
         private readonly WebAdminMediaHttpSchemaGate $mediaSchemaGate =
             new WebAdminMediaHttpSchemaGate(),
         private readonly MigrationFeatureGate $migrationFeatureGate =
-            new MigrationFeatureGate()
+            new MigrationFeatureGate(),
+        private readonly BlogPostTombstoneSchemaGate $postTombstoneSchemaGate =
+            new BlogPostTombstoneSchemaGate()
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
             ? static fn (
@@ -214,19 +222,82 @@ final class BlogPublicHttpRuntimeFactory implements
                 }
             }
 
+            $analyticsCollectionReady = false;
+            $analyticsPageGrants = null;
+            $analyticsSecurityKey = $this->securityKey(
+                $context->environment()
+            );
+            if (
+                $config->analytics()->enabled()
+                && $this->analyticsEnvironmentAllowsCollection(
+                    $context,
+                    $config->analytics()->collectInDevelopment()
+                )
+                && $this->migrationFeatureGate->isReady(
+                    $pdo,
+                    $registry,
+                    $scopes,
+                    BlogMigrationRequirements::analyticsCollection()
+                )
+                && $analyticsSecurityKey instanceof SecurityKey
+            ) {
+                $analyticsCollectionReady = true;
+                $analyticsPageGrants = new BlogAnalyticsPageGrantCodec(
+                    $analyticsSecurityKey,
+                    $origin
+                );
+            }
+
             return new BlogPublicHttpRuntime(
                 $config,
                 $origin,
-                new BlogService(new PdoBlogRepository($pdo, $blogScope)),
+                new BlogService(new PdoBlogRepository(
+                    $pdo,
+                    $blogScope,
+                    $this->postTombstoneSchemaGate->isReady(
+                        $pdo,
+                        $registry,
+                        $scopes
+                    )
+                )),
                 $structuredContent,
                 $mediaDelivery,
                 $categoryProjection,
-                $catalogRepository
+                $catalogRepository,
+                $analyticsCollectionReady,
+                $analyticsPageGrants
             );
         } catch (BlogPublicHttpRuntimeException $exception) {
             throw $exception;
         } catch (Throwable) {
             throw new BlogPublicHttpRuntimeException();
+        }
+    }
+
+    private function analyticsEnvironmentAllowsCollection(
+        ModuleRuntimeContext $context,
+        bool $collectInDevelopment
+    ): bool {
+        $profile = ProjectRuntimeProfile::fromEnvironment(
+            $context->environment()
+        );
+
+        return !$profile->isDevelopmentLoopbackHttp()
+            || $collectInDevelopment;
+    }
+
+    /** @param array<string, mixed> $environment */
+    private function securityKey(array $environment): ?SecurityKey
+    {
+        $encoded = $environment[WebAdminConfig::SECURITY_KEY_ENV] ?? null;
+        if (!is_string($encoded) || $encoded === '') {
+            return null;
+        }
+
+        try {
+            return SecurityKey::fromBase64Url($encoded);
+        } catch (InvalidSecurityKey) {
+            return null;
         }
     }
 }

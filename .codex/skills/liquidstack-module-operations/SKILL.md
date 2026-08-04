@@ -365,7 +365,10 @@ composer liquidstack:migrate --dry-run
   declarar `public_paths` por cada idioma activo, `sitemap_path`, el prefijo de
   tablas, la vista opcional `public_article_view` y el opt-in
   `sitemap_cache.enabled` con `ttl_seconds` entre 30 y 3.600. La caché LKG
-  permanece desactivada por defecto. La vista debe usar una
+  permanece desactivada por defecto. También puede declarar el opt-in
+  `analytics.enabled`, `retention_days` entre 30 y 400,
+  `session_timeout_seconds` entre 300 y 28.800 y `collect_in_dev`; la analítica
+  permanece desactivada por defecto y Composer no debe activarla. La vista debe usar una
   ruta relativa `App/views/...php`, regular, legible, contenida y sin symlinks;
   recibe `$blogArticle` como `BlogPublicArticleViewModel`, debe escapar sus
   escalares por contexto y solo puede imprimir directamente las proyecciones
@@ -373,6 +376,13 @@ composer liquidstack:migrate --dry-run
   completo, incluida la portada; las vistas nuevas deben colocar
   `headerMediaHtml()` en su `header` y `mainHtml()` dentro de su `main`, sin
   duplicar el medio destacado.
+  Si `analyticsEnabled()` es verdadero, una vista project-owned debe emitir
+  los atributos `data-blog-analytics-enabled`,
+  `data-blog-analytics-retention-days` y
+  `data-blog-analytics-session-timeout`, además del valor escapado de
+  `data-blog-analytics-page-grant` obtenido mediante
+  `analyticsPageGrant()`; sin ese marcador completo no se carga el tracker.
+  Debe permitir `connect-src 'self'` en su CSP.
   `alternateUrls()` contiene únicamente variantes publicadas para SEO y
   `languageNavigationUrls()` usa el índice localizado cuando falta traducción.
   El
@@ -421,10 +431,15 @@ composer liquidstack:migrate --dry-run
   `--backup-confirmed` con la creación del backup. Repetir el bootstrap es
   obligatorio al añadir Blog a un WebAdmin ya inicializado para completar de
   forma idempotente las capacidades de las cuentas protegidas.
-- Mantener separados `blog.articles.view`, `blog.articles.edit` y
-  `blog.articles.publish`. Ocultar botones no sustituye el gate transaccional:
+- Mantener separados `blog.articles.view`, `blog.articles.edit`,
+  `blog.articles.publish`, `blog.articles.delete` y `blog.analytics.view`.
+  Ocultar botones no sustituye el gate transaccional:
   SID, CSRF, lifecycle, `auth_version` y capability deben revalidarse con el
   mismo PDO y dentro de la transacción Blog.
+- Duplicar un artículo conserva sus categorías, por lo que debe revalidar
+  juntos `blog.articles.edit`, `blog.categories.edit` y
+  `webadmin.media.view`. No permitir que la clonación eluda la capacidad de
+  asignar categorías.
 - Servir las vistas previas y revisiones solo dentro del prefijo privado de
   WebAdmin y con `blog.articles.view` más `webadmin.media.view` cuando se use el
   editor estructurado. No convertirlas en URLs compartibles ni emitir
@@ -433,7 +448,9 @@ composer liquidstack:migrate --dry-run
   editorial en GET o HEAD.
 - Conservar el agregado y cada variante por idioma como unidades estables. En
   el MVP solo existen `draft` y `published`; una variante publicada se retira
-  antes de editarla, cada escritura usa `lock_version` y no existe borrado HTTP.
+  antes de editarla o enviarla a la papelera. La papelera usa POST, CSRF,
+  `blog.articles.delete`, tombstone y `lock_version`; es recuperable y no
+  existe borrado permanente de artículos.
 - Tratar `0003_blog_categories` y `0004_blog_category_capabilities` como las
   fronteras ya implementadas de categorías localizadas, asignaciones y sus
   capacidades. La proyección pública exige `0001+0003`; la administración
@@ -645,12 +662,36 @@ composer liquidstack:migrate --dry-run
   al revocar consentimiento. No precargar miniaturas de terceros. El fallback
   standalone carga el asset con `script-src 'self'`; cada shell project-owned
   debe cargarlo con su nonce y limitar `frame-src` al mismo origen.
+- Mantener `blog-analytics.js` separado y cargarlo desde `blog-public.js`
+  únicamente con marcador SSR explícito y `cookie_analytics=true`. No usar
+  IP, `User-Agent`, referrer, email, sesión WebAdmin, localStorage ni
+  sessionStorage como identidad. Excluir cualquier navegador que presente la
+  cookie WebAdmin sin leer ni persistir su valor. La revocación elimina
+  `LS_BLOG_AV`/`LS_BLOG_AS`; los POST exactos pre-bootstrap no crean
+  `PHPSESSID`. Refrescar la cookie de sesión solo mientras exista actividad
+  visible/en foco y conservar el mismo token.
+- Validar transporte, origen y esquema JSON completo antes de construir el
+  runtime analítico o abrir PDO. Mantener un orden de locks único
+  padre→hijo: post→localización en mutaciones editoriales y
+  sesión→vista en ingestión analítica.
+- El cliente nunca elige ruta, localización o UUID de vista: enviar únicamente
+  el `page_grant` HMAC efímero emitido por SSR. Validar firma, origen y
+  caducidad antes de PDO, fallar cerrado si una vista project-owned no adopta
+  el atributo y servir HTML con grant como `private, no-store`. No incluir el
+  grant en URLs, logs, `__debugInfo` ni diagnósticos.
+- Aplicar `analytics.retention_days` con el comando one-shot explícito
+  `composer liquidstack:blog:analytics:purge --yes`. No purgar durante
+  Composer ni peticiones públicas y no instalar cron desde CORE. Documentar y
+  verificar el scheduler externo de cada producción antes de activar la
+  colección.
 - Probar SQLite aislado y, ante cambios de DDL, repositorio, locks o auditoría,
   la integración opt-in MySQL/MariaDB. Cubrir create/add-locale/save/publish/
   unpublish, categorías, documento canónico, adopción legacy, revisiones,
   restauración, medios, stale writes con dos PDO, rollback conjunto de
   contenido y auditoría, prioridad estática, sitemap y ausencia de mutaciones
-  en `HEAD`.
+  en `HEAD`; para analítica, cubrir ausencia de consentimiento, revocación,
+  exclusión WebAdmin, idempotencia, foreground time, retención y ausencia de
+  IP/UA crudos.
 - Consultar `docs/liquid-blog.md` y `docs/blog-seo-editorial.md` como contratos
   completos antes de ampliar el módulo. No presentar categorías, AVIF, el
   editor v1 ni el medidor SEO editorial v1 como pendientes. Los pendientes

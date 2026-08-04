@@ -183,6 +183,10 @@ final class BlogMySqlIntegrationTest extends TestCase
                 'blog:0004_blog_category_capabilities',
                 'blog:0005_blog_structured_content',
                 'blog:0006_blog_sitemap_publication_state',
+                'blog:0007_blog_post_tombstones',
+                'blog:0008_blog_article_delete_capability',
+                'blog:0009_blog_analytics',
+                'blog:0010_blog_analytics_view_capability',
                 'webadmin:0001_webadmin_identity_and_access',
                 'webadmin:0002_webadmin_media_library',
             ], $applied);
@@ -1161,6 +1165,26 @@ final class BlogMySqlIntegrationTest extends TestCase
                 'scope_hash' => $blogScope->hash(),
             ],
             [
+                'module_id' => 'blog',
+                'migration_id' => '0007_blog_post_tombstones',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0008_blog_article_delete_capability',
+                'scope_hash' => $webAdminScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0009_blog_analytics',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0010_blog_analytics_view_capability',
+                'scope_hash' => $webAdminScope->hash(),
+            ],
+            [
                 'module_id' => 'webadmin',
                 'migration_id' => '0001_webadmin_identity_and_access',
                 'scope_hash' => $webAdminScope->hash(),
@@ -1410,6 +1434,9 @@ final class BlogMySqlIntegrationTest extends TestCase
             'content_media',
             'revision_media',
             'sitemap_state',
+            'post_tombstones',
+            'analytics_sessions',
+            'analytics_views',
         ] as $suffix) {
             $tables[] = $blogPrefix . $suffix;
         }

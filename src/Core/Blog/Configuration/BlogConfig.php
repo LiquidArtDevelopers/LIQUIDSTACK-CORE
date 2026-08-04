@@ -32,7 +32,9 @@ final class BlogConfig
         ?string $defaultLocale = null,
         private readonly ?BlogPublicArticleViewPath $publicArticleView = null,
         private readonly BlogSitemapCacheConfig $sitemapCache =
-            new BlogSitemapCacheConfig()
+            new BlogSitemapCacheConfig(),
+        private readonly BlogAnalyticsConfig $analytics =
+            new BlogAnalyticsConfig()
     ) {
         $defaultLocale ??= array_key_first($publicPaths);
         if (
@@ -120,6 +122,11 @@ final class BlogConfig
         return $this->sitemapCache;
     }
 
+    public function analytics(): BlogAnalyticsConfig
+    {
+        return $this->analytics;
+    }
+
     /** @return array<string, mixed> */
     public function toSafeArray(): array
     {
@@ -132,6 +139,7 @@ final class BlogConfig
                 'table_prefix' => $this->tablePrefix,
             ],
             'sitemap_cache' => $this->sitemapCache->toSafeArray(),
+            'analytics' => $this->analytics->toSafeArray(),
         ];
 
         if ($this->publicArticleView !== null) {

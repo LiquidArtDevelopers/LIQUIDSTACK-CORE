@@ -2,13 +2,20 @@
     "schema": 1,
     "algorithm": "sha256-eol-lf-v1",
     "files": {
+        "modules/blog/published/assets/blog-admin-list.js": [
+            "sha256:9b58956d246732acdbdf464dfe3f2f57c8f8f9f04b483134db53ee52cb62c1a1"
+        ],
         "modules/blog/published/assets/blog-admin.css": [
             "sha256:24a1a32d47ab2b9d87d6eb1b078a1b06b7a3b1c66b75c65a8beac5a83ecd56a2",
             "sha256:335d7e95960ceec56e47ec06d50b8c42a106086d73fc777b8d925a268be55dce",
             "sha256:4428ade23ed73ad06fb0c348998976eaab146bb61a85ca4530ed7a86cae95b85",
             "sha256:7bc4b30a678c219d583d0cfb25e3868347e7b1fa6db518b0ec4773158e8c3123",
+            "sha256:bab537f703103706f6e4e9feefc37a3ab01e3dbc01b80d1bd2db757b6c55ca7f",
             "sha256:baff29cfa103fe8c11ba4b2295c643985abcdce09e59e1360858549f9b6f7070",
             "sha256:eeeec6d2ad12033dab68ae3192f8aadb8317bca9a892cb9d896ca324b7417802"
+        ],
+        "modules/blog/published/assets/blog-analytics.js": [
+            "sha256:b515eb54dbe13e0c3699c2e4ea20adf717489094106c4669fcbb4f9fa9af772f"
         ],
         "modules/blog/published/assets/blog-editor.js": [
             "sha256:040555fa754a9e6a7ecc29be65cf9a9b7128aa04a5a2958b58092705d3da2ece",
@@ -22,7 +29,20 @@
             "sha256:af4e43bf33fc453ec61812415bfbfbfc513331f76d607a58a1331a63c9ad6bec"
         ],
         "modules/blog/published/assets/blog-public.js": [
-            "sha256:0a98db292b9c4efcf7b38a624bff1af30aacfc4de63084112ddc8e9c20b1180a"
+            "sha256:0a98db292b9c4efcf7b38a624bff1af30aacfc4de63084112ddc8e9c20b1180a",
+            "sha256:dd8571eb476dcde05e8e79bead852b4c943331df0a84bcc593534aaa40149d6a"
+        ],
+        "modules/blog/published/assets/flags/LICENSE.flag-icons.txt": [
+            "sha256:b6aada829d8622b282611e41985bf17a0cb0035a06bdf20934444279522f1c56"
+        ],
+        "modules/blog/published/assets/flags/es-pv.svg": [
+            "sha256:df3beb6c83af9f45226eeef3f43a2c5b9d2c52017d3b26f57c656632cc6ee1d8"
+        ],
+        "modules/blog/published/assets/flags/es.svg": [
+            "sha256:f9cfaff858e95f830733ade9591037b5322dfb5827a53b70956a3d190bb49b9a"
+        ],
+        "modules/blog/published/assets/flags/gb.svg": [
+            "sha256:c8be1e7208798a4ae692ee1e937065d498bb29e741943f6172b29118b8ed8066"
         ],
         "modules/blog/resources/project/App/controllers/_moduleBlogResources.php": [
             "sha256:6f0984b2ba817226b7018da5c0c276a7b6bb68a2304d808dcc9f25565312fd35"

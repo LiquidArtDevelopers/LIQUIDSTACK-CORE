@@ -15,9 +15,16 @@ final class BlogConfigLoader
         'public_article_view',
         'database',
         'sitemap_cache',
+        'analytics',
     ];
     private const DATABASE_KEYS = ['connection', 'table_prefix'];
     private const SITEMAP_CACHE_KEYS = ['enabled', 'ttl_seconds'];
+    private const ANALYTICS_KEYS = [
+        'enabled',
+        'retention_days',
+        'session_timeout_seconds',
+        'collect_in_dev',
+    ];
 
     public function databaseConnection(string $projectRoot): string
     {
@@ -57,6 +64,7 @@ final class BlogConfigLoader
         }
         $this->assertOnlyKeys($database, self::DATABASE_KEYS, 'database');
         $this->validateSitemapCache($raw['sitemap_cache'] ?? []);
+        $this->validateAnalytics($raw['analytics'] ?? []);
         $connection = $database['connection']
             ?? DatabaseConnectionProfile::SHARED;
         if (!DatabaseConnectionProfile::isSupported($connection)) {
@@ -106,6 +114,7 @@ final class BlogConfigLoader
         $sitemapCache = $this->validateSitemapCache(
             $raw['sitemap_cache'] ?? []
         );
+        $analytics = $this->validateAnalytics($raw['analytics'] ?? []);
         $publicArticleView = array_key_exists('public_article_view', $raw)
             ? BlogPublicArticleViewPath::fromProject(
                 $root,
@@ -174,7 +183,56 @@ final class BlogConfigLoader
             $connection,
             $languages[0],
             $publicArticleView,
-            $sitemapCache
+            $sitemapCache,
+            $analytics
+        );
+    }
+
+    private function validateAnalytics(mixed $value): BlogAnalyticsConfig
+    {
+        if (!is_array($value) || ($value !== [] && array_is_list($value))) {
+            throw new BlogConfigException(
+                'config.expected_object',
+                'analytics'
+            );
+        }
+        $this->assertOnlyKeys($value, self::ANALYTICS_KEYS, 'analytics');
+        $enabled = $value['enabled'] ?? false;
+        $retention = $value['retention_days']
+            ?? BlogAnalyticsConfig::DEFAULT_RETENTION_DAYS;
+        $sessionTimeout = $value['session_timeout_seconds']
+            ?? BlogAnalyticsConfig::DEFAULT_SESSION_TIMEOUT_SECONDS;
+        $collectInDevelopment = $value['collect_in_dev'] ?? false;
+        if (!is_bool($enabled)) {
+            throw new BlogConfigException(
+                'config.analytics_enabled_invalid',
+                'analytics.enabled'
+            );
+        }
+        if (!is_int($retention)) {
+            throw new BlogConfigException(
+                'config.analytics_retention_invalid',
+                'analytics.retention_days'
+            );
+        }
+        if (!is_int($sessionTimeout)) {
+            throw new BlogConfigException(
+                'config.analytics_session_timeout_invalid',
+                'analytics.session_timeout_seconds'
+            );
+        }
+        if (!is_bool($collectInDevelopment)) {
+            throw new BlogConfigException(
+                'config.analytics_collect_in_dev_invalid',
+                'analytics.collect_in_dev'
+            );
+        }
+
+        return new BlogAnalyticsConfig(
+            $enabled,
+            $retention,
+            $sessionTimeout,
+            $collectInDevelopment
         );
     }
 

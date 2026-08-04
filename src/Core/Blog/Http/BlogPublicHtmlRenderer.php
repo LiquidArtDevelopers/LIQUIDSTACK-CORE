@@ -8,6 +8,7 @@ use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogInput;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
+use App\Core\Blog\Configuration\BlogAnalyticsConfig;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
 use App\Core\Blog\StructuredContent\Rendering\BlogDocumentHtmlRenderer;
@@ -60,7 +61,9 @@ final class BlogPublicHtmlRenderer
         array $alternateUrls = [],
         ?string $xDefaultUrl = null,
         array $languageNavigationUrls = [],
-        array $relatedArticles = []
+        array $relatedArticles = [],
+        ?BlogAnalyticsConfig $analytics = null,
+        #[\SensitiveParameter] ?string $analyticsPageGrant = null
     ): string {
         if (
             filter_var($canonicalUrl, FILTER_VALIDATE_URL) === false
@@ -77,7 +80,9 @@ final class BlogPublicHtmlRenderer
             $alternateUrls,
             $xDefaultUrl,
             $languageNavigationUrls,
-            $relatedArticles
+            $relatedArticles,
+            $analytics,
+            $analyticsPageGrant
         );
     }
 
@@ -94,7 +99,9 @@ final class BlogPublicHtmlRenderer
         array $alternateUrls = [],
         ?string $xDefaultUrl = null,
         array $languageNavigationUrls = [],
-        array $relatedArticles = []
+        array $relatedArticles = [],
+        ?BlogAnalyticsConfig $analytics = null,
+        #[\SensitiveParameter] ?string $analyticsPageGrant = null
     ): string {
         if (
             filter_var($canonicalUrl, FILTER_VALIDATE_URL) === false
@@ -111,7 +118,9 @@ final class BlogPublicHtmlRenderer
             $alternateUrls,
             $xDefaultUrl,
             $languageNavigationUrls,
-            $relatedArticles
+            $relatedArticles,
+            $analytics,
+            $analyticsPageGrant
         );
     }
 
@@ -127,7 +136,9 @@ final class BlogPublicHtmlRenderer
         array $alternatePaths = [],
         ?string $xDefaultPath = null,
         array $languageNavigationPaths = [],
-        array $relatedArticles = []
+        array $relatedArticles = [],
+        ?BlogAnalyticsConfig $analytics = null,
+        #[\SensitiveParameter] ?string $analyticsPageGrant = null
     ): string {
         return $this->renderDocument(
             $variant,
@@ -142,7 +153,9 @@ final class BlogPublicHtmlRenderer
                 $origin,
                 $languageNavigationPaths
             ),
-            $relatedArticles
+            $relatedArticles,
+            $analytics,
+            $analyticsPageGrant
         );
     }
 
@@ -160,7 +173,9 @@ final class BlogPublicHtmlRenderer
         array $alternatePaths = [],
         ?string $xDefaultPath = null,
         array $languageNavigationPaths = [],
-        array $relatedArticles = []
+        array $relatedArticles = [],
+        ?BlogAnalyticsConfig $analytics = null,
+        #[\SensitiveParameter] ?string $analyticsPageGrant = null
     ): string {
         return $this->renderDocument(
             $variant,
@@ -175,7 +190,9 @@ final class BlogPublicHtmlRenderer
                 $origin,
                 $languageNavigationPaths
             ),
-            $relatedArticles
+            $relatedArticles,
+            $analytics,
+            $analyticsPageGrant
         );
     }
 
@@ -192,7 +209,9 @@ final class BlogPublicHtmlRenderer
         array $alternateUrls = [],
         ?string $xDefaultUrl = null,
         array $languageNavigationUrls = [],
-        array $relatedArticles = []
+        array $relatedArticles = [],
+        ?BlogAnalyticsConfig $analytics = null,
+        #[\SensitiveParameter] ?string $analyticsPageGrant = null
     ): string {
         if (
             $variant->status() !== BlogPostVariant::PUBLISHED
@@ -260,7 +279,13 @@ final class BlogPublicHtmlRenderer
                 ?? BlogDocumentTemplateRegistry::ARTICLE_BASIC,
             $publishedAt,
             $variant->updatedAt(),
-            $relatedArticles
+            $relatedArticles,
+            $analytics?->enabled() === true && $analyticsPageGrant !== null,
+            $analytics?->retentionDays()
+                ?? BlogAnalyticsConfig::DEFAULT_RETENTION_DAYS,
+            $analytics?->sessionTimeoutSeconds()
+                ?? BlogAnalyticsConfig::DEFAULT_SESSION_TIMEOUT_SECONDS,
+            $analyticsPageGrant
         );
 
         return $this->projectArticleView === null
@@ -271,9 +296,19 @@ final class BlogPublicHtmlRenderer
     private function renderStandalone(
         BlogPublicArticleViewModel $article
     ): string {
+        $analyticsAttributes = $article->analyticsEnabled()
+            ? ' data-blog-analytics-enabled="true"'
+                . ' data-blog-analytics-retention-days="'
+                . $article->analyticsRetentionDays() . '"'
+                . ' data-blog-analytics-session-timeout="'
+                . $article->analyticsSessionTimeoutSeconds() . '"'
+                . ' data-blog-analytics-page-grant="'
+                . $this->escape((string) $article->analyticsPageGrant()) . '"'
+            : '';
+
         return '<!doctype html><html lang="'
             . $this->escape($article->locale())
-            . '"><head><meta charset="utf-8">'
+            . '"' . $analyticsAttributes . '><head><meta charset="utf-8">'
             . '<meta name="viewport" content="width=device-width,initial-scale=1">'
             . '<title>' . $this->escape($article->seoTitle())
             . '</title><meta name="description" content="'

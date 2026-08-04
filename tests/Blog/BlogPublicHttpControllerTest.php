@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogService;
+use App\Core\Blog\Analytics\BlogAnalyticsPageGrantCodec;
+use App\Core\Blog\Configuration\BlogAnalyticsConfig;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Http\BlogPublicHttpController;
@@ -23,6 +25,7 @@ use App\Core\Modules\Blog\BlogMigrationProvider;
 use App\Core\Modules\Migrations\MigrationDefinition;
 use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\WebAdmin\Support\UuidGeneratorInterface;
+use App\Core\WebAdmin\Security\SecurityKey;
 use PHPUnit\Framework\TestCase;
 
 final class BlogPublicHttpControllerTest extends TestCase
@@ -176,6 +179,55 @@ final class BlogPublicHttpControllerTest extends TestCase
         self::assertStringNotContainsString(
             '/noticias/matrix',
             $this->controller->sitemap()->body()
+        );
+    }
+
+    public function testAnalyticsPageUsesSignedSsrGrantAndIsNeverShared(): void
+    {
+        $created = $this->service->createPost(
+            $this->actorGate(),
+            'es',
+            $this->draft()
+        );
+        $this->service->publish(
+            $this->actorGate(),
+            $created->postPublicId(),
+            'es',
+            $created->lockVersion()
+        );
+        $origin = BlogPublicOrigin::fromEnvironment([
+            BlogPublicOrigin::ENV => 'https://example.test',
+        ]);
+        $controller = new BlogPublicHttpController(new BlogPublicHttpRuntime(
+            new BlogConfig(
+                ['es' => '/noticias'],
+                '/blog-sitemap.xml',
+                'ls_blog_',
+                'fixture',
+                analytics: new BlogAnalyticsConfig(true)
+            ),
+            $origin,
+            $this->service,
+            analyticsCollectionReady: true,
+            analyticsPageGrants: new BlogAnalyticsPageGrantCodec(
+                SecurityKey::fromRawBytes(str_repeat('a', 32)),
+                $origin
+            )
+        ));
+
+        $response = $controller->article('es', 'matrix');
+
+        self::assertNotNull($response);
+        self::assertSame('private, no-store', $response->headers()[
+            'Cache-Control'
+        ]);
+        self::assertStringContainsString(
+            'data-blog-analytics-page-grant="',
+            $response->body()
+        );
+        self::assertStringContainsString(
+            'data-blog-analytics-enabled="true"',
+            $response->body()
         );
     }
 

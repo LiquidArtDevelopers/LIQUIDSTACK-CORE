@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Core\Modules\Blog\BlogMigrationProvider;
+use App\Core\Modules\Blog\BlogAnalyticsRouteProvider;
 use App\Core\Modules\Blog\BlogCategoryWebAdminNavigationProvider;
 use App\Core\Modules\Blog\BlogCategoryRouteProvider;
 use App\Core\Modules\Blog\BlogPublicRouteProvider;
@@ -93,6 +94,10 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
             [
                 'module' => 'blog',
                 'class' => BlogCategoryRouteProvider::class,
+            ],
+            [
+                'module' => 'blog',
+                'class' => BlogAnalyticsRouteProvider::class,
             ],
         ];
         $publicRoutes = [[
@@ -229,6 +234,26 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
                 'module' => 'blog',
                 'provider' => BlogMigrationProvider::class,
                 'migration' => '0006_blog_sitemap_publication_state',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0007_blog_post_tombstones',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0008_blog_article_delete_capability',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0009_blog_analytics',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0010_blog_analytics_view_capability',
             ],
         ], array_map(
             static fn (array $entry): array => [

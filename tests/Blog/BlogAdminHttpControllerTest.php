@@ -2,12 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Core\Blog\Analytics\BlogAnalyticsCapabilities;
+use App\Core\Blog\Analytics\BlogAnalyticsReportInterface;
+use App\Core\Blog\Analytics\BlogArticleAnalyticsSummary;
 use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Http\BlogAdminHttpController;
+use App\Core\Blog\Http\BlogCategoryAdminHttpController;
 use App\Core\Blog\Http\BlogAdminHttpRuntime;
 use App\Core\Blog\Http\BlogAdminHttpRuntimeInterface;
+use App\Core\Blog\Http\BlogAnalyticsAdminHttpRuntimeInterface;
 use App\Core\Blog\Http\BlogStructuredEditorHttpRuntimeInterface;
 use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Http\PrivateRouteTransportPolicy;
@@ -104,6 +109,87 @@ final class LegacyBlogAdminRuntimeAdapter implements
             };
         }
 
+        return $this->inner->mutationGate(
+            $sessionToken,
+            $csrfToken,
+            $capability
+        );
+    }
+}
+
+final class AnalyticsBlogAdminRuntimeAdapter implements
+    BlogAdminHttpRuntimeInterface,
+    BlogAnalyticsAdminHttpRuntimeInterface
+{
+    public function __construct(
+        private readonly BlogAdminHttpRuntime $inner,
+        private readonly BlogAnalyticsReportInterface $report
+    ) {
+    }
+
+    public function projectRoot(): string { return $this->inner->projectRoot(); }
+    public function languages(): array { return $this->inner->languages(); }
+    public function blogConfig(): BlogConfig { return $this->inner->blogConfig(); }
+    public function webAdminConfig(): WebAdminConfig
+    {
+        return $this->inner->webAdminConfig();
+    }
+    public function service(): BlogService { return $this->inner->service(); }
+    public function authentication(): WebAdminAuthenticationService
+    {
+        return $this->inner->authentication();
+    }
+    public function authorization(): WebAdminAuthorizationService
+    {
+        return $this->inner->authorization();
+    }
+    public function mutationGate(
+        #[\SensitiveParameter] string $sessionToken,
+        #[\SensitiveParameter] string $csrfToken,
+        string $capability
+    ): Closure {
+        return $this->inner->mutationGate(
+            $sessionToken,
+            $csrfToken,
+            $capability
+        );
+    }
+    public function analyticsReport(): BlogAnalyticsReportInterface
+    {
+        return $this->report;
+    }
+}
+
+final class PreTombstoneBlogAdminRuntimeAdapter implements
+    BlogAdminHttpRuntimeInterface
+{
+    public function __construct(
+        private readonly BlogAdminHttpRuntime $inner,
+        private readonly BlogService $blogService
+    ) {
+    }
+
+    public function projectRoot(): string { return $this->inner->projectRoot(); }
+    public function languages(): array { return $this->inner->languages(); }
+    public function blogConfig(): BlogConfig { return $this->inner->blogConfig(); }
+    public function webAdminConfig(): WebAdminConfig
+    {
+        return $this->inner->webAdminConfig();
+    }
+    public function service(): BlogService { return $this->blogService; }
+    public function authentication(): WebAdminAuthenticationService
+    {
+        return $this->inner->authentication();
+    }
+    public function authorization(): WebAdminAuthorizationService
+    {
+        return $this->inner->authorization();
+    }
+    public function mutationGate(
+        #[\SensitiveParameter] string $sessionToken,
+        #[\SensitiveParameter] string $csrfToken,
+        string $capability
+    ): Closure {
         return $this->inner->mutationGate(
             $sessionToken,
             $csrfToken,
@@ -213,10 +299,26 @@ final class BlogAdminHttpControllerTest extends TestCase
             $tokens,
             $hasher
         );
+        $blogRepository = new PdoBlogRepository(
+            $this->pdo,
+            $blogScope,
+            true
+        );
+        $structuredContentRepository = new
+            App\Core\Blog\StructuredContent\Persistence\PdoBlogStructuredContentRepository(
+                $this->pdo,
+                $blogScope
+            );
         $service = new BlogService(
-            new PdoBlogRepository($this->pdo, $blogScope),
+            $blogRepository,
             new RandomUuidV4Generator(),
-            $clock
+            $clock,
+            structuredContentRepository: $structuredContentRepository,
+            mediaAvailability: new
+                App\Core\Blog\StructuredContent\Media\PdoWebAdminMediaAvailabilityAdapter(
+                    $this->pdo,
+                    $webAdminScope
+                )
         );
         $languages = ['es', 'eu'];
         $blogConfig = new BlogConfig(
@@ -285,11 +387,19 @@ final class BlogAdminHttpControllerTest extends TestCase
             $empty->body()
         );
         self::assertStringContainsString(
+            '/assets/modules/blog/blog-admin-list.js',
+            $empty->body()
+        );
+        self::assertStringContainsString(
             "style-src 'self'",
             $empty->headers()['Content-Security-Policy']
         );
         self::assertStringContainsString(
             "script-src 'self'",
+            $empty->headers()['Content-Security-Policy']
+        );
+        self::assertStringContainsString(
+            "img-src 'self'",
             $empty->headers()['Content-Security-Policy']
         );
         $this->assertPrivateHeaders($empty);
@@ -358,6 +468,246 @@ final class BlogAdminHttpControllerTest extends TestCase
         self::assertSame('draft', $this->pdo->query(
             'SELECT status FROM ls_blog_post_localizations'
         )->fetchColumn());
+    }
+
+    public function testDuplicateTrashAndRestoreEnforceCsrfAndCapabilities(): void
+    {
+        self::assertSame(303, $this->controller->create($this->post(
+            '/admin/blog/posts/create',
+            ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
+                + $this->editorial('editorial-actions')
+        ))->status());
+        $source = (string) $this->pdo->query(
+            'SELECT public_id FROM ls_blog_posts'
+        )->fetchColumn();
+
+        $invalidDuplicate = $this->controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            [
+                'csrf' => str_repeat('X', 43),
+                'post' => $source,
+                'locale' => 'es',
+                'lock_version' => '1',
+            ]
+        ));
+        self::assertSame(403, $invalidDuplicate->status());
+        self::assertSame(1, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+
+        $duplicate = $this->controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'lock_version' => '1',
+            ]
+        ));
+        self::assertSame(303, $duplicate->status());
+        self::assertMatchesRegularExpression(
+            '#\A/admin/blog/editor\?post=[0-9a-f-]{36}&locale=es\z#',
+            $duplicate->headers()['Location']
+        );
+        self::assertSame(2, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+        self::assertSame(1, (int) $this->pdo->query(
+            "SELECT COUNT(*) FROM ls_blog_post_localizations "
+                . "WHERE status = 'draft' AND slug IS NULL "
+                . "AND h1 = 'Copia de Matrix'"
+        )->fetchColumn());
+
+        $trash = $this->controller->trashPost($this->post(
+            '/admin/blog/posts/trash',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'lock_version' => '1',
+            ]
+        ));
+        self::assertSame(303, $trash->status());
+        self::assertSame('/admin/blog/trash', $trash->headers()['Location']);
+        self::assertSame(1, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_post_tombstones'
+        )->fetchColumn());
+        $trashPage = $this->controller->trash($this->get(
+            '/admin/blog/trash'
+        ));
+        self::assertSame(200, $trashPage->status());
+        self::assertStringContainsString(
+            'name="post" value="' . $source . '"',
+            $trashPage->body()
+        );
+        self::assertStringContainsString(
+            'action="/admin/blog/posts/restore"',
+            $trashPage->body()
+        );
+
+        $invalidRestore = $this->controller->restoreFromTrash($this->post(
+            '/admin/blog/posts/restore',
+            [
+                'csrf' => str_repeat('X', 43),
+                'post' => $source,
+                'locale' => 'es',
+                'lock_version' => '2',
+            ]
+        ));
+        self::assertSame(403, $invalidRestore->status());
+        self::assertSame(1, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_post_tombstones'
+        )->fetchColumn());
+
+        $restore = $this->controller->restoreFromTrash($this->post(
+            '/admin/blog/posts/restore',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'lock_version' => '2',
+            ]
+        ));
+        self::assertSame(303, $restore->status());
+        self::assertSame('/admin/blog/trash', $restore->headers()['Location']);
+        self::assertSame(0, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_post_tombstones'
+        )->fetchColumn());
+
+        $this->removeCapability(BlogAdminHttpController::DELETE_CAPABILITY);
+        self::assertSame(403, $this->controller->trash($this->get(
+            '/admin/blog/trash'
+        ))->status());
+        self::assertSame(403, $this->controller->trashPost($this->post(
+            '/admin/blog/posts/trash',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'lock_version' => '3',
+            ]
+        ))->status());
+        self::assertStringNotContainsString(
+            'action="/admin/blog/posts/trash"',
+            $this->controller->index($this->get('/admin/blog'))->body()
+        );
+    }
+
+    public function testDuplicateRequiresCategoryEditBecauseItClonesAssignments(): void
+    {
+        self::assertSame(303, $this->controller->create($this->post(
+            '/admin/blog/posts/create',
+            ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
+                + $this->editorial('category-protected-copy')
+        ))->status());
+        $source = (string) $this->pdo->query(
+            'SELECT public_id FROM ls_blog_posts'
+        )->fetchColumn();
+        $this->removeCapability(
+            BlogCategoryAdminHttpController::EDIT_CAPABILITY
+        );
+
+        $index = $this->controller->index($this->get('/admin/blog'));
+        self::assertSame(200, $index->status());
+        self::assertStringNotContainsString(
+            'action="/admin/blog/posts/duplicate"',
+            $index->body()
+        );
+        $response = $this->controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'lock_version' => '1',
+            ]
+        ));
+
+        self::assertSame(403, $response->status());
+        self::assertSame(1, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+    }
+
+    public function testPreTombstoneRuntimeKeepsDuplicateAndHidesTrashSurface(): void
+    {
+        self::assertSame(303, $this->controller->create($this->post(
+            '/admin/blog/posts/create',
+            ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
+                + $this->editorial('before-tombstones')
+        ))->status());
+        $source = (string) $this->pdo->query(
+            'SELECT public_id FROM ls_blog_posts'
+        )->fetchColumn();
+        $scope = MigrationScope::forTablePrefix('blog', 'ls_blog_');
+        $legacyService = new BlogService(
+            new PdoBlogRepository($this->pdo, $scope),
+            new RandomUuidV4Generator(),
+            new BlogAdminControllerClock(
+                new DateTimeImmutable('2030-01-01 10:00:00 UTC')
+            ),
+            structuredContentRepository: new
+                App\Core\Blog\StructuredContent\Persistence\PdoBlogStructuredContentRepository(
+                    $this->pdo,
+                    $scope
+                ),
+            mediaAvailability: new
+                App\Core\Blog\StructuredContent\Media\PdoWebAdminMediaAvailabilityAdapter(
+                    $this->pdo,
+                    MigrationScope::forTablePrefix(
+                        'webadmin',
+                        'ls_webadmin_'
+                    )
+                )
+        );
+        $controller = new BlogAdminHttpController(
+            new PreTombstoneBlogAdminRuntimeAdapter(
+                $this->runtime,
+                $legacyService
+            )
+        );
+
+        $index = $controller->index($this->get('/admin/blog'));
+        self::assertSame(200, $index->status());
+        self::assertStringContainsString(
+            'action="/admin/blog/posts/duplicate"',
+            $index->body()
+        );
+        self::assertStringNotContainsString(
+            'action="/admin/blog/posts/trash"',
+            $index->body()
+        );
+        self::assertStringNotContainsString(
+            'href="/admin/blog/trash"',
+            $index->body()
+        );
+        self::assertSame(303, $controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'lock_version' => '1',
+            ]
+        ))->status());
+        self::assertSame(404, $controller->trash($this->get(
+            '/admin/blog/trash'
+        ))->status());
+        foreach ([
+            'trash' => 'trashPost',
+            'restore' => 'restoreFromTrash',
+        ] as $path => $method) {
+            $response = $controller->{$method}($this->post(
+                '/admin/blog/posts/' . $path,
+                [
+                    'csrf' => $this->csrfToken,
+                    'post' => $source,
+                    'locale' => 'es',
+                    'lock_version' => '1',
+                ]
+            ));
+            self::assertSame(404, $response->status(), $path);
+        }
     }
 
     public function testLocaleChoiceUsesConfiguredPathsAndOmitsExistingVariants(): void
@@ -854,10 +1204,11 @@ final class BlogAdminHttpControllerTest extends TestCase
                 . '&amp;locale=es',
             $index->body()
         );
-        self::assertSame(2, substr_count(
+        self::assertSame(1, substr_count(
             $index->body(),
             '/admin/blog/editor/preview?'
         ));
+        self::assertStringContainsString('>Vista web</a>', $index->body());
         $publishedPreview = $this->controller->preview($this->get(
             '/admin/blog/posts/preview',
             [
@@ -895,10 +1246,14 @@ final class BlogAdminHttpControllerTest extends TestCase
             '/admin/blog/editor/preview?',
             $withoutMedia->body()
         );
-        self::assertSame(2, substr_count(
+        self::assertSame(1, substr_count(
             $withoutMedia->body(),
             '/admin/blog/posts/preview?'
         ));
+        self::assertStringContainsString(
+            '>Vista web</a>',
+            $withoutMedia->body()
+        );
         self::assertStringNotContainsString(
             '/admin/blog/posts/new',
             $withoutMedia->body()
@@ -955,6 +1310,82 @@ final class BlogAdminHttpControllerTest extends TestCase
         )->fetchColumn());
     }
 
+    public function testIndexAddsOneBoundedAnalyticsReportWhenCapabilityIsReady(): void
+    {
+        $created = $this->controller->create($this->post(
+            '/admin/blog/posts/create',
+            ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
+                + $this->editorial('matrix-analytics')
+        ));
+        self::assertSame(303, $created->status());
+        $localizationPublicId = (string) $this->pdo->query(
+            'SELECT public_id FROM ls_blog_post_localizations '
+                . 'ORDER BY id DESC LIMIT 1'
+        )->fetchColumn();
+        $report = new class($localizationPublicId) implements
+            BlogAnalyticsReportInterface {
+            /** @var list<string> */
+            public array $requested = [];
+            public ?DateTimeImmutable $from = null;
+            public ?DateTimeImmutable $to = null;
+
+            public function __construct(private readonly string $publicId)
+            {
+            }
+
+            public function summariesForLocalizations(
+                array $localizationPublicIds,
+                DateTimeImmutable $fromInclusive,
+                DateTimeImmutable $toExclusive
+            ): array {
+                $this->requested = $localizationPublicIds;
+                $this->from = $fromInclusive;
+                $this->to = $toExclusive;
+
+                return [
+                    $this->publicId => new BlogArticleAnalyticsSummary(
+                        $this->publicId,
+                        42,
+                        30,
+                        8,
+                        12_000,
+                        20,
+                        15
+                    ),
+                ];
+            }
+        };
+        $clock = new BlogAdminControllerClock(
+            new DateTimeImmutable('2030-01-01 10:00:00 UTC')
+        );
+        $controller = new BlogAdminHttpController(
+            new AnalyticsBlogAdminRuntimeAdapter($this->runtime, $report),
+            clock: $clock
+        );
+
+        $response = $controller->index($this->get(
+            '/admin/blog',
+            ['period' => '7']
+        ));
+
+        self::assertSame(200, $response->status());
+        self::assertSame([$localizationPublicId], $report->requested);
+        self::assertSame(
+            '2029-12-25 10:00:00',
+            $report->from?->format('Y-m-d H:i:s')
+        );
+        self::assertSame(
+            '2030-01-01 10:00:00',
+            $report->to?->format('Y-m-d H:i:s')
+        );
+        self::assertStringContainsString('Rebote del Blog', $response->body());
+        self::assertStringContainsString('>42</td>', $response->body());
+        self::assertStringContainsString(
+            '<option value="7" selected>',
+            $response->body()
+        );
+    }
+
     private function seedActor(
         SecureTokenGenerator $tokens,
         WebAdminConfig $config
@@ -985,6 +1416,9 @@ final class BlogAdminHttpControllerTest extends TestCase
             BlogAdminHttpController::VIEW_CAPABILITY,
             BlogAdminHttpController::EDIT_CAPABILITY,
             BlogAdminHttpController::PUBLISH_CAPABILITY,
+            BlogAdminHttpController::DELETE_CAPABILITY,
+            BlogAnalyticsCapabilities::VIEW,
+            BlogCategoryAdminHttpController::EDIT_CAPABILITY,
             MediaService::VIEW_CAPABILITY,
         ] as $capability) {
             $statement = $this->pdo->prepare(

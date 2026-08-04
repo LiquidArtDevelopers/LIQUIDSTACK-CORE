@@ -32,6 +32,10 @@ final class WebAdminBlogMutationAuditAdapter implements
         BlogMutationAuditEvent::PUBLISH => 'blog.article.published',
         BlogMutationAuditEvent::UNPUBLISH =>
             'blog.article.unpublished',
+        BlogMutationAuditEvent::DUPLICATE => 'blog.article.duplicated',
+        BlogMutationAuditEvent::TRASH => 'blog.article.trashed',
+        BlogMutationAuditEvent::RESTORE_FROM_TRASH =>
+            'blog.article.restored_from_trash',
     ];
 
     public function __construct(

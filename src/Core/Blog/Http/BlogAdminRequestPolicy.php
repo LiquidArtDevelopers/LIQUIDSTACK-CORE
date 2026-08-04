@@ -35,6 +35,29 @@ final class BlogAdminRequestPolicy
             return false;
         }
         $query = $request->queryParams();
+        $keys = array_keys($query);
+        sort($keys, SORT_STRING);
+        if (!in_array($keys, [[], ['offset'], ['period'], [
+            'offset',
+            'period',
+        ]], true)) {
+            return false;
+        }
+
+        return (!array_key_exists('offset', $query)
+                || (is_string($query['offset'])
+                    && $this->validOffset($query['offset'])))
+            && (!array_key_exists('period', $query)
+                || (is_string($query['period'])
+                    && in_array($query['period'], ['7', '30', '90'], true)));
+    }
+
+    public function acceptsTrashIndex(Request $request): bool
+    {
+        if (!$this->safeGet($request)) {
+            return false;
+        }
+        $query = $request->queryParams();
 
         return $query === []
             || (
@@ -120,6 +143,36 @@ final class BlogAdminRequestPolicy
     }
 
     public function acceptsTransition(Request $request): bool
+    {
+        return $this->webAdminPolicy->acceptsFormPost($request, [
+            'csrf',
+            'post',
+            'locale',
+            'lock_version',
+        ])
+            && $this->validPost((string) $request->form('post'), false)
+            && $this->validLocale((string) $request->form('locale'))
+            && $this->validLockVersion(
+                (string) $request->form('lock_version')
+            );
+    }
+
+    public function acceptsDuplicate(Request $request): bool
+    {
+        return $this->acceptsEditorialAction($request);
+    }
+
+    public function acceptsTrash(Request $request): bool
+    {
+        return $this->acceptsEditorialAction($request);
+    }
+
+    public function acceptsRestoreFromTrash(Request $request): bool
+    {
+        return $this->acceptsEditorialAction($request);
+    }
+
+    private function acceptsEditorialAction(Request $request): bool
     {
         return $this->webAdminPolicy->acceptsFormPost($request, [
             'csrf',

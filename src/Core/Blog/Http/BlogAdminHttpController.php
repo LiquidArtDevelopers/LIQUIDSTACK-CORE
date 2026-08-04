@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Core\Blog\Http;
 
+use App\Core\Blog\Analytics\BlogAnalyticsCapabilities;
 use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogException;
+use App\Core\Blog\BlogPostSummary;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Routing\BlogPublicationRouteGuard;
@@ -20,6 +22,8 @@ use App\Core\WebAdmin\Media\MediaService;
 use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
 use App\Core\WebAdmin\Navigation\WebAdminNavigationItem;
 use App\Core\WebAdmin\Security\ConstantTime;
+use App\Core\WebAdmin\Support\ClockInterface;
+use App\Core\WebAdmin\Support\SystemClock;
 use Closure;
 use PDO;
 use Throwable;
@@ -29,12 +33,14 @@ final class BlogAdminHttpController
     public const VIEW_CAPABILITY = 'blog.articles.view';
     public const EDIT_CAPABILITY = 'blog.articles.edit';
     public const PUBLISH_CAPABILITY = 'blog.articles.publish';
+    public const DELETE_CAPABILITY = 'blog.articles.delete';
 
     private readonly BlogAdminRequestPolicy $requestPolicy;
     private readonly BlogAdminHtmlRenderer $renderer;
     private readonly BlogPublicationRouteGuard $publicationRouteGuard;
     private readonly PrivateRouteTransportPolicy $transportPolicy;
     private readonly WebAdminShellContextFactory $shellContexts;
+    private readonly ClockInterface $clock;
 
     /** @var array<string, mixed> */
     private readonly array $environment;
@@ -45,7 +51,8 @@ final class BlogAdminHttpController
         ?BlogAdminHtmlRenderer $renderer = null,
         ?BlogPublicationRouteGuard $publicationRouteGuard = null,
         ?PrivateRouteTransportPolicy $transportPolicy = null,
-        #[\SensitiveParameter] array $environment = []
+        #[\SensitiveParameter] array $environment = [],
+        ?ClockInterface $clock = null
     ) {
         $this->requestPolicy = $requestPolicy
             ?? new BlogAdminRequestPolicy();
@@ -60,6 +67,7 @@ final class BlogAdminHttpController
             $this->navigationCatalog($runtime)
         );
         $this->environment = $environment;
+        $this->clock = $clock ?? new SystemClock();
     }
 
     public function index(Request $request): Response
@@ -84,15 +92,50 @@ final class BlogAdminHttpController
         $hasNext = count($summaries) > BlogService::DEFAULT_LIST_LIMIT
             && $offset <= BlogService::MAX_LIST_OFFSET
                 - BlogService::DEFAULT_LIST_LIMIT;
+        $visibleSummaries = array_slice(
+            $summaries,
+            0,
+            BlogService::DEFAULT_LIST_LIMIT
+        );
         $authorization = $this->runtime->authorization();
+        $periodValue = $request->query('period');
+        $analyticsPeriodDays = is_string($periodValue)
+            ? (int) $periodValue
+            : 30;
+        $showAnalytics = $this->runtime instanceof
+                BlogAnalyticsAdminHttpRuntimeInterface
+            && $authorization->hasCapability(
+                $context['session'],
+                BlogAnalyticsCapabilities::VIEW
+            );
+        $analyticsByLocalization = [];
+        if ($showAnalytics) {
+            try {
+                $toExclusive = $this->clock->now();
+                $fromInclusive = $toExclusive->modify(
+                    '-' . $analyticsPeriodDays . ' days'
+                );
+                $analyticsByLocalization = $this->runtime
+                    ->analyticsReport()
+                    ->summariesForLocalizations(
+                        array_map(
+                            static fn (BlogPostSummary $summary): string =>
+                                $summary->localizationPublicId(),
+                            $visibleSummaries
+                        ),
+                        $fromInclusive,
+                        $toExclusive
+                    );
+            } catch (Throwable) {
+                // Analytics is additive: an unavailable report never hides
+                // or breaks the editorial list.
+                $analyticsByLocalization = [];
+            }
+        }
 
         return $this->htmlForRequest($request, 200, $this->renderer->index(
             basePath: $this->basePath(),
-            summaries: array_slice(
-                $summaries,
-                0,
-                BlogService::DEFAULT_LIST_LIMIT
-            ),
+            summaries: $visibleSummaries,
             canEdit: $authorization->hasCapability(
                 $context['session'],
                 self::EDIT_CAPABILITY
@@ -107,8 +150,66 @@ final class BlogAdminHttpController
                 $context['session'],
                 MediaService::VIEW_CAPABILITY
             ),
-            shell: $this->shellContext($context, '/blog')
+            shell: $this->shellContext($context, '/blog'),
+            publicPaths: $this->activeLocalePublicPaths(),
+            csrf: $context['csrf'],
+            canDelete: $authorization->hasCapability(
+                $context['session'],
+                self::DELETE_CAPABILITY
+            ) && $this->runtime->service()->trashAvailable(),
+            canDuplicate: $authorization->hasCapability(
+                $context['session'],
+                BlogCategoryAdminHttpController::EDIT_CAPABILITY
+            ),
+            analyticsByLocalization: $analyticsByLocalization,
+            showAnalytics: $showAnalytics,
+            analyticsPeriodDays: $analyticsPeriodDays
         ));
+    }
+
+    public function trash(Request $request): Response
+    {
+        if (!$this->accepts($request, 'trash_index')) {
+            return $this->plain(400, 'Bad request');
+        }
+        if (!$this->runtime->service()->trashAvailable()) {
+            return $this->plain(404, 'Not found');
+        }
+        $context = $this->authorizedDeletionContext($request, false);
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        $offset = $request->query('offset');
+        $offset = is_string($offset) ? (int) $offset : 0;
+        try {
+            $summaries = $this->runtime->service()->listTrashedPosts(
+                BlogService::DEFAULT_LIST_LIMIT + 1,
+                $offset
+            );
+            $hasNext = count($summaries) > BlogService::DEFAULT_LIST_LIMIT
+                && $offset <= BlogService::MAX_LIST_OFFSET
+                    - BlogService::DEFAULT_LIST_LIMIT;
+
+            return $this->htmlForRequest(
+                $request,
+                200,
+                $this->renderer->trash(
+                    basePath: $this->basePath(),
+                    summaries: array_slice(
+                        $summaries,
+                        0,
+                        BlogService::DEFAULT_LIST_LIMIT
+                    ),
+                    offset: $offset,
+                    hasNext: $hasNext,
+                    csrf: $context['csrf'],
+                    shell: $this->shellContext($context, '/blog/trash')
+                )
+            );
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
     }
 
     public function newPost(Request $request): Response
@@ -334,6 +435,101 @@ final class BlogAdminHttpController
         }
     }
 
+    public function duplicate(Request $request): Response
+    {
+        if (!$this->accepts($request, 'duplicate')) {
+            return $this->plain(400, 'Bad request');
+        }
+        $context = $this->authorizedDuplicateContext($request);
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        try {
+            $created = $this->runtime->service()->duplicatePost(
+                $this->duplicateMutationGate(
+                    $context['session'],
+                    (string) $request->form('csrf')
+                ),
+                (string) $request->form('post'),
+                (string) $request->form('locale'),
+                (int) $request->form('lock_version')
+            );
+
+            return $this->redirect(
+                $this->basePath() . '/editor?'
+                    . http_build_query([
+                        'post' => $created->postPublicId(),
+                        'locale' => $created->locale(),
+                    ], '', '&', PHP_QUERY_RFC3986)
+            );
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+    }
+
+    public function trashPost(Request $request): Response
+    {
+        if (!$this->accepts($request, 'trash')) {
+            return $this->plain(400, 'Bad request');
+        }
+        if (!$this->runtime->service()->trashAvailable()) {
+            return $this->plain(404, 'Not found');
+        }
+        $context = $this->authorizedDeletionContext($request, true);
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        try {
+            $this->runtime->service()->trashPost(
+                $this->mutationGateAll(
+                    $context['session'],
+                    (string) $request->form('csrf'),
+                    [self::VIEW_CAPABILITY, self::DELETE_CAPABILITY]
+                ),
+                (string) $request->form('post'),
+                (string) $request->form('locale'),
+                (int) $request->form('lock_version')
+            );
+
+            return $this->redirect($this->basePath() . '/trash');
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+    }
+
+    public function restoreFromTrash(Request $request): Response
+    {
+        if (!$this->accepts($request, 'restore_from_trash')) {
+            return $this->plain(400, 'Bad request');
+        }
+        if (!$this->runtime->service()->trashAvailable()) {
+            return $this->plain(404, 'Not found');
+        }
+        $context = $this->authorizedDeletionContext($request, true);
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        try {
+            $this->runtime->service()->restoreTrashedPost(
+                $this->mutationGateAll(
+                    $context['session'],
+                    (string) $request->form('csrf'),
+                    [self::VIEW_CAPABILITY, self::DELETE_CAPABILITY]
+                ),
+                (string) $request->form('post'),
+                (string) $request->form('locale'),
+                (int) $request->form('lock_version')
+            );
+
+            return $this->redirect($this->basePath() . '/trash');
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+    }
+
     public function publish(Request $request): Response
     {
         if (!$this->accepts($request, 'transition')) {
@@ -450,6 +646,8 @@ final class BlogAdminHttpController
             $activePath,
             assets: new WebAdminPageAssets([
                 '/assets/modules/blog/blog-admin.css',
+            ], [
+                '/assets/modules/blog/blog-admin-list.js',
             ])
         );
     }
@@ -554,15 +752,82 @@ final class BlogAdminHttpController
         return $context;
     }
 
+    /**
+     * Duplicating preserves category assignments, so it requires the same
+     * category mutation capability as an explicit assignment change.
+     *
+     * @return array{session: string, csrf: string}|Response
+     */
+    private function authorizedDuplicateContext(Request $request): array|Response
+    {
+        $context = $this->authorizedEditorCreationContext($request, true);
+        if ($context instanceof Response) {
+            return $context;
+        }
+        if (!$this->runtime->authorization()->hasCapability(
+            $context['session'],
+            BlogCategoryAdminHttpController::EDIT_CAPABILITY
+        )) {
+            return $this->plain(403, 'Forbidden');
+        }
+
+        return $context;
+    }
+
+    /**
+     * @return array{session: string, csrf: string}|Response
+     */
+    private function authorizedDeletionContext(
+        Request $request,
+        bool $validateSubmittedCsrf
+    ): array|Response {
+        $context = $this->authorizedContext(
+            $request,
+            self::VIEW_CAPABILITY,
+            $validateSubmittedCsrf
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+        if (!$this->runtime->authorization()->hasCapability(
+            $context['session'],
+            self::DELETE_CAPABILITY
+        )) {
+            return $this->plain(403, 'Forbidden');
+        }
+
+        return $context;
+    }
+
     /** @return Closure(PDO): string */
     private function editorCreationMutationGate(
         #[\SensitiveParameter] string $sessionToken,
         #[\SensitiveParameter] string $csrfToken
     ): Closure {
-        $capabilities = [
+        return $this->mutationGateAll($sessionToken, $csrfToken, [
             self::EDIT_CAPABILITY,
             MediaService::VIEW_CAPABILITY,
-        ];
+        ]);
+    }
+
+    /** @return Closure(PDO): string */
+    private function duplicateMutationGate(
+        #[\SensitiveParameter] string $sessionToken,
+        #[\SensitiveParameter] string $csrfToken
+    ): Closure {
+        return $this->mutationGateAll($sessionToken, $csrfToken, [
+            self::EDIT_CAPABILITY,
+            MediaService::VIEW_CAPABILITY,
+            BlogCategoryAdminHttpController::EDIT_CAPABILITY,
+        ]);
+    }
+
+    /** @param list<string> $capabilities @return Closure(PDO): string */
+    private function mutationGateAll(
+        #[\SensitiveParameter] string $sessionToken,
+        #[\SensitiveParameter] string $csrfToken,
+        array $capabilities
+    ): Closure {
         if ($this->runtime instanceof BlogStructuredEditorHttpRuntimeInterface) {
             return $this->runtime->mutationGateAll(
                 $sessionToken,
@@ -574,31 +839,32 @@ final class BlogAdminHttpController
         // Compatibilidad con adapters que implementan solo el contrato base:
         // ambas puertas se ejecutan dentro de la misma transacción Blog y
         // deben resolver exactamente la misma identidad.
-        $editGate = $this->runtime->mutationGate(
-            $sessionToken,
-            $csrfToken,
-            self::EDIT_CAPABILITY
-        );
-        $mediaGate = $this->runtime->mutationGate(
-            $sessionToken,
-            $csrfToken,
-            MediaService::VIEW_CAPABILITY
-        );
+        $gates = [];
+        foreach ($capabilities as $capability) {
+            $gates[] = $this->runtime->mutationGate(
+                $sessionToken,
+                $csrfToken,
+                $capability
+            );
+        }
 
-        return static function (PDO $pdo) use (
-            $editGate,
-            $mediaGate
-        ): string {
+        return static function (PDO $pdo) use ($gates): string {
             try {
-                $editActor = $editGate($pdo);
-                $mediaActor = $mediaGate($pdo);
-                if (!hash_equals($editActor, $mediaActor)) {
-                    throw new BlogException(
-                        BlogException::ACTOR_GATE_FAILED
-                    );
+                $actor = null;
+                foreach ($gates as $gate) {
+                    $candidate = $gate($pdo);
+                    if ($actor !== null && !hash_equals($actor, $candidate)) {
+                        throw new BlogException(
+                            BlogException::ACTOR_GATE_FAILED
+                        );
+                    }
+                    $actor = $candidate;
+                }
+                if ($actor === null) {
+                    throw new BlogException(BlogException::ACTOR_GATE_FAILED);
                 }
 
-                return $editActor;
+                return $actor;
             } catch (Throwable) {
                 throw new BlogException(BlogException::ACTOR_GATE_FAILED);
             }
@@ -658,6 +924,8 @@ final class BlogAdminHttpController
 
         return match ($operation) {
             'index' => $this->requestPolicy->acceptsIndex($request),
+            'trash_index' =>
+                $this->requestPolicy->acceptsTrashIndex($request),
             'updated' => $this->requestPolicy->acceptsUpdated($request),
             'new' => $this->requestPolicy->acceptsNew($request),
             'create' => $this->requestPolicy->acceptsCreate($request),
@@ -665,6 +933,10 @@ final class BlogAdminHttpController
             'preview' => $this->requestPolicy->acceptsPreview($request),
             'save' => $this->requestPolicy->acceptsSave($request),
             'transition' => $this->requestPolicy->acceptsTransition($request),
+            'duplicate' => $this->requestPolicy->acceptsDuplicate($request),
+            'trash' => $this->requestPolicy->acceptsTrash($request),
+            'restore_from_trash' =>
+                $this->requestPolicy->acceptsRestoreFromTrash($request),
             default => false,
         };
     }
@@ -731,6 +1003,7 @@ final class BlogAdminHttpController
     ): Response {
         return new Response($status, $body, $headers + $this->headers(
             "default-src 'none'; style-src 'self'; script-src 'self'; "
+            . "img-src 'self'; "
             . "form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
         ) + [
             'Content-Type' => 'text/html; charset=utf-8',

@@ -10,13 +10,17 @@ use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Routing\BlogRoutePolicy;
 use App\Core\Blog\Sitemap\Cache\PrivateBlogSitemapCacheStorage;
 use App\Core\Blog\Sitemap\Persistence\PdoBlogSitemapStateRepository;
+use App\Core\Environment\ProjectRuntimeProfile;
 use App\Core\Modules\Migrations\MigrationDatabasePlan;
 use App\Core\Modules\Migrations\MigrationFeatureReadiness;
 use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\Blog\BlogMigrationRequirements;
 use App\Core\Modules\Diagnostics\ProjectAssetInspector;
 use App\Core\WebAdmin\Configuration\WebAdminConfigException;
+use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
+use App\Core\WebAdmin\Security\InvalidSecurityKey;
+use App\Core\WebAdmin\Security\SecurityKey;
 use PDO;
 use Throwable;
 
@@ -62,12 +66,17 @@ final class BlogDiagnosticService
             'collisions' => [],
         ];
         $sitemapCacheEnabled = false;
+        $analyticsEnabled = false;
+        $analyticsCollectInDevelopment = false;
         $sitemapTablePrefix = null;
 
         try {
             $config = $this->configLoader->load($projectRoot, $languages);
             $configurationReady = true;
             $sitemapCacheEnabled = $config->sitemapCache()->enabled();
+            $analyticsEnabled = $config->analytics()->enabled();
+            $analyticsCollectInDevelopment = $config->analytics()
+                ->collectInDevelopment();
             $sitemapTablePrefix = $config->tablePrefix();
             $effective = [
                 'source' => $config->source(),
@@ -77,6 +86,7 @@ final class BlogDiagnosticService
                     'connection' => $config->databaseConnection(),
                 ],
                 'sitemap_cache' => $config->sitemapCache()->toSafeArray(),
+                'analytics' => $config->analytics()->toSafeArray(),
             ];
             if ($config->publicArticleView() !== null) {
                 $effective['public_article_view'] =
@@ -153,6 +163,13 @@ final class BlogDiagnosticService
             $sitemapTablePrefix,
             $databaseConnection
         );
+        $analytics = $this->analyticsStatus(
+            $analyticsEnabled,
+            $analyticsCollectInDevelopment,
+            $environment,
+            $databasePlan,
+            $inspectDatabase
+        );
         $assets = $this->assetInspector->inspect(
             $projectRoot,
             $requiredAssets
@@ -185,6 +202,12 @@ final class BlogDiagnosticService
             )
         ) {
             $blockers[] = 'sitemap_cache.not_ready';
+        }
+        if (
+            ($analytics['enabled'] ?? false) === true
+            && ($analytics['ready'] ?? false) !== true
+        ) {
+            $blockers[] = 'analytics.not_ready';
         }
         if (!$assets['ready']) {
             $blockers[] = 'assets.missing_or_invalid';
@@ -220,11 +243,104 @@ final class BlogDiagnosticService
             ],
             'database' => $database,
             'sitemap_cache' => $sitemapCache,
+            'analytics' => $analytics,
             'readiness' => [
                 'blog_ready' => $blockers === [],
                 'blockers' => array_values(array_unique($blockers)),
             ],
         ]);
+    }
+
+    /**
+     * @param array<string, mixed> $environment
+     * @return array<string, mixed>
+     */
+    private function analyticsStatus(
+        bool $enabled,
+        bool $collectInDevelopment,
+        #[\SensitiveParameter] array $environment,
+        ?MigrationDatabasePlan $plan,
+        bool $inspectDatabase
+    ): array {
+        if (!$enabled) {
+            return [
+                'enabled' => false,
+                'ready' => true,
+                'status' => 'disabled',
+                'collection' => 'not_applicable',
+                'administration' => 'not_applicable',
+                'security_key' => 'not_applicable',
+                'environment_collection' => 'not_applicable',
+            ];
+        }
+        if (!$inspectDatabase || !$plan instanceof MigrationDatabasePlan) {
+            return [
+                'enabled' => true,
+                'ready' => false,
+                'status' => 'not_checked',
+                'collection' => 'not_checked',
+                'administration' => 'not_checked',
+                'security_key' => 'not_checked',
+                'environment_collection' => 'not_checked',
+            ];
+        }
+        $collection = MigrationFeatureReadiness::fromPlan(
+            $plan,
+            BlogMigrationRequirements::analyticsCollection()
+        );
+        $administration = MigrationFeatureReadiness::fromPlan(
+            $plan,
+            BlogMigrationRequirements::analyticsAdministration()
+        );
+        $securityKeyReady = $this->analyticsSecurityKeyReady($environment);
+        try {
+            $profile = ProjectRuntimeProfile::fromEnvironment($environment);
+            $environmentAllowsCollection =
+                !$profile->isDevelopmentLoopbackHttp()
+                || $collectInDevelopment;
+        } catch (Throwable) {
+            $environmentAllowsCollection = false;
+        }
+        $migrationsReady = $collection->baseReady()
+            && $administration->baseReady();
+        $ready = $migrationsReady
+            && $securityKeyReady
+            && $environmentAllowsCollection;
+        $status = !$migrationsReady
+            ? 'migration_not_ready'
+            : (!$securityKeyReady
+                ? 'security_key_not_ready'
+                : (!$environmentAllowsCollection
+                    ? 'disabled_in_environment'
+                    : 'ready'));
+
+        return [
+            'enabled' => true,
+            'ready' => $ready,
+            'status' => $status,
+            'collection' => $collection->baseStatus(),
+            'administration' => $administration->baseStatus(),
+            'security_key' => $securityKeyReady ? 'ready' : 'not_ready',
+            'environment_collection' => $environmentAllowsCollection
+                ? 'enabled'
+                : 'disabled',
+        ];
+    }
+
+    /** @param array<string, mixed> $environment */
+    private function analyticsSecurityKeyReady(array $environment): bool
+    {
+        $encoded = $environment[WebAdminConfig::SECURITY_KEY_ENV] ?? null;
+        if (!is_string($encoded) || $encoded === '') {
+            return false;
+        }
+        try {
+            SecurityKey::fromBase64Url($encoded);
+
+            return true;
+        } catch (InvalidSecurityKey) {
+            return false;
+        }
     }
 
     /** @param array<string, mixed> $environment @return array<string, mixed> */

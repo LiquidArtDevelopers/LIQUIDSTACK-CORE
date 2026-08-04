@@ -24,11 +24,13 @@ final class BlogSitemapStateMigrationPostconditionVerifier implements
         ?BlogStructuredContentMigrationPostconditionVerifier
             $structuredVerifier = null,
         private readonly MySqlColumnDefaultNormalizer $defaultNormalizer =
-            new MySqlColumnDefaultNormalizer()
+            new MySqlColumnDefaultNormalizer(),
+        bool $expectAnalyticsExtension = false
     ) {
         $this->structuredVerifier = $structuredVerifier
             ?? new BlogStructuredContentMigrationPostconditionVerifier(
-                expectSitemapStateExtension: true
+                expectSitemapStateExtension: true,
+                expectAnalyticsExtension: $expectAnalyticsExtension
             );
     }
 

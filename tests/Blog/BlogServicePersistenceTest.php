@@ -1033,7 +1033,7 @@ final class BlogServicePersistenceTest extends TestCase
         );
     }
 
-    public function testMvpExposesNoDeleteOperation(): void
+    public function testCoreExposesNoPermanentPostDeletionOperation(): void
     {
         foreach ([
             BlogService::class,
@@ -1047,10 +1047,9 @@ final class BlogServicePersistenceTest extends TestCase
                     ReflectionMethod::IS_PUBLIC
                 )
             );
-            foreach ($methods as $method) {
-                self::assertStringNotContainsString('delete', $method);
-                self::assertStringNotContainsString('remove', $method);
-            }
+            self::assertNotContains('deletepost', $methods);
+            self::assertNotContains('removepost', $methods);
+            self::assertNotContains('purgepost', $methods);
         }
     }
 

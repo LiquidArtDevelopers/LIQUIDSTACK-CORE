@@ -86,6 +86,69 @@ final class BlogMigrationRequirements
         );
     }
 
+    /** Optional, consent-gated public collection boundary. */
+    public static function analyticsCollection(): MigrationFeatureRequirement
+    {
+        return new MigrationFeatureRequirement(
+            'blog',
+            'blog.analytics.collection',
+            [
+                '0001_blog_posts',
+                '0009_blog_analytics',
+            ]
+        );
+    }
+
+    /** Optional private reporting boundary, including its WebAdmin grant. */
+    public static function analyticsAdministration(): MigrationFeatureRequirement
+    {
+        return new MigrationFeatureRequirement(
+            'blog',
+            'blog.analytics.administration',
+            [
+                '0001_blog_posts',
+                '0002_blog_capabilities',
+                '0009_blog_analytics',
+                '0010_blog_analytics_view_capability',
+            ]
+        );
+    }
+
+    /** Recoverable article trash storage; capability 0008 is cross-scope. */
+    public static function postTombstones(): MigrationFeatureRequirement
+    {
+        return new MigrationFeatureRequirement(
+            'blog',
+            'blog.post_tombstones',
+            [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+            ]
+        );
+    }
+
+    /** Full private editorial-action contract across Blog and WebAdmin. */
+    public static function editorialActions(): MigrationFeatureRequirement
+    {
+        return new MigrationFeatureRequirement(
+            'blog',
+            'blog.editorial_actions',
+            [
+                '0001_blog_posts',
+                '0002_blog_capabilities',
+                '0003_blog_categories',
+                '0004_blog_category_capabilities',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+                '0008_blog_article_delete_capability',
+            ]
+        );
+    }
+
     /** Backwards-compatible internal alias for the private feature gate. */
     public static function categories(): MigrationFeatureRequirement
     {

@@ -15,6 +15,10 @@ final class BlogStructuredContentSchemaGate
 {
     private readonly BlogStructuredContentMigrationPostconditionVerifier
         $sitemapExtendedSchemaVerifier;
+    private readonly BlogStructuredContentMigrationPostconditionVerifier
+        $tombstoneExtendedSchemaVerifier;
+    private readonly BlogStructuredContentMigrationPostconditionVerifier
+        $analyticsExtendedSchemaVerifier;
 
     public function __construct(
         private readonly MigrationFeatureGate $migrationGate =
@@ -23,12 +27,29 @@ final class BlogStructuredContentSchemaGate
             $schemaVerifier =
                 new BlogStructuredContentMigrationPostconditionVerifier(),
         ?BlogStructuredContentMigrationPostconditionVerifier
-            $sitemapExtendedSchemaVerifier = null
+            $sitemapExtendedSchemaVerifier = null,
+        ?BlogStructuredContentMigrationPostconditionVerifier
+            $tombstoneExtendedSchemaVerifier = null,
+        ?BlogStructuredContentMigrationPostconditionVerifier
+            $analyticsExtendedSchemaVerifier = null
     ) {
         $this->sitemapExtendedSchemaVerifier =
             $sitemapExtendedSchemaVerifier
             ?? new BlogStructuredContentMigrationPostconditionVerifier(
                 expectSitemapStateExtension: true
+            );
+        $this->tombstoneExtendedSchemaVerifier =
+            $tombstoneExtendedSchemaVerifier
+            ?? new BlogStructuredContentMigrationPostconditionVerifier(
+                expectSitemapStateExtension: true,
+                expectPostTombstoneExtension: true
+            );
+        $this->analyticsExtendedSchemaVerifier =
+            $analyticsExtendedSchemaVerifier
+            ?? new BlogStructuredContentMigrationPostconditionVerifier(
+                expectSitemapStateExtension: true,
+                expectPostTombstoneExtension: true,
+                expectAnalyticsExtension: true
             );
     }
 
@@ -52,7 +73,15 @@ final class BlogStructuredContentSchemaGate
             }
 
             return $this->schemaVerifier->verify($pdo, $scope)
-                || $this->sitemapExtendedSchemaVerifier->verify($pdo, $scope);
+                || $this->sitemapExtendedSchemaVerifier->verify($pdo, $scope)
+                || $this->tombstoneExtendedSchemaVerifier->verify(
+                    $pdo,
+                    $scope
+                )
+                || $this->analyticsExtendedSchemaVerifier->verify(
+                    $pdo,
+                    $scope
+                );
         } catch (Throwable) {
             return false;
         }

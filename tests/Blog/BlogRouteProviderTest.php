@@ -75,6 +75,7 @@ final class BlogRouteProviderTest extends TestCase
     {
         $gets = [
             '/admin/blog',
+            '/admin/blog/trash',
             '/admin/blog/posts/new',
             '/admin/blog/posts/edit',
             '/admin/blog/posts/preview',
@@ -107,6 +108,9 @@ final class BlogRouteProviderTest extends TestCase
         )?->status());
 
         foreach ([
+            '/admin/blog/posts/duplicate',
+            '/admin/blog/posts/trash',
+            '/admin/blog/posts/restore',
             '/admin/blog/editor/save',
             '/admin/blog/editor/restore',
         ] as $postOnlyPath) {

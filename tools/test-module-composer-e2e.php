@@ -354,6 +354,16 @@ try {
             'module' => 'blog',
             'id' => '0006_blog_sitemap_publication_state',
         ],
+        ['module' => 'blog', 'id' => '0007_blog_post_tombstones'],
+        [
+            'module' => 'blog',
+            'id' => '0008_blog_article_delete_capability',
+        ],
+        ['module' => 'blog', 'id' => '0009_blog_analytics'],
+        [
+            'module' => 'blog',
+            'id' => '0010_blog_analytics_view_capability',
+        ],
     ];
     $plannedMigrations = array_map(
         static fn (array $entry): array => [

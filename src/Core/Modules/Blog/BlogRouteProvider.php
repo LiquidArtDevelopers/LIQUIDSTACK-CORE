@@ -143,6 +143,7 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
 
         $definitions = [
             ['GET', $prefix, 'index'],
+            ['GET', $prefix . '/trash', 'trash'],
             ['GET', $prefix . '/posts/new', 'newPost'],
             ['POST', $prefix . '/posts/create', 'create'],
             ['GET', $prefix . '/posts/edit', 'edit'],
@@ -150,6 +151,9 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
             ['POST', $prefix . '/posts/save', 'save'],
             ['POST', $prefix . '/posts/publish', 'publish'],
             ['POST', $prefix . '/posts/unpublish', 'unpublish'],
+            ['POST', $prefix . '/posts/duplicate', 'duplicate'],
+            ['POST', $prefix . '/posts/trash', 'trashPost'],
+            ['POST', $prefix . '/posts/restore', 'restoreFromTrash'],
             ['GET', $prefix . '/posts/updated', 'updated'],
             ['GET', $prefix . '/editor', 'editor'],
             ['POST', $prefix . '/editor/save', 'editorSave'],
@@ -181,6 +185,11 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
         return $this->handle('newPost', $request);
     }
 
+    public function trash(Request $request): Response
+    {
+        return $this->handle('trash', $request);
+    }
+
     public function create(Request $request): Response
     {
         return $this->handle('create', $request);
@@ -209,6 +218,21 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
     public function unpublish(Request $request): Response
     {
         return $this->handle('unpublish', $request);
+    }
+
+    public function duplicate(Request $request): Response
+    {
+        return $this->handle('duplicate', $request);
+    }
+
+    public function trashPost(Request $request): Response
+    {
+        return $this->handle('trashPost', $request);
+    }
+
+    public function restoreFromTrash(Request $request): Response
+    {
+        return $this->handle('restoreFromTrash', $request);
     }
 
     public function updated(Request $request): Response
@@ -386,6 +410,7 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
     ): bool {
         return match ($operation) {
             'index' => $this->requestPolicy->acceptsIndex($request),
+            'trash' => $this->requestPolicy->acceptsTrashIndex($request),
             'updated' => $this->requestPolicy->acceptsUpdated($request),
             'newPost' => $this->requestPolicy->acceptsNew($request),
             'create' => $this->requestPolicy->acceptsCreate($request),
@@ -394,6 +419,10 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
             'save' => $this->requestPolicy->acceptsSave($request),
             'publish', 'unpublish' =>
                 $this->requestPolicy->acceptsTransition($request),
+            'duplicate' => $this->requestPolicy->acceptsDuplicate($request),
+            'trashPost' => $this->requestPolicy->acceptsTrash($request),
+            'restoreFromTrash' =>
+                $this->requestPolicy->acceptsRestoreFromTrash($request),
             default => false,
         };
     }

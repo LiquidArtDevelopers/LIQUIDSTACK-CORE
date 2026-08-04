@@ -46,7 +46,12 @@ final class BlogPublicArticleViewModel
         private readonly string $template,
         private readonly DateTimeImmutable $publishedAt,
         private readonly DateTimeImmutable $updatedAt,
-        private readonly array $relatedArticles = []
+        private readonly array $relatedArticles = [],
+        private readonly bool $analyticsEnabled = false,
+        private readonly int $analyticsRetentionDays = 90,
+        private readonly int $analyticsSessionTimeoutSeconds = 1800,
+        #[\SensitiveParameter]
+        private readonly ?string $analyticsPageGrant = null
     ) {
     }
 
@@ -146,5 +151,38 @@ final class BlogPublicArticleViewModel
     public function relatedArticles(): array
     {
         return $this->relatedArticles;
+    }
+
+    public function analyticsEnabled(): bool
+    {
+        return $this->analyticsEnabled;
+    }
+
+    public function analyticsRetentionDays(): int
+    {
+        return $this->analyticsRetentionDays;
+    }
+
+    public function analyticsSessionTimeoutSeconds(): int
+    {
+        return $this->analyticsSessionTimeoutSeconds;
+    }
+
+    public function analyticsPageGrant(): ?string
+    {
+        return $this->analyticsPageGrant;
+    }
+
+    /** @return array<string, string|bool> */
+    public function __debugInfo(): array
+    {
+        return [
+            'locale' => $this->locale,
+            'canonical_url' => $this->canonicalUrl,
+            'analytics_enabled' => $this->analyticsEnabled,
+            'analytics_page_grant' => $this->analyticsPageGrant === null
+                ? false
+                : '[redacted]',
+        ];
     }
 }

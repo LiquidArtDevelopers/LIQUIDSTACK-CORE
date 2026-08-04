@@ -95,6 +95,12 @@ PHP);
                 'enabled' => false,
                 'ttl_seconds' => 300,
             ],
+            'analytics' => [
+                'enabled' => false,
+                'retention_days' => 90,
+                'session_timeout_seconds' => 1800,
+                'collect_in_dev' => false,
+            ],
         ]);
     }
 

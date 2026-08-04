@@ -20,6 +20,11 @@ Las migraciones Blog se aplican de forma aditiva y explícita:
 | `0003_blog_categories` | Categorías localizadas y asignaciones; compone y verifica el esquema de `0001`. |
 | `0004_blog_category_capabilities` | Capacidades de categorías; compone las semillas de `0002`. |
 | `0005_blog_structured_content` | Documento actual, referencias de medios y revisiones inmutables; compone y verifica las postcondiciones de `0001` y `0003`. |
+| `0006_blog_sitemap_publication_state` | Revisión pública y generación de la caché LKG del sitemap. |
+| `0007_blog_post_tombstones` | Papelera recuperable de variantes. |
+| `0008_blog_article_delete_capability` | Capacidad delegable de papelera. |
+| `0009_blog_analytics` | Sesiones y vistas pseudónimas, propias y consentidas. |
+| `0010_blog_analytics_view_capability` | Capacidad delegable para consultar métricas. |
 
 Cada frontera tiene su propio gate de disponibilidad. Una migración nueva
 pendiente no autoriza a CORE a completar tablas por intuición ni debe inutilizar
@@ -49,6 +54,12 @@ return [
     'sitemap_cache' => [
         'enabled' => false,
         'ttl_seconds' => 300,
+    ],
+    'analytics' => [
+        'enabled' => false,
+        'retention_days' => 90,
+        'session_timeout_seconds' => 1800,
+        'collect_in_dev' => false,
     ],
     'public_article_view' => 'App/views/blog-article.php',
     'database' => [
@@ -112,13 +123,20 @@ textos sin afectar a las demás y cada variante se publica o retira de forma
 independiente. El H1 no se deriva del `title`, y ninguno de los dos se deriva
 forzosamente del slug.
 
-Los únicos estados iniciales son `draft` y `published`. Publicar exige slug,
-H1, title, description, extracto y cuerpo válidos. Retirar conserva contenido,
-URL y auditoría y vuelve a `draft`; no existe borrado HTTP en este corte. La
-edición exige la `lock_version` mostrada por el formulario: una versión antigua
-produce conflicto y nunca sobrescribe cambios posteriores. Una variante
-publicada es inmutable desde el editor: debe retirarse antes de modificar sus
-campos y volver a publicarse después.
+Los únicos estados son `draft` y `published`. Publicar exige slug, H1, title,
+description, extracto y cuerpo válidos. Retirar conserva contenido, URL y
+auditoría y vuelve a `draft`. La papelera de `0007` es recuperable y solo
+admite borradores: una variante publicada debe retirarse expresamente antes;
+forzar el POST produce conflicto. No existe purga editorial ni borrado permanente. La
+papelera conserva documento, referencias, categorías, slug y locale, pero
+excluye la variante de listados, cargas editoriales y consultas públicas hasta
+su restauración. Enviar o restaurar incrementa `lock_version`.
+
+Duplicar crea siempre un agregado y una variante `draft` independientes, con
+lock `1`, slug nulo y H1 `Copia de {H1}` truncado de forma segura en UTF-8. El
+title SEO permanece; si existen, se copian el documento actual, sus referencias
+y las categorías, se revalidan los medios y se inicia un historial nuevo con
+una revisión inicial. No se copia el historial anterior ni se publica la copia.
 
 Cada categoría es otro agregado estable con UUID público y una traducción
 independiente por locale. Nombre y slug pertenecen a la traducción; el slug es
@@ -167,8 +185,10 @@ El contrato registra capacidades delegables por frontera:
 | `blog.articles.view` | Consultar el listado y la vista previa privada guardada. |
 | `blog.articles.edit` | Crear y editar borradores o variantes. |
 | `blog.articles.publish` | Publicar y retirar variantes. |
+| `blog.articles.delete` | Enviar borradores a la papelera y restaurarlos. |
 | `blog.categories.view` | Consultar categorías localizadas. |
 | `blog.categories.edit` | Crear, traducir, editar y asignar categorías. |
+| `blog.analytics.view` | Consultar las métricas propias del Blog. |
 
 Las cuentas protegidas de WebAdmin reciben todas. Un `site_admin` puede
 delegarlas a editores mediante la gestión existente; solo aparecen cuando Blog
@@ -191,6 +211,7 @@ Rutas privadas:
 | Método | Ruta por defecto | Finalidad |
 | --- | --- | --- |
 | `GET`/`HEAD` | `/admin/blog` | Listado de variantes. |
+| `GET`/`HEAD` | `/admin/blog/trash` | Papelera paginada de borradores. |
 | `GET`/`HEAD` | `/admin/blog/posts/new` | Alta de artículo o idioma. |
 | `POST` | `/admin/blog/posts/create` | Crear variante. |
 | `GET`/`HEAD` | `/admin/blog/posts/edit` | Formulario por UUID y locale. |
@@ -198,6 +219,9 @@ Rutas privadas:
 | `POST` | `/admin/blog/posts/save` | Guardar con versión optimista. |
 | `POST` | `/admin/blog/posts/publish` | Publicar una variante completa. |
 | `POST` | `/admin/blog/posts/unpublish` | Retirar una variante. |
+| `POST` | `/admin/blog/posts/duplicate` | Duplicar una variante como borrador independiente. |
+| `POST` | `/admin/blog/posts/trash` | Enviar un borrador a la papelera. |
+| `POST` | `/admin/blog/posts/restore` | Restaurar un borrador de la papelera. |
 | `GET`/`HEAD` | `/admin/blog/posts/updated` | Destino PRG sin PII. |
 | `GET`/`HEAD` | `/admin/blog/categories` | Listado localizado de categorías. |
 | `GET`/`HEAD` | `/admin/blog/categories/new` | Alta de categoría o traducción. |
@@ -222,6 +246,15 @@ autorización de la UI es solo presentación: cada escritura vuelve a validar
 SID, CSRF, `auth_version`, lifecycle y capacidades dentro de la transacción
 antes de bloquear la variante. Toda mutación genera auditoría sin cuerpo,
 metadatos, correo, SID, CSRF ni IP.
+
+Duplicar revalida `blog.articles.edit`, `blog.categories.edit` y
+`webadmin.media.view` dentro de la misma transacción porque conserva las
+asignaciones de categoría. Papelera y restauración revalidan
+`blog.articles.view` y `blog.articles.delete`. Las tres operaciones exigen el
+`lock_version` recibido, bloquean antes de copiar o cambiar visibilidad y
+revocan todos sus cambios si falla la auditoría. Duplicar sigue disponible en
+el corte anterior a `0007`; la UI y las rutas de papelera permanecen ocultas y
+responden `404` hasta que el gate de tombstones esté listo.
 
 Abrir, guardar o restaurar desde el editor requiere
 `webadmin.media.view` además de la capacidad Blog correspondiente:
@@ -426,6 +459,69 @@ con el nonce de su shell y permitir exclusivamente ese origen en `frame-src`.
 Ampliar la directiva no carga contenido ni sustituye el gate de CookieLAD; el
 iframe continúa dependiendo a la vez del consentimiento y de una acción del
 usuario.
+
+## Analítica propia y consentida
+
+La analítica Blog es un opt-in doble: `analytics.enabled=true` debe tener las
+migraciones `0009` y `0010` verificadas, y la vista pública debe emitir el
+marcador explícito solo cuando `BlogPublicArticleViewModel::analyticsEnabled()`
+sea verdadero. El fallback standalone lo hace automáticamente. Una vista
+`public_article_view` debe trasladar además los límites tipados, por ejemplo en
+su elemento `html`:
+
+```php
+<?php if ($blogArticle->analyticsEnabled()): ?>
+data-blog-analytics-enabled="true"
+data-blog-analytics-retention-days="<?= $blogArticle->analyticsRetentionDays() ?>"
+data-blog-analytics-session-timeout="<?= $blogArticle->analyticsSessionTimeoutSeconds() ?>"
+data-blog-analytics-page-grant="<?= htmlspecialchars(
+    (string) $blogArticle->analyticsPageGrant(),
+    ENT_QUOTES | ENT_SUBSTITUTE,
+    'UTF-8'
+) ?>"
+<?php endif; ?>
+```
+
+`blog-public.js` solo carga el asset separado `blog-analytics.js` cuando existe
+ese marcador y CookieLAD declara `cookie_analytics=true`. Sin cualquiera de los
+dos no abre endpoints y elimina identificadores antiguos. La revocación durante
+una visita elimina las cookies first-party y llama al endpoint exacto de
+revocación. Los tres POST viven bajo `/_liquidstack/blog-analytics`, se
+despachan antes del bootstrap legacy y no crean `PHPSESSID`. Una vista
+project-owned debe permitir `connect-src 'self'`; el fallback ya lo declara.
+
+El `page_grant` es una capacidad HMAC efímera emitida en el render SSR. Ata
+origen, ruta canónica, localización y un UUID de vista generado en servidor;
+el cliente no elige ninguno de esos datos. Su replay solo puede representar la
+misma vista por el índice único y una firma manipulada o expirada se rechaza
+antes de abrir PDO. Cuando se emite, la respuesta del artículo usa
+`Cache-Control: private, no-store` para que un proxy no comparta la capacidad.
+No debe viajar en query strings, logs ni herramientas de diagnóstico.
+
+La identidad es un UUID aleatorio first-party pseudonimizado con HMAC en
+servidor. No se leen ni persisten IP, `User-Agent`, referrer, correo o sesión
+WebAdmin; la mera presencia de la cookie administrativa excluye esa visita.
+El tiempo solo avanza con la página visible y enfocada. Las métricas propias
+son: páginas vistas, visitantes pseudónimos únicos, visitantes recurrentes,
+tiempo medio activo, sesiones de entrada y rebote. Una entrada se considera
+engaged cuando supera 10 segundos activos o la sesión alcanza dos páginas; el
+rebote es el complemento porcentual. Son definiciones operativas compatibles
+con la lectura habitual de GA4, no una réplica ni una importación de Google.
+
+`retention_days` se aplica con el comando destructivo, one-shot y explícito:
+
+```powershell
+composer liquidstack:blog:analytics:purge --yes
+```
+
+El comando elimina primero las sesiones vencidas que no contienen actividad
+reciente y sus vistas por cascada. Después elimina cualquier vista vencida que
+pertenezca a una sesión aún activa. Así, `retention_days` se aplica a cada
+registro sin sacrificar las vistas recientes de una sesión larga. No se ejecuta
+desde Composer update ni desde una petición pública. Cada proyecto productivo
+deberá programarlo mediante su scheduler o cron. CORE entrega el comando y su
+salida JSON, pero no instala el cron; esa
+adopción operativa queda pendiente hasta configurar el servidor concreto.
 
 Las imágenes estructuradas se entregan como AVIF responsive desde el namespace
 fijo `/_liquidstack/blog-media/{uuid}/{width}.avif`. La frontera pública solo
@@ -640,6 +736,8 @@ composer liquidstack:migrate --dry-run
 composer liquidstack:migrate --apply
 # Solo si sitemap_cache.enabled=true:
 composer liquidstack:blog:sitemap-cache:init
+# Si analytics.enabled=true, ejecutar periódicamente (cron externo):
+composer liquidstack:blog:analytics:purge --yes
 composer liquidstack:webadmin:bootstrap
 composer liquidstack:doctor
 ```
@@ -660,7 +758,9 @@ administración `0001+0002+0003+0004`. El documento estructurado y sus
 revisiones requieren `0001+0003+0005`; su selección de imágenes necesita
 además `0002_webadmin_media_library` en el scope WebAdmin. La caché LKG exige
 el prefijo completo `0001`–`0006`, incluidas las migraciones intercaladas, y su
-inicialización explícita. Una migración compuesta
+inicialización explícita. La colección analítica requiere `0001+0009`; su
+consulta privada suma `0002+0010` y la capacidad `blog.analytics.view`. Una
+migración compuesta
 registrada solo retira la postcondición anterior mientras su propio contrato
 completo continúe siendo válido.
 

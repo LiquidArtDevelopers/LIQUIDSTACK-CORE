@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Tests\Blog\Migrations;
 
 use App\Core\Modules\Blog\BlogCapabilitySeedPostcondition;
+use App\Core\Modules\Blog\BlogAnalyticsCapabilitySeedPostcondition;
+use App\Core\Modules\Blog\BlogAnalyticsMigrationPostconditionVerifier;
+use App\Core\Modules\Blog\BlogArticleDeleteCapabilitySeedPostcondition;
 use App\Core\Modules\Blog\BlogInitialNamespacePrecondition;
 use App\Core\Modules\Blog\BlogMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogMigrationProvider;
 use App\Core\Modules\Blog\BlogStructuredContentMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogSitemapStateMigrationPostconditionVerifier;
+use App\Core\Modules\Blog\BlogPostTombstoneMigrationPostconditionVerifier;
 use App\Core\Modules\Migrations\MigrationDefinition;
 use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
@@ -26,7 +30,7 @@ final class BlogMigrationProviderTest extends TestCase
         self::assertSame('blog', BlogMigrationProvider::moduleId());
         $migrations = $this->migrations();
 
-        self::assertCount(6, $migrations);
+        self::assertCount(10, $migrations);
         self::assertSame(
             [
                 '0001_blog_posts',
@@ -35,6 +39,10 @@ final class BlogMigrationProviderTest extends TestCase
                 '0004_blog_category_capabilities',
                 '0005_blog_structured_content',
                 '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+                '0008_blog_article_delete_capability',
+                '0009_blog_analytics',
+                '0010_blog_analytics_view_capability',
             ],
             array_map(
                 static fn (MigrationDefinition $migration): string =>
@@ -64,6 +72,10 @@ final class BlogMigrationProviderTest extends TestCase
         self::assertSame('webadmin', $migrations[3]->targetScopeModuleId());
         self::assertNull($migrations[4]->targetScopeModuleId());
         self::assertNull($migrations[5]->targetScopeModuleId());
+        self::assertNull($migrations[6]->targetScopeModuleId());
+        self::assertSame('webadmin', $migrations[7]->targetScopeModuleId());
+        self::assertNull($migrations[8]->targetScopeModuleId());
+        self::assertSame('webadmin', $migrations[9]->targetScopeModuleId());
         $scopes = MigrationScopeCollection::fromTablePrefixes([
             'blog' => 'ls_blog_',
             'webadmin' => 'ls_webadmin_',
@@ -108,6 +120,40 @@ final class BlogMigrationProviderTest extends TestCase
                 '0005_blog_structured_content',
             ],
             $migrations[5]->supersededPostconditionIds()
+        );
+        self::assertInstanceOf(
+            BlogPostTombstoneMigrationPostconditionVerifier::class,
+            $migrations[6]->postconditionVerifier()
+        );
+        self::assertInstanceOf(
+            BlogArticleDeleteCapabilitySeedPostcondition::class,
+            $migrations[7]->postconditionVerifier()
+        );
+        self::assertInstanceOf(
+            BlogAnalyticsMigrationPostconditionVerifier::class,
+            $migrations[8]->postconditionVerifier()
+        );
+        self::assertInstanceOf(
+            BlogAnalyticsCapabilitySeedPostcondition::class,
+            $migrations[9]->postconditionVerifier()
+        );
+        self::assertSame(
+            [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+            ],
+            $migrations[8]->supersededPostconditionIds()
+        );
+        self::assertSame(
+            [
+                '0002_blog_capabilities',
+                '0004_blog_category_capabilities',
+                '0008_blog_article_delete_capability',
+            ],
+            $migrations[9]->supersededPostconditionIds()
         );
     }
 

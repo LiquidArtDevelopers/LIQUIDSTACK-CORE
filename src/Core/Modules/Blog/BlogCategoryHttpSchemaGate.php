@@ -17,6 +17,10 @@ final class BlogCategoryHttpSchemaGate
         $extendedSchemaVerifier;
     private readonly BlogCategoryMigrationPostconditionVerifier
         $sitemapExtendedSchemaVerifier;
+    private readonly BlogCategoryMigrationPostconditionVerifier
+        $tombstoneExtendedSchemaVerifier;
+    private readonly BlogCategoryMigrationPostconditionVerifier
+        $analyticsExtendedSchemaVerifier;
 
     public function __construct(
         private readonly MigrationFeatureGate $migrationGate =
@@ -30,7 +34,11 @@ final class BlogCategoryHttpSchemaGate
         ?BlogCategoryMigrationPostconditionVerifier
             $extendedSchemaVerifier = null,
         ?BlogCategoryMigrationPostconditionVerifier
-            $sitemapExtendedSchemaVerifier = null
+            $sitemapExtendedSchemaVerifier = null,
+        ?BlogCategoryMigrationPostconditionVerifier
+            $tombstoneExtendedSchemaVerifier = null,
+        ?BlogCategoryMigrationPostconditionVerifier
+            $analyticsExtendedSchemaVerifier = null
     ) {
         $this->extendedSchemaVerifier = $extendedSchemaVerifier
             ?? new BlogCategoryMigrationPostconditionVerifier(
@@ -41,6 +49,21 @@ final class BlogCategoryHttpSchemaGate
             ?? new BlogCategoryMigrationPostconditionVerifier(
                 expectStructuredContentExtension: true,
                 expectSitemapStateExtension: true
+            );
+        $this->tombstoneExtendedSchemaVerifier =
+            $tombstoneExtendedSchemaVerifier
+            ?? new BlogCategoryMigrationPostconditionVerifier(
+                expectStructuredContentExtension: true,
+                expectSitemapStateExtension: true,
+                expectPostTombstoneExtension: true
+            );
+        $this->analyticsExtendedSchemaVerifier =
+            $analyticsExtendedSchemaVerifier
+            ?? new BlogCategoryMigrationPostconditionVerifier(
+                expectStructuredContentExtension: true,
+                expectSitemapStateExtension: true,
+                expectPostTombstoneExtension: true,
+                expectAnalyticsExtension: true
             );
     }
 
@@ -76,6 +99,14 @@ final class BlogCategoryHttpSchemaGate
             return $this->schemaVerifier->verify($pdo, $blogScope)
                 || $this->extendedSchemaVerifier->verify($pdo, $blogScope)
                 || $this->sitemapExtendedSchemaVerifier->verify(
+                    $pdo,
+                    $blogScope
+                )
+                || $this->tombstoneExtendedSchemaVerifier->verify(
+                    $pdo,
+                    $blogScope
+                )
+                || $this->analyticsExtendedSchemaVerifier->verify(
                     $pdo,
                     $blogScope
                 );

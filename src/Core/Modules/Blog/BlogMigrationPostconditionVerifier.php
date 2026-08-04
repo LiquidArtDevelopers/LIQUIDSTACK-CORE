@@ -24,7 +24,9 @@ final class BlogMigrationPostconditionVerifier implements
             new MySqlColumnDefaultNormalizer(),
         private readonly bool $expectCategoryExtension = false,
         private readonly bool $expectStructuredContentExtension = false,
-        private readonly bool $expectSitemapStateExtension = false
+        private readonly bool $expectSitemapStateExtension = false,
+        private readonly bool $expectPostTombstoneExtension = false,
+        private readonly bool $expectAnalyticsExtension = false
     ) {
     }
 
@@ -133,6 +135,34 @@ final class BlogMigrationPostconditionVerifier implements
             $expected[] = 'table:' . strtolower(
                 $scope->tableName('sitemap_state')
             );
+        }
+        if ($this->expectPostTombstoneExtension) {
+            $expected[] = 'table:' . strtolower(
+                $scope->tableName('post_tombstones')
+            );
+            $expected[] = 'index:' . strtolower(
+                $scope->tableName('ix_pt_time')
+            );
+        }
+        if ($this->expectAnalyticsExtension) {
+            foreach (['analytics_sessions', 'analytics_views'] as $suffix) {
+                $expected[] = 'table:' . strtolower(
+                    $scope->tableName($suffix)
+                );
+            }
+            foreach ([
+                'ux_as_session',
+                'ix_as_visitor_time',
+                'ix_as_landing_time',
+                'ix_as_activity',
+                'ux_av_public',
+                'ix_av_local_time',
+                'ix_av_session_time',
+            ] as $suffix) {
+                $expected[] = 'index:' . strtolower(
+                    $scope->tableName($suffix)
+                );
+            }
         }
         sort($expected, SORT_STRING);
 
@@ -444,6 +474,22 @@ final class BlogMigrationPostconditionVerifier implements
                 'INNODB',
                 'utf8mb4_unicode_ci',
             ];
+        }
+        if ($this->expectPostTombstoneExtension) {
+            $expected[strtolower($scope->tableName('post_tombstones'))] = [
+                'BASE TABLE',
+                'INNODB',
+                'utf8mb4_unicode_ci',
+            ];
+        }
+        if ($this->expectAnalyticsExtension) {
+            foreach (['analytics_sessions', 'analytics_views'] as $suffix) {
+                $expected[strtolower($scope->tableName($suffix))] = [
+                    'BASE TABLE',
+                    'INNODB',
+                    'utf8mb4_unicode_ci',
+                ];
+            }
         }
         ksort($expected, SORT_STRING);
 

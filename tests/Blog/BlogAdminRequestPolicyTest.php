@@ -26,6 +26,22 @@ final class BlogAdminRequestPolicyTest extends TestCase
                 ['offset' => $offset]
             )), $offset);
         }
+        foreach (['7', '30', '90'] as $period) {
+            self::assertTrue($this->policy->acceptsIndex($this->get(
+                '/admin/blog',
+                ['period' => $period]
+            )), $period);
+            self::assertTrue($this->policy->acceptsIndex($this->get(
+                '/admin/blog',
+                ['offset' => '50', 'period' => $period]
+            )), $period);
+        }
+        foreach (['', '0', '07', '14', '365'] as $period) {
+            self::assertFalse($this->policy->acceptsIndex($this->get(
+                '/admin/blog',
+                ['period' => $period]
+            )), $period);
+        }
         foreach (
             [
                 '',
@@ -67,6 +83,14 @@ final class BlogAdminRequestPolicyTest extends TestCase
         self::assertFalse($this->policy->acceptsEdit($this->get(
             '/admin/blog/posts/edit',
             ['post' => $this->uuid(), 'locale' => 'ES', 'extra' => 'x']
+        )));
+        self::assertTrue($this->policy->acceptsTrashIndex($this->get(
+            '/admin/blog/trash',
+            ['offset' => '50']
+        )));
+        self::assertFalse($this->policy->acceptsTrashIndex($this->get(
+            '/admin/blog/trash',
+            ['period' => '30']
         )));
     }
 
@@ -191,6 +215,26 @@ final class BlogAdminRequestPolicyTest extends TestCase
                 'lock_version' => '9',
             ]
         )));
+
+        $action = $this->post('/admin/blog/posts/duplicate', [
+            'csrf' => 'csrf',
+            'post' => $this->uuid(),
+            'locale' => 'en',
+            'lock_version' => '9',
+        ]);
+        self::assertTrue($this->policy->acceptsDuplicate($action));
+        self::assertTrue($this->policy->acceptsTrash($action));
+        self::assertTrue($this->policy->acceptsRestoreFromTrash($action));
+
+        $invalid = $this->post('/admin/blog/posts/trash', [
+            'csrf' => 'csrf',
+            'post' => $this->uuid(),
+            'locale' => 'en',
+            'lock_version' => '09',
+        ]);
+        self::assertFalse($this->policy->acceptsDuplicate($invalid));
+        self::assertFalse($this->policy->acceptsTrash($invalid));
+        self::assertFalse($this->policy->acceptsRestoreFromTrash($invalid));
     }
 
     public function testMaximumLegalEditorialPayloadFitsTheRealHttpBoundary(): void

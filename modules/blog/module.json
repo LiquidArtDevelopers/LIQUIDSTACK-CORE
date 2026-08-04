@@ -19,6 +19,7 @@
         "routes": [
             "App\\Core\\Modules\\Blog\\BlogRouteProvider",
             "App\\Core\\Modules\\Blog\\BlogCategoryRouteProvider",
+            "App\\Core\\Modules\\Blog\\BlogAnalyticsRouteProvider",
             "App\\Core\\Modules\\Blog\\BlogPublicRouteProvider"
         ],
         "middleware": [],

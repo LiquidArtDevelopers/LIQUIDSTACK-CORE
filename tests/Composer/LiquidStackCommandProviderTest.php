@@ -30,6 +30,7 @@ final class LiquidStackCommandProviderTest extends TestCase
             'liquidstack:migrate',
             'liquidstack:media:init',
             'liquidstack:blog:sitemap-cache:init',
+            'liquidstack:blog:analytics:purge',
             'liquidstack:webadmin:bootstrap',
             'liquidstack:webadmin:mail:dispatch',
         ], array_map(

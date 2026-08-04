@@ -8,6 +8,7 @@ use App\Core\Blog\Audit\BlogMutationAuditEvent;
 use App\Core\Blog\Audit\BlogMutationAuditPortInterface;
 use App\Core\Blog\Editing\BlogDraftMutationCoordinator;
 use App\Core\Blog\Editing\BlogPlainDraftWriteGuardInterface;
+use App\Core\Blog\Persistence\BlogEditorialActionRepositoryInterface;
 use App\Core\Blog\Persistence\BlogPersistenceConflict;
 use App\Core\Blog\Persistence\BlogPersistenceException;
 use App\Core\Blog\Persistence\BlogPostLocaleCatalogRepositoryInterface;
@@ -15,6 +16,9 @@ use App\Core\Blog\Persistence\BlogPublishedSitemapRepositoryInterface;
 use App\Core\Blog\Persistence\BlogRepositoryInterface;
 use App\Core\Blog\Sitemap\BlogSitemapPublicationCoordinator;
 use App\Core\Blog\Sitemap\BlogSitemapPublicationFence;
+use App\Core\Blog\StructuredContent\Editing\BlogStructuredDraft;
+use App\Core\Blog\StructuredContent\Media\BlogMediaAvailabilityPortInterface;
+use App\Core\Blog\StructuredContent\Persistence\BlogStructuredContentRepositoryInterface;
 use App\Core\WebAdmin\Support\ClockInterface;
 use App\Core\WebAdmin\Support\RandomUuidV4Generator;
 use App\Core\WebAdmin\Support\SystemClock;
@@ -51,7 +55,11 @@ final class BlogService
             $plainDraftWriteGuard = null,
         ?BlogDraftMutationCoordinator $draftMutationCoordinator = null,
         private readonly ?BlogSitemapPublicationCoordinator
-            $sitemapPublicationCoordinator = null
+            $sitemapPublicationCoordinator = null,
+        private readonly ?BlogStructuredContentRepositoryInterface
+            $structuredContentRepository = null,
+        private readonly ?BlogMediaAvailabilityPortInterface
+            $mediaAvailability = null
     ) {
         $this->draftMutationCoordinator = $draftMutationCoordinator
             ?? new BlogDraftMutationCoordinator(
@@ -59,6 +67,279 @@ final class BlogService
                 $clock,
                 $auditPort
             );
+    }
+
+    /**
+     * Clones one active locale into a new draft aggregate and starts a fresh
+     * structured revision history when the source has adopted the editor.
+     *
+     * @param callable(PDO): string $actorGate
+     */
+    public function duplicatePost(
+        #[\SensitiveParameter] callable $actorGate,
+        string $postPublicId,
+        string $locale,
+        int $expectedLockVersion
+    ): BlogPostVariant {
+        $postPublicId = BlogInput::publicId($postPublicId);
+        $locale = BlogInput::locale($locale);
+        BlogInput::expectedLockVersion($expectedLockVersion);
+        $newPostPublicId = $this->newPublicId();
+        $newLocalizationPublicId = $this->newPublicId();
+        $editorialRepository = $this->editorialRepository();
+        if (
+            $this->structuredContentRepository === null
+            || $this->mediaAvailability === null
+        ) {
+            throw new BlogException(BlogException::STORAGE_UNAVAILABLE);
+        }
+
+        return $this->mutate(function (PDO $pdo) use (
+            $actorGate,
+            $postPublicId,
+            $locale,
+            $expectedLockVersion,
+            $newPostPublicId,
+            $newLocalizationPublicId,
+            $editorialRepository
+        ): BlogPostVariant {
+            $actorPublicId = $this->authorizedActor($actorGate, $pdo);
+            $now = $this->now();
+            $source = $this->requiredLockedVariant(
+                $postPublicId,
+                $locale,
+                BlogException::POST_NOT_FOUND
+            );
+            $this->assertExpectedVersion($source, $expectedLockVersion);
+            $copyH1 = $this->duplicateH1($source->draft()->h1());
+
+            $categoryPublicIds = $editorialRepository
+                ->assignedCategoryPublicIds($postPublicId, 101);
+            if (count($categoryPublicIds) > 100) {
+                throw new BlogPersistenceException();
+            }
+
+            $structuredCopy = null;
+            $current = $this->structuredContentRepository->current(
+                $source->localizationPublicId()
+            );
+            if ($current !== null) {
+                $snapshot = $current->snapshot();
+                $metadata = $snapshot->compatibilityDraft();
+                $structuredCopy = new BlogStructuredDraft(
+                    $copyH1,
+                    $snapshot->document(),
+                    null,
+                    $metadata->seoTitle(),
+                    $metadata->metaDescription(),
+                    $metadata->excerpt()
+                );
+                $this->mediaAvailability->assertAvailable(
+                    $pdo,
+                    $structuredCopy->mediaAssetPublicIds()
+                );
+            }
+
+            $sourceDraft = $source->draft();
+            $copyDraft = $structuredCopy?->compatibilityDraft()
+                ?? new BlogDraft(
+                    $copyH1,
+                    $sourceDraft->bodyText(),
+                    null,
+                    $sourceDraft->seoTitle(),
+                    $sourceDraft->metaDescription(),
+                    $sourceDraft->excerpt()
+                );
+            $this->repository->insertPost(
+                $newPostPublicId,
+                $actorPublicId,
+                $now
+            );
+            $this->repository->insertLocalization(
+                $newLocalizationPublicId,
+                $newPostPublicId,
+                $locale,
+                $copyDraft,
+                $actorPublicId,
+                $now
+            );
+
+            $assignmentIds = [];
+            foreach ($categoryPublicIds as $categoryPublicId) {
+                $assignmentIds[$categoryPublicId] = $this->newPublicId();
+            }
+            $editorialRepository->insertCategoryAssignments(
+                $newPostPublicId,
+                $assignmentIds,
+                $actorPublicId,
+                $now
+            );
+
+            if ($structuredCopy !== null) {
+                $documentPublicId = $this->newPublicId();
+                $revisionPublicId = $this->newPublicId();
+                $this->structuredContentRepository->upsertCurrent(
+                    $newLocalizationPublicId,
+                    $documentPublicId,
+                    $structuredCopy,
+                    $actorPublicId,
+                    $now
+                );
+                $this->structuredContentRepository->replaceCurrentMedia(
+                    $newLocalizationPublicId,
+                    $structuredCopy->mediaReferences(),
+                    $now
+                );
+                $this->structuredContentRepository->appendRevision(
+                    $newLocalizationPublicId,
+                    $revisionPublicId,
+                    1,
+                    $structuredCopy,
+                    $actorPublicId,
+                    $now
+                );
+                $this->structuredContentRepository->appendRevisionMedia(
+                    $revisionPublicId,
+                    $structuredCopy->mediaReferences(),
+                    $now
+                );
+            }
+
+            $stored = $this->requiredStoredVariant(
+                $newPostPublicId,
+                $locale
+            );
+            $this->auditMutation(
+                $pdo,
+                BlogMutationAuditEvent::DUPLICATE,
+                $actorPublicId,
+                $newPostPublicId,
+                $now
+            );
+
+            return $stored;
+        });
+    }
+
+    public function trashAvailable(): bool
+    {
+        return $this->repository instanceof
+                BlogEditorialActionRepositoryInterface
+            && $this->repository->postTombstonesEnabled();
+    }
+
+    /** @param callable(PDO): string $actorGate */
+    public function trashPost(
+        #[\SensitiveParameter] callable $actorGate,
+        string $postPublicId,
+        string $locale,
+        int $expectedLockVersion
+    ): BlogPostVariant {
+        $postPublicId = BlogInput::publicId($postPublicId);
+        $locale = BlogInput::locale($locale);
+        BlogInput::expectedLockVersion($expectedLockVersion);
+        $editorialRepository = $this->tombstoneRepository();
+
+        return $this->mutate(function (PDO $pdo) use (
+            $actorGate,
+            $postPublicId,
+            $locale,
+            $expectedLockVersion,
+            $editorialRepository
+        ): BlogPostVariant {
+            $actorPublicId = $this->authorizedActor($actorGate, $pdo);
+            $now = $this->now();
+            $current = $this->requiredLockedVariant($postPublicId, $locale);
+            $this->assertExpectedVersion($current, $expectedLockVersion);
+            if ($current->status() !== BlogPostVariant::DRAFT) {
+                throw new BlogException(BlogException::INVALID_STATE);
+            }
+            $editorialRepository->insertTombstone(
+                $current->localizationPublicId(),
+                $actorPublicId,
+                $now
+            );
+            if (!$editorialRepository->bumpVariantLock(
+                $current->localizationPublicId(),
+                $expectedLockVersion,
+                $actorPublicId,
+                $now
+            )) {
+                throw new BlogException(BlogException::LOCK_CONFLICT);
+            }
+            $this->repository->touchPost($postPublicId, $now);
+            $stored = $this->requiredTrashedVariant(
+                $editorialRepository,
+                $postPublicId,
+                $locale
+            );
+            $this->auditMutation(
+                $pdo,
+                BlogMutationAuditEvent::TRASH,
+                $actorPublicId,
+                $postPublicId,
+                $now
+            );
+
+            return $stored;
+        });
+    }
+
+    /** @param callable(PDO): string $actorGate */
+    public function restoreTrashedPost(
+        #[\SensitiveParameter] callable $actorGate,
+        string $postPublicId,
+        string $locale,
+        int $expectedLockVersion
+    ): BlogPostVariant {
+        $postPublicId = BlogInput::publicId($postPublicId);
+        $locale = BlogInput::locale($locale);
+        BlogInput::expectedLockVersion($expectedLockVersion);
+        $editorialRepository = $this->tombstoneRepository();
+
+        return $this->mutate(function (PDO $pdo) use (
+            $actorGate,
+            $postPublicId,
+            $locale,
+            $expectedLockVersion,
+            $editorialRepository
+        ): BlogPostVariant {
+            $actorPublicId = $this->authorizedActor($actorGate, $pdo);
+            $now = $this->now();
+            $current = $this->requiredTrashedVariant(
+                $editorialRepository,
+                $postPublicId,
+                $locale
+            );
+            $this->assertExpectedVersion($current, $expectedLockVersion);
+            if (
+                $current->status() !== BlogPostVariant::DRAFT
+                || !$editorialRepository->deleteTombstone(
+                    $current->localizationPublicId()
+                )
+            ) {
+                throw new BlogException(BlogException::INVALID_STATE);
+            }
+            if (!$editorialRepository->bumpVariantLock(
+                $current->localizationPublicId(),
+                $expectedLockVersion,
+                $actorPublicId,
+                $now
+            )) {
+                throw new BlogException(BlogException::LOCK_CONFLICT);
+            }
+            $this->repository->touchPost($postPublicId, $now);
+            $stored = $this->requiredStoredVariant($postPublicId, $locale);
+            $this->auditMutation(
+                $pdo,
+                BlogMutationAuditEvent::RESTORE_FROM_TRASH,
+                $actorPublicId,
+                $postPublicId,
+                $now
+            );
+
+            return $stored;
+        });
     }
 
     /**
@@ -392,6 +673,20 @@ final class BlogService
         );
     }
 
+    /** @return list<BlogPostSummary> */
+    public function listTrashedPosts(
+        int $limit = self::DEFAULT_LIST_LIMIT,
+        int $offset = 0
+    ): array {
+        $limit = BlogInput::listLimit($limit);
+        $offset = BlogInput::listOffset($offset);
+        $repository = $this->tombstoneRepository();
+
+        return $this->read(
+            fn (): array => $repository->listTrashedSummaries($limit, $offset)
+        );
+    }
+
     /** @return list<string> */
     public function localesForPost(string $postPublicId): array
     {
@@ -604,6 +899,24 @@ final class BlogService
         }
     }
 
+    private function duplicateH1(string $source): string
+    {
+        $prefix = 'Copia de ';
+        $available = BlogDraft::MAX_H1_BYTES - strlen($prefix);
+        $suffix = strlen($source) <= $available
+            ? $source
+            : substr($source, 0, $available);
+        while ($suffix !== '' && preg_match('//u', $suffix) !== 1) {
+            $suffix = substr($suffix, 0, -1);
+        }
+        $suffix = rtrim($suffix);
+        if ($suffix === '') {
+            throw new BlogException(BlogException::STORAGE_UNAVAILABLE);
+        }
+
+        return $prefix . $suffix;
+    }
+
     private function now(): DateTimeImmutable
     {
         try {
@@ -658,8 +971,15 @@ final class BlogService
 
     private function requiredLockedVariant(
         string $postPublicId,
-        string $locale
+        string $locale,
+        string $missingPostIssue = BlogException::VARIANT_NOT_FOUND
     ): BlogPostVariant {
+        // All aggregate mutations acquire locks in the same order: parent
+        // post first, then its localization. This avoids duplicate/edit,
+        // publish and trash taking the inverse order under MySQL.
+        if (!$this->repository->lockPost($postPublicId)) {
+            throw new BlogException($missingPostIssue);
+        }
         $variant = $this->repository->lockVariant($postPublicId, $locale);
         if ($variant === null) {
             throw new BlogException(BlogException::VARIANT_NOT_FOUND);
@@ -675,6 +995,44 @@ final class BlogService
         $variant = $this->repository->variant($postPublicId, $locale);
         if ($variant === null) {
             throw new BlogPersistenceException();
+        }
+
+        return $variant;
+    }
+
+    private function editorialRepository(): BlogEditorialActionRepositoryInterface
+    {
+        if (
+            !$this->repository instanceof
+                BlogEditorialActionRepositoryInterface
+        ) {
+            throw new BlogException(BlogException::STORAGE_UNAVAILABLE);
+        }
+
+        return $this->repository;
+    }
+
+    private function tombstoneRepository(): BlogEditorialActionRepositoryInterface
+    {
+        $repository = $this->editorialRepository();
+        if (!$repository->postTombstonesEnabled()) {
+            throw new BlogException(BlogException::STORAGE_UNAVAILABLE);
+        }
+
+        return $repository;
+    }
+
+    private function requiredTrashedVariant(
+        BlogEditorialActionRepositoryInterface $repository,
+        string $postPublicId,
+        string $locale
+    ): BlogPostVariant {
+        if (!$this->repository->lockPost($postPublicId)) {
+            throw new BlogException(BlogException::VARIANT_NOT_FOUND);
+        }
+        $variant = $repository->lockTrashedVariant($postPublicId, $locale);
+        if ($variant === null) {
+            throw new BlogException(BlogException::VARIANT_NOT_FOUND);
         }
 
         return $variant;

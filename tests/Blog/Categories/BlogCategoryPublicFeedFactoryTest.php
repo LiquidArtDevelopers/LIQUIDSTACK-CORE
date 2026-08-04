@@ -112,7 +112,11 @@ final class BlogCategoryPublicFeedFactoryTest extends TestCase
             "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
             . "AND migration_id IN ('0004_blog_category_capabilities', "
             . "'0005_blog_structured_content', "
-            . "'0006_blog_sitemap_publication_state')"
+            . "'0006_blog_sitemap_publication_state', "
+            . "'0007_blog_post_tombstones', "
+            . "'0008_blog_article_delete_capability', "
+            . "'0009_blog_analytics', "
+            . "'0010_blog_analytics_view_capability')"
         );
         self::assertSame([], $this->factory->create(
             $this->projectRoot,
