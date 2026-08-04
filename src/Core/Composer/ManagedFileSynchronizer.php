@@ -18,6 +18,8 @@ final class ManagedFileSynchronizer
     private const STATE_RELATIVE_PATH = '.liquidstack/core/managed-files.json';
     private const TRANSACTION_RELATIVE_PATH =
         '.liquidstack/core/sync-transactions';
+    private const TRANSACTION_CLEANUP_ATTEMPTS = 5;
+    private const TRANSACTION_CLEANUP_DELAY_US = 25000;
 
     private Filesystem $filesystem;
 
@@ -504,6 +506,12 @@ final class ManagedFileSynchronizer
                     $entry['plan']
                 );
             }
+            $this->writeTransactionJournal(
+                $transactionRoot,
+                $group,
+                'cleanup_pending',
+                $files
+            );
             $this->removeTransactionRoot($transactionRoot);
         } catch (\Throwable $exception) {
             $this->stateFiles = $stateBefore;
@@ -764,7 +772,7 @@ final class ManagedFileSynchronizer
                 ? scandir($transactionRoot)
                 : false;
             if ($entries !== false && count($entries) === 2) {
-                $this->removeTransactionRoot($transactionRoot, true);
+                $this->removeTransactionRoot($transactionRoot);
                 return;
             }
             throw new \RuntimeException(
@@ -778,7 +786,7 @@ final class ManagedFileSynchronizer
             || !is_string($journal['group'] ?? null)
             || !in_array(
                 $journal['status'] ?? null,
-                ['staging', 'prepared', 'committed'],
+                ['staging', 'prepared', 'committed', 'cleanup_pending'],
                 true
             )
             || !is_array($journal['files'] ?? null)
@@ -798,6 +806,10 @@ final class ManagedFileSynchronizer
             $transactionRoot,
             $journal['files']
         );
+        if ($journal['status'] === 'cleanup_pending') {
+            $this->removeTransactionRoot($transactionRoot);
+            return;
+        }
         if ($journal['status'] === 'committed') {
             foreach ($files as $file) {
                 if (
@@ -830,7 +842,13 @@ final class ManagedFileSynchronizer
                     ));
                 }
             }
-            $this->removeTransactionRoot($transactionRoot, true);
+            $this->writeTransactionJournal(
+                $transactionRoot,
+                $journal['group'],
+                'cleanup_pending',
+                $files
+            );
+            $this->removeTransactionRoot($transactionRoot);
             return;
         }
 
@@ -1078,25 +1096,44 @@ final class ManagedFileSynchronizer
         string $transactionRoot,
         bool $strict = false
     ): void {
-        try {
-            // El journal se retira al final. Si PHP se interrumpe durante el
-            // cleanup, la siguiente ejecución conserva todavía el mapa de
-            // recuperación o encuentra un scaffold completamente vacío.
-            $this->filesystem->remove([
-                $transactionRoot . DIRECTORY_SEPARATOR . 'staged',
-                $transactionRoot . DIRECTORY_SEPARATOR . 'backup',
-            ]);
-            $this->filesystem->remove(
-                $transactionRoot . DIRECTORY_SEPARATOR . 'journal.json'
-            );
-            $this->filesystem->remove($transactionRoot);
-        } catch (\Throwable $exception) {
-            if ($strict) {
-                throw $exception;
+        $exception = null;
+
+        for (
+            $attempt = 1;
+            $attempt <= self::TRANSACTION_CLEANUP_ATTEMPTS;
+            ++$attempt
+        ) {
+            try {
+                // El journal se retira al final. Si PHP se interrumpe durante
+                // el cleanup, la siguiente ejecución conserva el marcador de
+                // limpieza o encuentra un scaffold completamente vacío.
+                $this->filesystem->remove([
+                    $transactionRoot . DIRECTORY_SEPARATOR . 'staged',
+                    $transactionRoot . DIRECTORY_SEPARATOR . 'backup',
+                ]);
+                $this->filesystem->remove(
+                    $transactionRoot . DIRECTORY_SEPARATOR . 'journal.json'
+                );
+                $this->filesystem->remove($transactionRoot);
+                return;
+            } catch (\Throwable $cleanupException) {
+                $exception = $cleanupException;
+                clearstatcache();
+                if ($attempt < self::TRANSACTION_CLEANUP_ATTEMPTS) {
+                    usleep(
+                        self::TRANSACTION_CLEANUP_DELAY_US
+                        * (2 ** ($attempt - 1))
+                    );
+                }
             }
-            ++$this->stats['errors'];
+        }
+
+        if ($strict && $exception !== null) {
+            throw $exception;
+        }
+        if ($exception !== null) {
             $this->io->writeError(sprintf(
-                '<warning>No se pudo retirar el staging de CORE %s: %s</warning>',
+                '<warning>Limpieza aplazada de CORE %s: %s</warning>',
                 $transactionRoot,
                 $exception->getMessage()
             ));

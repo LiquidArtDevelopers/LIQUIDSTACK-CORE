@@ -451,6 +451,70 @@ final class ManagedFileSynchronizerTest extends TestCase
         self::assertDirectoryDoesNotExist($transactionRoot);
     }
 
+    public function testCommittedCleanupRetriesATransientWindowsLock(): void
+    {
+        $pair = $this->updatedManagedPair(
+            'module:blog:transient-cleanup-test'
+        );
+        $cleanup = (object) [
+            'attempts' => 0,
+            'failures_remaining' => 2,
+            'blocked' => true,
+        ];
+
+        $sync = $this->synchronizer(
+            $this->filesystemFailingTransactionCleanup($cleanup)
+        );
+        $this->queueManagedPair($sync, $pair);
+        $sync->apply();
+
+        self::assertSame('first-v2', file_get_contents($pair['first_target']));
+        self::assertSame('second-v2', file_get_contents($pair['second_target']));
+        self::assertSame(3, $cleanup->attempts);
+        self::assertSame(0, $sync->stats()['errors']);
+        $this->assertTransactionDirectoryIsEmpty();
+    }
+
+    public function testDeferredCommittedCleanupDoesNotBlockANewerVersion(): void
+    {
+        $pair = $this->updatedManagedPair(
+            'module:blog:deferred-cleanup-test'
+        );
+        $cleanup = (object) [
+            'attempts' => 0,
+            'failures_remaining' => null,
+            'blocked' => true,
+        ];
+        $filesystem = $this->filesystemFailingTransactionCleanup($cleanup);
+
+        $second = $this->synchronizer($filesystem);
+        $this->queueManagedPair($second, $pair);
+        $second->apply();
+
+        $transactionRoot = $this->onlyPendingTransactionRoot();
+        $journal = json_decode(
+            (string) file_get_contents($transactionRoot . '/journal.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertSame('cleanup_pending', $journal['status'] ?? null);
+        self::assertSame('second-v2', file_get_contents($pair['second_target']));
+        self::assertSame(0, $second->stats()['errors']);
+
+        $this->writeFile($pair['second_source'], 'second-v3');
+        $third = $this->synchronizer($filesystem);
+        $this->queueManagedPair($third, $pair);
+        $third->apply();
+
+        self::assertSame('second-v3', file_get_contents($pair['second_target']));
+        self::assertSame(0, $third->stats()['errors']);
+
+        $cleanup->blocked = false;
+        $this->synchronizer($filesystem)->apply();
+        $this->assertTransactionDirectoryIsEmpty();
+    }
+
     public function testLockedWindowsStyleBackupFailureRestoresEarlierTargets(): void
     {
         $pair = $this->updatedManagedPair(
@@ -1073,6 +1137,48 @@ final class ManagedFileSynchronizerTest extends TestCase
                 }
             }
         );
+    }
+
+    private function filesystemFailingTransactionCleanup(
+        object $state
+    ): Filesystem {
+        return new class ($state) extends Filesystem {
+            public function __construct(
+                private readonly object $state
+            ) {
+            }
+
+            public function remove(string|iterable $files)
+            {
+                $paths = is_string($files) ? [$files] : $files;
+                foreach ($paths as $path) {
+                    $normalized = strtolower(str_replace('\\', '/', $path));
+                    if (
+                        !str_contains($normalized, '/sync-transactions/')
+                        || !str_ends_with($normalized, '/backup')
+                    ) {
+                        continue;
+                    }
+
+                    ++$this->state->attempts;
+                    if (!$this->state->blocked) {
+                        break;
+                    }
+                    if ($this->state->failures_remaining === 0) {
+                        break;
+                    }
+                    if (is_int($this->state->failures_remaining)) {
+                        --$this->state->failures_remaining;
+                    }
+
+                    throw new RuntimeException(
+                        'backup temporalmente bloqueado por Windows'
+                    );
+                }
+
+                parent::remove($files);
+            }
+        };
     }
 
     private function filesystemChangingTargetBeforeFailure(

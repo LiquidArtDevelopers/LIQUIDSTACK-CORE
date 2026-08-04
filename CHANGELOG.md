@@ -4,6 +4,12 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Cambiado
+- La sincronización gestionada tolera los handles temporales que Vite, PHP u
+  otros watchers pueden mantener sobre backups ya confirmados en Windows. El
+  cleanup hace reintentos acotados y, si el bloqueo persiste, queda marcado
+  como `cleanup_pending` para retomarlo sin abortar Composer ni impedir que el
+  mismo recurso avance a una versión posterior; los rollbacks pendientes
+  mantienen su validación estricta.
 - Blog añade acciones editoriales atómicas: duplicación completa como borrador
   y papelera recuperable mediante las migraciones append-only `0007`/`0008` y
   `blog.articles.delete`. Documento actual, referencias y categorías se copian
