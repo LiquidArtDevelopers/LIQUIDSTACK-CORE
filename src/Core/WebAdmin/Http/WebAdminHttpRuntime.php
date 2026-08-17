@@ -9,6 +9,7 @@ use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\CredentialAction\CredentialActionService;
 use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
+use App\Core\WebAdmin\Profile\WebAdminProfileService;
 use App\Core\WebAdmin\UserManagement\UserManagementService;
 
 final class WebAdminHttpRuntime
@@ -21,7 +22,8 @@ final class WebAdminHttpRuntime
         private readonly WebAdminAuthorizationService $authorization,
         private readonly ?CredentialActionService $credentialActions = null,
         private readonly ?UserManagementService $userManagement = null,
-        ?WebAdminNavigationCatalog $navigation = null
+        ?WebAdminNavigationCatalog $navigation = null,
+        private readonly ?WebAdminProfileService $profiles = null
     ) {
         $this->navigation = $navigation ?? new WebAdminNavigationCatalog();
     }
@@ -66,5 +68,20 @@ final class WebAdminHttpRuntime
     public function navigation(): WebAdminNavigationCatalog
     {
         return $this->navigation;
+    }
+
+    public function profiles(): WebAdminProfileService
+    {
+        if (!$this->profiles instanceof WebAdminProfileService) {
+            throw new WebAdminHttpRuntimeException(
+                'webadmin.profile_preferences_unavailable'
+            );
+        }
+        return $this->profiles;
+    }
+
+    public function profilesReady(): bool
+    {
+        return $this->profiles instanceof WebAdminProfileService;
     }
 }

@@ -148,10 +148,22 @@ final class WebAdminDatabaseDiagnosticTest extends TestCase
             $pending->mediaMigrations()['pending']
         );
 
+        $avifPending = WebAdminDatabaseDiagnostic::fromPlan(
+            new MigrationDatabasePlan('sqlite', true, [
+                $this->entry('0001_webadmin_identity_and_access', 'applied'),
+                $this->entry('0002_webadmin_media_library', 'applied'),
+                $this->entry('0003_webadmin_media_avif_source', 'pending'),
+            ], [])
+        );
+        self::assertTrue($avifPending->migrationsReady());
+        self::assertTrue($avifPending->mediaMigrations()['ready']);
+        self::assertSame('applied', $avifPending->mediaMigrations()['status']);
+
         $applied = WebAdminDatabaseDiagnostic::fromPlan(
             new MigrationDatabasePlan('sqlite', true, [
                 $this->entry('0001_webadmin_identity_and_access', 'applied'),
                 $this->entry('0002_webadmin_media_library', 'applied'),
+                $this->entry('0003_webadmin_media_avif_source', 'applied'),
             ], [])
         );
         self::assertTrue($applied->migrationsReady());

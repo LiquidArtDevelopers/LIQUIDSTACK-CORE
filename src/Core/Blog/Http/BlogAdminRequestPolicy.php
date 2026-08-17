@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Core\Blog\Http;
 
+use App\Core\Blog\Admin\BlogAdminCatalogQuery;
 use App\Core\Blog\BlogDraft;
+use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
 use App\Core\Http\Request;
 use App\Core\WebAdmin\Http\WebAdminHttpRequestPolicy;
@@ -13,6 +15,8 @@ final class BlogAdminRequestPolicy
 {
     private const UUID =
         '/\A[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/';
+    private const UUID_V4 =
+        '/\A[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/';
     private const LOCALE = '/\A[a-z]{2,3}(?:-[a-z0-9]{2,8})*\z/';
     private const EDITORIAL_KEYS = [
         'h1',
@@ -35,21 +39,56 @@ final class BlogAdminRequestPolicy
             return false;
         }
         $query = $request->queryParams();
-        $keys = array_keys($query);
-        sort($keys, SORT_STRING);
-        if (!in_array($keys, [[], ['offset'], ['period'], [
-            'offset',
-            'period',
-        ]], true)) {
-            return false;
+        foreach ($query as $key => $value) {
+            if (
+                !is_string($key)
+                || !is_string($value)
+                || !in_array(
+                    $key,
+                    [
+                        'dir',
+                        'locale',
+                        'offset',
+                        'per_page',
+                        'period',
+                        'q',
+                        'sort',
+                        'status',
+                    ],
+                    true
+                )
+            ) {
+                return false;
+            }
         }
 
-        return (!array_key_exists('offset', $query)
-                || (is_string($query['offset'])
-                    && $this->validOffset($query['offset'])))
+        $pageSize = array_key_exists('per_page', $query)
+            && $this->validPageSize($query['per_page'])
+            ? (int) $query['per_page']
+            : BlogAdminCatalogQuery::DEFAULT_PAGE_SIZE;
+
+        return (!array_key_exists('per_page', $query)
+                || $this->validPageSize($query['per_page']))
+            && (!array_key_exists('offset', $query)
+                || $this->validOffset($query['offset'], $pageSize))
             && (!array_key_exists('period', $query)
-                || (is_string($query['period'])
-                    && in_array($query['period'], ['7', '30', '90'], true)));
+                || in_array($query['period'], ['7', '30', '90'], true))
+            && (!array_key_exists('q', $query)
+                || strlen($query['q'])
+                    <= BlogAdminCatalogQuery::MAX_SEARCH_INPUT_BYTES)
+            && (!array_key_exists('status', $query)
+                || in_array(
+                    $query['status'],
+                    ['', BlogPostVariant::DRAFT, BlogPostVariant::PUBLISHED],
+                    true
+                ))
+            && (!array_key_exists('locale', $query)
+                || $query['locale'] === ''
+                || $this->validLocale($query['locale']))
+            && (!array_key_exists('sort', $query)
+                || BlogAdminCatalogQuery::supportsSort($query['sort']))
+            && (!array_key_exists('dir', $query)
+                || BlogAdminCatalogQuery::supportsDirection($query['dir']));
     }
 
     public function acceptsTrashIndex(Request $request): bool
@@ -63,7 +102,10 @@ final class BlogAdminRequestPolicy
             || (
                 array_keys($query) === ['offset']
                 && is_string($query['offset'])
-                && $this->validOffset($query['offset'])
+                && $this->validOffset(
+                    $query['offset'],
+                    BlogService::DEFAULT_LIST_LIMIT
+                )
             );
     }
 
@@ -93,6 +135,11 @@ final class BlogAdminRequestPolicy
     }
 
     public function acceptsPreview(Request $request): bool
+    {
+        return $this->acceptsVariantQuery($request);
+    }
+
+    public function acceptsUrlManager(Request $request): bool
     {
         return $this->acceptsVariantQuery($request);
     }
@@ -157,9 +204,64 @@ final class BlogAdminRequestPolicy
             );
     }
 
+    public function acceptsUrlResolution(Request $request): bool
+    {
+        return $this->webAdminPolicy->acceptsFormPost($request, [
+            'csrf',
+            'post',
+            'locale',
+            'lock_version',
+            'historical_slug',
+            'resolution',
+            'replacement_post',
+        ])
+            && $this->validPost((string) $request->form('post'), false)
+            && $this->validLocale((string) $request->form('locale'))
+            && $this->validLockVersion((string) $request->form('lock_version'))
+            && is_string($request->form('historical_slug'))
+            && strlen((string) $request->form('historical_slug')) <= BlogDraft::MAX_SLUG_BYTES
+            && preg_match(
+                '/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/',
+                (string) $request->form('historical_slug')
+            ) === 1
+            && in_array(
+                $request->form('resolution'),
+                ['gone', 'redirect'],
+                true
+            )
+            && (
+                $request->form('resolution') === 'gone'
+                    ? $request->form('replacement_post') === ''
+                    : $this->validPost(
+                        (string) $request->form('replacement_post'),
+                        false
+                    )
+            );
+    }
+
     public function acceptsDuplicate(Request $request): bool
     {
-        return $this->acceptsEditorialAction($request);
+        return $this->webAdminPolicy->acceptsFormPost($request, [
+            'csrf',
+            'post',
+            'locale',
+            'destination_locale',
+            'lock_version',
+            'operation_id',
+        ])
+            && $this->validPost((string) $request->form('post'), false)
+            && $this->validLocale((string) $request->form('locale'))
+            && $this->validLocale(
+                (string) $request->form('destination_locale')
+            )
+            && $this->validLockVersion(
+                (string) $request->form('lock_version')
+            )
+            && is_string($request->form('operation_id'))
+            && preg_match(
+                self::UUID_V4,
+                (string) $request->form('operation_id')
+            ) === 1;
     }
 
     public function acceptsTrash(Request $request): bool
@@ -212,12 +314,20 @@ final class BlogAdminRequestPolicy
             && (string) (int) $value === $value;
     }
 
-    private function validOffset(string $value): bool
+    private function validOffset(string $value, int $pageSize): bool
     {
         return preg_match('/\A(?:0|[1-9][0-9]*)\z/', $value) === 1
             && (string) (int) $value === $value
             && (int) $value <= BlogService::MAX_LIST_OFFSET
-            && (int) $value % BlogService::DEFAULT_LIST_LIMIT === 0;
+            && $pageSize > 0
+            && (int) $value % $pageSize === 0;
+    }
+
+    private function validPageSize(string $value): bool
+    {
+        return preg_match('/\A(?:0|[1-9][0-9]*)\z/', $value) === 1
+            && (string) (int) $value === $value
+            && BlogAdminCatalogQuery::supportsPageSize((int) $value);
     }
 
     private function validEditorialFields(Request $request): bool

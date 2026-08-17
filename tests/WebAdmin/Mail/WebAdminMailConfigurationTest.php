@@ -643,8 +643,8 @@ final class WebAdminMailConfigurationTest extends TestCase
             WebAdminMailConfiguration::SMTP_HOST_ENV => '127.0.0.1',
             WebAdminMailConfiguration::SMTP_PORT_ENV => '1025',
             WebAdminMailConfiguration::FROM_ADDRESS_ENV =>
-                'webadmin@aiwa.test',
-            WebAdminMailConfiguration::FROM_NAME_ENV => 'AIWA WebAdmin dev',
+                'webadmin@example.test',
+            WebAdminMailConfiguration::FROM_NAME_ENV => 'Proyecto WebAdmin dev',
         ];
     }
 }

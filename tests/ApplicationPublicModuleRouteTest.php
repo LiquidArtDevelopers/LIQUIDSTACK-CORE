@@ -611,6 +611,33 @@ PHP
 
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
+    public function testDynamicProjectPathReachesItsViewWithRouteParams(): void
+    {
+        $view = $this->fixtureRoot . '/App/views/catalog-page.php';
+        $this->filesystem->dumpFile(
+            $view,
+            <<<'PHP'
+<?php
+echo $url . ':' . ($GLOBALS['routeParams']['page'] ?? 'missing');
+PHP
+        );
+        $this->writeGetRoutes([
+            '/noticias/page/{page}' => [
+                'view' => $view,
+                'session' => false,
+            ],
+        ]);
+
+        self::assertSame(
+            '/noticias/page/24:24',
+            $this->runApplication('GET', '/noticias/page/24')
+        );
+        self::assertSame(PHP_SESSION_NONE, session_status());
+        self::assertSame(0, ApplicationPublicRouteProviderFixture::$handlerCalls);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
     public function testLatePublicHeadEmitsNoBodyAndKeepsStatus(): void
     {
         self::assertSame('', $this->runApplication('HEAD', '/noticias/dinamica'));
@@ -671,8 +698,19 @@ PHP
     #[PreserveGlobalState(false)]
     public function testMatchedHandlerMayFallThroughToTheExisting404(): void
     {
+        $this->filesystem->dumpFile(
+            $this->fixtureRoot . '/App/views/404.php',
+            <<<'PHP'
+<?php
+if (!isset($url) || !is_string($url)) {
+    throw new RuntimeException('The normalized 404 URL is unavailable.');
+}
+echo 'legacy-404:' . $url;
+PHP
+        );
+
         self::assertSame(
-            'legacy-404',
+            'legacy-404:/noticias/missing',
             $this->runApplication('GET', '/noticias/missing')
         );
         self::assertSame(404, http_response_code());

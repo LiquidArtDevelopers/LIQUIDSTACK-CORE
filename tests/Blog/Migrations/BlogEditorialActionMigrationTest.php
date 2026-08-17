@@ -10,9 +10,26 @@ use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\WebAdmin\WebAdminMigrationProvider;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 
 final class BlogEditorialActionMigrationTest extends TestCase
 {
+    public function testTombstoneVerifierNormalizesMariaDbRestrictUpdateRule(): void
+    {
+        $verifier = $this->blogMigrations()[
+            '0007_blog_post_tombstones'
+        ]->postconditionVerifier();
+        self::assertNotNull($verifier);
+        $normalizer = new ReflectionMethod(
+            $verifier,
+            'normalizeMySqlUpdateRule'
+        );
+
+        self::assertSame('NO ACTION', $normalizer->invoke(null, 'RESTRICT'));
+        self::assertSame('NO ACTION', $normalizer->invoke(null, 'NO ACTION'));
+        self::assertSame('CASCADE', $normalizer->invoke(null, 'CASCADE'));
+    }
+
     public function testTombstoneMigrationIsIdempotentAndDriftSensitive(): void
     {
         $pdo = $this->sqlite();

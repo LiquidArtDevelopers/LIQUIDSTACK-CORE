@@ -3,13 +3,21 @@
     "algorithm": "sha256-eol-lf-v1",
     "files": {
         "modules/blog/published/assets/blog-admin-list.js": [
-            "sha256:9b58956d246732acdbdf464dfe3f2f57c8f8f9f04b483134db53ee52cb62c1a1"
+            "sha256:9b58956d246732acdbdf464dfe3f2f57c8f8f9f04b483134db53ee52cb62c1a1",
+            "sha256:da98884b07d71f713ade1e7ca2dc1c5e0be1308b6d4621773d25fa350e11fdeb"
         ],
         "modules/blog/published/assets/blog-admin.css": [
+            "sha256:00b7f1a307f942db44da1aaacd62d34a8ed8ecefaa18dd0593f4e926b2aae85c",
+            "sha256:0fe8a4f9acb18785722ba1406cf198d7a1d0cc7a600dd3974591899922762ae9",
             "sha256:24a1a32d47ab2b9d87d6eb1b078a1b06b7a3b1c66b75c65a8beac5a83ecd56a2",
+            "sha256:32067c01e2efb15e4f3742fdce8c56ddbbd9c40adb9e86a795c8ef49dbca5b1f",
             "sha256:335d7e95960ceec56e47ec06d50b8c42a106086d73fc777b8d925a268be55dce",
+            "sha256:3bcd7c2d9f3f2f6cbcc22d04b5985f7c2cd38a133f120acc78e5a21cd3158dda",
             "sha256:4428ade23ed73ad06fb0c348998976eaab146bb61a85ca4530ed7a86cae95b85",
+            "sha256:6b53ff1720edf44b4af7c574b8e38a43f71ad91e26d8125708ba84ce6d376670",
             "sha256:7bc4b30a678c219d583d0cfb25e3868347e7b1fa6db518b0ec4773158e8c3123",
+            "sha256:8392525368cbe5329af359d6cbdab24fbd46036734419a1049491b4629ad1746",
+            "sha256:92a77523516d87cd0e88ed70484b2ae651758e0738f5a20a25178020ecb95999",
             "sha256:bab537f703103706f6e4e9feefc37a3ab01e3dbc01b80d1bd2db757b6c55ca7f",
             "sha256:baff29cfa103fe8c11ba4b2295c643985abcdce09e59e1360858549f9b6f7070",
             "sha256:eeeec6d2ad12033dab68ae3192f8aadb8317bca9a892cb9d896ca324b7417802"
@@ -19,17 +27,28 @@
         ],
         "modules/blog/published/assets/blog-editor.js": [
             "sha256:040555fa754a9e6a7ecc29be65cf9a9b7128aa04a5a2958b58092705d3da2ece",
+            "sha256:05e22b69348b9cb5f69075379c09e40441d81d26f147da7a3e9f5a17875793c2",
+            "sha256:12ff3f7e700b59a29ae31c018f40ba6072fc08b827df8348e3ef9d17ef0793bd",
+            "sha256:31a74473ca4c76d32603c10a35f2799658763675340362876c5ee430afc01c70",
             "sha256:56619bb9e6d39b88e36a60d9715f09b98f6612ce304ec17da0dde24aa8b95187",
             "sha256:9c9e24f13769b4c3dee66f877b3938f0bb1f296e8f8e37668a7628542ceb246d",
-            "sha256:a2b6e19ff593063a25858dca1e716d25a486244f371de236deaa9a5fb95c6075"
+            "sha256:a2b6e19ff593063a25858dca1e716d25a486244f371de236deaa9a5fb95c6075",
+            "sha256:b6415394eef011279f5f717330e798f61ec6e37dbf65d704a0b8e0edfa0db71c",
+            "sha256:bd9ee382cdf36bd096aed424bd7166a5a37b4ff9332e0fc1719368c7701d769b",
+            "sha256:d82a596b8114f7257f4663e37ee4b71cad88c90322229401535b693f939d9c84",
+            "sha256:e651074e12aa4742170dccdeca2092f384b38d958182fbcb513d59565fcc1ac2"
         ],
         "modules/blog/published/assets/blog-public.css": [
+            "sha256:11a0bac27ec8c71d40ef638508ea3e698353e229af92d3e07a970bd1b3014042",
             "sha256:22b655580846599dd10238c3f2ccf2d7a20f571e673d9383ef521b08bc7d751a",
             "sha256:2b368f0fa584c817afcc3987a5fdd31051146d16bb00c97f1e4d7520cc401362",
+            "sha256:4e5b4551a096baea8c16fbb2b947c7c8e2722a66aa6823267d7bb07ee25af891",
+            "sha256:6c596d1575965db994d00e2fdb97d087cae7cf5af69be51452c9447f6900f85d",
             "sha256:af4e43bf33fc453ec61812415bfbfbfc513331f76d607a58a1331a63c9ad6bec"
         ],
         "modules/blog/published/assets/blog-public.js": [
             "sha256:0a98db292b9c4efcf7b38a624bff1af30aacfc4de63084112ddc8e9c20b1180a",
+            "sha256:b35a2ca59c777833e5af6e20a09a2700ddedf425ca0ef776301d17690e60a2f4",
             "sha256:dd8571eb476dcde05e8e79bead852b4c943331df0a84bcc593534aaa40149d6a"
         ],
         "modules/blog/published/assets/flags/LICENSE.flag-icons.txt": [
@@ -44,25 +63,66 @@
         "modules/blog/published/assets/flags/gb.svg": [
             "sha256:c8be1e7208798a4ae692ee1e937065d498bb29e741943f6172b29118b8ed8066"
         ],
+        "modules/blog/published/assets/icons/position-center.svg": [
+            "sha256:10b42424865c803e944278f83e58863830dc26a997a35e3c6bbeaa56de73e1b3"
+        ],
+        "modules/blog/published/assets/icons/position-left.svg": [
+            "sha256:05680a58b46128a8d38acc07849c57c4bd4f56daef0b3534c893eb5b904f644e"
+        ],
+        "modules/blog/published/assets/icons/position-right.svg": [
+            "sha256:23e75cc99b040d549d053f993adc363a17e46287e9311e340e8e55ff67ccc331"
+        ],
+        "modules/blog/resources/project/App/app/_moduleBlogPublicArticle.php": [
+            "sha256:5fa8a22e45f4112805f03414d94ea999c619cf57e67d5b49c3992331718abbc8"
+        ],
+        "modules/blog/resources/project/App/app/_moduleBlogPublicCollections.php": [
+            "sha256:18814fe5b41c88cb0b54e8230c9e946d0d5de8e80f5fa1c9a303f8d7dec85a65"
+        ],
+        "modules/blog/resources/project/App/app/_moduleBlogPublicIndex.php": [
+            "sha256:885ec339d0d0aa76b4ad3364a2a57f83d89a8c4e27d85d005f04ee8d16358776"
+        ],
         "modules/blog/resources/project/App/controllers/_moduleBlogResources.php": [
-            "sha256:6f0984b2ba817226b7018da5c0c276a7b6bb68a2304d808dcc9f25565312fd35"
+            "sha256:6f0984b2ba817226b7018da5c0c276a7b6bb68a2304d808dcc9f25565312fd35",
+            "sha256:9367e39931d635383f9317decd455da47f060901bca535d703db0466bd561b54"
         ],
         "modules/blog/resources/project/App/controllers/artBlogArticle01.php": [
             "sha256:49eb33a37c0f6871d9d353de9a159f5b874d5060c1ce9452cba440d268782102",
-            "sha256:859ded7fea8558a261c81865c4b2f45c6d5484ebc21070b854a04aaace9e3ce2"
+            "sha256:859ded7fea8558a261c81865c4b2f45c6d5484ebc21070b854a04aaace9e3ce2",
+            "sha256:f3c5e114c631751eacd687786d58440329fda62a85c7d4bc7d84a157c562b3dc"
         ],
         "modules/blog/resources/project/App/controllers/moduleBlogArchive01.php": [
+            "sha256:469d3678b7714fae7495c1a578e6413a8352c1e7b4c6dd745937a306150cfa76",
             "sha256:705a8abad83375cce2b88854d40f88e8e44a7af46f37f03ba47b942050925e42"
         ],
+        "modules/blog/resources/project/App/controllers/moduleBlogCategoryBar01.php": [
+            "sha256:3ab1ece2d5b9a3e821447bd23226651e72a29d9f0b8d8d92db7169c87cabe8fe"
+        ],
         "modules/blog/resources/project/App/controllers/moduleBlogFilters01.php": [
-            "sha256:3309e4373178dfb28f5c845c9f2546956716afd859b21b40984294d700d40571"
+            "sha256:3309e4373178dfb28f5c845c9f2546956716afd859b21b40984294d700d40571",
+            "sha256:56ce4c0561dae123c0fcfb681992d083286721576bc78cbef24a06eee14b0f12"
+        ],
+        "modules/blog/resources/project/App/controllers/moduleBlogGrid02.php": [
+            "sha256:18404fc037504ba66c828549f809874fcda01ed829190c8332bc95f6cffc61af"
+        ],
+        "modules/blog/resources/project/App/controllers/moduleBlogPagination01.php": [
+            "sha256:c36af797a7d42a6e7df37029826e15b3e65ef270346cde3deb8b94aac315d871"
+        ],
+        "modules/blog/resources/project/App/controllers/moduleBlogResults01.php": [
+            "sha256:4f67d2b3544d611ac9157048ff76c4e6d06121d2dcd01d7555c3e53808cb6e05"
+        ],
+        "modules/blog/resources/project/App/controllers/moduleBlogSearch01.php": [
+            "sha256:cb9e23620bc317d70f02144575434aab2ac3e7fa9a5e727a10a77ef7168680e9"
+        ],
+        "modules/blog/resources/project/App/controllers/sectionBlogCatalog01.php": [
+            "sha256:fc86eca5a1937b1bc74d9016b90cf973e14cd1d5878c505ae265923373bbd49c"
         ],
         "modules/blog/resources/project/App/controllers/sectionBlogFeatured01.php": [
             "sha256:bf6ee6723beaac311a91f35b623d0162922c95c7f31f1fc5c53131a5cba81d1a"
         ],
         "modules/blog/resources/project/App/controllers/sectionBlogGrid01.php": [
             "sha256:16c9c3d07d7e0537700b2cf6c51dcf2146fc09a1b336a06f9fbfaf8cd75c5030",
-            "sha256:4718d6f875d41b8e9b433946078a231c7bcf832c44e500b69d0d5e4e01a60bf6"
+            "sha256:4718d6f875d41b8e9b433946078a231c7bcf832c44e500b69d0d5e4e01a60bf6",
+            "sha256:d12ada7354788907f33a3da4060bb5bbe8041d7e0dd08fd2ac8cc163a5b056c1"
         ],
         "modules/blog/resources/project/App/controllers/sectionBlogList01.php": [
             "sha256:e14f551ea17fa84bee822c8e6c7045540d2884956dd57ef136eb036fd5969b7c"
@@ -71,17 +131,45 @@
             "sha256:0365611e905d1027f17fa5a32eb2589eb14836b20f05e9f3309ede6a05d1e12a"
         ],
         "modules/blog/resources/project/App/controllers/sectionBlogSlider01.php": [
+            "sha256:263f000b1783e3712f584e5dd0225b51c93e0b823d399c508117cf50e0639661",
             "sha256:6e3aac167cc6749bb3ab51f28a620520ce728ef1ae540ad12042679965f36842"
+        ],
+        "modules/blog/resources/project/App/controllers/sectionBlogSlider02.php": [
+            "sha256:eead1a8517bb13fb1cd85e48052c414738a19d22aeffc8249d5a152df866ac55"
+        ],
+        "modules/blog/resources/project/App/controllers/sectionBlogStack01.php": [
+            "sha256:ec9a07bf9c57d8823f5e57ba38c676649cd49c6ed73d951bc4693f9ae2c94eb1"
         ],
         "modules/blog/resources/project/App/templates/_artBlogArticle01.html": [
             "sha256:72724277224ab93256f8e75e440622ca26f8b517c6807bf1c3b891b9dfd2cdb1",
             "sha256:c381f1f79596208ce9629f822678c19cc90f2063a3b453eecd2d3ac6a36d4257"
         ],
         "modules/blog/resources/project/App/templates/_moduleBlogArchive01.html": [
+            "sha256:a2ea92908bccb3ace2843e3daedc8ff149fad493dd855751ab733fef40dabe00",
             "sha256:d40dc80441b331af1828a20f62a390b4ba453a621801094339fdc59306b7ec7d"
         ],
+        "modules/blog/resources/project/App/templates/_moduleBlogCategoryBar01.html": [
+            "sha256:3404005b95d6f7eb2d42aa7600e48faee08a2479b594776668d3be2334717485"
+        ],
         "modules/blog/resources/project/App/templates/_moduleBlogFilters01.html": [
-            "sha256:2d3ecbffb0910e27bf69a4d24b87b0e46beb7ebccdf2a9a5b0f33e69722a91e5"
+            "sha256:2d3ecbffb0910e27bf69a4d24b87b0e46beb7ebccdf2a9a5b0f33e69722a91e5",
+            "sha256:d515f6b23d9968a32d34643f2aa40fefda9299d980060a6e1b46b88ef398ff7a"
+        ],
+        "modules/blog/resources/project/App/templates/_moduleBlogGrid02.html": [
+            "sha256:76480569a278ab636be4f19f4c8fbef569a9787484ee5906eca0505a8f3c8013"
+        ],
+        "modules/blog/resources/project/App/templates/_moduleBlogPagination01.html": [
+            "sha256:f46b6a7ca3be896543debcde9e4c76acc8e82acdd159855660d0efc84d880ba8"
+        ],
+        "modules/blog/resources/project/App/templates/_moduleBlogResults01.html": [
+            "sha256:30fae517f23e25f6ffb49a9f07b82a167c53783f186a65845811032035493845"
+        ],
+        "modules/blog/resources/project/App/templates/_moduleBlogSearch01.html": [
+            "sha256:ee2140e2c7f4f96001b937c10421c2ebbba808ea352caf349acf0c0c4e455bb5"
+        ],
+        "modules/blog/resources/project/App/templates/_sectionBlogCatalog01.html": [
+            "sha256:49b9859cf2d5601398344983bc33e3fa78a0607dc392cc18e10bae2c42f1a9aa",
+            "sha256:af95f5b1240a3b299b3b691f529ea4718326461e00a4599c4b8bc6e1c80d6f96"
         ],
         "modules/blog/resources/project/App/templates/_sectionBlogFeatured01.html": [
             "sha256:970000ef3fd6c21fc9d0bbfe7cc93b9023cef34c2a40ebd78c12ebd98c85ed86"
@@ -90,40 +178,90 @@
             "sha256:4af1404a51b2fef875b548e369d91e172d638bf497211318b1fc6c861f737a38"
         ],
         "modules/blog/resources/project/App/templates/_sectionBlogList01.html": [
-            "sha256:17415736191e55744e61af669a269e26b4c70178cbe94d39ca956704a673ca07"
+            "sha256:17415736191e55744e61af669a269e26b4c70178cbe94d39ca956704a673ca07",
+            "sha256:3507946a7ce5eced1f99b2c7708b91bfeaad4a5010257b0bc75cfc90dfbd294e"
         ],
         "modules/blog/resources/project/App/templates/_sectionBlogRelated01.html": [
             "sha256:1c38056fa5517f70173b5537d91aca8f8ac288d78ed754b03a11e6b7676e050e"
         ],
         "modules/blog/resources/project/App/templates/_sectionBlogSlider01.html": [
-            "sha256:0c2b061e3da0de147dad3ee268f8c1c98815d7c9d8db192095d924c6ee020af1"
+            "sha256:0c2b061e3da0de147dad3ee268f8c1c98815d7c9d8db192095d924c6ee020af1",
+            "sha256:4dbad8b4d4ac0735004b0c8ba5ba61fc1178443fd1d3988b596d3b501f0e6252"
+        ],
+        "modules/blog/resources/project/App/templates/_sectionBlogSlider02.html": [
+            "sha256:5ea14c288280ab0b452dd4438e81220033a50893692f9b69a5e4f81dbff909d2"
+        ],
+        "modules/blog/resources/project/App/templates/_sectionBlogStack01.html": [
+            "sha256:76c05cda2de08d75833c3738e7e0943af289f20b3a46d8a466e0fea9a7da8cdd"
         ],
         "modules/blog/resources/project/App/views/showroom/_blog.php": [
             "sha256:151fe9cb0344c58573a73dd067f7dccdcb8845c47c2f404aeb5469723875019a",
             "sha256:5e52cfd9a8d96503e209cce2dbdd6241475d1966454f957ddcd8d5d01679129c",
             "sha256:749c18ee6f4233eb819d68e9dc77dfed59b74f585e4366f1c76d8ecffa6be848",
+            "sha256:c2c3300613f7afb73b8fa6b11f7f0aba23b20a7ad031effe38a1345b395b6607",
             "sha256:d31b36f2431c4d97efcd97f1456a9eabebf93739f5021b34e75e764ab677c7b0",
             "sha256:e95d141d0e1ecdaacdebd879a3d57d20cdfe8526b21e97a5ee576c3a923132aa"
         ],
+        "modules/blog/resources/project/src/js/modules/blog/blogCollectionLoader.js": [
+            "sha256:33707432e5eb4c24a3a335c4234e3ddedec3d096f711da1439a0d3918fa62ab0"
+        ],
         "modules/blog/resources/project/src/js/resources/_moduleBlogFilters01.js": [
-            "sha256:06c66a2fa08a4263db76d07655e78f87c7c75bd4ee40e82a8ad17fdfab7570a4"
+            "sha256:06c66a2fa08a4263db76d07655e78f87c7c75bd4ee40e82a8ad17fdfab7570a4",
+            "sha256:d21f87987d6a092681c878fcd6c937d2d518f46330f3373a593a522275f13af6"
+        ],
+        "modules/blog/resources/project/src/js/resources/_moduleBlogGrid02.js": [
+            "sha256:77e013174154d304556f0365cc307e82bb6586a28c14bea1c500f9746e94cdc6"
+        ],
+        "modules/blog/resources/project/src/js/resources/_moduleBlogPagination01.js": [
+            "sha256:f73da0afb9c5091af08da528ca95e1ca200acdab80cc4c930a5195db0d6faab2"
         ],
         "modules/blog/resources/project/src/js/resources/_sectionBlogSlider01.js": [
+            "sha256:7ed875600027ad8b57154caa2577aeb0e3bab1ad86ad94f9dda9a0adcca91639",
             "sha256:7eef5112a166386373285ec6aefd1daebbfe2e1dc0268cd022c3f0dab6923a13"
+        ],
+        "modules/blog/resources/project/src/js/resources/_sectionBlogSlider02.js": [
+            "sha256:83520c5ca8c9ea8195df7817aedf330f53ade2d387719fdfdb70424bd47ab5ed"
+        ],
+        "modules/blog/resources/project/src/js/resources/_sectionBlogStack01.js": [
+            "sha256:0a10e0d808d1bd9b7c50fc558c10db687986a32f496fc5779668b70dab922ded"
         ],
         "modules/blog/resources/project/src/js/showroom/blog.js": [
             "sha256:2ad33b5a309c65ebbd4ffd0fa26c6cf6638920ad8335460c7d008260bbc0f3d1",
-            "sha256:3cccfd0606cec03147953483d303b09410aff8b9c4b4784c00a13e45c33f2151"
+            "sha256:3cccfd0606cec03147953483d303b09410aff8b9c4b4784c00a13e45c33f2151",
+            "sha256:a84140f9ad0ba53c4ce4a5469536b97b0de600d41d5ba344c8884ee27c929e2f"
         ],
         "modules/blog/resources/project/src/scss/resources/_artBlogArticle01.scss": [
             "sha256:5fac98ea5b515f29172e191ccac4e45653927c9efd69fd630950326be9dfc0b4",
-            "sha256:961ff478b3adafd119576e71196004b74348704601d1cad298732fd9decfef16"
+            "sha256:6f6d341185e093e5c93d353ec3745128a22a2fa5960bdd28c46533082a7fa77b",
+            "sha256:8ee6157aff7c8a487aacb5be416d5cc09a338a0037ab276ea3213dddc58eb549",
+            "sha256:961ff478b3adafd119576e71196004b74348704601d1cad298732fd9decfef16",
+            "sha256:efca379d2822c9220dfd4b378a525045a04e6c5cfbd9cdecfbf0b98684cb3659"
         ],
         "modules/blog/resources/project/src/scss/resources/_moduleBlogArchive01.scss": [
+            "sha256:52bb08dda5566a5a3871db90aae208a8a75f405ccd8cf1e283394e53b0d4f6db",
             "sha256:ef2904fefa442d07e772ccf0657e26ecd3fbdc3ea2d57de2a781251bc595eda8"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_moduleBlogCategoryBar01.scss": [
+            "sha256:30975d50d6b7723beb6413b5bd6bc5edbd6441addb93df73deb18da6fbe889db"
         ],
         "modules/blog/resources/project/src/scss/resources/_moduleBlogFilters01.scss": [
             "sha256:fac49e61fd7be2067c81563fe8484778e7237666f579fbef4635b7362499919d"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_moduleBlogGrid02.scss": [
+            "sha256:806aa1e8c301e1c62026678a5e09770ff2214a1fd79cd495c38b97a3ef8ed7bb"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_moduleBlogPagination01.scss": [
+            "sha256:591ac30871a87f4399e38b075f95758881ccc233ebd312c6fd96f698b6a34745"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_moduleBlogResults01.scss": [
+            "sha256:1fc852f9641bbfdcdf6e49f95c9aa4223d2b96018b561351f26d602e91125440"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_moduleBlogSearch01.scss": [
+            "sha256:ce5ba9143dee65490e368d9371fafc9736c2a703e5ea89f027ebaecdf1b13970"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_sectionBlogCatalog01.scss": [
+            "sha256:3ade8558b5d46c35d9db82d7af81aceeff76c65c7ff8a8e7768ac36cf80a8230",
+            "sha256:7a24861a1a078939178e157e598a76bd002be8124390063c7ecf7f5c0277b0b0"
         ],
         "modules/blog/resources/project/src/scss/resources/_sectionBlogFeatured01.scss": [
             "sha256:bf1bebbe45fd6908e1346e44e495f2c55afd9e9f87bfb8505fc115a92ca82f7d"
@@ -134,18 +272,34 @@
             "sha256:3326a2b8777f7681e3c2adaaaccd5c3b5b2e1ccb23e5842636d29a8cfd155e3f"
         ],
         "modules/blog/resources/project/src/scss/resources/_sectionBlogList01.scss": [
-            "sha256:a581bd9357d05b19a4fea75bbb17bdfcbd2fd7fd19cab9ff45d0e461a261b9dd"
+            "sha256:a581bd9357d05b19a4fea75bbb17bdfcbd2fd7fd19cab9ff45d0e461a261b9dd",
+            "sha256:c46cdd78614f814cd437c40c6e10b1f74375a748fcc4cecb8c5f488c4e77c505"
         ],
         "modules/blog/resources/project/src/scss/resources/_sectionBlogRelated01.scss": [
+            "sha256:1e691972997054dfce27eafc605381682ae1aa564c526cad8375cce80f2d7083",
             "sha256:e4badadb7f4a5e633a75791a4036ccfe6b50de60d875ebe359b35c420c725852"
         ],
         "modules/blog/resources/project/src/scss/resources/_sectionBlogSlider01.scss": [
+            "sha256:b32bc39244a8998a73f633aae0879684b96be1113ec4028f7cfd9cad3fbb191b",
             "sha256:f997994ea3fe3566d162ee2869f1399ca89ab85f36f51e2243cade0cfedb188f"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_sectionBlogSlider02.scss": [
+            "sha256:068f0aefba24600469db88df0d9a53b69775f5195c1d63ea5bb61483b9d508a8"
+        ],
+        "modules/blog/resources/project/src/scss/resources/_sectionBlogStack01.scss": [
+            "sha256:e8b0b898bd5a35ce9f1f243045c98832d7693947a621b65280858d037bcf4a85"
         ],
         "modules/blog/resources/project/src/scss/showroom/blog.scss": [
             "sha256:4d9fd8022e4059927067b67656a7307e6320b51a7491073964716e0e06e81651",
             "sha256:50346325f24453e9d3d9b4a814baf5a87b51632c954e83255fc9e39073012e1c",
+            "sha256:66c3bec715a633e035ff4b1a1d5ef6e3c30da406466d9775cc6393937f5877e8",
             "sha256:8ad671c20ce95534bda20339f4baa88608368e3a4097a5aff077762ce2914e44"
+        ],
+        "modules/webadmin/published/assets/webadmin-media-picker.css": [
+            "sha256:899fcd8cd615fb6f626b552d3b082c875c64e19673783a5ab5954d2855523fec"
+        ],
+        "modules/webadmin/published/assets/webadmin-media-picker.js": [
+            "sha256:b8676fdc18e5ea52b0a8110bd18298721c193ddc3c26f43ab8e93e9f2799b59f"
         ],
         "modules/webadmin/published/assets/webadmin.css": [
             "sha256:1c6938f47c4236d7867ac1a164dc3fd127eed9592320b48fb2f401bf696c4656",
@@ -153,9 +307,11 @@
             "sha256:54f16739291ddecfef5dcbed1d6233a2965ded000ebad2009b1577bc5a48b9e0",
             "sha256:901f1fd301f89ab0fa2d4a5377360b21e3142a33b904eb59b9b1df7c5005fff7",
             "sha256:c6642b66a7ce0f400e332ee92d09c66cab5047e654a960693317002789818917",
+            "sha256:d48ff189abf44106dc9e348d402e6efa34910b14e42b709e268a933a83b97818",
             "sha256:d5d0c7d0bdb71dbbf686c9302aa384a6d4c46fa25265d76f69b04a6012ec14d3"
         ],
         "modules/webadmin/published/assets/webadmin.js": [
+            "sha256:16e0001577912fdc5ca78e2d2bbba77db3c308ead231f257fa2ac45231ddc67f",
             "sha256:24db76ed478c420c64ae0bcdf990908599cf8fad3184b6908900569f4dec4bfd",
             "sha256:555bd74ab851add438fda8d1b55f30424ef819e46ccbd573c1afcde04da1bdb6",
             "sha256:6d6909287853cc15cc16d1cd03fe9e0cbbef2da0455fa3380500376c8ea372ec"
@@ -246,6 +402,54 @@
         ],
         "resources/img/dummy/dummy_900.avif": [
             "sha256:1484588e470cb12433fad7224586521940a97c53dde9fd3d9c94b785cbc0465f"
+        ],
+        "resources/img/dummy/responsive/dummy01-1800.avif": [
+            "sha256:4fd51b1f2dadb949c2dde48839a91e1bddcb01b774a5cfeba77c6ec1c4c1f599"
+        ],
+        "resources/img/dummy/responsive/dummy01-2560.avif": [
+            "sha256:e6861b46006b95c4aa342685a8229b07779c189864e85648033d1ac965d90626"
+        ],
+        "resources/img/dummy/responsive/dummy01-480.avif": [
+            "sha256:70b3701ad86d47c0b2d41f02020b8793ea3e76a6d21bcb9a36d213591735093c"
+        ],
+        "resources/img/dummy/responsive/dummy01-900.avif": [
+            "sha256:c171cc8544ab32c8add69dad7939caaa28bb4eafa2b3eddb89b20c1825facede"
+        ],
+        "resources/img/dummy/responsive/dummy02-1800.avif": [
+            "sha256:a93298d8cfb0c40996abfd82bd754fda62753e065b39096523fb70b162e37c2f"
+        ],
+        "resources/img/dummy/responsive/dummy02-2560.avif": [
+            "sha256:ed5dbf86795ddb63e9afa09c9803c6082284384847119a54888e92fcf4fd4ac7"
+        ],
+        "resources/img/dummy/responsive/dummy02-480.avif": [
+            "sha256:74e78205b310629d389cd6589fd2bccd1d10f8bce297dabf136f92d38141aa3e"
+        ],
+        "resources/img/dummy/responsive/dummy02-899.avif": [
+            "sha256:44700a28fff514559915253b043926cc4ab2dee23670422d4cc66633352221da"
+        ],
+        "resources/img/dummy/responsive/dummy03-1800.avif": [
+            "sha256:b44db10c801f615dd28dcb1bc55ed57bc8285008de03861b8033eeac1d880823"
+        ],
+        "resources/img/dummy/responsive/dummy03-2560.avif": [
+            "sha256:c3f1c0a981eb0a8ec5b4ad47555ea623f35063d6decb151406e51a2428248c9e"
+        ],
+        "resources/img/dummy/responsive/dummy03-480.avif": [
+            "sha256:5a56c07f6ea6a9e75322d275cbf74b9d2c4145566987d66da2d81f60ab2843f7"
+        ],
+        "resources/img/dummy/responsive/dummy03-900.avif": [
+            "sha256:506bcb6a2b5b062ffdfec60229d3acd721105e3342e71854c9a2093d8de52bae"
+        ],
+        "resources/img/dummy/responsive/dummy04-1800.avif": [
+            "sha256:694d6cbea062ad0f05234f6d91cda88804ea6caa5f65f20c356be703d3147999"
+        ],
+        "resources/img/dummy/responsive/dummy04-2560.avif": [
+            "sha256:36ec1581887818d5616ffe77177bbf16763a1989fea10f9604cc8d990e84ee04"
+        ],
+        "resources/img/dummy/responsive/dummy04-480.avif": [
+            "sha256:e4a28038a7f1ddf1aa89e9de644708f69dfa209a68c545f012f8c8d3a0cfb1c9"
+        ],
+        "resources/img/dummy/responsive/dummy04-900.avif": [
+            "sha256:3793b3044c1365dc0813eff46e16111733c9ba012eea609225269fa162e54524"
         ],
         "resources/img/resources/aniBackground01/clock-back-to-future-guide.png": [
             "sha256:04f438659e3ade69baec9d759378ee42c757c0abbaf475b00496b9d1e619d437"
@@ -509,7 +713,8 @@
             "sha256:4e82e0a8de32488e716a8b36ce58ef8f0ed47b14fd5caaa9e6237b9e0bf43c5c"
         ],
         "resources/js/_gsapParallaxScroll.js": [
-            "sha256:403e35cc33749b4221fca1cadb305db748b1edca596bd9f024aa571f584d968f"
+            "sha256:403e35cc33749b4221fca1cadb305db748b1edca596bd9f024aa571f584d968f",
+            "sha256:9a75555d01326659a758161e1280c7b54e3adb23b013fdefa3e8997fa6e6e404"
         ],
         "resources/js/_gsapScroll.js": [
             "sha256:f578ae8cb58ebedf3db59bb89b626bb4c39647d7c88cc39ad50fdf77db67a441"
@@ -530,9 +735,13 @@
             "sha256:7d8b4cb590f17dcd6bd7bc6ad5b126bd379d1e0c1d818c8a9e2ab42682da3747",
             "sha256:9e26b0a622240949b624f2b137de84709564d42e43fa42e05588c436a10b7fc1",
             "sha256:a9193adcac304dbf5f51e31d5ab64465ed8bb2d6fbb53ac2b0a102976afe366d",
+            "sha256:b22435d044183c4dd85271b39d7a98721cbeea2da46ffc924af907d295f2b17a",
             "sha256:bd8ce112d8960948a223ca5fbf37ec36af054e17a7ef9460c0b524b51104454c",
             "sha256:dcf41437a0db4dc5daefc4c974172911e3863c9890f59bdc6041c9939b77ff29",
             "sha256:fca9978efb02f7a2889abf31bc56073bda1a3b329cea289abef9b58c6d6875c1"
+        ],
+        "resources/js/_inlineResponsivePicture.js": [
+            "sha256:b5c996aa770dad5da55d631855cd70673a9f17df604f374c32ebeebb179987a9"
         ],
         "resources/js/_languagePreference.mjs": [
             "sha256:8cae3d05be53ffeda734a46354858c37c37a5d72701a7c2129217d1184e2da45",
@@ -875,9 +1084,11 @@
             "sha256:03675128dc89e4986ecd804f58b1b9323daf40bf7abd484d6596c0a44b5f9f61",
             "sha256:6f8c0c79b5fd3c8c88d436ff3d5a06015cdc7dfeb33a59ee239f2518db4fc966",
             "sha256:7b8263c05bf0f9f2473ec9b881acef60be6d5273cf8b497f542113b44cb7e07f",
-            "sha256:875dc6ce6aef3c2e2c3b93850f07dede7412c75b3b832c43c1931a0956a73065"
+            "sha256:875dc6ce6aef3c2e2c3b93850f07dede7412c75b3b832c43c1931a0956a73065",
+            "sha256:bbf9091cc5e7b328e4c7cbb47a2546986b351968fcb8a0dca85e2bf45664aa01"
         ],
         "resources/scss/_hero01.scss": [
+            "sha256:3fa4c88bbfc2d84d25e3663a7cb17e4ec9534656a706c828d91b5328ce0a5afe",
             "sha256:64b07e4721569526be7c34f3b30c9b6dc6670a2809ae0205118bffa9b8528ac5",
             "sha256:abbae5e145d78ebd52c94c2346edbcc0e4757ff0ad0760358f2599afc2f6b5d8"
         ],
@@ -900,9 +1111,11 @@
             "sha256:9aad582bf46156af4c331231bf59a118c070f1babcaaa617dcf2cebfbe7bb5b7"
         ],
         "resources/scss/_hero06.scss": [
+            "sha256:8a9f36045a6606cbe4b4b23d33d749d60ab120ebda4bc4b8bcad3a6736ffb26b",
             "sha256:e4b57a0dad6f50c73a1281566b958c8485d8010327521c9e47ef4aedf417bc65"
         ],
         "resources/scss/_hero07.scss": [
+            "sha256:8e12e89090e7fad1107a62ef9f9e8309b9a84c6f240526ea0cff8bba3bfc6455",
             "sha256:f6c399903eff12e0a39627182f78e08e5d022b9fc5ca9be8442eb4eaf595be4e"
         ],
         "resources/scss/_moduleButtonType01.scss": [
@@ -1139,7 +1352,8 @@
             "sha256:b67f51fb729ef7ce5657d93b0785f0dd40a098abfd86257e8ba6637785be43c0"
         ],
         "src/js/showroom/heroes.js": [
-            "sha256:2912cd1604573a85a021c20f43f63326b660409ac7f170c3bab025c7b83044a1"
+            "sha256:2912cd1604573a85a021c20f43f63326b660409ac7f170c3bab025c7b83044a1",
+            "sha256:7b0544fa03b1fd11e2e2b2a60406ab7d9139f9454d099faebb4d5f016fd8647e"
         ],
         "src/js/showroom/media.js": [
             "sha256:a075f1a5f08b0ef24a3febb1f6ef59b141f7775422dc4a19f0632ea787cddc76"
@@ -1431,10 +1645,12 @@
         "stubs/App/controllers/hero00.php": [
             "sha256:09ae6f8ce27810d62c6e516382398831dc51dc6aec2b6908a20880866f41b6fd",
             "sha256:1117bf0625567767e46d3f49a2523c98bd6df741a7642293eb3ed155e714c126",
+            "sha256:1e7eeaf94452014683a2081f3addbfc686000d9c1e587c681e9daeb5806c872b",
             "sha256:25043fd2a2f47e3bf613dad4cccf936f0cefd4a084aa98751c1d602450bf01fb"
         ],
         "stubs/App/controllers/hero01.php": [
             "sha256:37624e84f8eb4d579b2a2ca70cf3a63307ae0c8315bec718986c3882238f1400",
+            "sha256:8f93f24c0564e256092c1c9e2b45d74afe858ff8f13e436969fddc56dc852775",
             "sha256:91b31afbc5536e950c30cf1ecb3591e15376829f90fa2de2dfcbc7582064ddbf"
         ],
         "stubs/App/controllers/hero02.php": [
@@ -1454,10 +1670,12 @@
             "sha256:f8428aa2910c7da9719f04bd96c1288ddcff23f8c899af40465dfa6d828d2aa7"
         ],
         "stubs/App/controllers/hero06.php": [
+            "sha256:7aab8d4de7159e20f4084616d0853092286feee5b27cffecbd1a4f448c8646a5",
             "sha256:ccb629631105d57319a7f49b9da86052cbdaf78e6c1368333f061292724d260f"
         ],
         "stubs/App/controllers/hero07.php": [
-            "sha256:1c77c147464de4984fe26bf80a934a6fe7c37356bbfed091fff92297f7ad7a46"
+            "sha256:1c77c147464de4984fe26bf80a934a6fe7c37356bbfed091fff92297f7ad7a46",
+            "sha256:27324c0e9049c0a0dfd2fb3e28e5d4efe0044ce60791593b49867e0caf66fc3b"
         ],
         "stubs/App/controllers/moduleButtonType01.php": [
             "sha256:22c050f4b8b3f6cd2822afbc7e652d3e2c84a6133cd76c8b9db7334f2151c000",
@@ -1503,6 +1721,7 @@
             "sha256:4805d17428374ebd1112d6106a1b8c1e84758d673630837187e0a7b4c7968f60"
         ],
         "stubs/App/controllers/moduleH1Type01.php": [
+            "sha256:67af69665f23eaf3a1bc99b7dc3c225013e11259f136e8658fe6c8b06d0d8af0",
             "sha256:bea748b7697807bf373d087d8df8e0b7e489a7a2c6ccea260b93eaf9cc84cd7d",
             "sha256:e0281c814b26136b14378981d19368efc63ce538205bc82087cd97ace2af2f1e"
         ],
@@ -1759,11 +1978,13 @@
         "stubs/App/templates/_hero00.html": [
             "sha256:5880f694b2d9b97ffdbd69ca00ee0bcd8bb0386f4dc9dd9f6f31e7c907cdca46",
             "sha256:a21dce1e72d350f1ab85f2f937fb03207b43f24929316a12a203f9430567cbca",
-            "sha256:a940147677c7d9dfeea8a18924ecafaf4a399e371efd7df3fddec4ae2e958145"
+            "sha256:a940147677c7d9dfeea8a18924ecafaf4a399e371efd7df3fddec4ae2e958145",
+            "sha256:bd9b23c60324bfe0f6051d7051519132f42eb8ff9ea8c57d3abc1cabdecb1290"
         ],
         "stubs/App/templates/_hero01.html": [
             "sha256:78f633f311ed07841a7751a4601d0bbe7cee4aef88dc5b2d0f4b3efc8e65c066",
-            "sha256:b674a22a5a3024faab696ddad1e75484321424b4fb772811bd1bffd7b75e3593"
+            "sha256:b674a22a5a3024faab696ddad1e75484321424b4fb772811bd1bffd7b75e3593",
+            "sha256:f9a07bceadce6ae8d0a5cfbc819381ba7a1c3b1d519694d5d4738ffa7246537d"
         ],
         "stubs/App/templates/_hero02.html": [
             "sha256:5b689be707f520eca12c8e30a24e06be5cc90a10f8c6e39113ef6c50dead5fa7",
@@ -1780,10 +2001,12 @@
             "sha256:0e51b84af38006def533b96a5f8497f0c3fa00eb96d25d2e9c396693e549270e"
         ],
         "stubs/App/templates/_hero06.html": [
+            "sha256:283f1d47cbe54fc47b0d1e1316878c07296f9579408a4c303aa6bc3d6ebba7be",
             "sha256:92bb92071a1100a537271ea1fce19d9f55a197928e80ee90053dbca4209af87f"
         ],
         "stubs/App/templates/_hero07.html": [
-            "sha256:69e4570621b84b04ef2f75f225ce9e58f66955ecb5c944077c09a1487f8ccfb5"
+            "sha256:69e4570621b84b04ef2f75f225ce9e58f66955ecb5c944077c09a1487f8ccfb5",
+            "sha256:9402615e90108bd00b721807ee6daa8815d87faa9b373dc88419d5041d84af50"
         ],
         "stubs/App/templates/_moduleButtonType01.html": [
             "sha256:0f353574a09494ca587e62db6e7fdfa50c839c0f5ff126205f5da56851398528",
@@ -1988,6 +2211,7 @@
             "sha256:f426a2419968a1ae996e05fe2f779e645c3886fa263b93b13dd63e0c88c5d927"
         ],
         "stubs/App/views/showroom/_heroes.php": [
+            "sha256:8d2c05f7a4b817766767786e3fab8b66aa342c4a66cf9bf93877adce9f9fea96",
             "sha256:c3a05ca97788455120c9b8877e19287db72e453f92a3ed1edbf65cff2e4a2208",
             "sha256:f9e36a929679a224d99722aa8d73d63d2e709fc9ba34d1f00140ef4384202754"
         ],
@@ -2008,6 +2232,7 @@
         ],
         "stubs/tools/liquidstack/vite/update-languages-plugin.mjs": [
             "sha256:3c29f94f3b20fe34c2bdfa1a0fd1391e7980ee18e47d2a4ec628f69a49a0db91",
+            "sha256:f4173b553b8b23fb072b72526c9102358ceb3650e3ebc190abac353b78b92f19",
             "sha256:f7c0eaf37a9e37ed2c1ea2a655e4c1b3cb2cb9e110d690a4d1d60918825349fb"
         ]
     }

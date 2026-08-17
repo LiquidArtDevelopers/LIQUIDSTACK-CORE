@@ -30,12 +30,21 @@ El análisis cubre:
 - posible canibalización frente a variantes publicadas del mismo idioma y un
   inventario estático opcional.
 
-El panel se renderiza en servidor con el último estado guardado. Mientras se
-edita, `blog-editor.js` solicita una revisión al endpoint privado
+El panel se renderiza en servidor con la última instantánea de trabajo guardada.
+Cuando `0014_blog_private_draft_publication` está lista, esa instantánea es el
+workspace privado de una variante publicada y no su cabecera pública anterior.
+Mientras se edita, `blog-editor.js` solicita una revisión del payload actual al
+endpoint privado
 `POST /admin/blog/editor/seo-analysis` con 650 ms de debounce y cancela la
 petición anterior mediante `AbortController`. El endpoint exige sesión,
 capacidad `blog.articles.edit`, acceso a medios y CSRF válido. Sus respuestas
 son `no-store` y nunca contienen el documento completo.
+
+`Guardar borrador` y el guardado privado de categorías no cambian el artículo
+público ni sus asignaciones visibles. El análisis de canibalización continúa
+comparando solo publicaciones del mismo idioma y excluye siempre el artículo
+actual; `Publicar` es una acción separada y la única que promociona la
+instantánea guardada a las proyecciones públicas.
 
 Si el medidor falla, el editor continúa disponible. El panel muestra un estado
 pendiente o temporalmente no disponible; guardar y publicar conservan sus
@@ -72,6 +81,23 @@ La lectura de artículos publicados está acotada a 200 candidatos más uno para
 detectar overflow. Si el catálogo supera ese límite, el resultado también es
 `Pendiente`. Un futuro read-model de términos permitirá analizar catálogos
 mayores sin lecturas completas.
+
+## Ciclo de vida de URL pública
+
+La URL publicada se conserva en un historial independiente del borrador. El
+contrato no infiere sustitutos ni crea redirecciones de conveniencia:
+
+- retirar una publicación recuperable responde `404` y permite republicar la
+  misma URL;
+- declarar expresamente que una URL no tendrá sustituto responde `410`;
+- una redirección `301` exige una acción autenticada y un artículo sustituto
+  publicado en el mismo idioma;
+- si el sustituto deja de publicarse, la URL antigua falla cerrada con `404`;
+- nunca se redirige automáticamente a inicio, categoría o una landing vacía.
+
+Publicar, retirar y resolver definitivamente comparten la transacción del CAS,
+capacidad `blog.articles.publish`, CSRF y auditoría. `GET` y `HEAD`, sitemap y
+feeds son de solo lectura y solo exponen la proyección publicada vigente.
 
 ## Fuera de este corte
 

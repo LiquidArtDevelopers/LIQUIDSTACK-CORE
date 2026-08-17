@@ -272,8 +272,8 @@ final class WebAdminCredentialMailMessageFactoryTest extends TestCase
                 WebAdminMailConfiguration::ENCRYPTION_NONE,
                 OpaqueSecret::fromString(''),
                 OpaqueSecret::fromString(''),
-                'webadmin@aiwa.test',
-                'AIWA WebAdmin dev',
+                'webadmin@example.test',
+                'Proyecto WebAdmin dev',
                 WebAdminMailConfiguration::TRANSPORT_LOCAL_CAPTURE_SMTP,
                 false
             ),

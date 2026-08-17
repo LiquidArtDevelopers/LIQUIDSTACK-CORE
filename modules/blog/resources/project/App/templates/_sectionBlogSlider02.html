@@ -1,0 +1,59 @@
+<section id="{section-id}"
+         class="sectionBlogSlider02 sectionBlogSlider02--items-{items-count} {classVar}"
+         aria-labelledby="{heading-id}"
+         data-blog-collection="sectionBlogSlider02"
+         data-blog-load-mode="{load-mode}"
+         data-state="{collection-state}"
+         data-blog-slider02
+         data-blog-slider02-autoplay="{autoplay}"
+         data-blog-slider02-autoplay-delay="{autoplay-delay}"
+         data-blog-slider02-duration="{transition-duration}">
+    <div class="sectionBlogSlider02-heading">
+        {header-primary}
+
+        <div class="sectionBlogSlider02-controls" data-blog-slider02-controls hidden>
+            <button type="button"
+                    data-blog-slider02-previous
+                    aria-controls="{viewport-id}"
+                    aria-label="{previous-label}">&larr;</button>
+            <button type="button"
+                    data-blog-slider02-next
+                    aria-controls="{viewport-id}"
+                    aria-label="{next-label}">&rarr;</button>
+            <button type="button"
+                    class="sectionBlogSlider02-autoplay"
+                    data-blog-slider02-autoplay-toggle
+                    data-pause-label="{pause-label}"
+                    data-resume-label="{resume-label}"
+                    aria-controls="{viewport-id}"
+                    aria-label="{pause-label}"
+                    aria-pressed="false"
+                    hidden>
+                <span aria-hidden="true">&#10074;&#10074;</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="{viewport-id}"
+         class="sectionBlogSlider02-viewport"
+         data-blog-slider02-viewport{viewport-tabindex}>
+        <div class="sectionBlogSlider02-track"
+             data-blog-collection-items
+             data-blog-slider02-track>
+            {items}
+        </div>
+    </div>
+
+    <div class="sectionBlogSlider02-loader" data-blog-collection-loader>
+        {collection-next}
+        <p class="sectionBlogSlider02-status"
+           data-blog-collection-status
+           data-loading-message="{loading-message}"
+           data-error-message="{error-message}"
+           data-retry-message="{retry-message}"
+           data-end-message="{end-message}"
+           data-empty-message="{empty-message}"
+           aria-live="polite"
+           aria-atomic="true"{status-hidden}>{status-message}</p>
+    </div>
+</section>

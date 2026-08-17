@@ -12,6 +12,9 @@ final class BlogPublicCatalogQuery
 {
     public const MODE_ANY = 'any';
     public const MODE_ALL = 'all';
+    public const ORDER_NEWEST = 'newest';
+    public const ORDER_OLDEST = 'oldest';
+    public const ORDER_UPDATED = 'updated';
     public const MIN_SEARCH_CHARACTERS = 2;
     public const MAX_SEARCH_CHARACTERS = 120;
     public const MAX_SEARCH_INPUT_BYTES = 480;
@@ -23,10 +26,13 @@ final class BlogPublicCatalogQuery
     private readonly ?string $search;
     /** @var list<string> */
     private readonly array $categorySlugs;
+    /** @var list<string> */
+    private readonly array $excludedCategorySlugs;
     private readonly string $categoryMode;
     private readonly int $limit;
     private readonly int $offset;
     private readonly ?string $excludeSlug;
+    private readonly string $order;
 
     /** @param list<string> $categorySlugs */
     public function __construct(
@@ -36,12 +42,17 @@ final class BlogPublicCatalogQuery
         string $categoryMode = self::MODE_ANY,
         int $limit = 12,
         int $offset = 0,
-        ?string $excludeSlug = null
+        ?string $excludeSlug = null,
+        array $excludedCategorySlugs = [],
+        string $order = self::ORDER_NEWEST
     ) {
         $this->locale = BlogInput::locale($locale);
         $this->search = self::normalizeSearch($search);
         $this->categorySlugs = self::normalizeCategorySlugs(
             $categorySlugs
+        );
+        $this->excludedCategorySlugs = self::normalizeCategorySlugs(
+            $excludedCategorySlugs
         );
         if (!in_array(
             $categoryMode,
@@ -56,9 +67,17 @@ final class BlogPublicCatalogQuery
         if ($offset < 0 || $offset > self::MAX_OFFSET) {
             throw new BlogException(BlogException::INVALID_INPUT);
         }
+        if (!in_array($order, [
+            self::ORDER_NEWEST,
+            self::ORDER_OLDEST,
+            self::ORDER_UPDATED,
+        ], true)) {
+            throw new BlogException(BlogException::INVALID_INPUT);
+        }
         $this->categoryMode = $categoryMode;
         $this->limit = $limit;
         $this->offset = $offset;
+        $this->order = $order;
         $this->excludeSlug = $excludeSlug === null
             ? null
             : (BlogInput::slug($excludeSlug)
@@ -86,6 +105,12 @@ final class BlogPublicCatalogQuery
         return $this->categoryMode;
     }
 
+    /** @return list<string> */
+    public function excludedCategorySlugs(): array
+    {
+        return $this->excludedCategorySlugs;
+    }
+
     public function limit(): int
     {
         return $this->limit;
@@ -101,10 +126,16 @@ final class BlogPublicCatalogQuery
         return $this->excludeSlug;
     }
 
+    public function order(): string
+    {
+        return $this->order;
+    }
+
     public function hasFilters(): bool
     {
         return $this->search !== null
             || $this->categorySlugs !== []
+            || $this->excludedCategorySlugs !== []
             || $this->excludeSlug !== null;
     }
 

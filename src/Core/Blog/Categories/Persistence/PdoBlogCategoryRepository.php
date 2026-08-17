@@ -6,6 +6,7 @@ namespace App\Core\Blog\Categories\Persistence;
 
 use App\Core\Blog\Categories\BlogCategoryDraft;
 use App\Core\Blog\Categories\BlogCategoryLocalization;
+use App\Core\Blog\Categories\BlogReservedCategoryPolicy;
 use App\Core\Blog\Categories\PublishedCategoryFilter;
 use App\Core\Blog\PublishedPostCard;
 use App\Core\Modules\Migrations\MigrationScope;
@@ -19,7 +20,9 @@ use Throwable;
 /** Portable PDO repository for the category aggregate. */
 final class PdoBlogCategoryRepository implements
     BlogCategoryRepositoryInterface,
-    BlogCategoryLocaleLookupRepositoryInterface
+    BlogCategoryLocaleLookupRepositoryInterface,
+    BlogCategoryDeletionRepositoryInterface,
+    BlogReservedCategoryRepositoryInterface
 {
     private const UTC_FORMAT = 'Y-m-d H:i:s.u';
     private readonly string $driver;
@@ -28,11 +31,13 @@ final class PdoBlogCategoryRepository implements
     private readonly string $relations;
     private readonly string $posts;
     private readonly string $postLocalizations;
+    private readonly string $categoryWorkspaceItems;
     private bool $transactionActive = false;
 
     public function __construct(
         private readonly PDO $pdo,
-        MigrationScope $scope
+        MigrationScope $scope,
+        private readonly bool $privateCategoryWorkspaceReady = false
     ) {
         try {
             $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
@@ -72,6 +77,10 @@ final class PdoBlogCategoryRepository implements
             $this->posts = $scope->quotedTable('posts', $driver);
             $this->postLocalizations = $scope->quotedTable(
                 'post_localizations',
+                $driver
+            );
+            $this->categoryWorkspaceItems = $scope->quotedTable(
+                'category_assignment_workspace_items',
                 $driver
             );
         } catch (BlogCategoryPersistenceException $exception) {
@@ -271,6 +280,85 @@ final class PdoBlogCategoryRepository implements
         }
     }
 
+    public function categoryHasAssignments(string $categoryPublicId): bool
+    {
+        $this->assertTransaction();
+        $params = ['category_public_id' => $categoryPublicId];
+        $live = $this->one(
+            'SELECT pc.public_id FROM ' . $this->relations . ' pc JOIN '
+                . $this->categories . ' c ON c.id = pc.category_id '
+                . 'WHERE c.public_id = :category_public_id LIMIT 1'
+                . $this->forUpdate(),
+            $params
+        );
+        if ($live !== null) {
+            return true;
+        }
+        if (!$this->privateCategoryWorkspaceReady) {
+            return false;
+        }
+
+        return $this->one(
+            'SELECT c.public_id FROM ' . $this->categoryWorkspaceItems
+                . ' wi JOIN ' . $this->categories
+                . ' c ON c.id = wi.category_id WHERE c.public_id = '
+                . ':category_public_id LIMIT 1' . $this->forUpdate(),
+            $params
+        ) !== null;
+    }
+
+    public function deleteLocalization(
+        string $localizationPublicId,
+        int $expectedLockVersion
+    ): bool {
+        $this->assertTransaction();
+        $statement = $this->prepare(
+            'DELETE FROM ' . $this->localizations
+                . ' WHERE public_id = :public_id AND lock_version = '
+                . ':lock_version'
+        );
+        $this->execute($statement, [
+            'public_id' => $localizationPublicId,
+            'lock_version' => $expectedLockVersion,
+        ]);
+
+        return $statement->rowCount() === 1;
+    }
+
+    public function localizationCount(string $categoryPublicId): int
+    {
+        $this->assertTransaction();
+        $statement = $this->prepare(
+            'SELECT COUNT(*) FROM ' . $this->localizations . ' l JOIN '
+                . $this->categories . ' c ON c.id = l.category_id '
+                . 'WHERE c.public_id = :category_public_id'
+        );
+        $this->execute($statement, [
+            'category_public_id' => $categoryPublicId,
+        ]);
+        $count = $statement->fetchColumn();
+        if (!is_int($count) && !is_string($count)) {
+            throw new BlogCategoryPersistenceException();
+        }
+        if (preg_match('/\A(?:0|[1-9][0-9]*)\z/', (string) $count) !== 1) {
+            throw new BlogCategoryPersistenceException();
+        }
+
+        return (int) $count;
+    }
+
+    public function deleteCategory(string $categoryPublicId): bool
+    {
+        $this->assertTransaction();
+        $statement = $this->prepare(
+            'DELETE FROM ' . $this->categories
+                . ' WHERE public_id = :public_id'
+        );
+        $this->execute($statement, ['public_id' => $categoryPublicId]);
+
+        return $statement->rowCount() === 1;
+    }
+
     public function category(
         string $categoryPublicId,
         string $locale
@@ -284,6 +372,72 @@ final class PdoBlogCategoryRepository implements
                 'locale' => $locale,
             ]
         ));
+    }
+
+    public function reservedCategoryPublicId(string $slug): ?string
+    {
+        try {
+            $statement = $this->prepare(
+                'SELECT c.public_id FROM ' . $this->categories
+                    . ' c JOIN ' . $this->localizations
+                    . ' cl ON cl.category_id = c.id '
+                    . 'WHERE c.public_id = :reserved_public_id '
+                    . 'AND cl.slug = :reserved_slug '
+                    . 'ORDER BY cl.public_id LIMIT 2'
+            );
+            $this->execute($statement, [
+                'reserved_public_id' =>
+                    BlogReservedCategoryPolicy::DUMMY_CATEGORY_PUBLIC_ID,
+                'reserved_slug' => $slug,
+            ]);
+            $rows = $statement->fetchAll(PDO::FETCH_COLUMN);
+            if (!is_array($rows) || count($rows) > 1) {
+                throw new BlogCategoryPersistenceException();
+            }
+            if ($rows === []) {
+                return null;
+            }
+            $publicId = $rows[0] ?? null;
+            if (!is_string($publicId)) {
+                throw new BlogCategoryPersistenceException();
+            }
+            if (
+                $publicId
+                    !== BlogReservedCategoryPolicy::DUMMY_CATEGORY_PUBLIC_ID
+            ) {
+                throw new BlogCategoryPersistenceException();
+            }
+
+            return $publicId;
+        } catch (BlogCategoryPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogCategoryPersistenceException();
+        }
+    }
+
+    public function categoryHasReservedSlug(
+        string $categoryPublicId,
+        string $slug
+    ): bool {
+        try {
+            $statement = $this->prepare(
+                'SELECT 1 FROM ' . $this->categories . ' c JOIN '
+                    . $this->localizations . ' cl ON cl.category_id = c.id '
+                    . 'WHERE c.public_id = :category_public_id '
+                    . 'AND cl.slug = :reserved_slug LIMIT 1'
+            );
+            $this->execute($statement, [
+                'category_public_id' => $categoryPublicId,
+                'reserved_slug' => $slug,
+            ]);
+
+            return $statement->fetchColumn() !== false;
+        } catch (BlogCategoryPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogCategoryPersistenceException();
+        }
     }
 
     public function categoryLocales(string $categoryPublicId): ?array
@@ -324,12 +478,16 @@ final class PdoBlogCategoryRepository implements
         ?string $locale = null
     ): array {
         $sql = $this->localizationSelect();
-        $params = [];
+        $where = ['l.slug <> :reserved_dummy_slug'];
+        $params = [
+            'reserved_dummy_slug' => BlogReservedCategoryPolicy::DUMMY_SLUG,
+        ];
         if ($locale !== null) {
-            $sql .= ' WHERE l.locale = :locale';
+            $where[] = 'l.locale = :locale';
             $params['locale'] = $locale;
         }
-        $sql .= ' ORDER BY l.name, l.locale, c.public_id LIMIT '
+        $sql .= ' WHERE ' . implode(' AND ', $where)
+            . ' ORDER BY l.name, l.locale, c.public_id LIMIT '
             . $limit . ' OFFSET ' . $offset;
         $statement = $this->prepare($sql);
         $this->execute($statement, $params);
@@ -451,10 +609,21 @@ final class PdoBlogCategoryRepository implements
             . ' p ON p.id = pc.post_id JOIN ' . $this->postLocalizations
             . " pl ON pl.post_id = p.id AND pl.locale = cl.locale "
             . "AND pl.status = 'published' WHERE cl.locale = :locale "
+            . 'AND cl.slug <> :filter_reserved_slug '
+            . 'AND NOT EXISTS (SELECT 1 FROM ' . $this->relations
+            . ' reserved_pc JOIN ' . $this->localizations
+            . ' reserved_cl ON reserved_cl.category_id = '
+            . 'reserved_pc.category_id WHERE reserved_pc.post_id = p.id '
+            . 'AND reserved_cl.slug = :post_reserved_slug) '
             . 'GROUP BY c.id, c.public_id, cl.locale, cl.slug, cl.name '
             . 'ORDER BY cl.name, c.public_id LIMIT ' . $queryLimit
         );
-        $this->execute($statement, ['locale' => $locale]);
+        $this->execute($statement, [
+            'locale' => $locale,
+            'filter_reserved_slug' =>
+                BlogReservedCategoryPolicy::DUMMY_SLUG,
+            'post_reserved_slug' => BlogReservedCategoryPolicy::DUMMY_SLUG,
+        ]);
         $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
         if (
             !is_array($rows)
@@ -492,6 +661,12 @@ final class PdoBlogCategoryRepository implements
             . ' cl ON cl.category_id = pc.category_id WHERE pl.locale = '
             . ':post_locale AND cl.locale = :category_locale '
             . 'AND cl.slug = :category_slug '
+            . 'AND cl.slug <> :scope_reserved_slug '
+            . 'AND NOT EXISTS (SELECT 1 FROM ' . $this->relations
+            . ' reserved_pc JOIN ' . $this->localizations
+            . ' reserved_cl ON reserved_cl.category_id = '
+            . 'reserved_pc.category_id WHERE reserved_pc.post_id = p.id '
+            . 'AND reserved_cl.slug = :post_reserved_slug) '
             . "AND pl.status = 'published' ORDER BY pl.published_at DESC, "
             . 'p.public_id LIMIT ' . $limit . ' OFFSET ' . $offset
         );
@@ -499,6 +674,8 @@ final class PdoBlogCategoryRepository implements
             'post_locale' => $locale,
             'category_locale' => $locale,
             'category_slug' => $categorySlug,
+            'scope_reserved_slug' => BlogReservedCategoryPolicy::DUMMY_SLUG,
+            'post_reserved_slug' => BlogReservedCategoryPolicy::DUMMY_SLUG,
         ]);
 
         return array_map(

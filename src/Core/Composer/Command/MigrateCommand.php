@@ -73,7 +73,7 @@ final class MigrateCommand extends BaseCommand
                 'allow-destructive',
                 null,
                 InputOption::VALUE_NONE,
-                'Autoriza migraciones marcadas como destructivas.'
+                'Autoriza migraciones destructivas junto con --backup-confirmed.'
             )
             ->addOption(
                 'backup-confirmed',
@@ -199,20 +199,16 @@ final class MigrateCommand extends BaseCommand
             if (!$plan->isApplicable()) {
                 return self::FAILURE;
             }
+            $allowDestructive = (bool) $input->getOption(
+                'allow-destructive'
+            );
+            $backupConfirmed = (bool) $input->getOption(
+                'backup-confirmed'
+            );
             if (
                 $plan->hasPendingDestructive()
-                && !$input->getOption('allow-destructive')
-            ) {
-                return $this->renderFailure(
-                    'migrations.destructive_not_allowed',
-                    $format,
-                    $output,
-                    self::FAILURE
-                );
-            }
-            if (
-                $plan->hasPendingDestructive()
-                && !$input->getOption('backup-confirmed')
+                && $allowDestructive
+                && !$backupConfirmed
             ) {
                 return $this->renderFailure(
                     'migrations.backup_not_confirmed',
@@ -221,9 +217,20 @@ final class MigrateCommand extends BaseCommand
                     self::FAILURE
                 );
             }
+            $deferDestructive = !$allowDestructive && !$backupConfirmed;
+            $selection = $plan->pendingSelection(!$deferDestructive);
+            if (
+                $format === 'text'
+                && $selection['deferred'] !== []
+            ) {
+                $this->renderDeferredWarning(
+                    $selection['deferred'],
+                    $output
+                );
+            }
 
             if (
-                $plan->pendingEntries() !== []
+                $selection['selected'] !== []
                 && !$input->getOption('yes')
             ) {
                 if (!$input->isInteractive()) {
@@ -245,13 +252,10 @@ final class MigrateCommand extends BaseCommand
 
             $result = $runtime->apply(new MigrationApplyOptions(
                 expectedPlanHash: $plan->hash(),
-                allowDestructive: (bool) $input->getOption(
-                    'allow-destructive'
-                ),
-                backupConfirmed: (bool) $input->getOption(
-                    'backup-confirmed'
-                ),
-                lockTimeoutSeconds: $lockTimeout
+                allowDestructive: $allowDestructive,
+                backupConfirmed: $backupConfirmed,
+                lockTimeoutSeconds: $lockTimeout,
+                deferDestructive: $deferDestructive
             ));
             $this->renderApplyResult($result, $format, $output);
 
@@ -488,6 +492,13 @@ final class MigrateCommand extends BaseCommand
         }
 
         if (!$result->changed()) {
+            if ($result->deferred() !== []) {
+                $output->writeln(
+                    '<info>No había migraciones no destructivas aplicables.</info>'
+                );
+
+                return;
+            }
             $output->writeln('<info>La base de datos ya estaba al día.</info>');
 
             return;
@@ -498,6 +509,38 @@ final class MigrateCommand extends BaseCommand
             count($result->applied()),
             $result->batch()
         ));
+    }
+
+    /** @param list<array<string, mixed>> $entries */
+    private function renderDeferredWarning(
+        array $entries,
+        OutputInterface $output
+    ): void {
+        $ordered = count(array_filter(
+            $entries,
+            static fn (array $entry): bool =>
+                ($entry['defer_reason'] ?? $entry['reason'] ?? '')
+                    === 'destructive_predecessor'
+        ));
+
+        $message = count($entries) === 1
+            ? 'Queda 1 migración pendiente'
+            : sprintf(
+                'Quedan %d migraciones pendientes',
+                count($entries)
+            );
+        $message .= ': las destructivas solo se incluyen con '
+            . '--allow-destructive y --backup-confirmed.';
+        if ($ordered > 0) {
+            $message .= sprintf(
+                ' También se difirieron %d migraciones posteriores del mismo módulo para conservar el orden.',
+                $ordered
+            );
+        }
+
+        $output->writeln(
+            '<comment>' . OutputFormatter::escape($message) . '</comment>'
+        );
     }
 
     private function renderFailure(

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Core\Modules\Migrations\MigrationApplyOptions;
 use App\Core\Modules\Migrations\MigrationCatalog;
 use App\Core\Modules\Migrations\MigrationDatabasePlanner;
 use App\Core\Modules\Migrations\MigrationException;
@@ -54,7 +55,12 @@ final class WebAdminMigrationPostconditionVerifierTest extends TestCase
             $scopes = MigrationScopeCollection::fromTablePrefixes([
                 'webadmin' => $prefix,
             ]);
-            (new MigrationRunner())->apply($pdo, $this->catalog(), $scopes);
+            (new MigrationRunner())->apply(
+                $pdo,
+                $this->catalog(),
+                $scopes,
+                $this->destructiveFixtureOptions()
+            );
             $changesBeforeVerification = (int) $pdo->query(
                 'SELECT total_changes()'
             )->fetchColumn();
@@ -997,7 +1003,8 @@ SQL);
         (new MigrationRunner())->apply(
             $pdo,
             $this->catalog(),
-            $this->scopes()
+            $this->scopes(),
+            $this->destructiveFixtureOptions()
         );
 
         return $pdo;
@@ -1011,6 +1018,14 @@ SQL);
         $pdo->exec('PRAGMA foreign_keys = ON');
 
         return $pdo;
+    }
+
+    private function destructiveFixtureOptions(): MigrationApplyOptions
+    {
+        return new MigrationApplyOptions(
+            allowDestructive: true,
+            backupConfirmed: true
+        );
     }
 
     private function catalog(): MigrationCatalog

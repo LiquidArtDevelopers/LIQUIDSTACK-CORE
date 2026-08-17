@@ -99,6 +99,66 @@ final class CliDestructiveMigrationProviderFixture implements
     }
 }
 
+final class CliMixedMigrationProviderFixture implements
+    MigrationProviderInterface
+{
+    public static function moduleId(): string
+    {
+        return 'webadmin';
+    }
+
+    public static function migrations(): iterable
+    {
+        yield MigrationDefinition::sql(
+            id: '0001_safe',
+            description: 'Cambio aditivo anterior.',
+            statementsByDriver: [
+                'mysql' => [
+                    'CREATE TABLE IF NOT EXISTS {{table:safe}} (id BIGINT PRIMARY KEY)',
+                ],
+                'sqlite' => [
+                    'CREATE TABLE IF NOT EXISTS {{table:safe}} (id INTEGER PRIMARY KEY)',
+                ],
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0002_destructive',
+            description: 'Cambio destructivo diferible.',
+            statementsByDriver: [
+                'mysql' => [
+                    'CREATE TABLE IF NOT EXISTS {{table:destructive}} (id BIGINT PRIMARY KEY)',
+                ],
+                'sqlite' => [
+                    'CREATE TABLE IF NOT EXISTS {{table:destructive}} (id INTEGER PRIMARY KEY)',
+                ],
+            ],
+            destructive: true,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0003_safe_after',
+            description: 'Cambio aditivo posterior del mismo modulo.',
+            statementsByDriver: [
+                'mysql' => [
+                    'CREATE TABLE IF NOT EXISTS {{table:safe_after}} (id BIGINT PRIMARY KEY)',
+                ],
+                'sqlite' => [
+                    'CREATE TABLE IF NOT EXISTS {{table:safe_after}} (id INTEGER PRIMARY KEY)',
+                ],
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true
+        );
+    }
+}
+
 final class CountingCliMigrationRuntimeFactoryFixture implements
     MigrationCommandRuntimeFactoryInterface
 {
@@ -365,7 +425,7 @@ final class LiquidStackMigrationCommandTest extends TestCase
         self::assertCount(2, $result['applied']);
     }
 
-    public function testDestructiveApplyNeedsBothIndependentGates(): void
+    public function testDestructiveApplyIsDeferredUnlessBothGatesArePresent(): void
     {
         $this->filesystem->dumpFile(
             $this->projectRoot . '/composer.json',
@@ -383,12 +443,12 @@ final class LiquidStackMigrationCommandTest extends TestCase
         );
 
         $withoutAllow = $this->tester();
-        self::assertSame(Command::FAILURE, $withoutAllow->execute([
+        self::assertSame(Command::SUCCESS, $withoutAllow->execute([
             '--apply' => true,
             '--yes' => true,
         ]));
         self::assertStringContainsString(
-            'migrations.destructive_not_allowed',
+            '--allow-destructive',
             $withoutAllow->getDisplay()
         );
         self::assertSame([], $this->tables());
@@ -414,6 +474,98 @@ final class LiquidStackMigrationCommandTest extends TestCase
         ]));
         self::assertContains(
             'custom_webadmin_destructive',
+            $this->tables()
+        );
+    }
+
+    public function testApplyWithoutDestructiveGatesAdvancesOnlySafeModulePrefixes(): void
+    {
+        $this->writeManifest(
+            'webadmin',
+            [],
+            CliMixedMigrationProviderFixture::class
+        );
+
+        $apply = $this->tester();
+        self::assertSame(Command::SUCCESS, $apply->execute([
+            '--apply' => true,
+            '--yes' => true,
+            '--format' => 'json',
+        ]));
+        $result = json_decode(
+            $apply->getDisplay(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame([
+            'webadmin:0001_safe',
+            'blog:0001_create_posts',
+        ], array_map(
+            static fn (array $entry): string =>
+                $entry['module'] . ':' . $entry['id'],
+            $result['applied']
+        ));
+        self::assertSame([
+            'webadmin:0002_destructive',
+            'webadmin:0003_safe_after',
+        ], array_map(
+            static fn (array $entry): string =>
+                $entry['module'] . ':' . $entry['id'],
+            $result['deferred']
+        ));
+        self::assertSame([
+            'destructive_gate',
+            'destructive_predecessor',
+        ], array_column($result['deferred'], 'reason'));
+        self::assertContains('custom_webadmin_safe', $this->tables());
+        self::assertContains('ls_blog_posts', $this->tables());
+        self::assertNotContains(
+            'custom_webadmin_destructive',
+            $this->tables()
+        );
+        self::assertNotContains(
+            'custom_webadmin_safe_after',
+            $this->tables()
+        );
+
+        $dryRun = $this->tester();
+        self::assertSame(Command::SUCCESS, $dryRun->execute([
+            '--dry-run' => true,
+            '--format' => 'json',
+        ]));
+        $pending = json_decode(
+            $dryRun->getDisplay(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertSame(2, $pending['migrations']['counts']['pending']);
+        self::assertSame(0, $pending['migrations']['counts']['blockers']);
+
+        $finish = $this->tester();
+        self::assertSame(Command::SUCCESS, $finish->execute([
+            '--apply' => true,
+            '--yes' => true,
+            '--allow-destructive' => true,
+            '--backup-confirmed' => true,
+            '--format' => 'json',
+        ]));
+        $finished = json_decode(
+            $finish->getDisplay(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertSame([], $finished['deferred']);
+        self::assertCount(2, $finished['applied']);
+        self::assertContains(
+            'custom_webadmin_destructive',
+            $this->tables()
+        );
+        self::assertContains(
+            'custom_webadmin_safe_after',
             $this->tables()
         );
     }

@@ -1,0 +1,22 @@
+<form id="{form-id}" class="moduleBlogCategoryBar01" action="{action}" method="get" role="search" aria-label="{categories-label}" aria-controls="{target-id}" data-blog-filter-form data-blog-results-target="{target-selector}">
+    {preserved-fields}
+    <fieldset{categories-hidden}>
+        <legend>{categories-label}</legend>
+        <div class="moduleBlogCategoryBar01-categories">
+            {filters}
+        </div>
+    </fieldset>
+    <p class="moduleBlogCategoryBar01-empty"{empty-hidden}>{empty-label}</p>
+    <div class="moduleBlogCategoryBar01-tools"{categories-hidden}>
+        <div class="moduleBlogCategoryBar01-mode">
+            <label for="{mode-id}">{mode-label}</label>
+            <select id="{mode-id}" name="category_mode"{mode-disabled}>
+                <option value="any"{mode-any-selected}>{mode-any}</option>
+                <option value="all"{mode-all-selected}>{mode-all}</option>
+            </select>
+        </div>
+        <button type="submit">{submit-label}</button>
+        <a href="{reset-url}" data-blog-filter-reset{reset-hidden}>{reset-label}</a>
+    </div>
+    <p class="moduleBlogCategoryBar01-status" aria-live="polite" aria-atomic="true" data-blog-filter-status data-state="idle" data-message="{status-label}" data-error-message="{error-message}"></p>
+</form>

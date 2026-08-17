@@ -36,7 +36,7 @@ final class BlogStructuredEditorRequestPolicyTest extends TestCase
         )));
     }
 
-    public function testAcceptsOnlyExactBoundedStructuredSave(): void
+    public function testAcceptsExactStructuredSaveAndDefersPayloadDiagnostics(): void
     {
         $policy = new BlogStructuredEditorRequestPolicy();
         $form = $this->saveForm();
@@ -46,13 +46,26 @@ final class BlogStructuredEditorRequestPolicyTest extends TestCase
         ));
 
         $form['document_json'] = str_repeat('x', 300_001);
-        self::assertFalse($policy->acceptsSave($this->request('POST', [], $form)));
-        self::assertFalse($policy->acceptsSeoAnalysis(
+        self::assertTrue($policy->acceptsSave($this->request('POST', [], $form)));
+        self::assertTrue($policy->acceptsSeoAnalysis(
             $this->request('POST', [], $form)
         ));
 
         $form = $this->saveForm();
         $form['body_text'] = 'Competing plain body';
+        self::assertFalse($policy->acceptsSave($this->request('POST', [], $form)));
+
+        $form = $this->saveForm();
+        $form['robots_index'] = '0';
+        $form['robots_follow'] = '1';
+        self::assertTrue($policy->acceptsSave($this->request('POST', [], $form)));
+        self::assertTrue($policy->acceptsSeoAnalysis(
+            $this->request('POST', [], $form)
+        ));
+
+        unset($form['robots_follow']);
+        self::assertFalse($policy->acceptsSave($this->request('POST', [], $form)));
+        $form['robots_follow'] = 'yes';
         self::assertFalse($policy->acceptsSave($this->request('POST', [], $form)));
     }
 

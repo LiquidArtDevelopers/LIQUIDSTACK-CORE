@@ -11,6 +11,7 @@ use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\Persistence\BlogRepositoryInterface;
 use App\Core\Blog\StructuredContent\BlogStructuredContentException;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
+use App\Core\Blog\StructuredContent\Document\BlogDocumentWalker;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredDraft;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredEditorService;
 use App\Core\Blog\StructuredContent\Media\BlogMediaAvailabilityPortInterface;
@@ -141,6 +142,74 @@ final class BlogStructuredEditorServiceTest extends TestCase
         self::assertSame(['save'], $audit->operations);
         self::assertSame(0, $uuids->remaining());
         self::assertFalse($pdo->inTransaction());
+    }
+
+    public function testLayoutSavePersistsAUnifiedTextRevision(): void
+    {
+        $pdo = $this->pdo();
+        $submitted = $this->layoutStructuredDraft('Canonical layout body');
+        $before = $this->variant(1, new BlogDraft('Old H1', 'Old body', 'old'));
+        $stored = $this->variant(2, $submitted->compatibilityDraft());
+        $blog = $this->blogRepository($pdo, $before, $stored);
+        $content = $this->createMock(
+            BlogStructuredContentRepositoryInterface::class
+        );
+        $content->expects(self::once())->method('current')
+            ->with(self::LOCALIZATION)->willReturn(null);
+        $isUnified = self::callback(static function (
+            BlogStructuredDraft $draft
+        ): bool {
+            $modules = (new BlogDocumentWalker())->modules(
+                $draft->document()
+            );
+
+            return array_column($modules, 'type') === [
+                'paragraph',
+                'paragraph',
+            ]
+                && ($modules[0]['content'][0]['type'] ?? null) === 'heading'
+                && ($modules[1]['content'][0]['type'] ?? null) === 'paragraph';
+        });
+        $content->expects(self::once())->method('upsertCurrent')
+            ->with(
+                self::LOCALIZATION,
+                self::NEW_DOCUMENT,
+                $isUnified,
+                self::ACTOR,
+                self::isInstanceOf(DateTimeImmutable::class)
+            );
+        $content->expects(self::once())->method('replaceCurrentMedia');
+        $content->expects(self::once())->method('appendRevision')
+            ->with(
+                self::LOCALIZATION,
+                self::NEW_REVISION,
+                2,
+                $isUnified,
+                self::ACTOR,
+                self::isInstanceOf(DateTimeImmutable::class)
+            )->willReturn(1);
+        $content->expects(self::once())->method('appendRevisionMedia');
+        $media = $this->createMock(BlogMediaAvailabilityPortInterface::class);
+        $media->expects(self::once())->method('assertAvailable');
+
+        (new BlogStructuredEditorService(
+            $blog,
+            $content,
+            $media,
+            new StructuredEditorUuidSequence([
+                self::NEW_DOCUMENT,
+                self::NEW_REVISION,
+            ]),
+            new StructuredEditorClock(),
+            new StructuredEditorAuditRecorder(),
+            layoutReady: true
+        ))->save(
+            static fn (PDO $transaction): string => self::ACTOR,
+            self::POST,
+            'es',
+            1,
+            $submitted
+        );
     }
 
     public function testExactStructuredSnapshotIsAuthorizedButDoesNotWriteOrAudit(): void
@@ -287,6 +356,55 @@ final class BlogStructuredEditorServiceTest extends TestCase
         self::assertSame([], $audit->operations);
     }
 
+    public function testLegacySaveCannotDowngradeCurrentLayoutDocument(): void
+    {
+        $pdo = $this->pdo();
+        $legacyDraft = $this->structuredDraft('Flattened legacy body');
+        $layoutDraft = $this->layoutStructuredDraft('Canonical layout body');
+        $before = $this->variant(7, $layoutDraft->compatibilityDraft());
+        $blog = $this->blogRepository($pdo, $before, null);
+        $content = $this->createMock(
+            BlogStructuredContentRepositoryInterface::class
+        );
+        $content->expects(self::once())->method('current')
+            ->with(self::LOCALIZATION)
+            ->willReturn($this->documentRecord($layoutDraft));
+        $content->expects(self::never())->method('upsertCurrent');
+        $content->expects(self::never())->method('appendRevision');
+        $media = $this->createMock(BlogMediaAvailabilityPortInterface::class);
+        $media->expects(self::once())->method('assertAvailable')
+            ->with(self::identicalTo($pdo), []);
+        $audit = new StructuredEditorAuditRecorder();
+        $service = new BlogStructuredEditorService(
+            $blog,
+            $content,
+            $media,
+            new StructuredEditorUuidSequence([]),
+            new StructuredEditorClock(),
+            $audit,
+            layoutReady: true
+        );
+
+        try {
+            $service->save(
+                static fn (PDO $transaction): string => self::ACTOR,
+                self::POST,
+                'es',
+                7,
+                $legacyDraft
+            );
+            self::fail('A legacy draft must not replace a layout document.');
+        } catch (BlogStructuredContentException $exception) {
+            self::assertSame(
+                BlogStructuredContentException::INVALID_INPUT,
+                $exception->issueCode()
+            );
+        }
+
+        self::assertFalse($pdo->inTransaction());
+        self::assertSame([], $audit->operations);
+    }
+
     private function blogRepository(
         PDO $pdo,
         BlogPostVariant $before,
@@ -349,6 +467,52 @@ final class BlogStructuredEditorServiceTest extends TestCase
         );
     }
 
+    private function layoutStructuredDraft(string $body): BlogStructuredDraft
+    {
+        return new BlogStructuredDraft(
+            'Matrix H1',
+            BlogDocument::fromArray([
+                'schema' => BlogDocument::SCHEMA,
+                'version' => BlogDocument::LAYOUT_VERSION,
+                'template' => 'article-basic-01',
+                'blocks' => [[
+                    'id' => '22000000-0000-4000-8000-000000000001',
+                    'type' => 'section',
+                    'children' => [[
+                        'id' => '22000000-0000-4000-8000-000000000002',
+                        'type' => 'heading',
+                        'level' => 2,
+                        'content' => [[
+                            'type' => 'text',
+                            'text' => 'Layout section',
+                            'marks' => [],
+                        ]],
+                        'presentation' => [
+                            'width' => 'full',
+                            'align' => 'start',
+                        ],
+                    ], [
+                        'id' => '22000000-0000-4000-8000-000000000003',
+                        'type' => 'paragraph',
+                        'content' => [[
+                            'type' => 'text',
+                            'text' => $body,
+                            'marks' => [],
+                        ]],
+                        'presentation' => [
+                            'width' => '80',
+                            'align' => 'center',
+                        ],
+                    ]],
+                ]],
+            ]),
+            'matrix-slug',
+            'Matrix SEO title',
+            'Matrix meta description.',
+            'Matrix excerpt.'
+        );
+    }
+
     private function variant(int $version, BlogDraft $draft): BlogPostVariant
     {
         $now = (new StructuredEditorClock())->now();
@@ -378,12 +542,12 @@ final class BlogStructuredEditorServiceTest extends TestCase
             self::DOCUMENT,
             self::LOCALIZATION,
             $draft,
-            $draft->schemaVersion(),
-            $draft->templateKey(),
-            $draft->documentBytes(),
-            $draft->documentSha256(),
+            $draft->compatibilitySchemaVersion(),
+            $draft->compatibilityTemplateKey(),
+            $draft->compatibilityDocumentBytes(),
+            $draft->compatibilityDocumentSha256(),
             $draft->bodyTextSha256(),
-            $draft->snapshotSha256(),
+            $draft->compatibilitySnapshotSha256(),
             self::ACTOR,
             self::ACTOR,
             $now,
@@ -403,12 +567,12 @@ final class BlogStructuredEditorServiceTest extends TestCase
             2,
             5,
             $draft,
-            $draft->schemaVersion(),
-            $draft->templateKey(),
-            $draft->documentBytes(),
-            $draft->documentSha256(),
+            $draft->compatibilitySchemaVersion(),
+            $draft->compatibilityTemplateKey(),
+            $draft->compatibilityDocumentBytes(),
+            $draft->compatibilityDocumentSha256(),
             $draft->bodyTextSha256(),
-            $draft->snapshotSha256(),
+            $draft->compatibilitySnapshotSha256(),
             self::ACTOR,
             $now
         );

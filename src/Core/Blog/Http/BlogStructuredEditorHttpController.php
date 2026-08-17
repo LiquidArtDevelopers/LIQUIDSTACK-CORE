@@ -6,24 +6,35 @@ namespace App\Core\Blog\Http;
 
 use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogException;
+use App\Core\Blog\Routing\BlogPublicationRouteGuard;
 use App\Core\Blog\StructuredContent\BlogStructuredContentException;
+use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentCodec;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentException;
+use App\Core\Blog\StructuredContent\Document\BlogDocumentV2Projector;
 use App\Core\Blog\StructuredContent\Document\BlogLegacyDocumentFactory;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredDraft;
+use App\Core\Blog\StructuredContent\Editing\BlogEditorSubmissionValidator;
+use App\Core\Blog\StructuredContent\Editing\BlogEditorValidationIssue;
 use App\Core\Blog\StructuredContent\Media\BlogEditorReferencedMediaCatalogInterface;
 use App\Core\Blog\StructuredContent\Rendering\BlogDocumentHtmlRenderer;
+use App\Core\Blog\StructuredContent\Rendering\BlogEditorPreviewSandboxPolicy;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorCategoryOption;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorMediaOption;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorRevisionSummary;
 use App\Core\Blog\StructuredContent\Rendering\BlogRenderingException;
 use App\Core\Blog\StructuredContent\Rendering\BlogStructuredEditorHtmlRenderer;
 use App\Core\Blog\StructuredContent\Rendering\BlogStructuredPrivateHtmlRenderer;
+use App\Core\Blog\StructuredContent\Categories\BlogEditorReservedCategoryCatalogInterface;
+use App\Core\Blog\Preview\BlogPreviewAssetAdapterLoader;
+use App\Core\Blog\Preview\BlogPreviewAssetContext;
+use App\Core\Blog\Preview\BlogPreviewAssetSet;
 use App\Core\Blog\Seo\BlogSeoAnalysis;
 use App\Core\Blog\Seo\BlogSeoAnalysisService;
 use App\Core\Blog\Seo\BlogSeoAnalyzer;
 use App\Core\Blog\Seo\BlogSeoHttpRuntimeInterface;
 use App\Core\Blog\Seo\BlogSeoStaticPageInventory;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
@@ -40,6 +51,8 @@ final class BlogStructuredEditorHttpController
     private readonly BlogStructuredEditorHttpResponseFactory $responses;
     private readonly BlogStructuredPrivateHtmlRenderer $privateRenderer;
     private readonly WebAdminShellContextFactory $shells;
+    private readonly BlogPublicationRouteGuard $publicationRouteGuard;
+    private readonly BlogPreviewAssetAdapterLoader $previewAssetLoader;
 
     /** @var array<string, mixed> */
     private readonly array $environment;
@@ -57,7 +70,13 @@ final class BlogStructuredEditorHttpController
         ?BlogStructuredEditorHttpResponseFactory $responses = null,
         private readonly PrivateRouteTransportPolicy $transportPolicy =
             new PrivateRouteTransportPolicy(),
-        #[\SensitiveParameter] array $environment = []
+        #[\SensitiveParameter] array $environment = [],
+        private readonly BlogDocumentV2Projector $layoutProjector =
+            new BlogDocumentV2Projector(),
+        ?BlogPublicationRouteGuard $publicationRouteGuard = null,
+        private readonly BlogEditorSubmissionValidator $submissionValidator =
+            new BlogEditorSubmissionValidator(),
+        ?BlogPreviewAssetAdapterLoader $previewAssetLoader = null
     ) {
         $this->privateRenderer = $privateRenderer
             ?? new BlogStructuredPrivateHtmlRenderer(
@@ -77,6 +96,10 @@ final class BlogStructuredEditorHttpController
                 : new WebAdminNavigationCatalog()
         );
         $this->environment = $environment;
+        $this->publicationRouteGuard = $publicationRouteGuard
+            ?? new BlogPublicationRouteGuard();
+        $this->previewAssetLoader = $previewAssetLoader
+            ?? new BlogPreviewAssetAdapterLoader();
     }
 
     public function edit(Request $request): Response
@@ -94,19 +117,23 @@ final class BlogStructuredEditorHttpController
         }
 
         try {
+            $previewSandbox = BlogEditorPreviewSandboxPolicy::random();
             $html = $this->editorPage(
                 (string) $request->query('post'),
                 (string) $request->query('locale'),
                 $context['csrf'],
-                $context['session']
+                $context['session'],
+                $previewSandbox,
+                $this->editorStylesheets()
             );
 
-            return $this->responses->html(
+            return $this->responses->editorHtml(
                 200,
-                $request->method() === 'HEAD' ? '' : $html
+                $request->method() === 'HEAD' ? '' : $html,
+                $previewSandbox
             );
         } catch (BlogException|BlogStructuredContentException $exception) {
-            return $this->domainFailure($exception);
+            return $this->domainFailure($request, $exception);
         } catch (Throwable) {
             return $this->responses->plain(503, 'Service unavailable');
         }
@@ -127,17 +154,27 @@ final class BlogStructuredEditorHttpController
         }
 
         try {
+            $issue = $this->submissionValidator->firstIssue(
+                $request->formParams()
+            );
+            if ($issue !== null) {
+                return $this->invalidDraftResponse($request, $issue);
+            }
             $draft = new BlogStructuredDraft(
                 (string) $request->form('h1'),
-                $this->codec->decode(
-                    (string) $request->form('document_json')
+                $this->projectLayoutDocument(
+                    $this->codec->decodeDraft(
+                        (string) $request->form('document_json')
+                    )
                 ),
                 $this->nullableForm($request, 'slug'),
                 $this->nullableForm($request, 'seo_title'),
                 $this->nullableForm($request, 'meta_description'),
-                $this->nullableForm($request, 'excerpt')
+                $this->nullableForm($request, 'excerpt'),
+                robotsPreferences:
+                    $this->robotsPreferencesFromRequest($request)
             );
-            $this->runtime->structuredEditor()->save(
+            $stored = $this->runtime->structuredEditor()->save(
                 $this->runtime->mutationGateAll(
                     $context['session'],
                     (string) $request->form('csrf'),
@@ -152,15 +189,43 @@ final class BlogStructuredEditorHttpController
                 $draft
             );
 
+            if ($this->isAsyncEditorRequest($request)) {
+                return $this->responses->json(200, [
+                    'ok' => true,
+                    'lock_version' => $stored->lockVersion(),
+                    'document_sha256' => $draft->documentSha256(),
+                    'document' => $draft->document()->toArray(),
+                ]);
+            }
+
             return $this->editorRedirect(
                 (string) $request->form('post'),
                 (string) $request->form('locale')
             );
-        } catch (BlogDocumentException) {
-            return $this->responses->plain(422, 'Unprocessable content');
+        } catch (BlogDocumentException $exception) {
+            return $this->invalidDraftResponse(
+                $request,
+                new BlogEditorValidationIssue(
+                    'document',
+                    'document_json',
+                    $exception->issueCode() === BlogDocumentException::DOCUMENT_TOO_LARGE
+                        ? 'bytes_exceeded'
+                        : 'invalid_structure',
+                    $exception->issueCode() === BlogDocumentException::DOCUMENT_TOO_LARGE
+                        ? \App\Core\Blog\StructuredContent\Document\BlogDocument::MAX_JSON_BYTES
+                        : null
+                )
+            );
         } catch (BlogException|BlogStructuredContentException $exception) {
-            return $this->domainFailure($exception);
+            return $this->domainFailure($request, $exception);
         } catch (Throwable) {
+            if ($this->isAsyncEditorRequest($request)) {
+                return $this->responses->json(503, [
+                    'ok' => false,
+                    'error' => 'unavailable',
+                ]);
+            }
+
             return $this->responses->plain(503, 'Service unavailable');
         }
     }
@@ -201,6 +266,64 @@ final class BlogStructuredEditorHttpController
         }
     }
 
+    public function publish(Request $request): Response
+    {
+        if (!$this->acceptsTransport($request)
+            || !$this->requestPolicy->acceptsPublish($request)) {
+            return $this->responses->plain(400, 'Bad request');
+        }
+        $context = $this->authorizedContext($request, [
+            BlogAdminHttpController::EDIT_CAPABILITY,
+            BlogAdminHttpController::PUBLISH_CAPABILITY,
+            MediaService::VIEW_CAPABILITY,
+        ], true);
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        try {
+            $post = (string) $request->form('post');
+            $locale = (string) $request->form('locale');
+            $stored = $this->runtime->structuredEditor()->publishSaved(
+                $this->runtime->mutationGateAll(
+                    $context['session'],
+                    (string) $request->form('csrf'),
+                    [
+                        BlogAdminHttpController::EDIT_CAPABILITY,
+                        BlogAdminHttpController::PUBLISH_CAPABILITY,
+                        MediaService::VIEW_CAPABILITY,
+                    ]
+                ),
+                $post,
+                $locale,
+                (int) $request->form('lock_version'),
+                (int) $request->form('category_workspace_version'),
+                function (string $guardLocale, string $slug): void {
+                    $this->publicationRouteGuard->assertAvailable(
+                        $this->runtime->projectRoot(),
+                        $this->runtime->blogConfig(),
+                        $guardLocale,
+                        $slug
+                    );
+                }
+            );
+            if ($this->isAsyncEditorRequest($request)) {
+                return $this->responses->json(200, [
+                    'ok' => true,
+                    'status' => $stored->status(),
+                    'lock_version' => $stored->lockVersion(),
+                    'category_workspace_version' => 0,
+                ]);
+            }
+
+            return $this->editorRedirect($post, $locale);
+        } catch (BlogException|BlogStructuredContentException $exception) {
+            return $this->domainFailure($request, $exception);
+        } catch (Throwable) {
+            return $this->responses->plain(503, 'Service unavailable');
+        }
+    }
+
     public function preview(Request $request): Response
     {
         if (!$this->acceptsTransport($request)
@@ -220,24 +343,34 @@ final class BlogStructuredEditorHttpController
                 (string) $request->query('post'),
                 (string) $request->query('locale')
             );
-            $document = $state->current()?->snapshot()->document()
+            $working = $state->workingSnapshot();
+            $document = $working?->document()
                 ?? $this->legacyFactory->create(
                     $state->variant()->draft()->bodyText()
                 );
+            $document = $this->projectLayoutDocument($document);
+            $assets = $this->previewAssets();
+            $styleNonce = base64_encode(random_bytes(18));
             $html = $this->privateRenderer->preview(
                 $this->basePath(),
                 $state->variant(),
-                $document
+                $document,
+                $working?->compatibilityDraft(),
+                $assets,
+                $styleNonce
             );
 
-            return $this->responses->html(
+            return $this->responses->previewHtml(
                 200,
-                $request->method() === 'HEAD' ? '' : $html
+                $request->method() === 'HEAD' ? '' : $html,
+                $state->variant()->locale(),
+                $assets,
+                $styleNonce
             );
-        } catch (BlogException|BlogStructuredContentException $exception) {
-            return $this->domainFailure($exception);
         } catch (BlogDocumentException) {
             return $this->responses->plain(422, 'Unprocessable content');
+        } catch (BlogException|BlogStructuredContentException $exception) {
+            return $this->domainFailure($request, $exception);
         } catch (BlogRenderingException|Throwable) {
             return $this->responses->plain(503, 'Service unavailable');
         }
@@ -282,7 +415,12 @@ final class BlogStructuredEditorHttpController
                         $locale,
                         $revisionId
                     ),
-                    $shell
+                    $shell,
+                    $context['csrf'],
+                    $this->runtime->authorization()->hasCapability(
+                        $context['session'],
+                        BlogAdminHttpController::EDIT_CAPABILITY
+                    )
                 );
             } else {
                 $html = $this->privateRenderer->revisions(
@@ -298,7 +436,7 @@ final class BlogStructuredEditorHttpController
                 $request->method() === 'HEAD' ? '' : $html
             );
         } catch (BlogException|BlogStructuredContentException $exception) {
-            return $this->domainFailure($exception);
+            return $this->domainFailure($request, $exception);
         } catch (BlogRenderingException|Throwable) {
             return $this->responses->plain(503, 'Service unavailable');
         }
@@ -318,9 +456,9 @@ final class BlogStructuredEditorHttpController
             return $context;
         }
 
+        $post = (string) $request->form('post');
+        $locale = (string) $request->form('locale');
         try {
-            $post = (string) $request->form('post');
-            $locale = (string) $request->form('locale');
             $this->runtime->structuredEditor()->restore(
                 $this->runtime->mutationGateAll(
                     $context['session'],
@@ -338,36 +476,93 @@ final class BlogStructuredEditorHttpController
 
             return $this->editorRedirect($post, $locale);
         } catch (BlogException|BlogStructuredContentException $exception) {
-            return $this->domainFailure($exception);
+            if ($exception->issueCode() !== BlogException::ACTOR_GATE_FAILED) {
+                return $this->restoreFailureResponse(
+                    $context,
+                    $post,
+                    $locale,
+                    $exception
+                );
+            }
+            return $this->domainFailure($request, $exception);
         } catch (Throwable) {
             return $this->responses->plain(503, 'Service unavailable');
         }
+    }
+
+    /** @param array{session: string, csrf: string} $context */
+    private function restoreFailureResponse(
+        #[\SensitiveParameter] array $context,
+        string $post,
+        string $locale,
+        BlogException|BlogStructuredContentException $exception
+    ): Response {
+        $status = match ($exception->issueCode()) {
+            BlogException::LOCK_CONFLICT,
+            BlogException::INVALID_STATE,
+            BlogStructuredContentException::PLAIN_SAVE_BLOCKED => 409,
+            BlogException::POST_NOT_FOUND,
+            BlogException::VARIANT_NOT_FOUND,
+            BlogStructuredContentException::REVISION_NOT_FOUND => 404,
+            BlogException::INVALID_INPUT,
+            BlogStructuredContentException::INVALID_INPUT,
+            BlogStructuredContentException::MEDIA_NOT_FOUND => 422,
+            default => 503,
+        };
+        $shell = $this->shells->create(
+            $context['session'],
+            $context['csrf'],
+            '/blog/editor',
+            assets: new WebAdminPageAssets([
+                BlogStructuredEditorHtmlRenderer::STYLESHEET_PATH,
+            ])
+        );
+
+        return $this->responses->html(
+            $status,
+            $this->privateRenderer->restoreFailure(
+                $this->basePath(),
+                $post,
+                $locale,
+                $exception->issueCode(),
+                $shell
+            )
+        );
     }
 
     private function editorPage(
         string $postPublicId,
         string $locale,
         string $csrf,
-        string $sessionToken
+        string $sessionToken,
+        BlogEditorPreviewSandboxPolicy $previewSandbox,
+        array $editorStylesheets = []
     ): string {
         $state = $this->runtime->structuredEditor()->loadEditor(
             $postPublicId,
             $locale
         );
-        $snapshot = $state->current()?->snapshot();
+        $snapshot = $state->workingSnapshot();
         $document = $snapshot?->document()
             ?? $this->legacyFactory->create(
                 $state->variant()->draft()->bodyText()
             );
-        $canonicalJson = $snapshot?->canonicalJson()
-            ?? $this->codec->encode($document);
-        $analysisDraft = $snapshot ?? new BlogStructuredDraft(
-            $state->variant()->draft()->h1(),
+        $document = $this->projectLayoutDocument($document);
+        $canonicalJson = $this->codec->encode($document);
+        $workingMetadata = $snapshot?->compatibilityDraft()
+            ?? $state->variant()->draft();
+        $analysisDraft = new BlogStructuredDraft(
+            $workingMetadata->h1(),
             $document,
-            $state->variant()->draft()->slug(),
-            $state->variant()->draft()->seoTitle(),
-            $state->variant()->draft()->metaDescription(),
-            $state->variant()->draft()->excerpt()
+            $workingMetadata->slug(),
+            $workingMetadata->seoTitle(),
+            $workingMetadata->metaDescription(),
+            $workingMetadata->excerpt(),
+            robotsPreferences: $this->effectiveRobotsPreferences(
+                $workingMetadata->robotsPreferences(),
+                $postPublicId,
+                $locale
+            )
         );
         try {
             $analysis = $this->analyze(
@@ -384,6 +579,7 @@ final class BlogStructuredEditorHttpController
             $postPublicId,
             $locale
         );
+        $headingDefaults = $this->headingDefaults();
 
         return $this->editorRenderer->render(
             $this->basePath(),
@@ -392,7 +588,7 @@ final class BlogStructuredEditorHttpController
             $document,
             $canonicalJson,
             $this->mediaOptions($analysisDraft->mediaAssetPublicIds()),
-            $this->revisionOptions($postPublicId, $locale),
+            [],
             canPublish: $this->runtime->authorization()->hasCapability(
                 $sessionToken,
                 BlogAdminHttpController::PUBLISH_CAPABILITY
@@ -402,14 +598,61 @@ final class BlogStructuredEditorHttpController
             publicPath: $this->runtime->blogConfig()->publicPath($locale),
             shellFactory: $this->shells,
             sessionToken: $sessionToken,
-            categoryOptions: $categoryPresentation['options']
+            categoryOptions: $categoryPresentation['options'],
+            categoryWorkspaceVersion:
+                $categoryPresentation['workspace_version'],
+            layoutEditorReady: $this->layoutEditorReady(),
+            headingDefaults: $headingDefaults,
+            workingSnapshot: $analysisDraft,
+            privateDraftPublicationReady:
+                $this->privateDraftPublicationReady(),
+            dummyCategoryAssigned:
+                $categoryPresentation['dummy_assigned'],
+            canUploadMedia: $this->runtime->authorization()->hasCapability(
+                $sessionToken,
+                MediaService::UPLOAD_CAPABILITY
+            ),
+            previewSandbox: $previewSandbox,
+            editorStylesheets: $editorStylesheets
         );
+    }
+
+    private function privateDraftPublicationReady(): bool
+    {
+        return method_exists($this->runtime, 'privateDraftPublicationReady')
+            && $this->runtime->privateDraftPublicationReady() === true;
+    }
+
+    /** @return array<string, array<string, string>> */
+    private function headingDefaults(): array
+    {
+        if (
+            !$this->runtime instanceof
+                BlogEditorPreferencesHttpRuntimeInterface
+            || !$this->runtime->editorPreferencesReady()
+        ) {
+            return [];
+        }
+
+        try {
+            return $this->runtime
+                ->editorPreferences()
+                ->current()
+                ->preferences()
+                ->headingDefaults();
+        } catch (Throwable) {
+            // Global defaults are additive. Code-owned defaults keep the
+            // editor available when this optional feature is unavailable.
+            return [];
+        }
     }
 
     /**
      * @return array{
      *   enabled: bool,
-     *   options: list<BlogEditorCategoryOption>
+     *   options: list<BlogEditorCategoryOption>,
+     *   workspace_version: int,
+     *   dummy_assigned: bool
      * }
      */
     private function categoryPresentation(
@@ -417,30 +660,56 @@ final class BlogStructuredEditorHttpController
         string $postPublicId,
         string $locale
     ): array {
-        if (
-            !$this->runtime->authorization()->hasCapability(
-                $sessionToken,
-                BlogCategoryAdminHttpController::EDIT_CAPABILITY
-            )
-            || !$this->runtime instanceof
-                BlogStructuredEditorCategoryHttpRuntimeInterface
-        ) {
-            return ['enabled' => false, 'options' => []];
+        if (!$this->runtime instanceof
+            BlogStructuredEditorCategoryHttpRuntimeInterface) {
+            return [
+                'enabled' => false,
+                'options' => [],
+                'workspace_version' => 0,
+                'dummy_assigned' => false,
+            ];
         }
 
         try {
             $catalog = $this->runtime->editorCategoryCatalog();
             if ($catalog === null) {
-                return ['enabled' => false, 'options' => []];
+                return [
+                    'enabled' => false,
+                    'options' => [],
+                    'workspace_version' => 0,
+                    'dummy_assigned' => false,
+                ];
             }
 
+            $canAssign = $this->runtime->authorization()->hasCapability(
+                $sessionToken,
+                BlogCategoryAdminHttpController::EDIT_CAPABILITY
+            );
+            $dummyAssigned = $catalog instanceof
+                BlogEditorReservedCategoryCatalogInterface
+                && $catalog->reservedCategoryAssigned(
+                    $postPublicId,
+                    $locale
+                );
+
             return [
-                'enabled' => true,
-                'options' => $catalog->forPost($postPublicId, $locale),
+                'enabled' => $canAssign,
+                'options' => $canAssign
+                    ? $catalog->forPost($postPublicId, $locale)
+                    : [],
+                'workspace_version' => $catalog->workspaceVersion(
+                    $postPublicId
+                ),
+                'dummy_assigned' => $dummyAssigned,
             ];
         } catch (Throwable) {
             // Categories are additive: a failed projection keeps editing safe.
-            return ['enabled' => false, 'options' => []];
+            return [
+                'enabled' => false,
+                'options' => [],
+                'workspace_version' => 0,
+                'dummy_assigned' => false,
+            ];
         }
     }
 
@@ -448,12 +717,84 @@ final class BlogStructuredEditorHttpController
     {
         return new BlogStructuredDraft(
             (string) $request->form('h1'),
-            $this->codec->decode((string) $request->form('document_json')),
+            $this->projectLayoutDocument(
+                $this->codec->decodeDraft(
+                    (string) $request->form('document_json')
+                )
+            ),
             $this->nullableForm($request, 'slug'),
             $this->nullableForm($request, 'seo_title'),
             $this->nullableForm($request, 'meta_description'),
-            $this->nullableForm($request, 'excerpt')
+            $this->nullableForm($request, 'excerpt'),
+            robotsPreferences:
+                $this->robotsPreferencesFromRequest($request)
         );
+    }
+
+    private function projectLayoutDocument(BlogDocument $document): BlogDocument
+    {
+        if (!$this->layoutEditorReady()) {
+            return $document;
+        }
+
+        return $this->layoutProjector->tryProject($document) ?? $document;
+    }
+
+    private function robotsPreferencesFromRequest(
+        Request $request
+    ): BlogRobotsPreferences {
+        $index = $request->form('robots_index');
+        $follow = $request->form('robots_follow');
+        if ($index === null && $follow === null) {
+            $preferences = $this->runtime
+                ->structuredEditor()
+                ->loadEditor(
+                    (string) $request->form('post'),
+                    (string) $request->form('locale')
+                )
+                ->robotsPreferences();
+        } else {
+            $preferences = new BlogRobotsPreferences(
+                $index === '1',
+                $follow === '1'
+            );
+        }
+
+        return $this->effectiveRobotsPreferences(
+            $preferences,
+            (string) $request->form('post'),
+            (string) $request->form('locale')
+        );
+    }
+
+    private function effectiveRobotsPreferences(
+        BlogRobotsPreferences $preferences,
+        string $postPublicId,
+        string $locale
+    ): BlogRobotsPreferences {
+        if (
+            $this->runtime instanceof
+                BlogStructuredEditorCategoryHttpRuntimeInterface
+        ) {
+            try {
+                $catalog = $this->runtime->editorCategoryCatalog();
+                if (
+                    $catalog instanceof
+                        BlogEditorReservedCategoryCatalogInterface
+                    && $catalog->reservedCategoryAssigned(
+                        $postPublicId,
+                        $locale
+                    )
+                ) {
+                    return BlogRobotsPreferences::noIndexNoFollow();
+                }
+            } catch (Throwable) {
+                // Internal category state is security-sensitive: fail closed.
+                return BlogRobotsPreferences::noIndexNoFollow();
+            }
+        }
+
+        return $preferences;
     }
 
     private function analyze(
@@ -554,29 +895,29 @@ final class BlogStructuredEditorHttpController
             $this->runtime->webAdminConfig()->cookieName()
         );
         if ($sessionToken === null) {
-            return $this->redirectToLogin();
+            return $this->sessionExpiredResponse($request);
         }
         $session = $this->runtime->authentication()
             ->resolveAuthenticatedSession($sessionToken);
         if ($session === null) {
-            return $this->responses->expireSession($this->redirectToLogin());
+            return $this->sessionExpiredResponse($request, true);
         }
         if (!$this->runtime->authorization()->mayAccessWebAdmin($sessionToken)) {
             $this->runtime->authentication()->revokeSession($sessionToken);
-            return $this->responses->expireSession($this->redirectToLogin());
+            return $this->sessionExpiredResponse($request, true);
         }
         foreach ($capabilities as $capability) {
             if (!$this->runtime->authorization()->hasCapability(
                 $sessionToken,
                 $capability
             )) {
-                return $this->responses->plain(403, 'Forbidden');
+                return $this->forbiddenResponse($request);
             }
         }
         $csrf = $this->runtime->authentication()
             ->authenticatedCsrfToken($sessionToken);
         if ($csrf === null) {
-            return $this->responses->expireSession($this->redirectToLogin());
+            return $this->sessionExpiredResponse($request, true);
         }
         $csrfToken = $csrf->csrfToken();
         if (
@@ -586,6 +927,14 @@ final class BlogStructuredEditorHttpController
                 (string) $request->form('csrf')
             )
         ) {
+            if ($this->isAsyncEditorRequest($request)) {
+                return $this->responses->json(409, [
+                    'ok' => false,
+                    'error' => 'csrf_stale',
+                    'csrf' => $csrfToken,
+                ]);
+            }
+
             return $this->responses->plain(403, 'Forbidden');
         }
 
@@ -600,9 +949,72 @@ final class BlogStructuredEditorHttpController
     }
 
     private function domainFailure(
+        Request $request,
         BlogException|BlogStructuredContentException $exception
     ): Response {
         $code = $exception->issueCode();
+
+        if ($this->isAsyncEditorRequest($request)) {
+            return match ($code) {
+                BlogException::ACTOR_GATE_FAILED =>
+                    $this->responses->json(403, [
+                        'ok' => false,
+                        'error' => 'forbidden',
+                    ]),
+                BlogException::INVALID_INPUT,
+                BlogStructuredContentException::INVALID_INPUT =>
+                    $this->invalidDraftResponse(
+                        $request,
+                        new BlogEditorValidationIssue(
+                            'document',
+                            'document_json',
+                            'invalid_structure'
+                        )
+                    ),
+                BlogException::PUBLISH_INCOMPLETE =>
+                    $this->invalidDraftResponse(
+                        $request,
+                        new BlogEditorValidationIssue(
+                            'entry',
+                            'publication',
+                            'incomplete'
+                        )
+                    ),
+                BlogStructuredContentException::MEDIA_NOT_FOUND =>
+                    $this->invalidDraftResponse(
+                        $request,
+                        new BlogEditorValidationIssue(
+                            'document',
+                            'media',
+                            'unavailable'
+                        )
+                    ),
+                BlogException::LOCK_CONFLICT =>
+                    $this->responses->json(409, [
+                        'ok' => false,
+                        'error' => 'lock_conflict',
+                    ]),
+                BlogException::LOCALE_CONFLICT,
+                BlogException::SLUG_CONFLICT,
+                BlogException::INVALID_STATE,
+                BlogStructuredContentException::PLAIN_SAVE_BLOCKED =>
+                    $this->responses->json(409, [
+                        'ok' => false,
+                        'error' => 'conflict',
+                    ]),
+                BlogException::POST_NOT_FOUND,
+                BlogException::VARIANT_NOT_FOUND,
+                BlogStructuredContentException::REVISION_NOT_FOUND =>
+                    $this->responses->json(404, [
+                        'ok' => false,
+                        'error' => 'not_found',
+                    ]),
+                default => $this->responses->json(503, [
+                    'ok' => false,
+                    'error' => 'unavailable',
+                ]),
+            };
+        }
 
         return match ($code) {
             BlogException::ACTOR_GATE_FAILED =>
@@ -626,12 +1038,81 @@ final class BlogStructuredEditorHttpController
         };
     }
 
+    private function invalidDraftResponse(
+        Request $request,
+        BlogEditorValidationIssue $issue
+    ): Response
+    {
+        if ($this->isAsyncEditorRequest($request)) {
+            return $this->responses->json(422, [
+                'ok' => false,
+                'error' => 'invalid_draft',
+                'issue' => $issue->toSafeArray(),
+            ]);
+        }
+
+        return $this->responses->plain(422, 'Unprocessable content');
+    }
+
+    private function forbiddenResponse(Request $request): Response
+    {
+        if ($this->isAsyncEditorRequest($request)) {
+            return $this->responses->json(403, [
+                'ok' => false,
+                'error' => 'forbidden',
+            ]);
+        }
+
+        return $this->responses->plain(403, 'Forbidden');
+    }
+
+    private function sessionExpiredResponse(
+        Request $request,
+        bool $expireCookie = false
+    ): Response {
+        $response = $this->isAsyncEditorRequest($request)
+            ? $this->responses->json(401, [
+                'ok' => false,
+                'error' => 'session_expired',
+            ])
+            : $this->redirectToLogin();
+
+        return $expireCookie
+            ? $this->responses->expireSession($response)
+            : $response;
+    }
+
     private function acceptsTransport(Request $request): bool
     {
         return $this->transportPolicy->accepts(
             $request,
             $this->environment
         );
+    }
+
+    private function previewAssets(): BlogPreviewAssetSet
+    {
+        $context = BlogPreviewAssetContext::fromEnvironment(
+            $this->runtime->projectRoot(),
+            $this->environment
+        );
+
+        return $this->previewAssetLoader->resolve(
+            $this->runtime->blogConfig()->previewAssetAdapterPath(),
+            $context
+        );
+    }
+
+    /** @return list<string> */
+    private function editorStylesheets(): array
+    {
+        try {
+            return $this->previewAssets()->editorStylesheets();
+        } catch (Throwable) {
+            // Project styling is additive. The CORE fallback must keep the
+            // editor available when an optional adapter/build is unavailable.
+            return [];
+        }
     }
 
     private function basePath(): string
@@ -658,5 +1139,23 @@ final class BlogStructuredEditorHttpController
         return $this->responses->redirect(
             $this->runtime->webAdminConfig()->basePath() . '/login'
         );
+    }
+
+    private function layoutEditorReady(): bool
+    {
+        return $this->runtime instanceof
+            BlogStructuredLayoutEditorHttpRuntimeInterface
+            && $this->runtime->layoutEditorReady();
+    }
+
+    private function isAsyncEditorRequest(Request $request): bool
+    {
+        return strtolower(trim((string) $request->header(
+            'x-liquidstack-editor'
+        ))) === 'async'
+            && preg_match(
+                '/(?:^|,)\s*application\/json(?:\s*;[^,]*)?(?:,|$)/i',
+                (string) $request->header('accept')
+            ) === 1;
     }
 }

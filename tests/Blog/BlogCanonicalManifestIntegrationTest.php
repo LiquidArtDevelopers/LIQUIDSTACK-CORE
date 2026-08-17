@@ -3,13 +3,16 @@
 declare(strict_types=1);
 
 use App\Core\Modules\Blog\BlogMigrationProvider;
+use App\Core\Modules\Blog\BlogMediaUsageModuleProvider;
 use App\Core\Modules\Blog\BlogAnalyticsRouteProvider;
 use App\Core\Modules\Blog\BlogCategoryWebAdminNavigationProvider;
+use App\Core\Modules\Blog\BlogEditorPreferencesWebAdminNavigationProvider;
 use App\Core\Modules\Blog\BlogCategoryRouteProvider;
 use App\Core\Modules\Blog\BlogPublicRouteProvider;
 use App\Core\Modules\Blog\BlogRouteProvider;
 use App\Core\Modules\Blog\BlogWebAdminNavigationProvider;
 use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\Migrations\MigrationProviderInterface;
 use App\Core\Modules\ModuleProviderInterface;
 use App\Core\Modules\ModulePublicRouteProviderInterface;
@@ -20,6 +23,9 @@ use App\Core\Modules\WebAdmin\WebAdminMigrationProvider;
 use App\Core\Modules\WebAdmin\WebAdminMediaNavigationProvider;
 use App\Core\Modules\WebAdmin\WebAdminMediaRouteProvider;
 use App\Core\Modules\WebAdmin\WebAdminRouteProvider;
+use App\Core\WebAdmin\Media\Usage\MediaUsageModuleProviderInterface;
+use App\Core\WebAdmin\Media\Usage\MediaUsageProviderRegistryFactory;
+use App\Core\WebAdmin\Media\Usage\MediaUsageStatus;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -117,6 +123,11 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
                 'module' => 'blog',
                 'class' => BlogCategoryWebAdminNavigationProvider::class,
             ],
+            [
+                'module' => 'blog',
+                'class' =>
+                    BlogEditorPreferencesWebAdminNavigationProvider::class,
+            ],
         ];
         $migrations = [
             [
@@ -128,6 +139,10 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
                 'class' => BlogMigrationProvider::class,
             ],
         ];
+        $services = [[
+            'module' => 'blog',
+            'class' => BlogMediaUsageModuleProvider::class,
+        ]];
 
         self::assertSame($privateRoutes, $registry->routeProviders());
         self::assertSame($publicRoutes, $registry->publicRouteProviders());
@@ -143,9 +158,9 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
             $migrations,
             $registry->providers('migrations')
         );
+        self::assertSame($services, $registry->providers('services'));
         foreach ([
             'middleware',
-            'services',
             'capabilities',
             'sitemap',
         ] as $type) {
@@ -188,6 +203,13 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
                 MigrationProviderInterface::class
             );
         }
+        foreach ($services as $provider) {
+            $this->assertProvider(
+                $provider['class'],
+                $provider['module'],
+                MediaUsageModuleProviderInterface::class
+            );
+        }
 
         $catalog = MigrationCatalog::fromRegistry($registry);
         self::assertSame(
@@ -204,6 +226,21 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
                 'module' => 'webadmin',
                 'provider' => WebAdminMigrationProvider::class,
                 'migration' => '0002_webadmin_media_library',
+            ],
+            [
+                'module' => 'webadmin',
+                'provider' => WebAdminMigrationProvider::class,
+                'migration' => '0003_webadmin_media_avif_source',
+            ],
+            [
+                'module' => 'webadmin',
+                'provider' => WebAdminMigrationProvider::class,
+                'migration' => '0004_webadmin_profile_preferences',
+            ],
+            [
+                'module' => 'webadmin',
+                'provider' => WebAdminMigrationProvider::class,
+                'migration' => '0005_webadmin_media_quarantine',
             ],
             [
                 'module' => 'blog',
@@ -255,6 +292,51 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
                 'provider' => BlogMigrationProvider::class,
                 'migration' => '0010_blog_analytics_view_capability',
             ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0011_blog_layout_editor_v2',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0012_blog_editor_preferences',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0013_blog_settings_manage_capability',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0014_blog_private_draft_publication',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0015_blog_robots_preferences',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0016_blog_url_history',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0017_blog_dummy_category',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0018_blog_dummy_category_normalization',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0019_blog_copy_operation_idempotency',
+            ],
         ], array_map(
             static fn (array $entry): array => [
                 'module' => $entry['module'],
@@ -291,6 +373,31 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
         $catalog = MigrationCatalog::fromRegistry($registry);
         self::assertSame([], $catalog->activeModuleIds());
         self::assertSame([], $catalog->entries());
+    }
+
+    public function testMediaUsageProviderFailsClosedWhileBlogSchemaIsPending(): void
+    {
+        if (!in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+            self::markTestSkipped('pdo_sqlite es necesario.');
+        }
+        $this->writeComposer(['liquidstack/blog' => '*']);
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->exec('PRAGMA foreign_keys = ON');
+        $registry = (new MediaUsageProviderRegistryFactory())->create(
+            $pdo,
+            $this->registry(),
+            MigrationScopeCollection::fromTablePrefixes([
+                'webadmin' => 'ls_webadmin_',
+                'blog' => 'ls_blog_',
+            ])
+        );
+        $publicId = '10000000-0000-4000-8000-000000000001';
+
+        self::assertSame(
+            MediaUsageStatus::Unknown,
+            $registry->statuses([$publicId])[$publicId]
+        );
     }
 
     /**

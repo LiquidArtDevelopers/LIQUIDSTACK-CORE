@@ -1,8 +1,9 @@
 # Hoja de ruta de WebAdmin y Liquid Blog
 
 Este documento separa lo ya implementado de los siguientes cortes. WebAdmin y
-Blog son módulos internos de `liquidstack/core`: AIWA es el laboratorio completo
-de integración, pero rutas, idiomas, copy, datos, medios y credenciales siempre
+Blog son módulos internos de `liquidstack/core`: un consumidor controlado es el
+laboratorio completo de integración, pero rutas, idiomas, copy, datos, medios y
+credenciales siempre
 pertenecen al proyecto consumidor.
 
 ## Matriz de instalación
@@ -39,11 +40,15 @@ Implementado:
 
 ### 2. Biblioteca compartida de medios
 
-Implementada mediante `0002_webadmin_media_library`:
+Implementada mediante `0002_webadmin_media_library`, con
+`0003_webadmin_media_avif_source` como ampliación incremental de entrada y
+`0005_webadmin_media_quarantine` para la retirada recuperable:
 
-- subida privada de JPEG, PNG o WebP, validada por firma y decodificador;
+- subida privada de JPEG, PNG y WebP, más AVIF cuando 0003 está lista, validada
+  por firma y decodificador;
 - normalización y variantes responsive AVIF sin metadatos;
 - cuota, rate limit, hashes, storage privado y entrega autenticada;
+- cuarentena, restauración y purga deliberada de medios sin referencias;
 - capacidades separadas `webadmin.media.view` y
   `webadmin.media.upload`;
 - ALT, title y caption por uso editorial, nunca como metadatos globales del
@@ -54,25 +59,31 @@ unidad de backup y restauración.
 
 ### 3. Blog editorial y categorías
 
-Implementado mediante `0001` a `0004` del scope Blog:
+Implementado desde `0001` a `0019` del scope Blog mediante fronteras aditivas:
 
 - artículos con variantes por idioma, slug, H1, title SEO, description,
   extracto, estado, preview y publicación independientes;
 - categorías localizadas, lock optimista, asignación a artículos y proyección
   pública para filtros y cards;
-- índice project-owned por idioma y recursos Blog reutilizables, con cuatro
-  fixtures Matrix solo en showroom para probar rejilla, listado, destacado,
-  slider y filtros sin insertar fallback dummy en la DB pública;
-- ownership selectivo de `moduleBlogFilters01`, `sectionBlogGrid01`,
-  `sectionBlogList01`, `sectionBlogFeatured01` y `sectionBlogSlider01`: el
-  manifiesto publica su ecosistema únicamente con `liquidstack/blog`;
+- índice project-owned por idioma y recursos Blog reutilizables, con diez
+  fixtures Matrix solo en showroom para probar rejillas, listado centrado,
+  destacados, sliders, filtros combinables y paginación sin insertar fallback
+  dummy en la DB pública;
+- ownership selectivo de `artBlogArticle01`, `moduleBlogArchive01`,
+  `moduleBlogFilters01`, `moduleBlogSearch01`, `moduleBlogCategoryBar01`,
+  `moduleBlogPagination01`, `moduleBlogResults01`, `sectionBlogCatalog01`,
+  `sectionBlogGrid01`, `sectionBlogList01`,
+  `sectionBlogFeatured01`, `sectionBlogRelated01`, `sectionBlogSlider01`,
+  `moduleBlogGrid02`, `sectionBlogSlider02` y `sectionBlogStack01`: el
+  manifiesto de CORE publica su ecosistema únicamente con
+  `liquidstack/blog`;
 - sitemap dinámico respaldado por la DB del entorno, sin escribir archivos ni
   necesitar deploy al publicar o retirar una URL;
 - canonical, robots, Open Graph, Twitter Card y alternates `hreflang`/`x-default`
   coherentes entre el HTML público y el sitemap, limitados siempre a variantes
   publicadas.
 
-### 4. Editor estructurado v1
+### 4. Editor estructurado v1 y constructor V2
 
 Implementado mediante `0005_blog_structured_content` y la biblioteca Media:
 
@@ -108,15 +119,19 @@ Implementado mediante `0005_blog_structured_content` y la biblioteca Media:
   `doctor` mediante `blog.assets` y el blocker
   `assets.missing_or_invalid`.
 
-El constructor libre de secciones, filas y columnas tipo Divi no pertenece a
-este corte. El documento v1 permite ampliar plantillas controladas sin aceptar
-HTML, clases o estilos arbitrarios del usuario.
+`0011_blog_layout_editor_v2` amplía este corte con Section, Article y Contenedor,
+presets visuales de una a cinco columnas, drag accesible y módulos tipados. Texto
+unifica párrafos, H2-H6, listas, citas y destacados; HTML/CSS solo se admite en
+la variante avanzada saneada o en el módulo HTML. V1 permanece como contrato de
+lectura y se proyecta sin reescribir revisiones históricas.
 
 ### 5. Entrega pública integrada y rendimiento — implementado
 
 El renderer público ya permite que el proyecto aporte de forma tipada su shell,
-head, navegación, footer, recursos de tema y CSP mediante una vista confinada a
-`App/views`. El fallback autónomo conserva SSR, metadatos, cabeceras cerradas y
+head, navegación, footer y recursos de tema mediante una vista confinada a
+`App/views`. La CSP y el nonce compartidos se configuran en
+`App/config/modules/blog-public.php` y los aplica el controlador a la
+`Response`, no la vista. El fallback autónomo conserva SSR, metadatos, cabeceras cerradas y
 un CSS neutral responsive gestionado por el módulo. La frontera pública ya
 difiere la sesión legacy únicamente para `GET`/`HEAD` reclamados: artículos,
 sitemap y medios no crean `PHPSESSID`; el índice project-owned puede usar
@@ -128,8 +143,9 @@ legacy. Este corte incorpora además:
   intro/retorno inyectables y fallback SSR para consumidores que aún no hayan
   adoptado el shell visual;
 - separación SSR compatible: `bodyHtml()` conserva la salida histórica con
-  portada, mientras las vistas nuevas componen `headerMediaHtml()` en el
-  `header` y `mainHtml()` dentro del `main` sin duplicar el medio destacado;
+  portada, mientras las vistas nuevas requieren
+  `_moduleBlogPublicArticle.php` y componen `headerHtml()` antes de
+  `mainHtml()` sin duplicar el medio destacado ni el H1;
 - una proyección pública unificada y acotada para relacionados por categorías,
   archivo anual/mensual y periodos con recuento, reutilizando el mismo PDO y
   sin exponer borradores;
@@ -173,18 +189,54 @@ no infiere traducciones ni genera variantes implícitas.
 ### 8. Descubrimiento e indexación
 
 Ya está implementada la búsqueda pública con filtros múltiples de categorías
-`any|all`: la vista crea un `BlogPublicCatalogQuery`, obtiene las cards mediante
-`BlogPublicFeed::cardsForQuery()` y conserva el formulario GET SSR como
-fallback. La consulta limita la búsqueda normalizada a 2–120 caracteres
+`any|all`: el soporte gestionado `_moduleBlogPublicIndex.php` crea el
+`BlogPublicCatalogQuery`, obtiene las cards mediante
+`BlogPublicFeed::cardsForQuery()` y entrega a la vista una proyección tipada; el
+formulario GET SSR permanece como fallback. La consulta limita la búsqueda normalizada a 2–120 caracteres
 Unicode, diez categorías simultáneas, 50 resultados y un offset de 10.000;
-los filtros
-localizados fallan cerrados si superan el máximo público de 100.
-`moduleBlogFilters01` añade `fetch` abortable, debounce, historial y
-región viva sin convertir JavaScript en requisito.
+los filtros localizados fallan cerrados si superan el máximo público de 100.
+El orden admite exclusivamente `newest`, `oldest` y `updated`, siempre con
+desempate estable. `moduleBlogFilters01` añade `fetch` abortable, debounce,
+historial y región viva sin convertir JavaScript en requisito.
 
-Relacionados y archivo ya pertenecen al corte 5. Continúan pendientes RSS y
-nuevas composiciones dinámicas que no estén cubiertas por los recursos
-actuales.
+El corte RESOURCE-001 amplía ese contrato en CORE. Search01 separa
+búsqueda y orden; CategoryBar01 separa las categorías `any|all`; ambos pueden
+componerse sobre la misma región porque conservan el estado del formulario
+compañero y comparten el runtime GET/SSR. Pagination01 aporta navegación SSR
+sin JavaScript. Grid02 ofrece rejilla regular o bento, Slider02 y el Slider01
+actualizado encapsulan GSAP Draggable/Inertia/snap/autoplay por instancia y un
+bucle visual continuo sin opción `wrap` para todo conjunto no vacío, incluido
+un único artículo. El SSR emite solo los originales; las copias necesarias para
+cubrir el viewport son visuales, `inert` y ajenas al árbol accesible. Un
+ownership por raíz compartido entre identidades ESM/HMR evita desmontajes
+cruzados. Stack01 mejora progresivamente una pila editorial. List01 centra su
+columna; Slider01 prioriza miniaturas explícitas y Slider02 limita la media a
+`16:9` con `object-fit: cover`, también priorizando `thumbnail` cuando existe.
+El showroom mantiene una sola instancia de cada recurso e incluye una
+composición real de esos controles con 4 de 10 fixtures por página; las demás
+configuraciones quedan en comentarios y tests.
+La proyección automática de media ya compone Blog y WebAdmin mediante un
+adaptador opcional de como máximo dos consultas constantes por lote: la primera
+selecciona portada o primera imagen del documento `CURRENT` publicado y la
+segunda solo carga variantes si existe algún medio elegible. Proyecta AVIF sin
+IDs ni N+1. El fallback usa la mayor variante de hasta 900 px, el `srcset` queda
+ascendente y cada recurso decide su `sizes`; fallos de schema, storage o datos
+degradan a una card textual. Los 16 derivados de los fixtures Dummy tienen
+fuente gestionada por Composer en `resources/img/dummy/responsive`, cubren 480,
+899/900, 1800 y 2560 px y no sobrescriben la media que llegue del feed.
+
+Relacionados y archivo ya pertenecen al corte 5. Continúan pendientes RSS y las
+composiciones que excedan la familia actual. La implementación
+RESOURCE-001 se integra en CORE principal dentro de `Unreleased`; su publicación
+versionada sigue abierta hasta cerrar la matriz final. La QA funcional-visual
+previa cubrió Chrome real a 390, 768 y 1280 px,
+incluidos filtros coordinados, paginación, varias instancias, teclado,
+geometría de media y ausencia de overflow o errores de consola. También se
+protegen el primer clic en enlaces durante la coordinación foco/Draggable y la
+contención de Related01 en tablet. La regresión técnica final del bucle 0/1/N,
+del ownership compartido y de estos bordes supera `212` pruebas y `6.455`
+aserciones; la repetición Chrome tras instalar cada corte en un consumidor de
+referencia forma parte del gate obligatorio antes de publicar.
 
 - Antes de usar el catálogo en volúmenes altos, sustituir la búsqueda
   `LIKE` sobre H1, extracto y cuerpo por un read model o índice de texto
@@ -218,14 +270,14 @@ separado del correo de acceso, lotes y límites acotados, reintentos y un cron
 por proyecto. El diseño completo está registrado como
 [pendiente](mejoras-pendientes/blog-notificaciones-suscriptores.md).
 
-### 10. Plantillas, recursos y maquetador
+### 10. Plantillas y ampliaciones del maquetador
 
 - Nuevas plantillas de artículo basadas en recursos de showroom.
 - Más composiciones filtradas sobre los feeds ya disponibles y futuros feeds
   como RSS; relacionados y archivo ya tienen proyección y recursos base.
 - Vídeo local servido desde una frontera Media segura.
-- Maquetador futuro de secciones, filas, columnas y módulos, construido sobre
-  un esquema versionado y sin romper los documentos v1.
+- Nuevos presets, plantillas y módulos tipados sobre el maquetador V2 ya
+  existente, sin romper los documentos v1 ni aceptar estructuras arbitrarias.
 
 ### 11. Gestión del resto de la web
 
@@ -235,10 +287,11 @@ el editor inline de desarrollo ni con la zona privada de negocio legacy.
 
 La localización de la interfaz WebAdmin será un contrato separado del locale
 del artículo: el panel podrá mostrarse en un idioma mientras se edita otro, sin
-usar el idioma de la sesión como filtro implícito de contenido. También queda
-reservado un modo HTML avanzado, saneado, auditable, restaurable y protegido por
-una capacidad específica; no sustituirá el editor estructurado como flujo
-normal.
+usar el idioma de la sesión como filtro implícito de contenido. El modo HTML/CSS
+avanzado ya existe como variante encapsulada de `Texto` V2: supersede la fuente
+estándar histórica solo para ese módulo, conserva allowlists cerradas y no
+sustituye el editor estructurado como flujo normal. Un editor HTML general para
+el resto de la web sigue fuera de esta frontera.
 
 ## Reglas transversales de entrega
 
@@ -257,4 +310,4 @@ normal.
   dentro de la misma transacción que protege los datos.
 - Antes de publicar CORE se validan migraciones SQLite/MySQL, checksums
   históricos, actualización aditiva de un consumidor, suite completa y pruebas
-  reales en AIWA con una ventana aislada del navegador.
+  reales en un consumidor de referencia con una ventana aislada del navegador.

@@ -4,23 +4,38 @@ declare(strict_types=1);
 
 namespace App\Core\Blog\Http;
 
+use App\Core\Blog\Admin\BlogAdminCatalogQuery;
 use App\Core\Blog\Analytics\BlogArticleAnalyticsSummary;
 use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogPostSummary;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
+use App\Core\Blog\Seo\BlogUrlResolution;
 use App\Core\WebAdmin\Http\WebAdminPageAssets;
 use App\Core\WebAdmin\Http\WebAdminShellContext;
 use App\Core\WebAdmin\Http\WebAdminShellRenderer;
+use App\Core\WebAdmin\Profile\WebAdminPublicProfile;
+use App\Core\WebAdmin\Support\RandomUuidV4Generator;
+use App\Core\WebAdmin\Support\UuidGeneratorInterface;
 use InvalidArgumentException;
 
 final class BlogAdminHtmlRenderer
 {
-    private readonly WebAdminShellRenderer $shellRenderer;
+    private const TABLE_STATUS_DELETED = 'deleted';
 
-    public function __construct(?WebAdminShellRenderer $shellRenderer = null)
-    {
+    private readonly WebAdminShellRenderer $shellRenderer;
+    private readonly BlogPublicationDateFormatter $dateFormatter;
+    private readonly UuidGeneratorInterface $requestIds;
+
+    public function __construct(
+        ?WebAdminShellRenderer $shellRenderer = null,
+        ?BlogPublicationDateFormatter $dateFormatter = null,
+        ?UuidGeneratorInterface $requestIds = null
+    ) {
         $this->shellRenderer = $shellRenderer ?? new WebAdminShellRenderer();
+        $this->dateFormatter = $dateFormatter
+            ?? new BlogPublicationDateFormatter();
+        $this->requestIds = $requestIds ?? new RandomUuidV4Generator();
     }
 
     /**
@@ -28,6 +43,7 @@ final class BlogAdminHtmlRenderer
      * @param array<string, string> $publicPaths
      * @param array<string, BlogArticleAnalyticsSummary>
      *     $analyticsByLocalization
+     * @param array<string, list<string>> $localesByPost
      */
     public function index(
         string $basePath,
@@ -44,16 +60,33 @@ final class BlogAdminHtmlRenderer
         bool $canDuplicate = false,
         array $analyticsByLocalization = [],
         bool $showAnalytics = false,
-        int $analyticsPeriodDays = 30
+        int $analyticsPeriodDays = 30,
+        ?BlogAdminCatalogQuery $catalogQuery = null,
+        array $localesByPost = [],
+        bool $canAddLocalization = false,
+        ?WebAdminPublicProfile $viewerProfile = null
     ): string {
         if (
             $offset < 0
             || $offset > BlogService::MAX_LIST_OFFSET
-            || $offset % BlogService::DEFAULT_LIST_LIMIT !== 0
-            || count($summaries) > BlogService::DEFAULT_LIST_LIMIT
+            || count($summaries) > 50
         ) {
             throw new InvalidArgumentException(
                 'Invalid Blog pagination presentation.'
+            );
+        }
+        $catalogQuery ??= new BlogAdminCatalogQuery(offset: $offset);
+        if (
+            $catalogQuery->offset() !== $offset
+            || $offset % $catalogQuery->pageSize() !== 0
+            || count($summaries) > $catalogQuery->pageSize()
+            || (
+                $catalogQuery->locale() !== null
+                && !array_key_exists($catalogQuery->locale(), $publicPaths)
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'Invalid Blog catalog presentation.'
             );
         }
         if (!in_array($analyticsPeriodDays, [7, 30, 90], true)) {
@@ -89,22 +122,33 @@ final class BlogAdminHtmlRenderer
                 $viewLabel = 'Vista web';
             } else {
                 $viewHref = $preview;
-                $viewLabel = 'Vista previa';
+                $viewLabel = $canViewMedia
+                    ? 'Vista previa'
+                    : 'Lectura textual del contenido guardado';
+            }
+            $isPrivatePreview = hash_equals($preview, $viewHref);
+            $isImmersivePreview = $isPrivatePreview && $canViewMedia;
+            $viewLinkAttributes = '';
+            if ($isImmersivePreview) {
+                $viewLinkAttributes = ' data-blog-private-preview '
+                    . 'data-blog-preview-title="'
+                    . $this->escape($summary->h1()) . '"';
+            } elseif (!$isPrivatePreview) {
+                // Public output is separate; keep WebAdmin open.
+                $viewLinkAttributes = ' target="_blank" rel="noopener"';
             }
             $rowTitleId = 'blog-row-title-'
                 . $summary->localizationPublicId();
             $actions = '<div class="blogAdminPage__rowActions">'
                 . '<a class="blogAdminPage__action '
-                . 'blogAdminPage__action--view" href="' . $viewHref
-                . '" target="_blank" rel="noopener" aria-describedby="'
-                . $rowTitleId . '">' . $viewLabel
+                . 'blogAdminPage__action--view" href="' . $viewHref . '"'
+                . $viewLinkAttributes
+                . ' title="' . $this->escape($viewLabel) . '"'
+                . ' aria-label="' . $this->escape($viewLabel) . '"'
+                . ' aria-describedby="'
+                . $rowTitleId . '">' . $this->actionIcon('view', $viewLabel)
                 . '</a>';
-            $canOpenEditor = $canEdit
-                && $canViewMedia
-                && (
-                    $summary->status() === BlogPostVariant::DRAFT
-                    || $canPublish
-                );
+            $canOpenEditor = $canEdit && $canViewMedia;
             if ($canOpenEditor) {
                 $edit = $this->pathWithQuery($basePath, '/editor', [
                     'post' => $summary->postPublicId(),
@@ -112,25 +156,43 @@ final class BlogAdminHtmlRenderer
                 ]);
                 $actions .= '<a class="blogAdminPage__action '
                     . 'blogAdminPage__action--edit" href="' . $edit
+                    . '" title="Editar" aria-label="Editar'
                     . '" aria-describedby="' . $rowTitleId
-                    . '">Editar</a>';
+                    . '">' . $this->actionIcon('edit', 'Editar') . '</a>';
             } else {
                 $actions .= '<span class="blogAdminPage__readOnly">'
                     . 'Solo lectura</span>';
             }
+            if (!$isPublished && $canPublish && $slug !== null) {
+                $urlManager = $this->pathWithQuery(
+                    $basePath,
+                    '/posts/url',
+                    [
+                        'post' => $summary->postPublicId(),
+                        'locale' => $summary->locale(),
+                    ]
+                );
+                $actions .= '<a class="blogAdminPage__action '
+                    . 'blogAdminPage__action--url" href="' . $urlManager
+                    . '" title="Estado URL" aria-label="Estado URL'
+                    . '" aria-describedby="' . $rowTitleId
+                    . '">' . $this->actionIcon('url', 'Estado URL') . '</a>';
+            }
             if (
-                $canDuplicate
+                ($canDuplicate || $canAddLocalization)
                 && $canEdit
                 && $canViewMedia
                 && $csrf !== ''
             ) {
-                $actions .= $this->variantActionForm(
+                $actions .= $this->languageCopyFlow(
                     $basePath,
-                    '/posts/duplicate',
                     $csrf,
                     $summary,
-                    'Duplicar',
-                    'blogAdminPage__action--duplicate'
+                    $publicPaths,
+                    $localesByPost[$summary->postPublicId()]
+                        ?? [$summary->locale()],
+                    $canDuplicate,
+                    $canAddLocalization
                 );
             }
             if (
@@ -145,13 +207,26 @@ final class BlogAdminHtmlRenderer
                     $summary,
                     'Borrar',
                     'blogAdminPage__action--delete',
-                    true
+                    'trash'
+                );
+            } elseif ($canPublish && $isPublished && $csrf !== '') {
+                $actions .= $this->variantActionForm(
+                    $basePath,
+                    '/posts/unpublish',
+                    $csrf,
+                    $summary,
+                    'Retirar',
+                    'blogAdminPage__action--retire',
+                    'unpublish'
                 );
             } elseif ($canDelete && $isPublished) {
                 $actions .= '<span class="blogAdminPage__action '
                     . 'blogAdminPage__action--disabled" aria-disabled="true" '
+                    . 'title="Borrar: retira primero" '
+                    . 'aria-label="Borrar: retira primero" '
                     . 'aria-describedby="' . $rowTitleId . '">'
-                    . '<span>Borrar</span><small>Retira primero</small></span>';
+                    . $this->actionIcon('delete', 'Borrar: retira primero')
+                    . '</span>';
             }
             $actions .= '</div>';
 
@@ -173,19 +248,30 @@ final class BlogAdminHtmlRenderer
             $rows .= '<tr><th id="' . $rowTitleId . '" scope="row">'
                 . $this->escape($summary->h1()) . '</th><td>'
                 . $this->localeBadge($summary->locale()) . '</td><td>'
-                . $this->statusLabel($summary->status()) . '</td>'
+                . $this->tableStatus($summary->status()) . '</td><td>'
+                . $this->authorCell($summary) . '</td><td>'
+                . $this->categoryCell($summary) . '</td><td>'
+                . $this->robotsCell($summary) . '</td>'
                 . $analyticsCells
                 . '<td>'
-                . $this->escape($summary->updatedAt()->format('Y-m-d H:i'))
+                . $this->escape($this->adminDate(
+                    $summary->updatedAt(),
+                    $viewerProfile
+                ))
                 . '</td><td>' . $actions . '</td></tr>';
         }
         if ($rows === '') {
-            $columns = $showAnalytics ? 10 : 5;
+            $columns = $showAnalytics ? 13 : 8;
             $rows = '<tr><td colspan="' . $columns
-                . '">No hay art&iacute;culos.</td></tr>';
+                . '">'
+                . ($catalogQuery->hasFilters()
+                    ? 'No hay art&iacute;culos que coincidan con los filtros.'
+                    : 'No hay art&iacute;culos.')
+                . '</td></tr>';
         }
         $create = $canEdit && $canViewMedia
-            ? '<p class="blogAdminPage__primaryAction"><a href="'
+            ? '<p class="blogAdminPage__primaryAction"><a class="'
+                . 'webadminAction webadminAction--primary" href="'
                 . $this->path($basePath, '/posts/new')
                 . '">Crear art&iacute;culo</a></p>'
             : '';
@@ -194,19 +280,30 @@ final class BlogAdminHtmlRenderer
                 . $this->path($basePath, '/trash')
                 . '">Ver papelera</a></p>'
             : '';
+        $filter = $this->catalogFilter(
+            $basePath,
+            $catalogQuery,
+            $publicPaths,
+            $showAnalytics,
+            $analyticsPeriodDays
+        );
+        $preservedQuery = $catalogQuery->queryParameters();
+        if ($showAnalytics) {
+            $preservedQuery['period'] = (string) $analyticsPeriodDays;
+        }
         $analyticsHeaders = $showAnalytics
-            ? '<th scope="col">Visitas</th>'
-                . '<th scope="col">Visitantes &uacute;nicos</th>'
-                . '<th scope="col">Habituales</th>'
-                . '<th scope="col">Interacci&oacute;n media</th>'
-                . '<th scope="col" aria-describedby="blog-analytics-bounce-help">'
+            ? $this->compactMetricHeader('views', 'Vistas')
+                . $this->compactMetricHeader(
+                    'unique-visitors',
+                    'Visitantes únicos'
+                )
+                . $this->compactMetricHeader('returning', 'Habituales')
+                . '<th scope="col" title="No ordenable: la m&eacute;trica se '
+                . 'calcula para la p&aacute;gina visible">Interacci&oacute;n media</th>'
+                . '<th scope="col" title="No ordenable: la m&eacute;trica se '
+                . 'calcula para la p&aacute;gina visible" '
+                . 'aria-describedby="blog-analytics-bounce-help">'
                 . 'Rebote del Blog</th>'
-            : '';
-        $analyticsFilter = $showAnalytics
-            ? $this->analyticsPeriodFilter(
-                $basePath,
-                $analyticsPeriodDays
-            )
             : '';
 
         return $this->page(
@@ -216,26 +313,74 @@ final class BlogAdminHtmlRenderer
             . '<h1 id="blog-admin-title">Art&iacute;culos del Blog</h1>'
             . '<p>Gestiona cada idioma, consulta su rendimiento y abre la '
             . 'acci&oacute;n que necesitas sin alterar las dem&aacute;s variantes.</p>'
+            . '<p><strong>Retirar</strong> despublica y conserva contenido, '
+            . 'revisiones y opci&oacute;n de republicar. <strong>Borrar</strong> '
+            . 'solo mueve un borrador a una papelera recuperable.</p>'
             . $create
             . $trash
-            . $analyticsFilter
+            . $filter
+            . '<p data-blog-admin-filter-status role="status" '
+            . 'aria-live="polite" hidden></p>'
+            . '<div id="blog-admin-results" data-blog-admin-results '
+            . 'data-blog-admin-result-count="' . count($summaries) . '">'
             . '<div class="blogAdminPage__tableViewport" tabindex="0" '
             . 'role="region" aria-label="Variantes editoriales">'
             . '<table><caption>Variantes editoriales</caption><thead><tr>'
-            . '<th scope="col">T&iacute;tulo</th><th scope="col">Idioma</th>'
-            . '<th scope="col">Estado</th>' . $analyticsHeaders
-            . '<th scope="col">Actualizado</th>'
+            . $this->sortableHeading(
+                $basePath,
+                'T&iacute;tulo',
+                BlogAdminCatalogQuery::SORT_TITLE,
+                $catalogQuery,
+                $preservedQuery
+            )
+            . $this->sortableHeading(
+                $basePath,
+                'Idioma',
+                BlogAdminCatalogQuery::SORT_LOCALE,
+                $catalogQuery,
+                $preservedQuery
+            )
+            . $this->sortableHeading(
+                $basePath,
+                'Estado',
+                BlogAdminCatalogQuery::SORT_STATUS,
+                $catalogQuery,
+                $preservedQuery
+            )
+            . $this->sortableHeading(
+                $basePath,
+                'Autor',
+                BlogAdminCatalogQuery::SORT_AUTHOR,
+                $catalogQuery,
+                $preservedQuery
+            )
+            . '<th scope="col" title="No ordenable: un art&iacute;culo puede '
+            . 'pertenecer a varias categor&iacute;as">Categor&iacute;as</th>'
+            . $this->sortableHeading(
+                $basePath,
+                'Index / Follow',
+                BlogAdminCatalogQuery::SORT_ROBOTS,
+                $catalogQuery,
+                $preservedQuery
+            )
+            . $analyticsHeaders
+            . $this->sortableHeading(
+                $basePath,
+                'Actualizado',
+                BlogAdminCatalogQuery::SORT_UPDATED,
+                $catalogQuery,
+                $preservedQuery
+            )
             . '<th scope="col">Acciones</th></tr></thead><tbody>'
             . $rows . '</tbody></table></div>'
             . $this->pagination(
                 $basePath,
                 $offset,
                 $hasNext,
-                $showAnalytics
-                    ? ['period' => (string) $analyticsPeriodDays]
-                    : []
+                $preservedQuery,
+                $catalogQuery->pageSize()
             )
-            . $this->backToDashboard($basePath)
+            . '</div>'
             . '</article>',
             $basePath,
             '/blog',
@@ -250,7 +395,8 @@ final class BlogAdminHtmlRenderer
         int $offset,
         bool $hasNext,
         string $csrf,
-        ?WebAdminShellContext $shell = null
+        ?WebAdminShellContext $shell = null,
+        ?WebAdminPublicProfile $viewerProfile = null
     ): string {
         if (
             $offset < 0
@@ -283,12 +429,16 @@ final class BlogAdminHtmlRenderer
                 . $summary->localizationPublicId() . '" scope="row">'
                 . $this->escape($summary->h1()) . '</th><td>'
                 . $this->localeBadge($summary->locale()) . '</td><td>'
-                . $this->escape($summary->updatedAt()->format('Y-m-d H:i'))
+                . $this->tableStatus(self::TABLE_STATUS_DELETED) . '</td><td>'
+                . $this->escape($this->adminDate(
+                    $summary->updatedAt(),
+                    $viewerProfile
+                ))
                 . '</td><td><div class="blogAdminPage__rowActions">'
                 . $restore . '</div></td></tr>';
         }
         if ($rows === '') {
-            $rows = '<tr><td colspan="4">La papelera est&aacute; vac&iacute;a.'
+            $rows = '<tr><td colspan="5">La papelera est&aacute; vac&iacute;a.'
                 . '</td></tr>';
         }
 
@@ -303,7 +453,8 @@ final class BlogAdminHtmlRenderer
             . 'role="region" aria-label="Borradores eliminados">'
             . '<table><caption>Borradores eliminados</caption><thead><tr>'
             . '<th scope="col">T&iacute;tulo</th><th scope="col">Idioma</th>'
-            . '<th scope="col">Actualizado</th><th scope="col">Acciones</th>'
+            . '<th scope="col">Estado</th><th scope="col">Actualizado</th>'
+            . '<th scope="col">Acciones</th>'
             . '</tr></thead><tbody>' . $rows . '</tbody></table></div>'
             . $this->paginationForPath(
                 $basePath . '/trash',
@@ -318,17 +469,39 @@ final class BlogAdminHtmlRenderer
         );
     }
 
-    private function localeBadge(string $locale): string
+    private function adminDate(
+        \DateTimeImmutable $date,
+        ?WebAdminPublicProfile $viewerProfile
+    ): string {
+        // An installation without WebAdmin profile preferences keeps the
+        // additive legacy presentation. Once the profile feature exists,
+        // its explicit IANA zone (or its visible UTC fallback) is canonical.
+        if ($viewerProfile === null) {
+            return $date->format('Y-m-d H:i');
+        }
+
+        return $this->dateFormatter->formatCompactDate(
+            $date,
+            'es',
+            $viewerProfile
+        );
+    }
+
+    private function localeBadge(string $locale, ?string $id = null): string
     {
         $label = BlogLocalePresentation::label($locale);
         $asset = BlogLocalePresentation::flagAsset($locale);
+        $idAttribute = $id === null
+            ? ''
+            : ' id="' . $this->escape($id) . '"';
         $visual = $asset === null
             ? '<span class="blogAdminPage__localeFallback" aria-hidden="true">'
                 . '&#9673;</span>'
             : '<img src="' . $this->escape($asset)
                 . '" alt="" aria-hidden="true" width="24" height="18">';
 
-        return '<span class="blogAdminPage__locale">' . $visual . '<span>'
+        return '<span class="blogAdminPage__locale"' . $idAttribute . '>'
+            . $visual . '<span>'
             . $this->escape($label) . '</span></span>';
     }
 
@@ -346,12 +519,21 @@ final class BlogAdminHtmlRenderer
         BlogPostSummary $summary,
         string $label,
         string $modifier,
-        bool $requiresConfirmation = false
+        ?string $confirmation = null
     ): string {
-        $attributes = $requiresConfirmation
-            ? ' data-blog-trash-form data-blog-title="'
-                . $this->escape($summary->h1()) . '"'
-            : '';
+        if (
+            $confirmation !== null
+            && !in_array($confirmation, ['trash', 'unpublish'], true)
+        ) {
+            throw new InvalidArgumentException(
+                'Invalid Blog action confirmation presentation.'
+            );
+        }
+        $attributes = $confirmation === null
+            ? ''
+            : ' data-blog-confirm-form data-blog-confirm-action="'
+                . $confirmation . '" data-blog-title="'
+                . $this->escape($summary->h1()) . '"';
 
         return '<form class="blogAdminPage__inlineAction" method="post" '
             . 'action="' . $this->path($basePath, $suffix) . '"'
@@ -364,43 +546,335 @@ final class BlogAdminHtmlRenderer
             . '<input type="hidden" name="lock_version" value="'
             . $summary->lockVersion() . '">'
             . '<button class="blogAdminPage__action ' . $modifier
-            . '" type="submit" aria-describedby="blog-row-title-'
-            . $summary->localizationPublicId() . '">' . $label
+            . '" type="submit" title="' . $this->escape($label)
+            . '" aria-label="' . $this->escape($label)
+            . '" aria-describedby="blog-row-title-'
+            . $summary->localizationPublicId() . '">'
+            . $this->actionIcon(
+                $confirmation === 'trash'
+                    ? 'delete'
+                    : ($confirmation === 'unpublish' ? 'retire' : 'restore'),
+                $label
+            )
             . '</button></form>';
     }
 
-    private function analyticsPeriodFilter(
+    /**
+     * @param array<string, string> $publicPaths
+     * @param list<string> $existingLocales
+     */
+    private function languageCopyFlow(
         string $basePath,
-        int $periodDays
+        string $csrf,
+        BlogPostSummary $summary,
+        array $publicPaths,
+        array $existingLocales,
+        bool $canDuplicate,
+        bool $canAddLocalization
     ): string {
+        if (!array_is_list($existingLocales)) {
+            throw new InvalidArgumentException(
+                'Invalid Blog aggregate locale presentation.'
+            );
+        }
+        $existing = [];
+        foreach ($existingLocales as $locale) {
+            if (
+                !is_string($locale)
+                || preg_match(
+                    '/\A[a-z]{2,3}(?:-[a-z0-9]{2,8})*\z/',
+                    $locale
+                ) !== 1
+                || isset($existing[$locale])
+            ) {
+                throw new InvalidArgumentException(
+                    'Invalid Blog aggregate locale presentation.'
+                );
+            }
+            $existing[$locale] = true;
+        }
+        $existing[$summary->locale()] = true;
+
+        $flowId = $summary->localizationPublicId();
+        $titleId = 'blog-language-title-' . $flowId;
+        $descriptionId = 'blog-language-description-' . $flowId;
+        $outcomeId = 'blog-language-outcome-' . $flowId;
         $options = '';
-        foreach ([7, 30, 90] as $days) {
-            $options .= '<option value="' . $days . '"'
-                . ($days === $periodDays ? ' selected' : '') . '>'
-                . $days . ' d&iacute;as</option>';
+        $enabledOptions = 0;
+        foreach ($publicPaths as $locale => $publicPath) {
+            if (
+                !is_string($locale)
+                || preg_match(
+                    '/\A[a-z]{2,3}(?:-[a-z0-9]{2,8})*\z/',
+                    $locale
+                ) !== 1
+                || !is_string($publicPath)
+            ) {
+                throw new InvalidArgumentException(
+                    'Invalid Blog language copy presentation.'
+                );
+            }
+            $label = BlogLocalePresentation::label($locale);
+            $isIndependentPost = $locale === $summary->locale();
+            $alreadyExists = isset($existing[$locale]);
+            $enabled = $isIndependentPost
+                ? $canDuplicate
+                : (!$alreadyExists && $canAddLocalization);
+            if ($enabled) {
+                $enabledOptions++;
+            }
+            if ($isIndependentPost) {
+                $help = $enabled
+                    ? 'Crea otro art&iacute;culo independiente y conserva las '
+                        . 'categor&iacute;as actuales.'
+                    : 'La copia independiente requiere permiso para conservar '
+                        . 'las categor&iacute;as actuales.';
+                $outcome = 'Se creará un artículo independiente en '
+                    . $label . '. La publicación actual no cambiará.';
+                $submitLabel = 'Crear artículo independiente';
+            } elseif ($alreadyExists) {
+                $help = 'Ya existe una variante activa o en la Papelera; '
+                    . 'rest&aacute;urala si procede.';
+                $outcome = 'Este idioma ya existe en el artículo.';
+                $outcome = 'Este idioma ya tiene una variante activa o en '
+                    . 'la Papelera.';
+                $submitLabel = 'Variante ya existente';
+            } else {
+                $help = $enabled
+                    ? 'A&ntilde;ade una variante privada al art&iacute;culo actual.'
+                    : 'No tienes permiso para a&ntilde;adir esta variante.';
+                $outcome = 'Se añadirá una variante privada en '
+                    . $label . '. La publicación actual no cambiará.';
+                $submitLabel = 'Añadir ' . $label;
+            }
+            $helpId = 'blog-language-help-' . $flowId . '-'
+                . str_replace('-', '_', $locale);
+            $nameId = 'blog-language-name-' . $flowId . '-'
+                . str_replace('-', '_', $locale);
+            $operationId = $this->requestIds->generateV4();
+            $options .= '<label class="blogAdminPage__languageOption">'
+                . '<input type="radio" name="destination_locale" value="'
+                . $this->escape($locale) . '" required aria-labelledby="'
+                . $nameId . '" aria-describedby="' . $helpId
+                . '" data-blog-language-outcome="'
+                . $this->escape($outcome) . '" '
+                . 'data-blog-language-submit-label="'
+                . $this->escape($submitLabel) . '" '
+                . 'data-blog-language-operation-id="'
+                . $this->escape($operationId) . '"'
+                . ($enabled ? '' : ' disabled') . '>'
+                . $this->localeBadge($locale, $nameId)
+                . '<small id="' . $helpId . '">' . $help . '</small>'
+                . '</label>';
+        }
+        if ($enabledOptions === 0) {
+            return '';
         }
 
-        return '<form class="blogAdminPage__analyticsFilter" method="get" '
-            . 'action="' . $this->path($basePath, '') . '">'
-            . '<label for="blog-analytics-period">M&eacute;tricas de los '
-            . '&uacute;ltimos</label><select id="blog-analytics-period" '
-            . 'name="period">' . $options . '</select>'
-            . '<button type="submit">Aplicar</button></form>'
-            . '<p class="blogAdminPage__analyticsNotice">Datos propios de '
-            . 'visitantes que han aceptado la medici&oacute;n anal&iacute;tica. '
-            . 'La identificaci&oacute;n es seud&oacute;nima por navegador; no se '
-            . 'guarda la IP.'
-            . '</p><p class="blogAdminPage__analyticsNotice" '
-            . 'id="blog-analytics-bounce-help"><strong>Rebote del Blog:</strong> '
-            . 'sesiones de entrada sin m&aacute;s de 10 segundos de '
-            . 'interacci&oacute;n ni una segunda p&aacute;gina vista.</p>';
+        return '<details class="blogAdminPage__languageFlow" '
+            . 'data-blog-language-flow>'
+            . '<summary class="blogAdminPage__action '
+            . 'blogAdminPage__action--duplicate" '
+            . 'title="Duplicar o a&ntilde;adir idioma" '
+            . 'aria-label="Duplicar o a&ntilde;adir idioma" '
+            . 'aria-describedby="blog-row-title-'
+            . $summary->localizationPublicId() . '">'
+            . $this->actionIcon('duplicate', "Duplicar o a\u{00F1}adir idioma")
+            . '</summary>'
+            . '<div class="blogAdminPage__languagePanel" '
+            . 'data-blog-language-panel>'
+            . '<h2 id="' . $titleId . '">Duplicar o a&ntilde;adir idioma</h2>'
+            . '<p id="' . $descriptionId . '">Elige un destino. Siempre se '
+            . 'crear&aacute; un borrador privado nuevo; el contenido publicado y '
+            . 'su historial no se modifican.</p>'
+            . '<form method="post" action="'
+            . $this->path($basePath, '/posts/duplicate') . '" '
+            . 'aria-describedby="' . $descriptionId . ' ' . $outcomeId . '" '
+            . 'data-blog-language-form>'
+            . $this->csrfInput($csrf)
+            . '<input type="hidden" name="post" value="'
+            . $this->escape($summary->postPublicId()) . '">'
+            . '<input type="hidden" name="locale" value="'
+            . $this->escape($summary->locale()) . '">'
+            . '<input type="hidden" name="lock_version" value="'
+            . $summary->lockVersion() . '">'
+            . '<input type="hidden" name="operation_id" value="'
+            . $this->escape($this->requestIds->generateV4()) . '" '
+            . 'data-blog-language-operation>'
+            . '<fieldset><legend>Idioma de destino</legend>'
+            . '<div class="blogAdminPage__languageOptions">' . $options
+            . '</div></fieldset>'
+            . '<p id="' . $outcomeId . '" role="status" aria-live="polite" '
+            . 'data-blog-language-outcome-status>Selecciona un idioma para '
+            . 'confirmar el destino.</p>'
+            . '<div class="blogAdminPage__languageActions '
+            . 'webadminActionGroup">'
+            . '<button class="webadminAction webadminAction--secondary" '
+            . 'type="button" hidden data-blog-language-close>'
+            . 'Cancelar</button>'
+            . '<button class="webadminAction webadminAction--primary" '
+            . 'type="submit" data-blog-language-submit>Crear '
+            . 'borrador</button></div></form></div></details>';
+    }
+
+    /** @param array<string, string> $preservedQuery */
+    private function sortableHeading(
+        string $basePath,
+        string $label,
+        string $sort,
+        BlogAdminCatalogQuery $query,
+        array $preservedQuery
+    ): string {
+        $active = $query->sort() === $sort;
+        $direction = $active
+            ? ($query->direction() === BlogAdminCatalogQuery::DIRECTION_ASC
+                ? BlogAdminCatalogQuery::DIRECTION_DESC
+                : BlogAdminCatalogQuery::DIRECTION_ASC)
+            : ($sort === BlogAdminCatalogQuery::SORT_UPDATED
+                || $sort === BlogAdminCatalogQuery::SORT_ROBOTS
+                    ? BlogAdminCatalogQuery::DIRECTION_DESC
+                    : BlogAdminCatalogQuery::DIRECTION_ASC);
+        $parameters = $preservedQuery;
+        unset($parameters['offset']);
+        $parameters['sort'] = $sort;
+        $parameters['dir'] = $direction;
+        $ariaSort = $active
+            ? ' aria-sort="' . ($query->direction()
+                === BlogAdminCatalogQuery::DIRECTION_ASC
+                    ? 'ascending'
+                    : 'descending') . '"'
+            : '';
+        $plainLabel = html_entity_decode($label, ENT_QUOTES | ENT_HTML5);
+        $title = 'Ordenar por ' . $plainLabel;
+        $indicator = $active
+            ? ($query->direction() === BlogAdminCatalogQuery::DIRECTION_ASC
+                ? '&#9650;'
+                : '&#9660;')
+            : '&#8645;';
+
+        return '<th scope="col"' . $ariaSort . '><a class="'
+            . 'blogAdminPage__sort" href="'
+            . $this->pathWithQuery($basePath, '', $parameters)
+            . '" data-blog-admin-sort title="' . $this->escape($title)
+            . '" aria-label="' . $this->escape($title) . '">'
+            . '<span>' . $label . '</span><span aria-hidden="true">'
+            . $indicator . '</span></a></th>';
+    }
+
+    /** @param array<string, string> $publicPaths */
+    private function catalogFilter(
+        string $basePath,
+        BlogAdminCatalogQuery $query,
+        array $publicPaths,
+        bool $showAnalytics,
+        int $periodDays
+    ): string {
+        $statusOptions = '<option value=""'
+            . ($query->status() === null ? ' selected' : '')
+            . '>Todos</option>';
+        foreach ([
+            BlogPostVariant::DRAFT => 'Borrador',
+            BlogPostVariant::PUBLISHED => 'Publicado',
+        ] as $status => $label) {
+            $statusOptions .= '<option value="' . $status . '"'
+                . ($query->status() === $status ? ' selected' : '') . '>'
+                . $label . '</option>';
+        }
+
+        $localeOptions = '<option value=""'
+            . ($query->locale() === null ? ' selected' : '')
+            . '>Todos</option>';
+        foreach ($publicPaths as $locale => $publicPath) {
+            if (!is_string($locale) || !is_string($publicPath)) {
+                throw new InvalidArgumentException(
+                    'Invalid Blog locale filter presentation.'
+                );
+            }
+            $localeOptions .= '<option value="' . $this->escape($locale) . '"'
+                . ($query->locale() === $locale ? ' selected' : '') . '>'
+                . $this->escape(strtoupper($locale)) . '</option>';
+        }
+
+        $analyticsField = '';
+        $analyticsNotices = '';
+        if ($showAnalytics) {
+            $periodOptions = '';
+            foreach ([7, 30, 90] as $days) {
+                $periodOptions .= '<option value="' . $days . '"'
+                    . ($days === $periodDays ? ' selected' : '') . '>'
+                    . $days . ' d&iacute;as</option>';
+            }
+            $analyticsField = '<div><label for="blog-analytics-period">'
+                . 'M&eacute;tricas de los &uacute;ltimos</label>'
+                . '<select id="blog-analytics-period" name="period">'
+                . $periodOptions . '</select></div>';
+            $analyticsNotices = '<p class="blogAdminPage__analyticsNotice">'
+                . 'Datos propios de visitantes que han aceptado la '
+                . 'medici&oacute;n anal&iacute;tica. La identificaci&oacute;n es '
+                . 'seud&oacute;nima por navegador; no se guarda la IP.</p>'
+                . '<p class="blogAdminPage__analyticsNotice" '
+                . 'id="blog-analytics-bounce-help"><strong>Rebote del '
+                . 'Blog:</strong> sesiones de entrada sin m&aacute;s de 10 '
+                . 'segundos de interacci&oacute;n ni una segunda p&aacute;gina '
+                . 'vista.</p>';
+        }
+
+        $pageSizeOptions = '';
+        foreach (BlogAdminCatalogQuery::pageSizes() as $pageSize) {
+            $pageSizeOptions .= '<option value="' . $pageSize . '"'
+                . ($query->pageSize() === $pageSize ? ' selected' : '') . '>'
+                . $pageSize . '</option>';
+        }
+
+        return '<form id="blog-admin-filter-form" '
+            . 'class="blogAdminPage__analyticsFilter" method="get" '
+            . 'action="' . $this->path($basePath, '') . '" '
+            . 'data-blog-admin-filter-form>'
+            . '<div><label for="blog-admin-search">Buscar por '
+            . 't&iacute;tulo o slug</label><input id="blog-admin-search" '
+            . 'type="search" name="q" value="'
+            . $this->escape($query->search() ?? '') . '" minlength="'
+            . BlogAdminCatalogQuery::MIN_SEARCH_CHARACTERS . '" maxlength="'
+            . BlogAdminCatalogQuery::MAX_SEARCH_CHARACTERS . '" '
+            . 'autocomplete="off" aria-controls="blog-admin-results" '
+            . 'data-blog-admin-live-search></div>'
+            . '<div><label for="blog-admin-status">Estado</label>'
+            . '<select id="blog-admin-status" name="status" '
+            . 'aria-controls="blog-admin-results">' . $statusOptions
+            . '</select></div>'
+            . '<div><label for="blog-admin-locale">Idioma</label>'
+            . '<select id="blog-admin-locale" name="locale" '
+            . 'aria-controls="blog-admin-results">' . $localeOptions
+            . '</select></div>'
+            . '<div><label for="blog-admin-page-size">Resultados por '
+            . 'p&aacute;gina</label><select id="blog-admin-page-size" '
+            . 'name="per_page" aria-controls="blog-admin-results">'
+            . $pageSizeOptions . '</select></div>'
+            . '<input type="hidden" name="sort" value="'
+            . $this->escape($query->sort()) . '">'
+            . '<input type="hidden" name="dir" value="'
+            . $this->escape($query->direction()) . '">'
+            . $analyticsField
+            . '<button class="webadminAction webadminAction--primary" '
+            . 'type="submit">Aplicar filtros</button>'
+            . '<a class="webadminAction webadminAction--secondary" href="'
+            . $this->path($basePath, '')
+            . '" data-blog-admin-filter-reset>Limpiar filtros</a></form>'
+            . $analyticsNotices;
     }
 
     private function analyticsCells(
         ?BlogArticleAnalyticsSummary $metric
     ): string {
         if ($metric === null) {
-            return str_repeat('<td><span aria-label="Sin datos">&mdash;</span></td>', 5);
+            return str_repeat(
+                '<td class="blogAdminPage__compactCell"><span '
+                    . 'aria-label="Sin datos">&mdash;</span></td>',
+                3
+            ) . str_repeat(
+                '<td><span aria-label="Sin datos">&mdash;</span></td>',
+                2
+            );
         }
 
         $bounce = $metric->landingSessions() === 0
@@ -412,13 +886,130 @@ final class BlogAdminHtmlRenderer
                 ''
             )) . '%';
 
-        return '<td>' . $metric->pageViews() . '</td><td>'
-            . $metric->uniqueVisitors() . '</td><td>'
+        return '<td class="blogAdminPage__compactCell">'
+            . $metric->pageViews() . '</td>'
+            . '<td class="blogAdminPage__compactCell">'
+            . $metric->uniqueVisitors() . '</td>'
+            . '<td class="blogAdminPage__compactCell">'
             . $metric->returningVisitors() . '</td><td>'
             . $this->formatDuration(
                 $metric->averageEngagementMilliseconds()
             ) . '</td><td>'
             . $bounce . '</td>';
+    }
+
+    private function authorCell(BlogPostSummary $summary): string
+    {
+        $author = $summary->authorName();
+        if ($author === null || trim($author) === '') {
+            return '<span aria-label="Autor sin nombre">&mdash;</span>';
+        }
+
+        return $this->escape($author);
+    }
+
+    private function categoryCell(BlogPostSummary $summary): string
+    {
+        $items = '';
+        foreach ($summary->categoryNames() as $categoryName) {
+            $items .= '<li>' . $this->escape($categoryName) . '</li>';
+        }
+
+        return $items === ''
+            ? '<span aria-label="Sin categor&iacute;as">&mdash;</span>'
+            : '<ul class="blogAdminPage__categoryStack">' . $items . '</ul>';
+    }
+
+    private function robotsCell(BlogPostSummary $summary): string
+    {
+        $preferences = $summary->robotsPreferences();
+
+        return '<ul class="blogAdminPage__robots" '
+            . 'aria-label="Directivas para robots"><li>'
+            . $this->booleanStatusIcon('Index', $preferences->index())
+            . '</li><li>'
+            . $this->booleanStatusIcon('Follow', $preferences->follow())
+            . '</li></ul>';
+    }
+
+    private function booleanStatusIcon(string $label, bool $enabled): string
+    {
+        $state = $enabled ? 'activado' : 'desactivado';
+        $accessible = $label . ' ' . $state;
+        $drawing = $enabled
+            ? '<path d="m5 12 4 4L19 6"/>'
+            : '<path d="m6 6 12 12M18 6 6 18"/>';
+
+        return '<span class="blogAdminPage__statusIcon '
+            . ($enabled
+                ? 'blogAdminPage__statusIcon--enabled'
+                : 'blogAdminPage__statusIcon--disabled')
+            . '" title="' . $this->escape($accessible) . '" '
+            . 'aria-label="' . $this->escape($accessible) . '">'
+            . '<svg viewBox="0 0 24 24" width="20" height="20" '
+            . 'fill="none" stroke="currentColor" stroke-width="2.4" '
+            . 'stroke-linecap="round" stroke-linejoin="round" '
+            . 'focusable="false" aria-hidden="true">' . $drawing . '</svg>'
+            . '<span class="webadmin-srOnly">'
+            . $this->escape($accessible) . '</span></span>';
+    }
+
+    private function actionIcon(string $icon, string $label): string
+    {
+        $drawing = match ($icon) {
+            'view' => '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/>'
+                . '<circle cx="12" cy="12" r="2.5"/>',
+            'edit' => '<path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/>'
+                . '<path d="m14.5 7.5 3 3"/>',
+            'url' => '<path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1"/>'
+                . '<path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1"/>',
+            'duplicate' => '<rect x="8" y="8" width="11" height="11" rx="1.5"/>'
+                . '<path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/>',
+            'delete' => '<path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/>',
+            'retire' => '<path d="M3 3l18 18M10.5 5.2A10.5 10.5 0 0 1 12 5c6.5 0 10 7 10 7a18 18 0 0 1-3 4.1M6.2 6.2C3.5 8 2 12 2 12s3.5 7 10 7c1 0 2-.2 2.8-.5M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+            'restore' => '<path d="M4 8V4m0 0h4M4 4l4 4a7 7 0 1 1-2 7"/>',
+            default => throw new InvalidArgumentException(
+                'Invalid Blog action icon.'
+            ),
+        };
+
+        return '<svg viewBox="0 0 24 24" width="20" height="20" '
+            . 'fill="none" stroke="currentColor" stroke-width="1.9" '
+            . 'stroke-linecap="round" stroke-linejoin="round" '
+            . 'focusable="false" aria-hidden="true">' . $drawing . '</svg>'
+            . '<span class="webadmin-srOnly">' . $this->escape($label)
+            . '</span>';
+    }
+
+    private function compactMetricHeader(string $icon, string $label): string
+    {
+        $drawing = match ($icon) {
+            'views' => '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/>'
+                . '<circle cx="12" cy="12" r="2.5"/>',
+            'unique-visitors' => '<circle cx="9" cy="8" r="3"/>'
+                . '<path d="M3.5 19c.5-4 2.3-6 5.5-6s5 2 5.5 6"/>'
+                . '<circle cx="17" cy="9" r="2"/>'
+                . '<path d="M15.5 14c3.2-.2 4.8 1.5 5 4"/>',
+            'returning' => '<path d="M7 7H3v-4"/>'
+                . '<path d="M3.5 7.5A9 9 0 1 1 3 16"/>'
+                . '<path d="M12 7v5l3 2"/>',
+            default => throw new InvalidArgumentException(
+                'Invalid Blog metric icon.'
+            ),
+        };
+        $escapedLabel = $this->escape($label);
+
+        return '<th class="blogAdminPage__compactHeading" scope="col" '
+            . 'title="No ordenable: la m&eacute;trica se calcula para la '
+            . 'p&aacute;gina visible">'
+            . '<span class="blogAdminPage__metricLabel" tabindex="0" '
+            . 'title="' . $escapedLabel . '">'
+            . '<svg viewBox="0 0 24 24" width="20" height="20" '
+            . 'fill="none" stroke="currentColor" stroke-width="1.8" '
+            . 'stroke-linecap="round" stroke-linejoin="round" '
+            . 'focusable="false" aria-hidden="true">' . $drawing . '</svg>'
+            . '<span class="webadmin-srOnly">' . $escapedLabel
+            . '</span></span></th>';
     }
 
     private function formatDuration(int $milliseconds): string
@@ -465,7 +1056,8 @@ final class BlogAdminHtmlRenderer
             . '<option value="" selected disabled>Selecciona un idioma</option>'
             . $localeOptions . '</select></div>'
             . $this->creationFields()
-            . '<button type="submit">Crear borrador y abrir editor</button>'
+            . '<button class="webadminAction webadminAction--primary" '
+            . 'type="submit">Crear borrador y abrir editor</button>'
             . '</form>'
             . $this->backToBlog($basePath)
             . '</article>',
@@ -482,19 +1074,51 @@ final class BlogAdminHtmlRenderer
         bool $canPublish,
         bool $failed = false,
         bool $canAddLocalization = true,
-        ?WebAdminShellContext $shell = null
+        ?WebAdminShellContext $shell = null,
+        bool $privateDraftPublicationReady = false
     ): string {
         $identity = $this->identityFields($variant);
         $publish = '';
         if ($canPublish) {
-            $transition = $variant->status() === BlogPostVariant::PUBLISHED
-                ? ['suffix' => '/posts/unpublish', 'label' => 'Retirar']
-                : ['suffix' => '/posts/publish', 'label' => 'Publicar'];
-            $publish = '<form method="post" action="'
-                . $this->path($basePath, $transition['suffix']) . '">'
-                . $this->csrfInput($csrf) . $identity
-                . '<button type="submit">' . $transition['label']
-                . '</button></form>';
+            if (
+                $privateDraftPublicationReady
+                && $variant->status() === BlogPostVariant::DRAFT
+            ) {
+                $publish = '<p><a class="webadminAction '
+                    . 'webadminAction--primary" href="' . $this->pathWithQuery(
+                    $basePath,
+                    '/editor',
+                    [
+                        'post' => $variant->postPublicId(),
+                        'locale' => $variant->locale(),
+                    ]
+                ) . '">Editar y publicar desde el editor visual</a></p>';
+            } else {
+                $transition = $variant->status() === BlogPostVariant::PUBLISHED
+                    ? [
+                        'suffix' => '/posts/unpublish',
+                        'label' => 'Retirar',
+                        'class' => 'webadminAction--danger',
+                        'confirmation' => ' data-blog-confirm-form '
+                            . 'data-blog-confirm-action="unpublish" '
+                            . 'data-blog-title="'
+                            . $this->escape($variant->draft()->h1()) . '"',
+                    ]
+                    : [
+                        'suffix' => '/posts/publish',
+                        'label' => 'Publicar',
+                        'class' => 'webadminAction--primary',
+                        'confirmation' => '',
+                    ];
+                $publish = '<form method="post" action="'
+                    . $this->path($basePath, $transition['suffix']) . '"'
+                    . $transition['confirmation'] . '>'
+                    . $this->csrfInput($csrf) . $identity
+                    . '<button class="webadminAction '
+                    . $transition['class'] . '" type="submit">'
+                    . $transition['label']
+                    . '</button></form>';
+            }
         }
 
         $editor = $variant->status() === BlogPostVariant::DRAFT
@@ -502,20 +1126,22 @@ final class BlogAdminHtmlRenderer
                 . $this->path($basePath, '/posts/save') . '">'
                 . $this->csrfInput($csrf) . $identity
                 . $this->editorialFields($variant)
-                . '<button type="submit">Guardar cambios</button></form>'
+                . '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Guardar cambios</button></form>'
             : '<p role="status">Retira la variante antes de editar su '
                 . 'contenido.</p><div aria-label="Contenido publicado">'
                 . $this->editorialFields($variant, true) . '</div>';
-        $preview = '<p><a href="' . $this->pathWithQuery(
+        $preview = '<p><a class="webadminAction webadminAction--secondary" '
+            . 'href="' . $this->pathWithQuery(
             $basePath,
             '/posts/preview',
             [
                 'post' => $variant->postPublicId(),
                 'locale' => $variant->locale(),
             ]
-        ) . '" target="_blank" rel="noopener">Abrir vista previa de la '
-            . 'versi&oacute;n guardada</a>. Guarda primero cualquier cambio '
-            . 'pendiente.</p>';
+        ) . '">Abrir lectura privada del contenido guardado</a>. Esta '
+            . 'representaci&oacute;n es textual, sin medios ni estilos '
+            . 'p&uacute;blicos. Guarda primero cualquier cambio pendiente.</p>';
 
         return $this->page(
             'Editar art&iacute;culo',
@@ -527,18 +1153,138 @@ final class BlogAdminHtmlRenderer
             . $preview
             . $editor
             . $publish
-            . ($canAddLocalization
-                ? '<p><a href="' . $this->pathWithQuery(
-                    $basePath,
-                    '/posts/new',
-                    ['post' => $variant->postPublicId()]
-                ) . '">A&ntilde;adir otro idioma</a></p>'
-                : '<p role="status">Este art&iacute;culo ya tiene una variante '
-                    . 'para todos los idiomas activos.</p>')
             . $this->backToBlog($basePath)
             . '</article>',
             $basePath,
             '/blog/posts/edit',
+            $shell
+        );
+    }
+
+    /**
+     * @param list<BlogPostSummary> $replacementCandidates
+     */
+    public function urlManager(
+        string $basePath,
+        string $csrf,
+        BlogPostVariant $variant,
+        ?BlogUrlResolution $resolution,
+        array $replacementCandidates,
+        ?WebAdminShellContext $shell = null
+    ): string {
+        if (count($replacementCandidates) > BlogAdminCatalogQuery::OVERFLOW_LIMIT) {
+            throw new InvalidArgumentException(
+                'Invalid Blog URL replacement presentation.'
+            );
+        }
+        $slug = $variant->draft()->slug();
+        $state = $resolution?->state();
+        $stateCopy = match ($state) {
+            BlogUrlResolution::ACTIVE =>
+                'La URL est&aacute; publicada y responde con normalidad.',
+            BlogUrlResolution::TEMPORARY_NOT_FOUND =>
+                'La URL est&aacute; retirada temporalmente y responde 404. '
+                    . 'Es la opci&oacute;n segura mientras se decide si se '
+                    . 'republica o existe un sustituto equivalente.',
+            BlogUrlResolution::GONE =>
+                'La URL est&aacute; marcada como retirada definitivamente y '
+                    . 'responde 410.',
+            BlogUrlResolution::REDIRECT =>
+                'La URL redirige con 301 a la publicaci&oacute;n equivalente '
+                    . 'seleccionada.',
+            default => 'Este borrador todav&iacute;a no tiene una URL '
+                . 'hist&oacute;rica publicada.',
+        };
+        $actions = '';
+        if (
+            $slug !== null
+            && $resolution !== null
+            && $state !== BlogUrlResolution::ACTIVE
+        ) {
+            $identity = $this->csrfInput($csrf)
+                . '<input type="hidden" name="post" value="'
+                . $this->escape($variant->postPublicId()) . '">'
+                . '<input type="hidden" name="locale" value="'
+                . $this->escape($variant->locale()) . '">'
+                . '<input type="hidden" name="lock_version" value="'
+                . $variant->lockVersion() . '">'
+                . '<input type="hidden" name="historical_slug" value="'
+                . $this->escape($slug) . '">';
+            $gone = '<form method="post" class="blogAdminPage__inlineAction" '
+                . 'action="' . $this->path(
+                    $basePath,
+                    '/posts/url-resolution'
+                ) . '" data-blog-confirm-form '
+                . 'data-blog-confirm-action="gone" data-blog-title="'
+                . $this->escape($variant->draft()->h1()) . '">'
+                . $identity
+                . '<input type="hidden" name="resolution" value="gone">'
+                . '<input type="hidden" name="replacement_post" value="">'
+                . '<button class="webadminAction webadminAction--danger" '
+                . 'type="submit">'
+                . 'Marcar como 410</button></form>';
+            $options = '';
+            foreach ($replacementCandidates as $candidate) {
+                if (!$candidate instanceof BlogPostSummary) {
+                    throw new InvalidArgumentException(
+                        'Invalid Blog URL replacement presentation.'
+                    );
+                }
+                if (
+                    $candidate->status() !== BlogPostVariant::PUBLISHED
+                    || $candidate->locale() !== $variant->locale()
+                    || $candidate->postPublicId() === $variant->postPublicId()
+                ) {
+                    continue;
+                }
+                $options .= '<option value="'
+                    . $this->escape($candidate->postPublicId()) . '">'
+                    . $this->escape($candidate->h1()) . '</option>';
+            }
+            $redirect = $options === ''
+                ? '<p>No hay otra publicaci&oacute;n activa en este idioma '
+                    . 'que pueda proponerse como sustituta.</p>'
+                : '<form method="post" action="' . $this->path(
+                    $basePath,
+                    '/posts/url-resolution'
+                ) . '" data-blog-confirm-form '
+                    . 'data-blog-confirm-action="redirect" data-blog-title="'
+                    . $this->escape($variant->draft()->h1()) . '">'
+                    . $identity
+                    . '<input type="hidden" name="resolution" '
+                    . 'value="redirect">'
+                    . '<label for="blog-url-replacement">Publicaci&oacute;n '
+                    . 'equivalente</label><select id="blog-url-replacement" '
+                    . 'name="replacement_post" required><option value="">'
+                    . 'Selecciona una publicaci&oacute;n</option>' . $options
+                    . '</select><button class="webadminAction '
+                    . 'webadminAction--primary" type="submit">'
+                    . 'Crear redirecci&oacute;n '
+                    . '301</button></form>';
+            $actions = '<section aria-labelledby="blog-url-decision-title">'
+                . '<h2 id="blog-url-decision-title">Decisi&oacute;n SEO '
+                . 'expl&iacute;cita</h2><p>Mant&eacute;n el 404 temporal si se '
+                . 'puede republicar. Usa 410 solo si el contenido desaparece '
+                . 'definitivamente y 301 &uacute;nicamente hacia una '
+                . 'publicaci&oacute;n realmente equivalente.</p><div '
+                . 'class="blogAdminPage__rowActions">' . $gone . '</div>'
+                . $redirect . '</section>';
+        }
+        $path = $slug === null
+            ? ''
+            : '<p>Ruta: <code>/' . $this->escape($variant->locale())
+                . '/&hellip;/' . $this->escape($slug) . '</code></p>';
+
+        return $this->page(
+            'Estado de la URL',
+            '<article class="blogAdminPage" '
+            . 'aria-labelledby="blog-url-title"><h1 id="blog-url-title">'
+            . 'Estado de la URL</h1><p>Art&iacute;culo: <strong>'
+            . $this->escape($variant->draft()->h1()) . '</strong></p>'
+            . $path . '<p role="status">' . $stateCopy . '</p>' . $actions
+            . $this->backToBlog($basePath) . '</article>',
+            $basePath,
+            '/blog/posts/url',
             $shell
         );
     }
@@ -589,9 +1335,10 @@ final class BlogAdminHtmlRenderer
             : '';
 
         return $this->page(
-            'Vista previa privada',
-            '<p role="status"><strong>Vista previa privada de la '
-            . 'versi&oacute;n guardada.</strong> No crea una URL p&uacute;blica '
+            'Lectura privada del contenido guardado',
+            '<p role="status"><strong>Lectura privada del contenido '
+            . 'guardado.</strong> Es una representaci&oacute;n textual sin '
+            . 'medios ni estilos p&uacute;blicos. No crea una URL p&uacute;blica '
             . 'ni modifica el art&iacute;culo. Idioma: '
             . $this->escape($variant->locale()) . '. Estado: '
             . $this->statusLabel($variant->status()) . '.</p>'
@@ -602,7 +1349,7 @@ final class BlogAdminHtmlRenderer
             . $excerpt
             . '<div aria-label="Contenido del art&iacute;culo">'
             . $body . '</div></article>'
-            . '<nav aria-label="Acciones de la vista previa"><ul>'
+            . '<nav aria-label="Acciones de la lectura privada"><ul>'
             . $edit . '<li><a href="' . $this->path($basePath, '')
             . '">Volver al Blog</a></li></ul></nav>',
             $basePath,
@@ -624,6 +1371,57 @@ final class BlogAdminHtmlRenderer
             . 'guardado correctamente.</p>'
             . $this->backToBlog($basePath)
             . '</article>',
+            $basePath,
+            '/blog',
+            $shell
+        );
+    }
+
+    public function copyOperationFailed(
+        string $basePath,
+        string $postPublicId,
+        string $locale,
+        string $issueCode,
+        ?WebAdminShellContext $shell = null
+    ): string {
+        $message = match ($issueCode) {
+            \App\Core\Blog\BlogException::IDEMPOTENCY_CONFLICT =>
+                'Esta solicitud ya se utiliz&oacute; con otros datos. No se ha '
+                    . 'creado un segundo borrador.',
+            \App\Core\Blog\BlogException::COPY_RESULT_TRASHED =>
+                'El borrador creado por esta solicitud est&aacute; en la '
+                    . 'Papelera. No se ha creado otro; rest&aacute;uralo para '
+                    . 'continuar.',
+            \App\Core\Blog\BlogException::LOCALE_CONFLICT =>
+                'Ese idioma ya existe en el art&iacute;culo. Revisa el listado '
+                    . 'o la Papelera antes de volver a intentarlo.',
+            \App\Core\Blog\BlogException::LOCK_CONFLICT =>
+                'El art&iacute;culo cambi&oacute; mientras ten&iacute;as abierto el '
+                    . 'di&aacute;logo. No se ha repetido la operaci&oacute;n.',
+            \App\Core\Blog\BlogException::POST_NOT_FOUND,
+            \App\Core\Blog\BlogException::VARIANT_NOT_FOUND =>
+                'El art&iacute;culo de origen ya no est&aacute; disponible. No se '
+                    . 'ha creado ning&uacute;n borrador.',
+            default => 'No hemos podido completar la copia ahora. No se ha '
+                . 'creado un borrador parcial; puedes volver al listado e '
+                . 'intentarlo de nuevo.',
+        };
+        $editor = $this->pathWithQuery($basePath, '/editor', [
+            'post' => $postPublicId,
+            'locale' => $locale,
+        ]);
+
+        return $this->page(
+            'No se pudo crear el borrador',
+            '<article class="blogAdminPage" '
+            . 'aria-labelledby="blog-copy-failed-title">'
+            . '<h1 id="blog-copy-failed-title">No se pudo crear el borrador</h1>'
+            . '<p role="alert">' . $message . '</p>'
+            . '<div class="webadminActionGroup"><a class="webadminAction '
+            . 'webadminAction--primary" href="' . $this->path($basePath, '')
+            . '">Volver al listado</a><a class="webadminAction '
+            . 'webadminAction--secondary" href="' . $editor
+            . '">Volver al art&iacute;culo de origen</a></div></article>',
             $basePath,
             '/blog',
             $shell
@@ -798,6 +1596,23 @@ final class BlogAdminHtmlRenderer
         };
     }
 
+    private function tableStatus(string $status): string
+    {
+        [$modifier, $label] = match ($status) {
+            BlogPostVariant::DRAFT => ['draft', 'Borrador'],
+            BlogPostVariant::PUBLISHED => ['published', 'Publicado'],
+            self::TABLE_STATUS_DELETED => ['deleted', 'Eliminado'],
+            default => throw new InvalidArgumentException(
+                'Invalid Blog table status presentation.'
+            ),
+        };
+
+        return '<span class="blogAdminPage__postStatus '
+            . 'blogAdminPage__postStatus--' . $modifier . '">'
+            . '<span class="blogAdminPage__postStatusLed" '
+            . 'aria-hidden="true"></span><span>' . $label . '</span></span>';
+    }
+
     private function formError(bool $failed): string
     {
         return $failed
@@ -818,25 +1633,20 @@ final class BlogAdminHtmlRenderer
             . '">Volver al Blog</a></p>';
     }
 
-    private function backToDashboard(string $basePath): string
-    {
-        $dashboard = substr($basePath, 0, -strlen('/blog'));
-
-        return '<p><a href="' . $this->escape($dashboard)
-            . '">Volver a la gesti&oacute;n web</a></p>';
-    }
-
     private function pagination(
         string $basePath,
         int $offset,
         bool $hasNext,
-        array $preservedQuery = []
+        array $preservedQuery = [],
+        int $pageSize = BlogAdminCatalogQuery::DEFAULT_PAGE_SIZE
     ): string {
         return $this->paginationForPath(
             $basePath,
             $offset,
             $hasNext,
-            $preservedQuery
+            $preservedQuery,
+            true,
+            $pageSize
         );
     }
 
@@ -845,13 +1655,23 @@ final class BlogAdminHtmlRenderer
         string $path,
         int $offset,
         bool $hasNext,
-        array $preservedQuery = []
+        array $preservedQuery = [],
+        bool $reactive = false,
+        int $pageSize = BlogService::DEFAULT_LIST_LIMIT
     ): string {
+        if (
+            !BlogAdminCatalogQuery::supportsPageSize($pageSize)
+            || $offset % $pageSize !== 0
+        ) {
+            throw new InvalidArgumentException(
+                'Invalid Blog pagination presentation.'
+            );
+        }
         $items = '';
         if ($offset > 0) {
             $previous = max(
                 0,
-                $offset - BlogService::DEFAULT_LIST_LIMIT
+                $offset - $pageSize
             );
             $query = $preservedQuery;
             if ($previous > 0) {
@@ -866,7 +1686,7 @@ final class BlogAdminHtmlRenderer
         if (
             $hasNext
             && $offset <= BlogService::MAX_LIST_OFFSET
-                - BlogService::DEFAULT_LIST_LIMIT
+                - $pageSize
         ) {
             $items .= '<li><a rel="next" href="'
                 . $this->pathWithQuery(
@@ -874,17 +1694,23 @@ final class BlogAdminHtmlRenderer
                     '',
                     $preservedQuery + [
                         'offset' => (string) (
-                            $offset + BlogService::DEFAULT_LIST_LIMIT
+                            $offset + $pageSize
                         ),
                     ]
                 )
                 . '">P&aacute;gina siguiente</a></li>';
         }
 
-        return $items === ''
-            ? ''
-            : '<nav aria-label="Paginaci&oacute;n de art&iacute;culos"><ul>'
-                . $items . '</ul></nav>';
+        if ($items === '' && !$reactive) {
+            return '';
+        }
+
+        return '<nav class="blogAdminPage__pagination" '
+            . 'aria-label="Paginaci&oacute;n de art&iacute;culos"'
+            . ($reactive ? ' data-blog-admin-pagination' : '')
+            . '><p>P&aacute;gina ' . (intdiv($offset, $pageSize) + 1)
+            . '</p>' . ($items === '' ? '' : '<ul>' . $items . '</ul>')
+            . '</nav>';
     }
 
     /** @param array<string, string> $query */

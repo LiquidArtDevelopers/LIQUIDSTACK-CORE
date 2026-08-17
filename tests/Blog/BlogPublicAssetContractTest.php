@@ -7,6 +7,31 @@ use Symfony\Component\Process\Process;
 
 final class BlogPublicAssetContractTest extends TestCase
 {
+    public function testHero00ParallaxUsesRealImageAndCleansLifecycle(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $javascript = $root . '/modules/blog/published/assets/blog-public.js';
+        $process = new Process([
+            'node',
+            $root . '/tests/Blog/fixtures/'
+                . 'blog-public-hero-parallax-harness.mjs',
+            $javascript,
+        ]);
+        $process->mustRun();
+        $result = json_decode(
+            $process->getOutput(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertTrue($result['initialized']);
+        self::assertTrue($result['moved']);
+        self::assertTrue($result['cleaned']);
+        self::assertSame(0, $result['scrollListenersAfterDestroy']);
+        self::assertTrue($result['runtimeRemoved']);
+    }
+
     public function testFallbackStylesheetIsNeutralResponsiveAndStandalone(): void
     {
         $path = dirname(__DIR__, 2)
@@ -32,6 +57,9 @@ final class BlogPublicAssetContractTest extends TestCase
             'margin-block: clamp(2.5rem, 7vw, 4.5rem) 0',
             '.blogDocument__liteYoutube',
             'aspect-ratio: 16 / 9',
+            '.blogDocument__embedContent .blogDocument__consentFrame',
+            '.blogDocument__text--custom iframe',
+            '.blogDocument__text--custom .blogDocument__consentFrame',
             '@media (min-width: 48rem)',
             '@media (max-width: 35rem)',
             '@media (prefers-reduced-motion: reduce)',
@@ -343,5 +371,72 @@ JS;
         self::assertSame(0, $result['destroyed']['clickListeners']);
         self::assertSame(0, $result['destroyed']['frameCount']);
         self::assertFalse($result['destroyed']['triggerHidden']);
+    }
+
+    public function testProviderIframesMountAndRevokeWithSocialConsent(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $asset = $root . '/modules/blog/published/assets/blog-public.js';
+        $harness = __DIR__ . '/fixtures/blog-public-consent-iframe-harness.mjs';
+        $javascript = file_get_contents($asset);
+        self::assertIsString($javascript);
+
+        foreach ([
+            "'[data-blog-consent-iframe]'",
+            'safeConsentFrameConfig(placeholder)',
+            'safeFrameSource(normalized.src)',
+            'documentRef.querySelectorAll(CONSENT_FRAME_SELECTOR)',
+            'Array.from(consentFrames.keys()).forEach(unmountConsentFrame)',
+            "sourceMatch[2].indexOf('%') !== -1",
+        ] as $contract) {
+            self::assertStringContainsString($contract, $javascript);
+        }
+
+        $process = new Process(['node', $harness, $asset]);
+        $process->mustRun();
+        $result = json_decode(
+            $process->getOutput(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame(
+            array_fill(0, 7, 'placeholder'),
+            $result['beforeConsent']
+        );
+        self::assertSame(
+            [
+                'iframe', 'iframe', 'placeholder', 'placeholder',
+                'placeholder', 'placeholder', 'placeholder',
+            ],
+            $result['afterGrant']
+        );
+        self::assertSame(
+            'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=2',
+            $result['youtubeAttributes']['src']
+        );
+        self::assertSame('lsb-frame', $result['youtubeAttributes']['class']);
+        self::assertSame('lsb-player', $result['youtubeAttributes']['id']);
+        self::assertSame(
+            'https://player.vimeo.com/video/123',
+            $result['vimeoAttributes']['src']
+        );
+        self::assertSame(
+            array_fill(0, 7, 'placeholder'),
+            $result['afterRevoke']
+        );
+        self::assertTrue($result['exactPlaceholdersRestored']);
+        self::assertSame(
+            [
+                'iframe', 'iframe', 'placeholder', 'placeholder',
+                'placeholder', 'placeholder', 'placeholder',
+            ],
+            $result['afterRuntimeSync']
+        );
+        self::assertSame(
+            array_fill(0, 7, 'placeholder'),
+            $result['afterDestroy']
+        );
     }
 }

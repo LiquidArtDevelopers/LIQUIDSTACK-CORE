@@ -1,0 +1,35 @@
+@use '../config' as c;
+
+.moduleBlogResults01 {
+    width: 100%;
+    min-width: 0;
+    margin-block: clamp(2rem, 6vw, 5rem);
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 3rem);
+    scroll-margin-block-start: clamp(4rem, 10vw, 7rem);
+
+    > * {
+        min-width: 0;
+    }
+
+    &[aria-busy='true'] {
+        cursor: progress;
+    }
+
+    &[aria-busy='true'],
+    &[data-blog-results-stale='true'] {
+        > * {
+            opacity: 0.62;
+        }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        > * {
+            transition: opacity 180ms ease;
+        }
+    }
+
+    @media (min-width: c.$tablet) {
+        gap: clamp(2rem, 4vw, 4rem);
+    }
+}

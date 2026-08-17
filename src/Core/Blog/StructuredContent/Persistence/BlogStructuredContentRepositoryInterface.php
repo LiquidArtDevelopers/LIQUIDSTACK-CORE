@@ -56,6 +56,19 @@ interface BlogStructuredContentRepositoryInterface
         DateTimeImmutable $now
     ): int;
 
+    /**
+     * Appends a private revision while the public localization still carries
+     * the expected current lock and metadata.
+     */
+    public function appendPrivateRevision(
+        string $localizationPublicId,
+        string $revisionPublicId,
+        int $expectedCurrentLockVersion,
+        BlogStructuredDraft $draft,
+        string $actorPublicId,
+        DateTimeImmutable $now
+    ): int;
+
     /** @param list<BlogStructuredMediaReference> $references */
     public function appendRevisionMedia(
         string $revisionPublicId,

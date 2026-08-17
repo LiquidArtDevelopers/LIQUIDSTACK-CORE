@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core\Blog;
 
+use App\Core\Blog\Seo\BlogRobotsPreferences;
+
 /** Validated plain-text editorial payload for one locale. */
 final class BlogDraft
 {
@@ -26,6 +28,7 @@ final class BlogDraft
     private readonly ?string $seoTitle;
     private readonly ?string $metaDescription;
     private readonly ?string $excerpt;
+    private readonly BlogRobotsPreferences $robotsPreferences;
 
     public function __construct(
         #[\SensitiveParameter] string $h1,
@@ -33,7 +36,8 @@ final class BlogDraft
         #[\SensitiveParameter] ?string $slug = null,
         #[\SensitiveParameter] ?string $seoTitle = null,
         #[\SensitiveParameter] ?string $metaDescription = null,
-        #[\SensitiveParameter] ?string $excerpt = null
+        #[\SensitiveParameter] ?string $excerpt = null,
+        ?BlogRobotsPreferences $robotsPreferences = null
     ) {
         $this->h1 = BlogInput::requiredSingleLine(
             $h1,
@@ -56,6 +60,8 @@ final class BlogDraft
             $excerpt,
             self::MAX_EXCERPT_BYTES
         );
+        $this->robotsPreferences = $robotsPreferences
+            ?? BlogRobotsPreferences::defaults();
     }
 
     public function h1(): string
@@ -88,6 +94,11 @@ final class BlogDraft
         return $this->excerpt;
     }
 
+    public function robotsPreferences(): BlogRobotsPreferences
+    {
+        return $this->robotsPreferences;
+    }
+
     public function isPublishable(): bool
     {
         return $this->slug !== null
@@ -113,6 +124,7 @@ final class BlogDraft
                 : '[redacted]',
             'excerpt' => $this->excerpt === null ? null : '[redacted]',
             'body_text' => '[redacted]',
+            'robots' => $this->robotsPreferences->toArray(),
             'publishable' => $this->isPublishable(),
         ];
     }

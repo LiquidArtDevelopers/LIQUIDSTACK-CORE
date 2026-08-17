@@ -13,6 +13,8 @@ final class BlogRenderingException extends RuntimeException
         'blog.rendering.image_presentation_invalid';
     public const MEDIA_UNAVAILABLE = 'blog.rendering.media_unavailable';
     public const INVALID_RENDER_STATE = 'blog.rendering.state_invalid';
+    public const INVALID_PREVIEW_ASSETS =
+        'blog.rendering.preview_assets_invalid';
 
     public function __construct(private readonly string $issueCode)
     {

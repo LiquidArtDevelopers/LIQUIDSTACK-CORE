@@ -12,7 +12,8 @@ use App\Core\Blog\StructuredContent\Rendering\BlogEditorCategoryOption;
 
 /** Projects the category service without exposing persistence to the editor. */
 final class BlogCategoryEditorCatalogAdapter implements
-    BlogEditorCategoryCatalogInterface
+    BlogEditorCategoryCatalogInterface,
+    BlogEditorReservedCategoryCatalogInterface
 {
     public function __construct(
         private readonly BlogCategoryService $service
@@ -22,7 +23,10 @@ final class BlogCategoryEditorCatalogAdapter implements
     public function forPost(string $postPublicId, string $locale): array
     {
         $assigned = [];
-        foreach ($this->service->assignedToPost($postPublicId) as $publicId) {
+        foreach (
+            $this->service->assignedToVariant($postPublicId, $locale)
+            as $publicId
+        ) {
             if (!is_string($publicId)) {
                 throw new BlogCategoryException(
                     BlogCategoryException::STORAGE_UNAVAILABLE
@@ -35,6 +39,10 @@ final class BlogCategoryEditorCatalogAdapter implements
                 );
             }
             $assigned[$publicId] = true;
+        }
+        $reservedPublicId = $this->service->reservedCategoryPublicId();
+        if ($reservedPublicId !== null) {
+            unset($assigned[$reservedPublicId]);
         }
 
         $result = [];
@@ -71,5 +79,20 @@ final class BlogCategoryEditorCatalogAdapter implements
         }
 
         return $result;
+    }
+
+    public function workspaceVersion(string $postPublicId): int
+    {
+        return $this->service->categoryWorkspaceVersion($postPublicId);
+    }
+
+    public function reservedCategoryAssigned(
+        string $postPublicId,
+        string $locale
+    ): bool {
+        return $this->service->reservedCategoryAssignedToVariant(
+            $postPublicId,
+            $locale
+        );
     }
 }

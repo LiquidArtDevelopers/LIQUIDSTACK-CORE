@@ -196,7 +196,8 @@ final class BlogPublicRouteProvider implements
             $runtime,
             new BlogPublicHtmlRenderer(
                 $runtime->config()->publicArticleViewPath()
-            )
+            ),
+            robotsPolicy: $runtime->robotsPolicy()
         );
     }
 

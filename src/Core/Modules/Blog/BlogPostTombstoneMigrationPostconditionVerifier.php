@@ -25,14 +25,22 @@ final class BlogPostTombstoneMigrationPostconditionVerifier implements
         ?BlogSitemapStateMigrationPostconditionVerifier $baseVerifier = null,
         private readonly MySqlColumnDefaultNormalizer $defaultNormalizer =
             new MySqlColumnDefaultNormalizer(),
-        bool $expectAnalyticsExtension = false
+        bool $expectAnalyticsExtension = false,
+        bool $expectLayoutEditorExtension = false,
+        bool $expectEditorPreferencesExtension = false,
+        bool $expectPrivateDraftPublicationExtension = false
     ) {
         $this->baseVerifier = $baseVerifier
             ?? new BlogSitemapStateMigrationPostconditionVerifier(
                 new BlogStructuredContentMigrationPostconditionVerifier(
                     expectSitemapStateExtension: true,
                     expectPostTombstoneExtension: true,
-                    expectAnalyticsExtension: $expectAnalyticsExtension
+                    expectAnalyticsExtension: $expectAnalyticsExtension,
+                    expectLayoutEditorExtension: $expectLayoutEditorExtension,
+                    expectEditorPreferencesExtension:
+                        $expectEditorPreferencesExtension,
+                    expectPrivateDraftPublicationExtension:
+                        $expectPrivateDraftPublicationExtension
                 )
             );
     }
@@ -309,6 +317,9 @@ final class BlogPostTombstoneMigrationPostconditionVerifier implements
             return false;
         }
         $foreign = $foreignRows[0];
+        $updateRule = self::normalizeMySqlUpdateRule(
+            $foreign['UPDATE_RULE'] ?? null
+        );
         if (
             strtolower((string) ($foreign['COLUMN_NAME'] ?? ''))
                 !== 'post_localization_id'
@@ -316,8 +327,7 @@ final class BlogPostTombstoneMigrationPostconditionVerifier implements
                 !== strtolower($scope->tableName('post_localizations'))
             || strtolower((string) ($foreign['REFERENCED_COLUMN_NAME'] ?? ''))
                 !== 'id'
-            || strtoupper((string) ($foreign['UPDATE_RULE'] ?? ''))
-                !== 'NO ACTION'
+            || $updateRule !== 'NO ACTION'
             || strtoupper((string) ($foreign['DELETE_RULE'] ?? ''))
                 !== 'CASCADE'
         ) {
@@ -336,6 +346,15 @@ final class BlogPostTombstoneMigrationPostconditionVerifier implements
 
         return (int) $triggers->fetchColumn() === 0
             && $this->dataIsValid($pdo, $scope, 'mysql');
+    }
+
+    private static function normalizeMySqlUpdateRule(mixed $rule): string
+    {
+        $normalized = strtoupper((string) $rule);
+
+        // MariaDB reports an omitted ON UPDATE clause as RESTRICT, while
+        // SQLite exposes the SQL-standard equivalent NO ACTION.
+        return $normalized === 'RESTRICT' ? 'NO ACTION' : $normalized;
     }
 
     private function mysqlChecksAreExact(

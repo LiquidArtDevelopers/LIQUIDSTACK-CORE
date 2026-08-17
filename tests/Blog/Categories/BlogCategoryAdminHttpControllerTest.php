@@ -245,6 +245,15 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
             'Categor&iacute;as del Blog',
             $get->body()
         );
+        self::assertStringContainsString(
+            'class="blogAdminPage blogAdminPage--categories"',
+            $get->body()
+        );
+        self::assertStringContainsString(
+            'class="blogAdminPage__tableViewport" tabindex="0" '
+                . 'role="region" aria-label="Traducciones de categor&iacute;as"',
+            $get->body()
+        );
         self::assertSame(1, substr_count($get->body(), '<main'));
         self::assertStringContainsString('data-webadmin-shell', $get->body());
         self::assertStringContainsString(
@@ -253,6 +262,10 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
         );
         self::assertStringContainsString(
             'action="/admin/logout"',
+            $get->body()
+        );
+        self::assertStringContainsString(
+            '<script src="/assets/modules/blog/blog-admin-list.js" defer></script>',
             $get->body()
         );
         self::assertStringContainsString(
@@ -273,6 +286,16 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
         );
         self::assertStringContainsString(
             '<option value="en">en &mdash; /en/blog</option>',
+            $get->body()
+        );
+        self::assertStringContainsString(
+            '<a class="webadminAction webadminAction--primary" '
+                . 'href="/admin/blog/categories/new">Crear categor&iacute;a</a>',
+            $get->body()
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Gestionar asignaci&oacute;n</button>',
             $get->body()
         );
         self::assertStringNotContainsString(
@@ -305,6 +328,11 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
             '<option value="es" selected>es</option>',
             $newCategory->body()
         );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Guardar categor&iacute;a</button>',
+            $newCategory->body()
+        );
 
         $category = $this->insertCategory(700);
         $addLanguage = $this->controller->newCategory($this->get(
@@ -333,6 +361,27 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
         self::assertSame(200, $editWithMissingLanguages->status());
         self::assertStringContainsString(
             'A&ntilde;adir otro idioma',
+            $editWithMissingLanguages->body()
+        );
+        self::assertStringContainsString(
+            '<a class="webadminAction webadminAction--secondary" ',
+            $editWithMissingLanguages->body()
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Guardar cambios</button>',
+            $editWithMissingLanguages->body()
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--danger" '
+                . 'type="submit">Eliminar categor&iacute;a en este idioma',
+            $editWithMissingLanguages->body()
+        );
+        self::assertStringContainsString(
+            'action="/admin/blog/categories/delete" '
+                . 'data-blog-confirm-form '
+                . 'data-blog-confirm-action="category-delete" '
+                . 'data-blog-title="Categoria 700"',
             $editWithMissingLanguages->body()
         );
 
@@ -421,6 +470,11 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
             $form->body(),
             'name="categories[]"'
         ));
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Guardar asignaci&oacute;n</button>',
+            $form->body()
+        );
 
         $saved = $this->controller->saveAssignment($this->post(
             '/admin/blog/categories/assign',
@@ -434,6 +488,160 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
         self::assertSame(51, (int) $this->pdo->query(
             'SELECT COUNT(*) FROM ls_blog_post_categories'
         )->fetchColumn());
+    }
+
+    public function testAsyncVariantAssignmentReturnsAuthoritativeLock(): void
+    {
+        $postPublicId = $this->insertPost();
+        $category = $this->insertCategory(1);
+
+        $response = $this->controller->saveAssignment($this->post(
+            '/admin/blog/categories/assign',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $postPublicId,
+                'locale' => 'es',
+                'lock_version' => '1',
+                'category_workspace_version' => '0',
+                'categories' => [$category],
+            ],
+            [
+                'Accept' => 'application/json',
+                'X-LiquidStack-Editor' => 'async',
+            ]
+        ));
+
+        self::assertSame(200, $response->status());
+        self::assertSame(
+            'application/json; charset=utf-8',
+            $response->headers()['Content-Type'] ?? null
+        );
+        self::assertSame([
+            'ok' => true,
+            'lock_version' => 1,
+            'category_workspace_version' => 0,
+        ], json_decode($response->body(), true, flags: JSON_THROW_ON_ERROR));
+        self::assertSame(1, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_post_categories'
+        )->fetchColumn());
+    }
+
+    public function testLocalizedJsonManagerKeepsSsrFallbackAndSafeConflicts(): void
+    {
+        $headers = [
+            'Accept' => 'application/json',
+            'X-LiquidStack-Category-Manager' => 'async',
+        ];
+        $created = $this->controller->create($this->post(
+            '/admin/blog/categories/create',
+            [
+                'csrf' => $this->csrfToken,
+                'category' => '',
+                'locale' => 'es',
+                'name' => 'Gestión y ahorro',
+            ],
+            $headers
+        ));
+        self::assertSame(200, $created->status());
+        $createdPayload = json_decode(
+            $created->body(),
+            true,
+            flags: JSON_THROW_ON_ERROR
+        );
+        self::assertTrue($createdPayload['ok']);
+        self::assertSame('es', $createdPayload['category']['locale']);
+        self::assertSame(
+            'gestion-y-ahorro',
+            $createdPayload['category']['slug']
+        );
+        self::assertArrayNotHasKey('id', $createdPayload['category']);
+        self::assertArrayNotHasKey(
+            'localization_public_id',
+            $createdPayload['category']
+        );
+        $category = $createdPayload['category']['category_public_id'];
+
+        $catalog = $this->controller->index($this->get(
+            '/admin/blog/categories',
+            ['locale' => 'es'],
+            $headers
+        ));
+        self::assertSame(200, $catalog->status());
+        $catalogPayload = json_decode(
+            $catalog->body(),
+            true,
+            flags: JSON_THROW_ON_ERROR
+        );
+        self::assertSame('es', $catalogPayload['locale']);
+        self::assertCount(1, $catalogPayload['categories']);
+        self::assertSame(['es', 'en', 'eu'], array_column(
+            $catalogPayload['locales'],
+            'locale'
+        ));
+
+        $saved = $this->controller->save($this->post(
+            '/admin/blog/categories/save',
+            [
+                'csrf' => $this->csrfToken,
+                'category' => $category,
+                'locale' => 'es',
+                'lock_version' => '1',
+                'name' => 'Ahorro consciente',
+                'slug' => 'ahorro-consciente',
+            ],
+            $headers
+        ));
+        self::assertSame(200, $saved->status());
+        self::assertSame(2, json_decode(
+            $saved->body(),
+            true,
+            flags: JSON_THROW_ON_ERROR
+        )['category']['lock_version']);
+
+        $stale = $this->controller->delete($this->post(
+            '/admin/blog/categories/delete',
+            [
+                'csrf' => $this->csrfToken,
+                'category' => $category,
+                'locale' => 'es',
+                'lock_version' => '1',
+            ],
+            $headers
+        ));
+        self::assertSame(409, $stale->status());
+        self::assertSame('conflict', json_decode(
+            $stale->body(),
+            true,
+            flags: JSON_THROW_ON_ERROR
+        )['error']);
+
+        $fallback = $this->controller->edit($this->get(
+            '/admin/blog/categories/edit',
+            ['category' => $category, 'locale' => 'es']
+        ));
+        self::assertSame(200, $fallback->status());
+        self::assertStringContainsString(
+            'action="/admin/blog/categories/delete"',
+            $fallback->body()
+        );
+
+        $deleted = $this->controller->delete($this->post(
+            '/admin/blog/categories/delete',
+            [
+                'csrf' => $this->csrfToken,
+                'category' => $category,
+                'locale' => 'es',
+                'lock_version' => '2',
+            ],
+            $headers
+        ));
+        self::assertSame(200, $deleted->status());
+        self::assertTrue(json_decode(
+            $deleted->body(),
+            true,
+            flags: JSON_THROW_ON_ERROR
+        )['aggregate_deleted']);
+        self::assertSame(0, $this->categoryCount());
     }
 
     private function seedActor(SecureTokenGenerator $tokens): void
@@ -569,12 +777,18 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
     private function categoryCount(): int
     {
         return (int) $this->pdo->query(
-            'SELECT COUNT(*) FROM ls_blog_categories'
+            'SELECT COUNT(*) FROM ls_blog_categories c WHERE NOT EXISTS ('
+                . 'SELECT 1 FROM ls_blog_category_locales cl '
+                . "WHERE cl.category_id = c.id AND cl.slug = 'dummy')"
         )->fetchColumn();
     }
 
     /** @param array<string, string> $query */
-    private function get(string $path, array $query = []): Request
+    private function get(
+        string $path,
+        array $query = [],
+        array $headers = []
+    ): Request
     {
         return Request::fromInput([
             'REQUEST_METHOD' => 'GET',
@@ -583,11 +797,15 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
             'REMOTE_ADDR' => '192.0.2.50',
         ], query: $query, cookies: [
             'LS_WEBADMIN_SID' => $this->sessionToken,
-        ]);
+        ], headers: $headers);
     }
 
     /** @param array<string, mixed> $form */
-    private function post(string $path, array $form): Request
+    private function post(
+        string $path,
+        array $form,
+        array $headers = []
+    ): Request
     {
         return Request::fromInput([
             'REQUEST_METHOD' => 'POST',
@@ -596,7 +814,7 @@ final class BlogCategoryAdminHttpControllerTest extends TestCase
             'REMOTE_ADDR' => '192.0.2.50',
         ], form: $form, cookies: [
             'LS_WEBADMIN_SID' => $this->sessionToken,
-        ], headers: [
+        ], headers: $headers + [
             'Content-Type' => 'application/x-www-form-urlencoded',
             'User-Agent' => 'Category admin test browser',
         ]);

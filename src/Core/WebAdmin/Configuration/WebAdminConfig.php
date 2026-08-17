@@ -27,8 +27,9 @@ final class WebAdminConfig
     public const DEFAULT_COOKIE_NAME = 'LS_WEBADMIN_SID';
     public const PREAUTH_COOKIE_NAME = 'LS_WEBADMIN_PREAUTH';
     public const ACTION_COOKIE_NAME = 'LS_WEBADMIN_ACTION';
-    public const DEFAULT_IDLE_TTL_SECONDS = 1800;
-    public const DEFAULT_ABSOLUTE_TTL_SECONDS = 28800;
+    public const DEFAULT_IDLE_TTL_SECONDS = 2_592_000;
+    public const DEFAULT_ABSOLUTE_TTL_SECONDS = 2_592_000;
+    public const MAX_SESSION_TTL_SECONDS = 2_592_000;
 
     /**
      * MySQL/MariaDB limit table identifiers to 64 characters. The prefix must

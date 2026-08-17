@@ -1,0 +1,20 @@
+<form id="{form-id}" class="moduleBlogSearch01" action="{action}" method="get" role="search" aria-label="{search-label}" aria-controls="{target-id}" data-blog-filter-form data-blog-results-target="{target-selector}">
+    {preserved-fields}
+    <div class="moduleBlogSearch01-search">
+        <label for="{search-id}">{search-label}</label>
+        <input id="{search-id}" type="search" name="q" value="{query}" placeholder="{search-placeholder}" minlength="2" maxlength="120" autocomplete="off" data-minlength-message="{minimum-message}">
+    </div>
+    <div class="moduleBlogSearch01-order">
+        <label for="{order-id}">{order-label}</label>
+        <select id="{order-id}" name="order">
+            <option value="newest"{order-newest-selected}>{order-newest}</option>
+            <option value="oldest"{order-oldest-selected}>{order-oldest}</option>
+            <option value="updated"{order-updated-selected}>{order-updated}</option>
+        </select>
+    </div>
+    <div class="moduleBlogSearch01-actions">
+        <button type="submit">{submit-label}</button>
+        <a href="{clear-url}" data-blog-filter-reset{clear-hidden}>{clear-label}</a>
+    </div>
+    <p class="moduleBlogSearch01-status" aria-live="polite" aria-atomic="true" data-blog-filter-status data-state="idle" data-message="{status-label}" data-error-message="{error-message}"></p>
+</form>

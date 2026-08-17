@@ -21,7 +21,11 @@ final class ProcessedMediaUpload
         array $variants
     ) {
         if (
-            !in_array($sourceMime, ['image/jpeg', 'image/png', 'image/webp'], true)
+            !in_array(
+                $sourceMime,
+                ['image/jpeg', 'image/png', 'image/webp', 'image/avif'],
+                true
+            )
             || $sourceWidth < 1 || $sourceWidth > 12000
             || $sourceHeight < 1 || $sourceHeight > 12000
             || ($sourceWidth * $sourceHeight) > 40_000_000

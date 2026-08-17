@@ -11,9 +11,12 @@ use App\Core\Modules\ConfiguredModuleDatabaseConnectionResolver;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Modules\WebAdmin\WebAdminHttpSchemaGate;
+use App\Core\Modules\WebAdmin\WebAdminProfileHttpSchemaGate;
+use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\WebAdmin\Authentication\WebAdminAuthenticationRepository;
 use App\Core\WebAdmin\Authentication\WebAdminAuthenticationService;
 use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
+use App\Core\WebAdmin\Authorization\WebAdminMutationActorGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\CredentialAction\CredentialActionRepository;
 use App\Core\WebAdmin\CredentialAction\CredentialActionService;
@@ -26,6 +29,8 @@ use App\Core\WebAdmin\Mail\WebAdminMailTransportFactory;
 use App\Core\WebAdmin\Mail\WebAdminMailTransportInterface;
 use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalogFactory;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
+use App\Core\WebAdmin\Profile\PdoWebAdminProfileRepository;
+use App\Core\WebAdmin\Profile\WebAdminProfileService;
 use App\Core\WebAdmin\Security\ExceptionTraceGuard;
 use App\Core\WebAdmin\Security\InvalidSecurityKey;
 use App\Core\WebAdmin\Security\PasswordHasher;
@@ -166,11 +171,40 @@ final class WebAdminHttpRuntimeFactory implements
                 $uuidGenerator,
                 $passwordHasher
             );
+            $authorization = new WebAdminAuthorizationService(
+                $pdo,
+                $tables,
+                $clock
+            );
+            $profileService = null;
+            $scopes = MigrationScopeCollection::fromTablePrefixes([
+                'webadmin' => $config->tablePrefix(),
+            ]);
+            if ((new WebAdminProfileHttpSchemaGate())->isReady(
+                $pdo,
+                $registry,
+                $scopes
+            )) {
+                $profileService = new WebAdminProfileService(
+                    new PdoWebAdminProfileRepository($pdo, $tables),
+                    $authentication,
+                    $authorization,
+                    new WebAdminMutationActorGate(
+                        $pdo,
+                        $tables,
+                        $config,
+                        $securityKey,
+                        $clock
+                    ),
+                    $clock,
+                    $uuidGenerator
+                );
+            }
 
             return new WebAdminHttpRuntime(
                 $config,
                 $authentication,
-                new WebAdminAuthorizationService($pdo, $tables, $clock),
+                $authorization,
                 new CredentialActionService(
                     new CredentialActionRepository($pdo, $tables),
                     $config,
@@ -193,7 +227,8 @@ final class WebAdminHttpRuntimeFactory implements
                     $uuidGenerator,
                     $passwordHasher
                 ),
-                $navigation
+                $navigation,
+                $profileService
             );
         } catch (WebAdminHttpRuntimeException $exception) {
             throw $exception;

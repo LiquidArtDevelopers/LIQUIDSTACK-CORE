@@ -1,14 +1,40 @@
-<section id="{section-id}" class="sectionBlogSlider01 sectionBlogSlider01--items-{items-count} {classVar}" aria-labelledby="{heading-id}" data-blog-slider>
+<section id="{section-id}"
+         class="sectionBlogSlider01 sectionBlogSlider01--items-{items-count} {classVar}"
+         aria-labelledby="{heading-id}"
+         data-blog-slider
+         data-blog-slider-autoplay="{autoplay}"
+         data-blog-slider-autoplay-delay="{autoplay-delay}"
+         data-blog-slider-duration="{transition-duration}">
     <div class="sectionBlogSlider01-heading">
         {header-primary}
-        <div class="sectionBlogSlider01-controls" hidden>
-            <button type="button" data-blog-slider-previous aria-label="{previous-label}">&larr;</button>
-            <button type="button" data-blog-slider-next aria-label="{next-label}">&rarr;</button>
+
+        <div class="sectionBlogSlider01-controls" data-blog-slider-controls hidden>
+            <button type="button"
+                    data-blog-slider-previous
+                    aria-controls="{viewport-id}"
+                    aria-label="{previous-label}">&larr;</button>
+            <button type="button"
+                    data-blog-slider-next
+                    aria-controls="{viewport-id}"
+                    aria-label="{next-label}">&rarr;</button>
+            <button type="button"
+                    class="sectionBlogSlider01-autoplay"
+                    data-blog-slider-autoplay-toggle
+                    data-pause-label="{pause-label}"
+                    data-resume-label="{resume-label}"
+                    aria-controls="{viewport-id}"
+                    aria-label="{pause-label}"
+                    aria-pressed="false"
+                    hidden>
+                <span aria-hidden="true">&#10074;&#10074;</span>
+            </button>
         </div>
     </div>
 
-    <div class="sectionBlogSlider01-viewport" data-blog-slider-viewport tabindex="0">
-        <div class="sectionBlogSlider01-track">
+    <div id="{viewport-id}"
+         class="sectionBlogSlider01-viewport"
+         data-blog-slider-viewport{viewport-tabindex}>
+        <div class="sectionBlogSlider01-track" data-blog-slider-track>
             {items}
         </div>
     </div>

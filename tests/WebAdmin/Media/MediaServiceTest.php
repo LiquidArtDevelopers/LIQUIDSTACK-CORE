@@ -15,10 +15,18 @@ use App\Core\WebAdmin\Authentication\WebAdminAuthenticationService;
 use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Media\MediaAssetPage;
+use App\Core\WebAdmin\Media\MediaCatalogAsset;
+use App\Core\WebAdmin\Media\MediaPickerCatalogRepositoryInterface;
+use App\Core\WebAdmin\Media\MediaPickerItem;
+use App\Core\WebAdmin\Media\MediaPickerPage;
+use App\Core\WebAdmin\Media\MediaPickerQuery;
+use App\Core\WebAdmin\Media\MediaDeletionCandidate;
 use App\Core\WebAdmin\Media\MediaException;
 use App\Core\WebAdmin\Media\MediaFileMetadata;
 use App\Core\WebAdmin\Media\MediaFilePayload;
 use App\Core\WebAdmin\Media\MediaImageProcessorInterface;
+use App\Core\WebAdmin\Media\MediaQuarantineManifest;
+use App\Core\WebAdmin\Media\MediaQuarantineLease;
 use App\Core\WebAdmin\Media\MediaRepositoryInterface;
 use App\Core\WebAdmin\Media\MediaService;
 use App\Core\WebAdmin\Media\MediaStorageInterface;
@@ -126,6 +134,7 @@ final class MediaServiceTest extends TestCase
             'processor.process',
             'repository.transaction.begin',
             'repository.quota.lock',
+            'repository.idempotency.find',
             'repository.rate.media.upload.user',
             'repository.rate.media.upload.ip',
             'repository.quota.sum',
@@ -143,6 +152,42 @@ final class MediaServiceTest extends TestCase
         self::assertLessThan(
             array_search('storage.promote', $this->events->all(), true),
             array_search('repository.quota.sum', $this->events->all(), true)
+        );
+    }
+
+    public function testRepeatedUploadRequestReturnsExistingAssetWithoutPromotingAgain(): void
+    {
+        $this->repository->createdRequest = [
+            'request_id' => self::REQUEST_ID,
+            'label' => 'Portada principal',
+            'source_sha256' => hash_file('sha256', $this->temporaryUpload),
+            'public_id' => self::ASSET_ID,
+        ];
+
+        $publicId = $this->service()->upload(
+            $this->upload(),
+            'Portada principal',
+            $this->sessionToken,
+            $this->csrfToken,
+            '127.0.0.1',
+            self::REQUEST_ID
+        );
+
+        self::assertSame(self::ASSET_ID, $publicId);
+        self::assertSame([
+            'storage.stage',
+            'processor.process',
+            'repository.transaction.begin',
+            'repository.quota.lock',
+            'repository.idempotency.find',
+            'storage.remove_staging',
+            'repository.transaction.commit',
+        ], $this->events->all());
+        self::assertNotContains('storage.promote', $this->events->all());
+        self::assertNotContains('repository.asset.insert', $this->events->all());
+        self::assertNotContains(
+            'repository.rate.media.upload.user',
+            $this->events->all()
         );
     }
 
@@ -252,6 +297,27 @@ final class MediaServiceTest extends TestCase
         self::assertSame(['repository.list'], $this->events->all());
     }
 
+    public function testListAddsSafeStandaloneUsageStatus(): void
+    {
+        $this->repository->listedItems = [[
+            'public_id' => self::ASSET_ID,
+            'label' => 'Portada principal',
+            'source_width' => 1200,
+            'source_height' => 800,
+            'created_at' => '2030-01-01T00:00:00+00:00',
+            'thumbnail_width' => 480,
+            'variants' => [[
+                'width' => 480,
+                'height' => 320,
+                'bytes' => 123,
+            ]],
+        ]];
+
+        $items = $this->service()->list(1)->items();
+
+        self::assertSame('unused', $items[0]['usage_status']);
+    }
+
     public function testGetIndexUsesTheAuthenticatedSharedShell(): void
     {
         $response = $this->controller()->index($this->authenticatedRequest(
@@ -272,6 +338,12 @@ final class MediaServiceTest extends TestCase
         self::assertStringContainsString(
             'action="/admin/logout"',
             $response->body()
+        );
+        self::assertSame(
+            "default-src 'none'; connect-src 'self'; img-src 'self'; "
+                . "style-src 'self'; script-src 'self'; form-action 'self'; "
+                . "frame-ancestors 'none'; base-uri 'none'",
+            $response->headers()['Content-Security-Policy']
         );
     }
 
@@ -306,6 +378,113 @@ final class MediaServiceTest extends TestCase
             $this->authenticatedUploadRequest()
         );
         self::assertSame(503, $operationalFailure->status());
+
+        $this->processorIssue = 'webadmin.media.avif_source_schema_pending';
+        $pendingAvif = $this->controller()->upload(
+            $this->authenticatedUploadRequest()
+        );
+        self::assertSame(409, $pendingAvif->status());
+        self::assertSame(
+            'AVIF source upload is not enabled yet',
+            $pendingAvif->body()
+        );
+    }
+
+    public function testAsyncUploadReturnsTheNewBoundedCatalogProjection(): void
+    {
+        $response = $this->controller()->upload(
+            $this->authenticatedUploadRequest(true)
+        );
+
+        self::assertSame(200, $response->status());
+        self::assertSame(
+            'application/json; charset=utf-8',
+            $response->headers()['Content-Type']
+        );
+        self::assertSame(
+            "default-src 'none'; form-action 'none'; "
+                . "frame-ancestors 'none'; base-uri 'none'",
+            $response->headers()['Content-Security-Policy']
+        );
+        self::assertSame([
+            'ok' => true,
+            'media' => [
+                'public_id' => self::ASSET_ID,
+                'label' => 'Portada',
+                'thumbnail_width' => 480,
+                'thumbnail_url' => '/admin/media/file?asset=' . self::ASSET_ID
+                    . '&width=480',
+            ],
+        ], json_decode($response->body(), true, 8, JSON_THROW_ON_ERROR));
+    }
+
+    public function testPrgUploadContractRemainsTheDefault(): void
+    {
+        $response = $this->controller()->upload(
+            $this->authenticatedUploadRequest()
+        );
+
+        self::assertSame(303, $response->status());
+        self::assertSame('/admin/media/updated', $response->headers()['Location']);
+    }
+
+    public function testPrivatePickerCatalogRequiresSessionAndReturnsSafeJson(): void
+    {
+        $query = new MediaPickerQuery('Árbol', 1, 24);
+        $this->repository->pickerPage = new MediaPickerPage($query, [
+            new MediaPickerItem(
+                self::ASSET_ID,
+                'Árbol de portada',
+                1800,
+                1200,
+                new DateTimeImmutable('2030-01-01 10:00:00 UTC'),
+                480,
+                [
+                    ['width' => 480, 'height' => 320, 'bytes' => 100],
+                    ['width' => 1800, 'height' => 1200, 'bytes' => 900],
+                ]
+            ),
+        ], false);
+        $headers = [
+            'Accept' => 'application/json',
+            'X-LiquidStack-Media-Picker' => 'async',
+        ];
+        $response = $this->controller()->catalog(
+            $this->authenticatedRequest(
+                'GET',
+                '/admin/media/catalog?q=%C3%81rbol&page=1&per_page=24',
+                ['q' => 'Árbol', 'page' => '1', 'per_page' => '24'],
+                $headers
+            )
+        );
+
+        self::assertSame(200, $response->status());
+        $payload = json_decode(
+            $response->body(),
+            true,
+            32,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertSame(self::ASSET_ID, $payload['items'][0]['public_id']);
+        self::assertSame(1800, $payload['items'][0]['source_width']);
+        self::assertArrayNotHasKey('storage_key', $payload['items'][0]);
+        self::assertArrayNotHasKey('sha256', $payload['items'][0]);
+        self::assertSame(
+            'no-store, no-cache, must-revalidate, max-age=0',
+            $response->headers()['Cache-Control']
+        );
+
+        $anonymous = Request::fromInput(
+            ['REQUEST_METHOD' => 'GET', 'REQUEST_URI' => '/admin/media/catalog'],
+            [],
+            [],
+            [],
+            $headers
+        );
+        self::assertSame(
+            303,
+            $this->controller()->catalog($anonymous)->status()
+        );
     }
 
     private function service(): MediaService
@@ -364,17 +543,19 @@ final class MediaServiceTest extends TestCase
     private function authenticatedRequest(
         string $method,
         string $path,
-        array $query = []
+        array $query = [],
+        array $headers = []
     ): Request {
         return Request::fromInput(
             ['REQUEST_METHOD' => $method, 'REQUEST_URI' => $path],
             $query,
             [],
-            [WebAdminConfig::defaults()->cookieName() => $this->sessionToken]
+            [WebAdminConfig::defaults()->cookieName() => $this->sessionToken],
+            $headers
         );
     }
 
-    private function authenticatedUploadRequest(): Request
+    private function authenticatedUploadRequest(bool $async = false): Request
     {
         return Request::fromInput(
             [
@@ -384,9 +565,16 @@ final class MediaServiceTest extends TestCase
                 'CONTENT_LENGTH' => '2048',
             ],
             [],
-            ['csrf' => $this->csrfToken, 'label' => 'Portada'],
+            [
+                'csrf' => $this->csrfToken,
+                'label' => 'Portada',
+                'idempotency_key' => self::REQUEST_ID,
+            ],
             [WebAdminConfig::defaults()->cookieName() => $this->sessionToken],
-            [],
+            $async ? [
+                'Accept' => 'application/json',
+                'X-LiquidStack-Media-Manager' => 'async',
+            ] : [],
             '',
             ['image' => [
                 'name' => 'ignored.png',
@@ -471,12 +659,19 @@ final class MediaTestEventLog
     public function all(): array { return $this->events; }
 }
 
-final class MediaTestRepository implements MediaRepositoryInterface
+final class MediaTestRepository implements MediaPickerCatalogRepositoryInterface
 {
     public int $usedBytes = 0;
     public bool $failVariantInsert = false;
     public bool $failList = false;
     public ?MediaStoredVariant $storedVariant = null;
+    /** @var list<array<string, mixed>> */
+    public array $listedItems = [];
+    public ?MediaPickerPage $pickerPage = null;
+    /** @var array{request_id:string,label:string,source_sha256:string,public_id:string}|null */
+    public ?array $createdRequest = null;
+    /** @var array<string, string> */
+    private array $catalogLabels = [];
     public function __construct(private PDO $pdo, private MediaTestEventLog $events) {}
     public function transaction(callable $operation): mixed
     {
@@ -499,7 +694,22 @@ final class MediaTestRepository implements MediaRepositoryInterface
         if ($this->failList) {
             throw new MediaException('webadmin.media.list_failed');
         }
-        return new MediaAssetPage([], $page, false);
+        return new MediaAssetPage($this->listedItems, $page, false);
+    }
+    public function pickerPage(MediaPickerQuery $query): MediaPickerPage
+    {
+        if ($this->pickerPage === null) {
+            throw new MediaException('test.picker_not_configured');
+        }
+        if (
+            $this->pickerPage->query()->search() !== $query->search()
+            || $this->pickerPage->query()->page() !== $query->page()
+            || $this->pickerPage->query()->pageSize() !== $query->pageSize()
+        ) {
+            throw new MediaException('test.picker_query_mismatch');
+        }
+
+        return $this->pickerPage;
     }
     public function findVariant(string $publicId, int $width): ?MediaStoredVariant
     { return $this->storedVariant; }
@@ -507,15 +717,51 @@ final class MediaTestRepository implements MediaRepositoryInterface
     { $this->events->add('repository.quota.sum'); return $this->usedBytes; }
     public function lockQuota(): void
     { self::assertTransaction($this->pdo); $this->events->add('repository.quota.lock'); }
+    public function lockDeletionCandidate(string $publicId): ?MediaDeletionCandidate
+    { throw new MediaException('test.delete_not_configured'); }
+    public function quarantinedPublicIdForRequest(WebAdminAuthorizedActor $actor, string $requestId, string $publicId, string $assetVersion): ?string
+    { throw new MediaException('test.delete_not_configured'); }
+    public function recordQuarantine(WebAdminAuthorizedActor $actor, string $requestId, MediaDeletionCandidate $candidate, MediaQuarantineManifest $manifest, ?string $ipHash, DateTimeImmutable $occurredAt): void
+    { throw new MediaException('test.delete_not_configured'); }
+    public function createdPublicIdForRequest(WebAdminAuthorizedActor $actor, string $requestId, string $label, string $sourceSha256): ?string
+    {
+        self::assertTransaction($this->pdo);
+        $this->events->add('repository.idempotency.find');
+        if ($this->createdRequest === null) {
+            return null;
+        }
+        if (
+            $this->createdRequest['request_id'] !== $requestId
+            || $this->createdRequest['label'] !== $label
+            || $this->createdRequest['source_sha256'] !== $sourceSha256
+        ) {
+            throw new MediaException('webadmin.media.idempotency_conflict');
+        }
+        return $this->createdRequest['public_id'];
+    }
     public function consumeRateLimit(string $action, string $subjectHash, DateTimeImmutable $now, int $windowSeconds, int $maximumAttempts): bool
     { self::assertTransaction($this->pdo); $this->events->add('repository.rate.' . $action); return true; }
     public function insertAsset(string $publicId, string $label, ProcessedMediaUpload $processed, int $authorUserId, DateTimeImmutable $createdAt): int
-    { $this->events->add('repository.asset.insert'); return 99; }
+    { $this->events->add('repository.asset.insert'); $this->catalogLabels[$publicId] = $label; return 99; }
     public function insertVariant(int $assetId, ProcessedMediaVariant $variant, string $storageKey, DateTimeImmutable $createdAt): void
     { $this->events->add('repository.variant.insert'); if ($this->failVariantInsert) { throw new MediaException('webadmin.media.persistence_test_failure'); } }
     public function auditCreated(WebAdminAuthorizedActor $actor, string $requestId, string $publicId, ?string $ipHash, DateTimeImmutable $occurredAt): void
     { $this->events->add('repository.audit.insert'); }
     public function publicIds(int $limit): array { return []; }
+    public function catalogAssetsByPublicIds(array $publicIds): array
+    {
+        $assets = [];
+        foreach ($publicIds as $publicId) {
+            if (isset($this->catalogLabels[$publicId])) {
+                $assets[] = new MediaCatalogAsset(
+                    $publicId,
+                    $this->catalogLabels[$publicId],
+                    480
+                );
+            }
+        }
+        return $assets;
+    }
     private static function assertTransaction(PDO $pdo): void
     { if (!$pdo->inTransaction()) { throw new MediaException('test.transaction_missing'); } }
 }
@@ -532,6 +778,8 @@ final class MediaTestStorage implements MediaStorageInterface
     { $this->events->add('storage.remove_staging'); }
     public function removeAsset(string $publicId): void
     { $this->events->add('storage.remove_asset'); }
+    public function quarantine(MediaDeletionCandidate $candidate, string $requestId): MediaQuarantineLease
+    { throw new MediaException('test.delete_not_configured'); }
     public function storageKey(string $publicId, int $width): string
     { $this->events->add('storage.key'); return substr($publicId, 0, 2) . '/' . $publicId . '/' . $width . '.avif'; }
     public function readVerified(MediaStoredVariant $variant): MediaFilePayload

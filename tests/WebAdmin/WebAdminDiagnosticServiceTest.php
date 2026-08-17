@@ -743,8 +743,8 @@ PHP
             WebAdminMailConfiguration::SMTP_HOST_ENV => '127.0.0.1',
             WebAdminMailConfiguration::SMTP_PORT_ENV => '1025',
             WebAdminMailConfiguration::FROM_ADDRESS_ENV =>
-                'webadmin@aiwa.test',
-            WebAdminMailConfiguration::FROM_NAME_ENV => 'AIWA WebAdmin dev',
+                'webadmin@example.test',
+            WebAdminMailConfiguration::FROM_NAME_ENV => 'Proyecto WebAdmin dev',
         ];
         $data = $this->inspect(
             $this->fixtureRoot,
@@ -766,8 +766,8 @@ PHP
 
         $encoded = json_encode($data, JSON_THROW_ON_ERROR);
         self::assertStringNotContainsString('http://localhost:1309', $encoded);
-        self::assertStringNotContainsString('webadmin@aiwa.test', $encoded);
-        self::assertStringNotContainsString('AIWA WebAdmin dev', $encoded);
+        self::assertStringNotContainsString('webadmin@example.test', $encoded);
+        self::assertStringNotContainsString('Proyecto WebAdmin dev', $encoded);
     }
 
     public function testLocalCaptureOutsideDevLoopbackIsInvalid(): void

@@ -45,6 +45,56 @@ final class BlogAdminRuntimePdoFactory implements
     }
 }
 
+final class BlogAdminRuntimeCountingPdo extends PDO
+{
+    /** @var list<string> */
+    private array $sql = [];
+
+    public function __construct()
+    {
+        parent::__construct('sqlite::memory:');
+    }
+
+    public function exec(string $statement): int|false
+    {
+        $this->sql[] = $statement;
+
+        return parent::exec($statement);
+    }
+
+    public function prepare(
+        string $query,
+        array $options = []
+    ): PDOStatement|false {
+        $this->sql[] = $query;
+
+        return parent::prepare($query, $options);
+    }
+
+    public function query(
+        string $query,
+        ?int $fetchMode = null,
+        mixed ...$fetchModeArgs
+    ): PDOStatement|false {
+        $this->sql[] = $query;
+
+        return $fetchMode === null
+            ? parent::query($query)
+            : parent::query($query, $fetchMode, ...$fetchModeArgs);
+    }
+
+    public function clearSqlLog(): void
+    {
+        $this->sql = [];
+    }
+
+    /** @return list<string> */
+    public function sqlLog(): array
+    {
+        return $this->sql;
+    }
+}
+
 final class BlogAdminHttpRuntimeFactoryTest extends TestCase
 {
     private const ACTOR_PUBLIC_ID =
@@ -61,7 +111,7 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
 
     private string $projectRoot;
     private Filesystem $filesystem;
-    private PDO $pdo;
+    private BlogAdminRuntimeCountingPdo $pdo;
     private string $sessionToken;
     private string $csrfToken;
     private int $actorUserId;
@@ -88,7 +138,7 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             "<?php\n\nreturn ['es', 'en'];\n"
         );
 
-        $this->pdo = new PDO('sqlite::memory:');
+        $this->pdo = new BlogAdminRuntimeCountingPdo();
         $this->pdo->setAttribute(
             PDO::ATTR_ERRMODE,
             PDO::ERRMODE_EXCEPTION
@@ -165,7 +215,12 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             $runtime->authorization()
         );
         self::assertSame(
-            ['/blog', '/blog/categories', '/media'],
+            [
+                '/blog',
+                '/blog/categories',
+                '/blog/settings/presentation',
+                '/media',
+            ],
             array_map(
                 static fn ($item): string => $item->suffix(),
                 $runtime->navigation()->items()
@@ -209,6 +264,91 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
         self::assertNull($audit['user_agent_hash']);
         self::assertSame(self::NOW, $audit['occurred_at']);
         self::assertSame(self::NOW, $this->sessionTimes()['last_seen_at']);
+    }
+
+    public function testEditorMediaCatalogExcludesQuarantinedAssets(): void
+    {
+        $this->applyMigrations();
+        $this->seedAuthorizedActor();
+
+        $activePublicId = '61000000-0000-4000-8000-000000000001';
+        $quarantinedPublicId = '61000000-0000-4000-8000-000000000002';
+        $insertAsset = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_media_assets '
+            . '(public_id, label, source_mime, source_width, source_height, '
+            . 'source_bytes, source_sha256, created_by_user_id, created_at) '
+            . "VALUES (:public_id, :label, 'image/avif', 1800, 1200, 1000, "
+            . ':source_sha256, :actor, :created_at)'
+        );
+        $insertVariant = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_media_variants '
+            . '(asset_id, width, height, bytes, sha256, storage_key, mime, '
+            . 'created_at) VALUES (:asset_id, 480, 320, 100, :sha256, '
+            . ":storage_key, 'image/avif', :created_at)"
+        );
+        foreach ([
+            [$activePublicId, 'Portada activa', '2030-01-01 00:00:00.000000'],
+            [$quarantinedPublicId, 'Portada en cuarentena', '2030-01-02 00:00:00.000000'],
+        ] as $index => [$publicId, $label, $createdAt]) {
+            $sourceHash = str_repeat((string) ($index + 1), 64);
+            self::assertTrue($insertAsset->execute([
+                'public_id' => $publicId,
+                'label' => $label,
+                'source_sha256' => $sourceHash,
+                'actor' => $this->actorUserId,
+                'created_at' => $createdAt,
+            ]));
+            $assetId = (int) $this->pdo->lastInsertId();
+            self::assertTrue($insertVariant->execute([
+                'asset_id' => $assetId,
+                'sha256' => str_repeat((string) ($index + 3), 64),
+                'storage_key' => substr($publicId, 0, 2) . '/'
+                    . $publicId . '/480.avif',
+                'created_at' => $createdAt,
+            ]));
+        }
+
+        $quarantinedAssetId = (int) $this->pdo->query(
+            "SELECT id FROM ls_webadmin_media_assets WHERE public_id = '"
+            . $quarantinedPublicId . "'"
+        )->fetchColumn();
+        $requestId = '62000000-0000-4000-8000-000000000002';
+        $manifest = '{}';
+        $insertQuarantine = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_media_quarantines '
+            . '(asset_id, public_id, state, asset_version, '
+            . 'original_storage_prefix, quarantine_storage_prefix, '
+            . 'manifest_storage_key, manifest_json, manifest_sha256, '
+            . 'request_id, quarantined_by_user_id, quarantined_at) VALUES '
+            . "(:asset_id, :public_id, 'quarantined', :asset_version, "
+            . ':original_prefix, :quarantine_prefix, :manifest_key, '
+            . ':manifest_json, :manifest_sha256, :request_id, :actor, '
+            . ':quarantined_at)'
+        );
+        self::assertTrue($insertQuarantine->execute([
+            'asset_id' => $quarantinedAssetId,
+            'public_id' => $quarantinedPublicId,
+            'asset_version' => str_repeat('a', 64),
+            'original_prefix' => 'media/' . $quarantinedPublicId,
+            'quarantine_prefix' => 'quarantine/' . $quarantinedPublicId,
+            'manifest_key' => 'quarantine/' . $quarantinedPublicId
+                . '/manifest.json',
+            'manifest_json' => $manifest,
+            'manifest_sha256' => hash('sha256', $manifest),
+            'request_id' => $requestId,
+            'actor' => $this->actorUserId,
+            'quarantined_at' => '2030-01-02 00:10:00.000000',
+        ]));
+
+        $items = $this->factory()->create(
+            $this->context(),
+            WebAdminConfig::defaults()
+        )->editorMediaCatalog()->recent(48);
+
+        self::assertSame([$activePublicId], array_map(
+            static fn ($asset): string => $asset->publicId(),
+            $items
+        ));
     }
 
     public function testCategoryProjectionIsOptionalAtTheLegacyBoundary(): void
@@ -382,6 +522,8 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             '57000000-0000-4000-8000-000000000005',
             '58000000-0000-4000-8000-000000000005',
             '59000000-0000-4000-8000-000000000005',
+            '5a000000-0000-4000-8000-000000000005',
+            '5b000000-0000-4000-8000-000000000005',
         ];
         $adapter = new WebAdminBlogMutationAuditAdapter(
             $this->pdo,
@@ -401,6 +543,8 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             BlogMutationAuditEvent::DUPLICATE,
             BlogMutationAuditEvent::TRASH,
             BlogMutationAuditEvent::RESTORE_FROM_TRASH,
+            BlogMutationAuditEvent::URL_GONE,
+            BlogMutationAuditEvent::URL_REDIRECT,
         ];
         self::assertTrue($this->pdo->beginTransaction());
         foreach ($operations as $operation) {
@@ -428,9 +572,11 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             'blog.article.duplicated',
             'blog.article.trashed',
             'blog.article.restored_from_trash',
+            'blog.article.url_gone',
+            'blog.article.url_redirect',
         ], array_column($rows, 'event_code'));
         self::assertSame(
-            [null, null, null, null, null, null, null, null, null],
+            [null, null, null, null, null, null, null, null, null, null, null],
             array_column($rows, 'metadata_json')
         );
     }
@@ -473,6 +619,35 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
         self::assertSame($before, $this->sessionTimes());
     }
 
+    public function testReadyFactoryPathNeverAuditsDatabaseMetadata(): void
+    {
+        $this->applyMigrations();
+        $this->pdo->clearSqlLog();
+
+        $this->factory()->create(
+            $this->context(),
+            WebAdminConfig::defaults()
+        );
+
+        $sql = strtolower(implode("\n", $this->pdo->sqlLog()));
+        foreach ([
+            'information_schema',
+            'sqlite_master',
+            'pragma table_info',
+            'pragma index_list',
+            'pragma index_info',
+            'pragma foreign_key_list',
+            'pragma foreign_key_check',
+            'pragma integrity_check',
+            'show create table',
+            'show columns',
+            'show index',
+        ] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $sql);
+        }
+        self::assertStringContainsString('where 1 = 0', $sql);
+    }
+
     public function testPendingSchemaFailsClosedWithStableIssue(): void
     {
         try {
@@ -494,7 +669,7 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
         self::assertSame(1, $this->connectionCount);
     }
 
-    public function testPendingDeleteCapabilityKeepsDuplicateButDisablesTrash(): void
+    public function testPendingPreNormalizationCatalogBlocksAdminRuntime(): void
     {
         $this->applyMigrations();
         $this->seedAuthorizedActor();
@@ -503,45 +678,22 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
                 . "AND migration_id IN ("
                 . "'0008_blog_article_delete_capability', "
                 . "'0009_blog_analytics', "
-                . "'0010_blog_analytics_view_capability')"
+                . "'0010_blog_analytics_view_capability', "
+                . "'0011_blog_layout_editor_v2', "
+                . "'0012_blog_editor_preferences', "
+                . "'0013_blog_settings_manage_capability', "
+                . "'0014_blog_private_draft_publication', "
+                . "'0015_blog_robots_preferences', "
+                . "'0016_blog_url_history', "
+                . "'0017_blog_dummy_category', "
+                . "'0018_blog_dummy_category_normalization')"
         );
-        $runtime = $this->factory([
-            self::POST_PUBLIC_ID,
-            self::LOCALIZATION_PUBLIC_ID,
-            self::REQUEST_PUBLIC_ID,
-            '31000000-0000-4000-8000-000000000003',
-            '41000000-0000-4000-8000-000000000004',
-            '51000000-0000-4000-8000-000000000005',
-        ])->create(
+        $this->expectException(BlogAdminHttpRuntimeException::class);
+        $this->expectExceptionMessage('Blog admin runtime is unavailable.');
+        $this->factory()->create(
             $this->context(),
             WebAdminConfig::defaults()
         );
-        self::assertFalse($runtime->service()->trashAvailable());
-
-        $source = $runtime->service()->createPost(
-            $runtime->mutationGateAll(
-                $this->sessionToken,
-                $this->csrfToken,
-                ['blog.articles.edit', 'webadmin.media.view']
-            ),
-            'es',
-            $this->draft()
-        );
-        $copy = $runtime->service()->duplicatePost(
-            $runtime->mutationGateAll(
-                $this->sessionToken,
-                $this->csrfToken,
-                ['blog.articles.edit', 'webadmin.media.view']
-            ),
-            $source->postPublicId(),
-            'es',
-            1
-        );
-        self::assertSame(
-            'Copia de Matrix runtime article',
-            $copy->draft()->h1()
-        );
-        self::assertNull($copy->draft()->slug());
     }
 
     public function testInvalidSecurityKeyFailsBeforeConnectAndNeverLeaks(): void
@@ -792,7 +944,11 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             $this->pdo,
             $catalog,
             $scopes,
-            new MigrationApplyOptions(expectedPlanHash: $preview->hash())
+            new MigrationApplyOptions(
+                expectedPlanHash: $preview->hash(),
+                allowDestructive: true,
+                backupConfirmed: true
+            )
         );
     }
 

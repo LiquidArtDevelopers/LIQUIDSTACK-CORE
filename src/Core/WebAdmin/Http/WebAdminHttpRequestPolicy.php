@@ -17,6 +17,27 @@ final class WebAdminHttpRequestPolicy
             && $request->bodySize() === 0;
     }
 
+    /** Profile PRG may carry only its canonical success marker. */
+    public function acceptsProfileNavigation(Request $request): bool
+    {
+        if (
+            !$request->isValid()
+            || !in_array($request->method(), ['GET', 'HEAD'], true)
+            || $request->formParams() !== []
+            || $request->bodySize() !== 0
+        ) {
+            return false;
+        }
+
+        $query = $request->queryParams();
+        if ($query === []) {
+            return true;
+        }
+
+        return array_keys($query) === ['updated']
+            && $query['updated'] === '1';
+    }
+
     /**
      * Credential links may carry exactly one opaque token on their first GET.
      * Token validity remains a domain concern so malformed and expired links

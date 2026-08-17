@@ -15,12 +15,14 @@ final class BlogCategoryAuditEvent
     public const ADD_LOCALE = 'add_locale';
     public const SAVE = 'save';
     public const ASSIGN = 'assign';
+    public const DELETE = 'delete';
 
     private const OPERATIONS = [
         self::CREATE,
         self::ADD_LOCALE,
         self::SAVE,
         self::ASSIGN,
+        self::DELETE,
     ];
 
     private readonly string $actorPublicId;

@@ -9,13 +9,65 @@ use App\Core\Blog\PublicFeed\BlogPublicCatalogQuery;
 use App\Core\Blog\PublicFeed\BlogPublicDiscoveryRepositoryInterface;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
+use App\Core\Modules\Migrations\MigrationApplyOptions;
 use App\Core\Modules\Migrations\MigrationCatalog;
 use App\Core\Modules\Migrations\MigrationRunner;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
+use App\Core\Modules\Blog\BlogUrlHistoryMigrationPostconditionVerifier;
 use App\Core\WebAdmin\Media\PrivateMediaStorage;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
+
+final class BlogPublicRuntimeCountingPdo extends PDO
+{
+    /** @var list<string> */
+    private array $sql = [];
+
+    public function __construct()
+    {
+        parent::__construct('sqlite::memory:');
+    }
+
+    public function exec(string $statement): int|false
+    {
+        $this->sql[] = $statement;
+
+        return parent::exec($statement);
+    }
+
+    public function prepare(
+        string $query,
+        array $options = []
+    ): PDOStatement|false {
+        $this->sql[] = $query;
+
+        return parent::prepare($query, $options);
+    }
+
+    public function query(
+        string $query,
+        ?int $fetchMode = null,
+        mixed ...$fetchModeArgs
+    ): PDOStatement|false {
+        $this->sql[] = $query;
+
+        return $fetchMode === null
+            ? parent::query($query)
+            : parent::query($query, $fetchMode, ...$fetchModeArgs);
+    }
+
+    public function clearSqlLog(): void
+    {
+        $this->sql = [];
+    }
+
+    /** @return list<string> */
+    public function sqlLog(): array
+    {
+        return $this->sql;
+    }
+}
 
 final class BlogPublicHttpRuntimeFactoryTest extends TestCase
 {
@@ -111,7 +163,21 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
         );
         $this->writeModuleDatabaseConfig('webadmin', 'liquidstack');
         $this->writeModuleDatabaseConfig('blog', 'liquidstack');
-        $pdo = new PDO('sqlite::memory:');
+        $this->filesystem->dumpFile(
+            $this->root . '/App/config/modules/blog-public.php',
+            <<<'PHP'
+<?php
+return [
+    'security_sources' => [
+        'script' => ['https://webda.eus'],
+        'style' => ['https://webda.eus'],
+        'image' => ['https://webda.eus'],
+        'connect' => ['https://webda.eus'],
+    ],
+];
+PHP
+        );
+        $pdo = new BlogPublicRuntimeCountingPdo();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         $pdo->exec('PRAGMA foreign_keys = ON');
@@ -124,8 +190,13 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
         (new MigrationRunner())->apply(
             $pdo,
             MigrationCatalog::fromRegistry($registry),
-            $scopes
+            $scopes,
+            new MigrationApplyOptions(
+                allowDestructive: true,
+                backupConfirmed: true
+            )
         );
+        $pdo->clearSqlLog();
         $connection = new class($pdo) implements
             PdoConnectionFactoryInterface {
             public int $calls = 0;
@@ -161,11 +232,30 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
             BlogPublicOrigin::ENV => 'https://example.test',
         ]));
 
+        $factorySql = strtolower(implode("\n", $pdo->sqlLog()));
+        foreach ([
+            'information_schema',
+            'sqlite_master',
+            'pragma table_info',
+            'pragma index_list',
+            'pragma index_info',
+            'pragma foreign_key_list',
+            'pragma foreign_key_check',
+            'pragma integrity_check',
+            'show create table',
+            'show columns',
+            'show index',
+        ] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $factorySql);
+        }
+        self::assertStringContainsString('where 1 = 0', $factorySql);
+
         self::assertSame('/blog', $runtime->config()->publicPath('es'));
         self::assertSame('https://example.test', $runtime->origin()->value());
         self::assertSame([], $runtime->service()->listPosts());
         self::assertSame('liquidstack', $receivedConnection);
         self::assertFalse($runtime->__debugInfo()['public_media']);
+        self::assertFalse($runtime->__debugInfo()['card_media']);
         self::assertTrue($runtime->__debugInfo()['category_projection']);
         self::assertTrue($runtime->__debugInfo()['catalog_repository']);
         self::assertNotNull($runtime->categoryProjection());
@@ -180,6 +270,18 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
         self::assertSame([], $runtime->catalogRepository()?->search(
             new BlogPublicCatalogQuery('es')
         ));
+        $productionCsp = $runtime->publicShellSecurityPolicy()
+            ->context()
+            ->headers()['Content-Security-Policy'];
+        self::assertStringContainsString('https://webda.eus', $productionCsp);
+        self::assertStringContainsString(
+            'upgrade-insecure-requests',
+            $productionCsp
+        );
+        self::assertStringNotContainsString(
+            'localhost:5173',
+            $productionCsp
+        );
         self::assertSame(1, $connection->calls);
 
         $localEnvironment = [
@@ -196,23 +298,42 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
             $localEnvironment
         ));
         self::assertTrue($mediaReadyRuntime->__debugInfo()['public_media']);
+        self::assertTrue($mediaReadyRuntime->__debugInfo()['card_media']);
+        $developmentCsp = $mediaReadyRuntime->publicShellSecurityPolicy()
+            ->context()
+            ->headers()['Content-Security-Policy'];
+        self::assertStringContainsString('https://webda.eus', $developmentCsp);
+        self::assertStringContainsString(
+            'http://localhost:5173',
+            $developmentCsp
+        );
+        self::assertStringContainsString(
+            'ws://localhost:5173',
+            $developmentCsp
+        );
+        self::assertStringNotContainsString(
+            'upgrade-insecure-requests',
+            $developmentCsp
+        );
         self::assertSame(2, $connection->calls);
 
         $pdo->exec(
             'CREATE TRIGGER ls_blog_corrupt_structured_gate '
             . 'AFTER INSERT ON ls_blog_content_docs BEGIN SELECT 1; END'
         );
-        try {
-            $factory->create(new ModuleRuntimeContext($this->root, [
-                BlogPublicOrigin::ENV => 'https://example.test',
-            ]));
-            self::fail('An applied but invalid 0005 schema must fail closed.');
-        } catch (BlogPublicHttpRuntimeException $exception) {
-            self::assertSame(
-                'blog.structured_schema_not_ready',
-                $exception->issueCode()
-            );
-        }
+        $factory->create(new ModuleRuntimeContext($this->root, [
+            BlogPublicOrigin::ENV => 'https://example.test',
+        ]));
+        self::assertSame(3, $connection->calls);
+        $blogScope = $scopes->get('blog');
+        self::assertNotNull($blogScope);
+        self::assertFalse(
+            (new BlogUrlHistoryMigrationPostconditionVerifier())->verify(
+                $pdo,
+                $blogScope
+            ),
+            'migrate/doctor must retain trigger auditing outside HTTP.'
+        );
 
         $pdo->exec('DROP TRIGGER ls_blog_corrupt_structured_gate');
         $pdo->exec(
@@ -222,8 +343,31 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
             . "'0007_blog_post_tombstones', "
             . "'0008_blog_article_delete_capability', "
             . "'0009_blog_analytics', "
-            . "'0010_blog_analytics_view_capability')"
+            . "'0010_blog_analytics_view_capability', "
+            . "'0011_blog_layout_editor_v2', "
+            . "'0012_blog_editor_preferences', "
+            . "'0013_blog_settings_manage_capability', "
+            . "'0014_blog_private_draft_publication', "
+            . "'0015_blog_robots_preferences', "
+            . "'0016_blog_url_history', "
+            . "'0017_blog_dummy_category', "
+            . "'0018_blog_dummy_category_normalization')"
         );
+        $pdo->exec('DROP TABLE ls_blog_url_history');
+        $pdo->exec('DROP TABLE ls_blog_revision_robots');
+        $pdo->exec('DROP TABLE ls_blog_robots_settings');
+        foreach ([
+            'ls_blog_category_assignment_workspace_items',
+            'ls_blog_category_assignment_workspaces',
+            'ls_blog_category_assignment_heads',
+            'ls_blog_editorial_workspaces',
+            'ls_blog_publication_heads',
+            'ls_blog_editor_preferences',
+            'ls_blog_content_layout_revisions',
+            'ls_blog_content_layout_docs',
+        ] as $table) {
+            $pdo->exec('DROP TABLE ' . $table);
+        }
         foreach ([
             'ls_blog_analytics_views',
             'ls_blog_analytics_sessions',
@@ -240,43 +384,22 @@ final class BlogPublicHttpRuntimeFactoryTest extends TestCase
         ] as $table) {
             $pdo->exec('DROP TABLE ' . $table);
         }
-        $legacyRuntime = $factory->create(new ModuleRuntimeContext(
-            $this->root,
-            [BlogPublicOrigin::ENV => 'https://example.test']
-        ));
-        self::assertSame([], $legacyRuntime->service()->listPosts());
-        self::assertTrue(
-            $legacyRuntime->__debugInfo()['category_projection']
-        );
-        self::assertTrue(
-            $legacyRuntime->__debugInfo()['catalog_repository']
-        );
-        self::assertNotNull($legacyRuntime->catalogRepository());
-
         $pdo->exec(
-            "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
-            . "AND migration_id IN ('0003_blog_categories', "
-            . "'0004_blog_category_capabilities')"
+            "DELETE FROM ls_blog_category_locales WHERE slug = 'dummy'"
         );
-        foreach ([
-            'ls_blog_post_categories',
-            'ls_blog_category_locales',
-            'ls_blog_categories',
-        ] as $table) {
-            $pdo->exec('DROP TABLE ' . $table);
+        $pdo->exec(
+            "DELETE FROM ls_blog_categories WHERE public_id = "
+            . "'00000000-0000-4000-8000-000000000017'"
+        );
+        try {
+            $factory->create(new ModuleRuntimeContext(
+                $this->root,
+                [BlogPublicOrigin::ENV => 'https://example.test']
+            ));
+            self::fail('Pre-0018 public runtime must fail closed.');
+        } catch (BlogPublicHttpRuntimeException $exception) {
+            self::assertSame('blog.schema_not_ready', $exception->issueCode());
         }
-        $baseRuntime = $factory->create(new ModuleRuntimeContext(
-            $this->root,
-            [BlogPublicOrigin::ENV => 'https://example.test']
-        ));
-        self::assertSame([], $baseRuntime->service()->listPosts());
-        self::assertFalse(
-            $baseRuntime->__debugInfo()['category_projection']
-        );
-        self::assertFalse(
-            $baseRuntime->__debugInfo()['catalog_repository']
-        );
-        self::assertNull($baseRuntime->catalogRepository());
     }
 
     public function testDatabaseConnectionMismatchFailsBeforeResolverAndConnector(): void

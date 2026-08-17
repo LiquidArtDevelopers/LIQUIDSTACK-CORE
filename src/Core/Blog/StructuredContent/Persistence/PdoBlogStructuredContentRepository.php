@@ -8,8 +8,12 @@ use App\Core\Blog\BlogInput;
 use App\Core\Blog\StructuredContent\BlogStructuredContentException;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentCodec;
+use App\Core\Blog\StructuredContent\Document\BlogDocumentV2CompatibilityCanonicalizer;
+use App\Core\Blog\StructuredContent\Document\BlogDocumentWalker;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredDraft;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredMediaReference;
+use App\Core\Blog\StructuredContent\Editing\BlogStructuredSnapshotHasher;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Modules\Migrations\MigrationScope;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -30,12 +34,18 @@ final class PdoBlogStructuredContentRepository implements
     private readonly string $revisions;
     private readonly string $documentMedia;
     private readonly string $revisionMedia;
+    private readonly ?string $layoutDocuments;
+    private readonly ?string $layoutRevisions;
+    private readonly string $robotsSettings;
+    private readonly string $revisionRobots;
     private readonly BlogDocumentCodec $codec;
 
     public function __construct(
         private readonly PDO $pdo,
         MigrationScope $blogScope,
-        ?BlogDocumentCodec $codec = null
+        ?BlogDocumentCodec $codec = null,
+        private readonly bool $layoutReady = false,
+        private readonly bool $robotsSettingsReady = false
     ) {
         try {
             $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
@@ -87,6 +97,23 @@ final class PdoBlogStructuredContentRepository implements
                 'revision_media',
                 $driver
             );
+            $this->layoutDocuments = $layoutReady
+                ? $blogScope->quotedTable('content_layout_docs', $driver)
+                : null;
+            $this->layoutRevisions = $layoutReady
+                ? $blogScope->quotedTable(
+                    'content_layout_revisions',
+                    $driver
+                )
+                : null;
+            $this->robotsSettings = $blogScope->quotedTable(
+                'robots_settings',
+                $driver
+            );
+            $this->revisionRobots = $blogScope->quotedTable(
+                'revision_robots',
+                $driver
+            );
             $this->codec = $codec ?? new BlogDocumentCodec();
         } catch (BlogStructuredContentException $exception) {
             throw $exception;
@@ -112,6 +139,28 @@ final class PdoBlogStructuredContentRepository implements
         string $localizationPublicId
     ): ?BlogStructuredDocumentRecord {
         $localizationPublicId = $this->publicId($localizationPublicId);
+        $layoutProjection = $this->layoutReady
+            ? ', ld.schema_version AS layout_schema_version, '
+                . 'ld.template_key AS layout_template_key, '
+                . 'ld.document_json AS layout_document_json, '
+                . 'ld.document_bytes AS layout_document_bytes, '
+                . 'ld.document_sha256 AS layout_document_sha256, '
+                . 'ld.snapshot_sha256 AS layout_snapshot_sha256 '
+            : ' ';
+        $layoutJoin = $this->layoutReady
+            ? 'LEFT JOIN ' . $this->requiredLayoutDocuments()
+                . ' ld ON ld.document_id = d.id '
+            : '';
+        $robotsProjection = $this->robotsSettingsReady
+            ? ', robots.allow_index AS robots_index, '
+                . 'robots.allow_follow AS robots_follow, '
+                . 'robots.settings_sha256 AS robots_sha256 '
+            : ', NULL AS robots_index, NULL AS robots_follow, '
+                . 'NULL AS robots_sha256 ';
+        $robotsJoin = $this->robotsSettingsReady
+            ? 'LEFT JOIN ' . $this->robotsSettings
+                . ' robots ON robots.localization_id = l.id '
+            : '';
         $row = $this->one(
             'SELECT d.id AS internal_id, '
             . 'd.public_id AS document_public_id, '
@@ -121,9 +170,12 @@ final class PdoBlogStructuredContentRepository implements
             . 'd.snapshot_sha256, d.created_by_user_public_id, '
             . 'd.updated_by_user_public_id, d.created_at, d.updated_at, '
             . 'l.h1, l.slug, l.seo_title, l.meta_description, l.excerpt, '
-            . 'l.body_text FROM ' . $this->documents . ' d '
+            . 'l.body_text' . $layoutProjection . $robotsProjection
+            . 'FROM ' . $this->documents . ' d '
             . 'JOIN ' . $this->localizations . ' l '
             . 'ON l.id = d.localization_id '
+            . $layoutJoin
+            . $robotsJoin
             . 'WHERE l.public_id = :localization_public_id',
             ['localization_public_id' => $localizationPublicId]
         );
@@ -146,6 +198,28 @@ final class PdoBlogStructuredContentRepository implements
         string $revisionPublicId
     ): ?BlogStructuredRevisionRecord {
         $revisionPublicId = $this->publicId($revisionPublicId);
+        $layoutProjection = $this->layoutReady
+            ? ', lr.schema_version AS layout_schema_version, '
+                . 'lr.template_key AS layout_template_key, '
+                . 'lr.document_json AS layout_document_json, '
+                . 'lr.document_bytes AS layout_document_bytes, '
+                . 'lr.document_sha256 AS layout_document_sha256, '
+                . 'lr.snapshot_sha256 AS layout_snapshot_sha256 '
+            : ' ';
+        $layoutJoin = $this->layoutReady
+            ? 'LEFT JOIN ' . $this->requiredLayoutRevisions()
+                . ' lr ON lr.revision_id = r.id '
+            : '';
+        $robotsProjection = $this->robotsSettingsReady
+            ? ', robots.allow_index AS robots_index, '
+                . 'robots.allow_follow AS robots_follow, '
+                . 'robots.settings_sha256 AS robots_sha256 '
+            : ', NULL AS robots_index, NULL AS robots_follow, '
+                . 'NULL AS robots_sha256 ';
+        $robotsJoin = $this->robotsSettingsReady
+            ? 'LEFT JOIN ' . $this->revisionRobots
+                . ' robots ON robots.revision_id = r.id '
+            : '';
         $row = $this->one(
             'SELECT r.id AS internal_id, '
             . 'r.public_id AS revision_public_id, '
@@ -155,10 +229,13 @@ final class PdoBlogStructuredContentRepository implements
             . 'r.document_bytes, r.document_sha256, r.body_text_sha256, '
             . 'r.snapshot_sha256, r.h1, r.slug, r.seo_title, '
             . 'r.meta_description, r.excerpt, r.body_text, '
-            . 'r.created_by_user_public_id, r.created_at '
+            . 'r.created_by_user_public_id, r.created_at'
+            . $layoutProjection . $robotsProjection
             . 'FROM ' . $this->revisions . ' r '
             . 'JOIN ' . $this->localizations . ' l '
             . 'ON l.id = r.localization_id '
+            . $layoutJoin
+            . $robotsJoin
             . 'WHERE r.public_id = :revision_public_id',
             ['revision_public_id' => $revisionPublicId]
         );
@@ -190,16 +267,29 @@ final class PdoBlogStructuredContentRepository implements
             throw $this->invalidInput();
         }
 
+        $revisionProjection = $this->layoutReady
+            ? 'COALESCE(lr.schema_version, r.schema_version) '
+                . 'AS schema_version, '
+                . 'COALESCE(lr.template_key, r.template_key) '
+                . 'AS template_key, '
+                . 'COALESCE(lr.document_bytes, r.document_bytes) '
+                . 'AS document_bytes, '
+            : 'r.schema_version, r.template_key, r.document_bytes, ';
+        $layoutJoin = $this->layoutReady
+            ? 'LEFT JOIN ' . $this->requiredLayoutRevisions()
+                . ' lr ON lr.revision_id = r.id '
+            : '';
         $statement = $this->prepare(
             'SELECT r.public_id AS revision_public_id, '
             . 'l.public_id AS localization_public_id, '
             . 'r.revision_number, r.variant_lock_version, '
-            . 'r.schema_version, r.template_key, r.document_bytes, '
+            . $revisionProjection
             . 'r.created_at, (SELECT COUNT(*) FROM '
             . $this->revisionMedia . ' rm WHERE rm.revision_id = r.id) '
             . 'AS media_count FROM ' . $this->revisions . ' r '
             . 'JOIN ' . $this->localizations . ' l '
             . 'ON l.id = r.localization_id '
+            . $layoutJoin
             . 'WHERE l.public_id = :localization_public_id '
             . 'ORDER BY r.revision_number DESC, r.id DESC '
             . 'LIMIT :list_limit OFFSET :list_offset'
@@ -254,6 +344,7 @@ final class PdoBlogStructuredContentRepository implements
         DateTimeImmutable $now
     ): void {
         $this->assertWriteTransaction();
+        $this->assertLayoutWritable($draft);
         $localizationPublicId = $this->publicId($localizationPublicId);
         $documentPublicId = $this->generatedPublicId($documentPublicId);
         $actorPublicId = $this->publicId($actorPublicId);
@@ -294,28 +385,41 @@ final class PdoBlogStructuredContentRepository implements
             if ($statement->rowCount() !== 1) {
                 throw $this->storageUnavailable();
             }
-
-            return;
+        } else {
+            $statement = $this->prepare(
+                'UPDATE ' . $this->documents . ' SET '
+                . 'schema_version = :schema_version, '
+                . 'template_key = :template_key, '
+                . 'document_json = :document_json, '
+                . 'document_bytes = :document_bytes, '
+                . 'document_sha256 = :document_sha256, '
+                . 'body_text_sha256 = :body_text_sha256, '
+                . 'snapshot_sha256 = :snapshot_sha256, '
+                . 'updated_by_user_public_id = :updated_actor, '
+                . 'updated_at = :updated_at WHERE id = :document_id'
+            );
+            $parameters['document_id'] = $this->positiveInteger(
+                $existing['id'] ?? null
+            );
+            $this->execute($statement, $parameters);
+            if ($statement->rowCount() > 1) {
+                throw $this->storageUnavailable();
+            }
         }
 
-        $statement = $this->prepare(
-            'UPDATE ' . $this->documents . ' SET '
-            . 'schema_version = :schema_version, '
-            . 'template_key = :template_key, document_json = :document_json, '
-            . 'document_bytes = :document_bytes, '
-            . 'document_sha256 = :document_sha256, '
-            . 'body_text_sha256 = :body_text_sha256, '
-            . 'snapshot_sha256 = :snapshot_sha256, '
-            . 'updated_by_user_public_id = :updated_actor, '
-            . 'updated_at = :updated_at WHERE id = :document_id'
+        $stored = $this->one(
+            'SELECT id FROM ' . $this->documents
+            . ' WHERE localization_id = :localization_id'
+            . $this->forUpdate(),
+            ['localization_id' => $localization['id']]
         );
-        $parameters['document_id'] = $this->positiveInteger(
-            $existing['id'] ?? null
-        );
-        $this->execute($statement, $parameters);
-        if ($statement->rowCount() > 1) {
+        if ($stored === null) {
             throw $this->storageUnavailable();
         }
+        $this->syncCurrentLayout(
+            $this->positiveInteger($stored['id'] ?? null),
+            $draft
+        );
     }
 
     public function replaceCurrentMedia(
@@ -368,21 +472,73 @@ final class PdoBlogStructuredContentRepository implements
         string $actorPublicId,
         DateTimeImmutable $now
     ): int {
+        return $this->appendRevisionRecord(
+            $localizationPublicId,
+            $revisionPublicId,
+            $variantLockVersion,
+            $variantLockVersion,
+            $draft,
+            $actorPublicId,
+            $now,
+            true
+        );
+    }
+
+    public function appendPrivateRevision(
+        string $localizationPublicId,
+        string $revisionPublicId,
+        int $expectedCurrentLockVersion,
+        BlogStructuredDraft $draft,
+        string $actorPublicId,
+        DateTimeImmutable $now
+    ): int {
+        try {
+            BlogInput::expectedLockVersion($expectedCurrentLockVersion);
+        } catch (Throwable) {
+            throw $this->invalidInput();
+        }
+
+        return $this->appendRevisionRecord(
+            $localizationPublicId,
+            $revisionPublicId,
+            $expectedCurrentLockVersion,
+            $expectedCurrentLockVersion + 1,
+            $draft,
+            $actorPublicId,
+            $now,
+            false
+        );
+    }
+
+    private function appendRevisionRecord(
+        string $localizationPublicId,
+        string $revisionPublicId,
+        int $expectedCurrentLockVersion,
+        int $storedVariantLockVersion,
+        BlogStructuredDraft $draft,
+        string $actorPublicId,
+        DateTimeImmutable $now,
+        bool $mustMatchPublicProjection
+    ): int {
         $this->assertWriteTransaction();
+        $this->assertLayoutWritable($draft);
         $localizationPublicId = $this->publicId($localizationPublicId);
         $revisionPublicId = $this->generatedPublicId($revisionPublicId);
         $actorPublicId = $this->publicId($actorPublicId);
         try {
-            BlogInput::lockVersion($variantLockVersion);
+            BlogInput::lockVersion($expectedCurrentLockVersion);
+            BlogInput::lockVersion($storedVariantLockVersion);
         } catch (Throwable) {
             throw $this->invalidInput();
         }
         $timestamp = $this->format($now);
         $localization = $this->lockLocalization($localizationPublicId);
-        if ($localization['lock_version'] !== $variantLockVersion) {
+        if ($localization['lock_version'] !== $expectedCurrentLockVersion) {
             throw $this->invalidInput();
         }
-        $this->assertDraftMatchesLocalization($draft, $localization);
+        if ($mustMatchPublicProjection) {
+            $this->assertDraftMatchesLocalization($draft, $localization);
+        }
 
         $row = $this->one(
             'SELECT MAX(revision_number) AS latest_revision_number FROM '
@@ -421,14 +577,14 @@ final class PdoBlogStructuredContentRepository implements
             'public_id' => $revisionPublicId,
             'localization_id' => $localization['id'],
             'revision_number' => $revisionNumber,
-            'variant_lock_version' => $variantLockVersion,
-            'schema_version' => $draft->schemaVersion(),
-            'template_key' => $draft->templateKey(),
-            'document_json' => $draft->canonicalJson(),
-            'document_bytes' => $draft->documentBytes(),
-            'document_sha256' => $draft->documentSha256(),
+            'variant_lock_version' => $storedVariantLockVersion,
+            'schema_version' => $draft->compatibilitySchemaVersion(),
+            'template_key' => $draft->compatibilityTemplateKey(),
+            'document_json' => $draft->compatibilityCanonicalJson(),
+            'document_bytes' => $draft->compatibilityDocumentBytes(),
+            'document_sha256' => $draft->compatibilityDocumentSha256(),
             'body_text_sha256' => $draft->bodyTextSha256(),
-            'snapshot_sha256' => $draft->snapshotSha256(),
+            'snapshot_sha256' => $draft->compatibilitySnapshotSha256(),
             'h1' => $compatibility->h1(),
             'slug' => $compatibility->slug(),
             'seo_title' => $compatibility->seoTitle(),
@@ -440,6 +596,39 @@ final class PdoBlogStructuredContentRepository implements
         ]);
         if ($statement->rowCount() !== 1) {
             throw $this->storageUnavailable();
+        }
+
+        if (
+            $this->robotsSettingsReady
+            || ($this->layoutReady && $draft->schemaVersion()
+                === BlogDocument::LAYOUT_VERSION)
+        ) {
+            $stored = $this->one(
+                'SELECT id FROM ' . $this->revisions
+                . ' WHERE public_id = :revision_public_id'
+                . $this->forUpdate(),
+                ['revision_public_id' => $revisionPublicId]
+            );
+            if ($stored === null) {
+                throw $this->storageUnavailable();
+            }
+            $revisionId = $this->positiveInteger($stored['id'] ?? null);
+            if ($this->robotsSettingsReady) {
+                $this->insertRevisionRobots(
+                    $revisionId,
+                    $draft->robotsPreferences()
+                );
+            }
+            if (
+                !$this->layoutReady
+                || $draft->schemaVersion() !== BlogDocument::LAYOUT_VERSION
+            ) {
+                return $revisionNumber;
+            }
+            $this->insertRevisionLayout(
+                $revisionId,
+                $draft
+            );
         }
 
         return $revisionNumber;
@@ -496,10 +685,22 @@ final class PdoBlogStructuredContentRepository implements
     /** @return array<string, mixed> */
     private function lockLocalization(string $publicId): array
     {
+        $robotsProjection = $this->robotsSettingsReady
+            ? ', robots.allow_index AS robots_index, '
+                . 'robots.allow_follow AS robots_follow, '
+                . 'robots.settings_sha256 AS robots_sha256 '
+            : ', NULL AS robots_index, NULL AS robots_follow, '
+                . 'NULL AS robots_sha256 ';
+        $robotsJoin = $this->robotsSettingsReady
+            ? ' LEFT JOIN ' . $this->robotsSettings
+                . ' robots ON robots.localization_id = l.id'
+            : '';
         $row = $this->one(
-            'SELECT id, lock_version, h1, slug, seo_title, '
-            . 'meta_description, excerpt, body_text FROM '
-            . $this->localizations . ' WHERE public_id = :public_id'
+            'SELECT l.id, l.lock_version, l.h1, l.slug, l.seo_title, '
+            . 'l.meta_description, l.excerpt, l.body_text'
+            . $robotsProjection . 'FROM '
+            . $this->localizations . ' l' . $robotsJoin
+            . ' WHERE l.public_id = :public_id'
             . $this->forUpdate(),
             ['public_id' => $publicId]
         );
@@ -533,9 +734,114 @@ final class PdoBlogStructuredContentRepository implements
                 !== $compatibility->excerpt()
             || $this->requiredString($localization, 'body_text')
                 !== $compatibility->bodyText()
+            || !$this->robotsPreferencesFromRow($localization)->equals(
+                $draft->robotsPreferences()
+            )
         ) {
             throw $this->invalidInput();
         }
+    }
+
+    private function syncCurrentLayout(
+        int $documentId,
+        BlogStructuredDraft $draft
+    ): void {
+        if (!$this->layoutReady) {
+            return;
+        }
+        $table = $this->requiredLayoutDocuments();
+        $existing = $this->one(
+            'SELECT document_id FROM ' . $table
+            . ' WHERE document_id = :document_id' . $this->forUpdate(),
+            ['document_id' => $documentId]
+        );
+        if ($draft->schemaVersion() !== BlogDocument::LAYOUT_VERSION) {
+            if ($existing !== null) {
+                $delete = $this->prepare(
+                    'DELETE FROM ' . $table
+                    . ' WHERE document_id = :document_id'
+                );
+                $this->execute($delete, ['document_id' => $documentId]);
+                if ($delete->rowCount() !== 1) {
+                    throw $this->storageUnavailable();
+                }
+            }
+            return;
+        }
+
+        $parameters = $this->layoutParameters($draft);
+        $parameters['document_id'] = $documentId;
+        if ($existing === null) {
+            $statement = $this->prepare(
+                'INSERT INTO ' . $table . ' (document_id, schema_version, '
+                . 'template_key, document_json, document_bytes, '
+                . 'document_sha256, snapshot_sha256) VALUES '
+                . '(:document_id, :schema_version, :template_key, '
+                . ':document_json, :document_bytes, :document_sha256, '
+                . ':snapshot_sha256)'
+            );
+            $this->execute($statement, $parameters);
+            if ($statement->rowCount() !== 1) {
+                throw $this->storageUnavailable();
+            }
+            return;
+        }
+
+        $statement = $this->prepare(
+            'UPDATE ' . $table . ' SET schema_version = :schema_version, '
+            . 'template_key = :template_key, document_json = :document_json, '
+            . 'document_bytes = :document_bytes, '
+            . 'document_sha256 = :document_sha256, '
+            . 'snapshot_sha256 = :snapshot_sha256 '
+            . 'WHERE document_id = :document_id'
+        );
+        $this->execute($statement, $parameters);
+        if ($statement->rowCount() > 1) {
+            throw $this->storageUnavailable();
+        }
+    }
+
+    private function insertRevisionLayout(
+        int $revisionId,
+        BlogStructuredDraft $draft
+    ): void {
+        if (
+            !$this->layoutReady
+            || $draft->schemaVersion() !== BlogDocument::LAYOUT_VERSION
+        ) {
+            throw $this->storageUnavailable();
+        }
+        $parameters = $this->layoutParameters($draft);
+        $parameters['revision_id'] = $revisionId;
+        $statement = $this->prepare(
+            'INSERT INTO ' . $this->requiredLayoutRevisions()
+            . ' (revision_id, schema_version, template_key, document_json, '
+            . 'document_bytes, document_sha256, snapshot_sha256) VALUES '
+            . '(:revision_id, :schema_version, :template_key, '
+            . ':document_json, :document_bytes, :document_sha256, '
+            . ':snapshot_sha256)'
+        );
+        $this->execute($statement, $parameters);
+        if ($statement->rowCount() !== 1) {
+            throw $this->storageUnavailable();
+        }
+    }
+
+    /** @return array<string, int|string> */
+    private function layoutParameters(BlogStructuredDraft $draft): array
+    {
+        if ($draft->schemaVersion() !== BlogDocument::LAYOUT_VERSION) {
+            throw $this->invalidInput();
+        }
+
+        return [
+            'schema_version' => BlogDocument::LAYOUT_VERSION,
+            'template_key' => $draft->templateKey(),
+            'document_json' => $draft->canonicalJson(),
+            'document_bytes' => $draft->documentBytes(),
+            'document_sha256' => $draft->documentSha256(),
+            'snapshot_sha256' => $draft->snapshotSha256(),
+        ];
     }
 
     /** @return array<string, int|string> */
@@ -545,13 +851,13 @@ final class PdoBlogStructuredContentRepository implements
         string $timestamp
     ): array {
         return [
-            'schema_version' => $draft->schemaVersion(),
-            'template_key' => $draft->templateKey(),
-            'document_json' => $draft->canonicalJson(),
-            'document_bytes' => $draft->documentBytes(),
-            'document_sha256' => $draft->documentSha256(),
+            'schema_version' => $draft->compatibilitySchemaVersion(),
+            'template_key' => $draft->compatibilityTemplateKey(),
+            'document_json' => $draft->compatibilityCanonicalJson(),
+            'document_bytes' => $draft->compatibilityDocumentBytes(),
+            'document_sha256' => $draft->compatibilityDocumentSha256(),
             'body_text_sha256' => $draft->bodyTextSha256(),
-            'snapshot_sha256' => $draft->snapshotSha256(),
+            'snapshot_sha256' => $draft->compatibilitySnapshotSha256(),
             'updated_actor' => $actorPublicId,
             'updated_at' => $timestamp,
         ];
@@ -639,31 +945,180 @@ final class PdoBlogStructuredContentRepository implements
     private function draft(array $row): BlogStructuredDraft
     {
         try {
-            $document = $this->codec->decode(
-                $this->requiredString($row, 'document_json')
-            );
-            $draft = new BlogStructuredDraft(
+            $baseJson = $this->requiredString($row, 'document_json');
+            $baseDraft = new BlogStructuredDraft(
                 $this->requiredString($row, 'h1'),
-                $document,
+                $this->codec->decode($baseJson),
                 $this->nullableString($row, 'slug'),
                 $this->nullableString($row, 'seo_title'),
                 $this->nullableString($row, 'meta_description'),
                 $this->nullableString($row, 'excerpt'),
-                $this->codec
+                $this->codec,
+                robotsPreferences: $this->robotsPreferencesFromRow($row)
             );
             if (!hash_equals(
-                $draft->compatibilityDraft()->bodyText(),
+                $baseDraft->compatibilityDraft()->bodyText(),
                 $this->requiredString($row, 'body_text')
             )) {
                 throw $this->corruptDocument();
             }
+            if (
+                !$this->layoutReady
+                || ($row['layout_document_json'] ?? null) === null
+            ) {
+                return $baseDraft;
+            }
 
-            return $draft;
+            $layoutJson = $this->requiredString(
+                $row,
+                'layout_document_json'
+            );
+            $layoutDraft = new BlogStructuredDraft(
+                $this->requiredString($row, 'h1'),
+                $this->codec->decodeDraft($layoutJson),
+                $this->nullableString($row, 'slug'),
+                $this->nullableString($row, 'seo_title'),
+                $this->nullableString($row, 'meta_description'),
+                $this->nullableString($row, 'excerpt'),
+                $this->codec,
+                robotsPreferences: $this->robotsPreferencesFromRow($row)
+            );
+            if (
+                $layoutDraft->schemaVersion()
+                    !== BlogDocument::LAYOUT_VERSION
+                || !hash_equals(
+                    $layoutDraft->compatibilityCanonicalJson(),
+                    $baseJson
+                )
+                || !hash_equals(
+                    $layoutDraft->compatibilityDraft()->bodyText(),
+                    $this->requiredString($row, 'body_text')
+                )
+                || $this->positiveInteger(
+                    $row['layout_schema_version'] ?? null
+                ) !== $layoutDraft->schemaVersion()
+                || !hash_equals(
+                    $layoutDraft->templateKey(),
+                    $this->requiredString($row, 'layout_template_key')
+                )
+                || !$this->layoutMetadataMatches(
+                    $layoutDraft,
+                    $layoutJson,
+                    $row
+                )
+            ) {
+                throw $this->corruptDocument();
+            }
+
+            return $layoutDraft;
         } catch (BlogStructuredContentException $exception) {
             throw $exception;
         } catch (Throwable) {
             throw $this->corruptDocument();
         }
+    }
+
+    private function insertRevisionRobots(
+        int $revisionId,
+        BlogRobotsPreferences $preferences
+    ): void {
+        $statement = $this->prepare(
+            'INSERT INTO ' . $this->revisionRobots
+                . ' (revision_id, allow_index, allow_follow, settings_sha256) '
+                . 'VALUES (:revision_id, :allow_index, :allow_follow, '
+                . ':settings_sha256)'
+        );
+        $this->execute($statement, [
+            'revision_id' => $revisionId,
+            'allow_index' => $preferences->index() ? 1 : 0,
+            'allow_follow' => $preferences->follow() ? 1 : 0,
+            'settings_sha256' => $preferences->integrityHash(),
+        ]);
+        if ($statement->rowCount() !== 1) {
+            throw $this->storageUnavailable();
+        }
+    }
+
+    /** @param array<string, mixed> $row */
+    private function robotsPreferencesFromRow(
+        array $row
+    ): BlogRobotsPreferences {
+        $index = $row['robots_index'] ?? null;
+        $follow = $row['robots_follow'] ?? null;
+        $hash = $row['robots_sha256'] ?? null;
+        if ($index === null && $follow === null && $hash === null) {
+            return BlogRobotsPreferences::defaults();
+        }
+        if (
+            !in_array($index, [0, 1, '0', '1'], true)
+            || !in_array($follow, [0, 1, '0', '1'], true)
+            || !is_string($hash)
+        ) {
+            throw $this->corruptDocument();
+        }
+        $preferences = new BlogRobotsPreferences(
+            (int) $index === 1,
+            (int) $follow === 1
+        );
+        if (!hash_equals($preferences->integrityHash(), $hash)) {
+            throw $this->corruptDocument();
+        }
+
+        return $preferences;
+    }
+
+    /** @param array<string, mixed> $row */
+    private function layoutMetadataMatches(
+        BlogStructuredDraft $draft,
+        string $persistedJson,
+        array $row
+    ): bool {
+        $persistedBytes = $this->positiveInteger(
+            $row['layout_document_bytes'] ?? null
+        );
+        $persistedSha256 = $this->requiredString(
+            $row,
+            'layout_document_sha256'
+        );
+        $persistedSnapshotSha256 = $this->requiredString(
+            $row,
+            'layout_snapshot_sha256'
+        );
+        if (
+            hash_equals($draft->canonicalJson(), $persistedJson)
+            && $persistedBytes === $draft->documentBytes()
+            && hash_equals($draft->documentSha256(), $persistedSha256)
+            && hash_equals(
+                $draft->snapshotSha256(),
+                $persistedSnapshotSha256
+            )
+        ) {
+            return true;
+        }
+
+        $legacyJson = null;
+        foreach ((new BlogDocumentV2CompatibilityCanonicalizer())
+            ->candidates($draft->document()) as $candidate) {
+            if (hash_equals($candidate, $persistedJson)) {
+                $legacyJson = $candidate;
+                break;
+            }
+        }
+        if ($legacyJson === null) {
+            return false;
+        }
+        $legacySha256 = hash('sha256', $legacyJson);
+        $legacySnapshotSha256 = (new BlogStructuredSnapshotHasher())->hash(
+            $draft->compatibilityDraft(),
+            $legacySha256
+        );
+
+        return $persistedBytes === strlen($legacyJson)
+            && hash_equals($legacySha256, $persistedSha256)
+            && hash_equals(
+                $legacySnapshotSha256,
+                $persistedSnapshotSha256
+            );
     }
 
     /**
@@ -752,7 +1207,9 @@ final class PdoBlogStructuredContentRepository implements
     {
         try {
             $references = [];
-            foreach ($this->codec->decode($json)->blocks() as $block) {
+            foreach ((new BlogDocumentWalker())->modules(
+                $this->codec->decodeDraft($json)
+            ) as $block) {
                 if (($block['type'] ?? null) !== 'image') {
                     continue;
                 }
@@ -985,6 +1442,34 @@ final class PdoBlogStructuredContentRepository implements
     private function forUpdate(): string
     {
         return $this->driver === 'mysql' ? ' FOR UPDATE' : '';
+    }
+
+    private function requiredLayoutDocuments(): string
+    {
+        if (!$this->layoutReady || $this->layoutDocuments === null) {
+            throw $this->storageUnavailable();
+        }
+
+        return $this->layoutDocuments;
+    }
+
+    private function requiredLayoutRevisions(): string
+    {
+        if (!$this->layoutReady || $this->layoutRevisions === null) {
+            throw $this->storageUnavailable();
+        }
+
+        return $this->layoutRevisions;
+    }
+
+    private function assertLayoutWritable(BlogStructuredDraft $draft): void
+    {
+        if (
+            $draft->schemaVersion() === BlogDocument::LAYOUT_VERSION
+            && !$this->layoutReady
+        ) {
+            throw $this->invalidInput();
+        }
     }
 
     private function assertWriteTransaction(): void

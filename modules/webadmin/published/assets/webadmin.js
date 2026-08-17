@@ -227,6 +227,354 @@
         update();
     }
 
+    function setWebAdminLoader(loader, active) {
+        if (!(loader instanceof HTMLElement)) {
+            return;
+        }
+
+        loader.hidden = !active;
+        loader.setAttribute('aria-hidden', 'true');
+    }
+
+    function setMediaUploadSubmitting(form, submitting) {
+        var submit = form.querySelector('[data-webadmin-media-submit]');
+        var label = form.querySelector('[data-webadmin-media-submit-label]');
+        var loader = form.querySelector('[data-webadmin-loader]');
+
+        form.dataset.webadminMediaSubmitting = submitting ? 'true' : 'false';
+        form.setAttribute('aria-busy', submitting ? 'true' : 'false');
+        if (submit instanceof HTMLButtonElement) {
+            submit.disabled = submitting;
+            submit.setAttribute('aria-disabled', submitting ? 'true' : 'false');
+            submit.setAttribute('aria-busy', submitting ? 'true' : 'false');
+        }
+        if (label instanceof HTMLElement) {
+            if (!label.dataset.webadminMediaIdleLabel) {
+                label.dataset.webadminMediaIdleLabel = label.textContent || '';
+            }
+            label.textContent = submitting
+                ? 'Procesando y guardando…'
+                : label.dataset.webadminMediaIdleLabel;
+        }
+        setWebAdminLoader(loader, submitting);
+    }
+
+    function bindMediaUploadForm(form) {
+        if (
+            !(form instanceof HTMLFormElement)
+            || form.dataset.webadminMediaUploadBound === 'true'
+        ) {
+            return;
+        }
+
+        var input = form.querySelector('[data-webadmin-media-file]');
+        var fileName = form.querySelector('[data-webadmin-media-file-name]');
+
+        function updateFileName() {
+            if (!(input instanceof HTMLInputElement)) {
+                return;
+            }
+            var selected = input.files && input.files.length === 1
+                ? input.files[0]
+                : null;
+            if (fileName instanceof HTMLElement) {
+                fileName.textContent = selected
+                    ? selected.name
+                    : 'Ningún archivo seleccionado';
+                fileName.dataset.webadminMediaFileSelected = selected
+                    ? 'true'
+                    : 'false';
+                fileName.title = selected ? selected.name : '';
+            }
+            input.dataset.webadminMediaFileBound = 'true';
+        }
+
+        if (input instanceof HTMLInputElement) {
+            input.addEventListener('change', updateFileName);
+            updateFileName();
+        }
+        form.addEventListener('submit', function (event) {
+            if (form.dataset.webadminMediaSubmitting === 'true') {
+                event.preventDefault();
+                return;
+            }
+            if (
+                typeof form.checkValidity === 'function'
+                && !form.checkValidity()
+            ) {
+                return;
+            }
+            setMediaUploadSubmitting(form, true);
+        });
+        form.dataset.webadminMediaUploadBound = 'true';
+        setMediaUploadSubmitting(form, false);
+    }
+
+    function bindMediaDelete(root) {
+        if (
+            !(root instanceof HTMLElement)
+            || root.dataset.webadminMediaDeleteBound === 'true'
+        ) {
+            return;
+        }
+
+        var dialog = root.querySelector('[data-webadmin-media-delete-dialog]');
+        var cancel = root.querySelector('[data-webadmin-media-delete-cancel]');
+        var confirm = root.querySelector('[data-webadmin-media-delete-confirm]');
+        var label = root.querySelector('[data-webadmin-media-delete-label]');
+        var status = root.querySelector('[data-webadmin-media-delete-status]');
+        var dialogStatus = root.querySelector(
+            '[data-webadmin-media-delete-dialog-status]'
+        );
+        var pendingForm = null;
+        var submitting = false;
+
+        if (
+            !(dialog instanceof HTMLDialogElement)
+            || !(cancel instanceof HTMLButtonElement)
+            || !(confirm instanceof HTMLButtonElement)
+            || typeof dialog.showModal !== 'function'
+            || typeof window.fetch !== 'function'
+            || typeof window.URL !== 'function'
+            || typeof window.URLSearchParams !== 'function'
+        ) {
+            root.dataset.webadminMediaDeleteBound = 'fallback';
+            return;
+        }
+
+        var deleteFieldContract = [
+            ['csrf', 256],
+            ['asset', 64],
+            ['asset_version', 128],
+            ['idempotency_key', 64],
+            ['page', 6]
+        ];
+
+        function encodedDeletePayload(form) {
+            var namedControls = form.querySelectorAll('[name]');
+            if (namedControls.length !== deleteFieldContract.length) {
+                return null;
+            }
+
+            var payload = new window.URLSearchParams();
+            for (var index = 0; index < deleteFieldContract.length; index += 1) {
+                var contract = deleteFieldContract[index];
+                var control = form.elements.namedItem(contract[0]);
+                if (
+                    !(control instanceof HTMLInputElement)
+                    || control.type !== 'hidden'
+                    || control.value.length < 1
+                    || control.value.length > contract[1]
+                ) {
+                    return null;
+                }
+                payload.append(contract[0], control.value);
+            }
+
+            return payload.toString();
+        }
+
+        function setFeedback(message, failed) {
+            if (!(status instanceof HTMLElement)) {
+                return;
+            }
+            status.textContent = message;
+            status.dataset.webadminMediaDeleteFeedback = failed
+                ? 'error'
+                : 'success';
+        }
+
+        function setSubmitting(active) {
+            submitting = active;
+            dialog.setAttribute('aria-busy', active ? 'true' : 'false');
+            cancel.disabled = active;
+            confirm.disabled = active;
+            confirm.textContent = active ? 'Retirando…' : 'Confirmar';
+        }
+
+        function setDialogFeedback(message) {
+            if (dialogStatus instanceof HTMLElement) {
+                dialogStatus.textContent = message;
+            }
+        }
+
+        function closeDialog(restoreFocus) {
+            var focusTarget = pendingForm instanceof HTMLFormElement
+                ? pendingForm.querySelector('button[type="submit"]')
+                : null;
+            pendingForm = null;
+            setSubmitting(false);
+            if (dialog.open) {
+                dialog.close();
+            }
+            if (restoreFocus && focusTarget instanceof HTMLButtonElement) {
+                focusTarget.focus();
+            }
+        }
+
+        function catalogRegionFromHtml(html) {
+            if (typeof html !== 'string' || html.length > 1048576) {
+                return null;
+            }
+            var template = document.createElement('template');
+            template.innerHTML = html.trim();
+            var regions = template.content.querySelectorAll(
+                '[data-webadmin-media-catalog-region]'
+            );
+            if (
+                regions.length !== 1
+                || template.content.children.length !== 1
+                || !(regions[0] instanceof HTMLDivElement)
+            ) {
+                return null;
+            }
+
+            return regions[0];
+        }
+
+        root.addEventListener('submit', function (event) {
+            var form = event.target;
+            if (
+                !(form instanceof HTMLFormElement)
+                || !form.matches('[data-webadmin-media-delete-form]')
+                || submitting
+            ) {
+                return;
+            }
+            event.preventDefault();
+            pendingForm = form;
+            var card = form.closest('[data-webadmin-media-card]');
+            var heading = card instanceof HTMLElement
+                ? card.querySelector('h3')
+                : null;
+            if (label instanceof HTMLElement) {
+                label.textContent = heading instanceof HTMLElement
+                    ? heading.textContent.trim()
+                    : 'esta imagen';
+            }
+            setFeedback('', false);
+            setDialogFeedback('');
+            dialog.showModal();
+            confirm.focus();
+        });
+
+        cancel.addEventListener('click', function () {
+            closeDialog(true);
+        });
+        dialog.addEventListener('cancel', function (event) {
+            if (submitting) {
+                event.preventDefault();
+                return;
+            }
+            window.setTimeout(function () {
+                pendingForm = null;
+            }, 0);
+        });
+        dialog.addEventListener('click', function (event) {
+            if (!submitting && event.target === dialog) {
+                closeDialog(true);
+            }
+        });
+        confirm.addEventListener('click', function () {
+            if (!(pendingForm instanceof HTMLFormElement) || submitting) {
+                return;
+            }
+
+            var action = new window.URL(
+                pendingForm.action,
+                window.location.href
+            );
+            var payload = encodedDeletePayload(pendingForm);
+            if (action.origin !== window.location.origin || payload === null) {
+                setDialogFeedback(
+                    'No se pudo validar la operación solicitada.'
+                );
+                return;
+            }
+            setSubmitting(true);
+            window.fetch(action.toString(), {
+                method: 'POST',
+                body: payload,
+                credentials: 'same-origin',
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'X-LiquidStack-Media-Manager': 'async'
+                }
+            }).then(function (response) {
+                var contentType = response.headers.get('content-type') || '';
+                if (!/\bapplication\/json\b/i.test(contentType)) {
+                    throw new Error('invalid_response');
+                }
+                return response.json().then(function (body) {
+                    return { response: response, body: body };
+                });
+            }).then(function (result) {
+                var body = result.body;
+                if (
+                    !result.response.ok
+                    || !body
+                    || body.ok !== true
+                ) {
+                    throw new Error(
+                        body && typeof body.message === 'string'
+                            ? body.message
+                            : 'No se pudo retirar la imagen.'
+                    );
+                }
+                var nextRegion = catalogRegionFromHtml(body.catalog_html);
+                var currentRegion = root.querySelector(
+                    '[data-webadmin-media-catalog-region]'
+                );
+                if (
+                    !(nextRegion instanceof HTMLDivElement)
+                    || !(currentRegion instanceof HTMLDivElement)
+                ) {
+                    throw new Error('invalid_catalog');
+                }
+                currentRegion.replaceWith(nextRegion);
+                if (
+                    Number.isInteger(body.page)
+                    && body.page > 0
+                    && typeof window.URL === 'function'
+                    && window.history
+                    && typeof window.history.replaceState === 'function'
+                ) {
+                    var nextUrl = new window.URL(window.location.href);
+                    if (body.page === 1) {
+                        nextUrl.searchParams.delete('page');
+                    } else {
+                        nextUrl.searchParams.set('page', String(body.page));
+                    }
+                    window.history.replaceState(
+                        window.history.state,
+                        '',
+                        nextUrl.toString()
+                    );
+                }
+                closeDialog(false);
+                setFeedback(
+                    'La imagen se ha retirado de la biblioteca y permanece en cuarentena.',
+                    false
+                );
+                if (status instanceof HTMLElement) {
+                    status.focus();
+                }
+            }).catch(function (error) {
+                setSubmitting(false);
+                setDialogFeedback(
+                    error instanceof Error
+                        && error.message !== 'invalid_response'
+                        && error.message !== 'invalid_catalog'
+                        ? error.message
+                        : 'No se pudo retirar la imagen. Inténtalo de nuevo.'
+                );
+            });
+        });
+
+        root.dataset.webadminMediaDeleteBound = 'true';
+    }
+
     function bindAdminShell(root) {
         if (
             !(root instanceof HTMLElement)
@@ -254,9 +602,25 @@
             return desktop === null || desktop.matches;
         }
 
-        function updateToggle(button, open) {
+        function updateToggle(button, open, kind) {
             if (button instanceof HTMLButtonElement) {
                 button.setAttribute('aria-expanded', open ? 'true' : 'false');
+                var opensFromStart = kind === 'sidebar';
+                var icon = button.querySelector('[data-webadmin-toggle-icon]');
+                var label = button.querySelector('[data-webadmin-toggle-label]');
+                var action = open ? 'Cerrar' : 'Abrir';
+                var target = opensFromStart ? 'menú' : 'herramientas';
+                var text = action + ' ' + target;
+                button.setAttribute('aria-label', text);
+                button.dataset.webadminToggleState = open ? 'open' : 'closed';
+                if (label instanceof HTMLElement) {
+                    label.textContent = text;
+                }
+                if (icon instanceof HTMLElement) {
+                    icon.textContent = opensFromStart
+                        ? (open ? '‹' : '›')
+                        : (open ? '›' : '‹');
+                }
             }
         }
 
@@ -265,7 +629,7 @@
                 && sidebar instanceof HTMLElement
                 && sidebar.contains(document.activeElement);
             root.dataset.webadminSidebarOpen = open ? 'true' : 'false';
-            updateToggle(menuToggle, open);
+            updateToggle(menuToggle, open, 'sidebar');
             if (sidebar instanceof HTMLElement) {
                 if (open) {
                     sidebar.removeAttribute('aria-hidden');
@@ -292,7 +656,7 @@
                 ? inspectorReturnFocus
                 : inspectorToggle;
             root.dataset.webadminInspectorOpen = open ? 'true' : 'false';
-            updateToggle(inspectorToggle, open);
+            updateToggle(inspectorToggle, open, 'inspector');
             if (inspector instanceof HTMLElement) {
                 if (open) {
                     inspector.removeAttribute('aria-hidden');
@@ -449,6 +813,51 @@
         root.dataset.webadminShellBound = 'true';
     }
 
+    function bindProfileTimeZone(input) {
+        if (
+            !(input instanceof HTMLInputElement)
+            || input.dataset.webadminProfileTimeZoneBound === 'true'
+        ) {
+            return;
+        }
+        input.dataset.webadminProfileTimeZoneBound = 'true';
+        if (input.value.trim() !== '') {
+            return;
+        }
+
+        var proposal = '';
+        try {
+            if (
+                typeof Intl === 'object'
+                && typeof Intl.DateTimeFormat === 'function'
+            ) {
+                proposal = Intl.DateTimeFormat()
+                    .resolvedOptions().timeZone || '';
+            }
+        } catch (error) {
+            proposal = '';
+        }
+        if (
+            typeof proposal !== 'string'
+            || proposal.length < 1
+            || proposal.length > 64
+            || !/^[A-Za-z0-9_+\/-]+$/.test(proposal)
+        ) {
+            return;
+        }
+
+        input.value = proposal;
+        var status = input.parentElement
+            ? input.parentElement.querySelector(
+                '[data-webadmin-profile-time-zone-status]'
+            )
+            : null;
+        if (status instanceof HTMLElement) {
+            status.hidden = false;
+            status.textContent = 'Zona horaria detectada. Revísala antes de guardar.';
+        }
+    }
+
     function init() {
         document.querySelectorAll('[data-auth-password-toggle]')
             .forEach(bindPasswordToggle);
@@ -458,7 +867,22 @@
             .forEach(bindAuth02PasswordPolicy);
         document.querySelectorAll('.webadminShell')
             .forEach(bindAdminShell);
+        document.querySelectorAll('[data-webadmin-media-upload]')
+            .forEach(bindMediaUploadForm);
+        document.querySelectorAll('.webadminMedia')
+            .forEach(bindMediaDelete);
+        document.querySelectorAll('[data-webadmin-profile-time-zone]')
+            .forEach(bindProfileTimeZone);
     }
+
+    window.addEventListener('pageshow', function () {
+        document.querySelectorAll('[data-webadmin-media-upload]')
+            .forEach(function (form) {
+                if (form instanceof HTMLFormElement) {
+                    setMediaUploadSubmitting(form, false);
+                }
+            });
+    });
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init, { once: true });

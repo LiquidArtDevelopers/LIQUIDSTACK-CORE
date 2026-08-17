@@ -1,9 +1,13 @@
 @use '../config' as c;
 
 .sectionBlogSlider01 {
+    box-sizing: border-box;
     width: 100%;
     padding: clamp(3rem, 8vw, 6rem) 0;
     display: grid;
+    align-items: stretch;
+    justify-content: stretch;
+    justify-items: stretch;
     gap: clamp(1.5rem, 4vw, 3rem);
     color: c.$color01;
     background: c.$color00bis;
@@ -20,6 +24,7 @@
 
     .sectionBlogSlider01-controls {
         display: flex;
+        flex-wrap: wrap;
         gap: 0.5rem;
 
         &[hidden] {
@@ -29,11 +34,18 @@
         button {
             width: 2.75rem;
             height: 2.75rem;
+            padding: 0;
+            display: grid;
+            place-items: center;
             border: 1px solid c.$color02;
             border-radius: 50%;
             color: c.$color02;
             background: c.$color00;
             cursor: pointer;
+            transition:
+                color 180ms ease,
+                background-color 180ms ease,
+                opacity 180ms ease;
 
             &:hover {
                 color: c.$color00;
@@ -49,6 +61,29 @@
                 opacity: 0.4;
                 cursor: default;
             }
+
+            &[hidden] {
+                display: none;
+            }
+        }
+
+        .sectionBlogSlider01-autoplay {
+            span {
+                font-size: 0.72rem;
+                font-weight: 700;
+                letter-spacing: -0.08em;
+                transform: translateX(-0.04em);
+            }
+
+            &[aria-pressed='true'] span {
+                width: 0;
+                height: 0;
+                border-block: 0.38rem solid transparent;
+                border-inline-start: 0.62rem solid currentColor;
+                font-size: 0;
+                letter-spacing: normal;
+                transform: translateX(0.08rem);
+            }
         }
     }
 
@@ -57,8 +92,8 @@
         overflow-x: auto;
         overscroll-behavior-inline: contain;
         scrollbar-width: thin;
-        scroll-snap-type: inline mandatory;
         scroll-padding-inline: c.$padMin;
+        scroll-snap-type: inline mandatory;
 
         &:focus-visible {
             outline: 0.18rem solid c.$color02;
@@ -70,20 +105,27 @@
         width: max-content;
         padding-inline: c.$padMin;
         display: flex;
+        align-items: stretch;
         gap: clamp(1rem, 3vw, 2rem);
     }
 
     .sectionBlogSlider01-item {
+        --section-blog-slider-card-padding: clamp(1.25rem, 4vw, 2rem);
+
+        box-sizing: border-box;
         width: min(82vw, 24rem);
         min-width: 0;
         min-height: 19rem;
-        padding: clamp(1.25rem, 4vw, 2rem);
+        padding: var(--section-blog-slider-card-padding);
         display: flex;
+        flex: 0 0 auto;
         flex-direction: column;
         gap: 1rem;
+        overflow: hidden;
         border: 1px solid c.$color01bis4;
         border-radius: 1rem;
         background: c.$color00;
+        box-shadow: 0 1rem 2.5rem c.$color01bis4;
         scroll-snap-align: start;
 
         h2,
@@ -99,11 +141,11 @@
             a {
                 color: c.$color02;
                 text-decoration: none;
+                text-underline-offset: 0.18em;
 
                 &:hover {
                     color: c.$color01;
                     text-decoration: underline;
-                    text-underline-offset: 0.18em;
                 }
 
                 &:focus-visible {
@@ -112,6 +154,59 @@
                     outline-offset: 0.2rem;
                 }
             }
+        }
+    }
+
+    .sectionBlogSlider01-media {
+        order: -2;
+        width: auto;
+        margin:
+            calc(var(--section-blog-slider-card-padding) * -1)
+            calc(var(--section-blog-slider-card-padding) * -1)
+            0;
+        overflow: hidden;
+        background: c.$color01bis4;
+
+        img {
+            width: 100%;
+            max-height: 14rem;
+            aspect-ratio: 16 / 10;
+            display: block;
+            object-fit: cover;
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+    }
+
+    .sectionBlogSlider01-categories {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        list-style: none;
+
+        a,
+        span {
+            display: inline-flex;
+            padding: 0.25rem 0.55rem;
+            border-radius: 999px;
+            color: c.$color01bis;
+            background: c.$color00bis;
+            font-size: 0.72rem;
+            line-height: 1.2;
+            text-decoration: none;
+        }
+
+        a:hover {
+            color: c.$color00;
+            background: c.$color02;
+        }
+
+        a:focus-visible {
+            outline: 0.18rem solid c.$color02;
+            outline-offset: 0.2rem;
         }
     }
 
@@ -129,7 +224,42 @@
         overflow-wrap: anywhere;
     }
 
+    &.sectionBlogSlider01--enhanced {
+        .sectionBlogSlider01-viewport {
+            overflow: hidden;
+            cursor: grab;
+            scroll-snap-type: none;
+            touch-action: pan-y;
+        }
+
+        .sectionBlogSlider01-track {
+            position: relative;
+            width: 100%;
+            display: block;
+        }
+
+        .sectionBlogSlider01-item {
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline-start: 0;
+            margin: 0;
+            scroll-snap-align: none;
+            will-change: transform;
+        }
+    }
+
+    &.sectionBlogSlider01--dragging {
+        .sectionBlogSlider01-viewport {
+            cursor: grabbing;
+            user-select: none;
+        }
+    }
+
     @media (prefers-reduced-motion: reduce) {
+        .sectionBlogSlider01-controls button {
+            transition: none;
+        }
+
         .sectionBlogSlider01-viewport {
             scroll-behavior: auto;
         }

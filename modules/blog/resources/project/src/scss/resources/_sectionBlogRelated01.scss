@@ -1,7 +1,9 @@
 @use '../config' as c;
 
 .sectionBlogRelated01 {
+    box-sizing: border-box;
     width: 100%;
+    min-width: 0;
     padding: clamp(3rem, 8vw, 6rem) c.$padMin;
     display: grid;
     gap: clamp(1.5rem, 4vw, 2.75rem);
@@ -17,6 +19,15 @@
     .sectionBlogRelated01-list {
         width: min(100%, c.$textMax);
         margin-inline: auto;
+    }
+
+    > h1,
+    > h2,
+    > h3,
+    > h4,
+    > h5,
+    > h6 {
+        color: c.$color02;
     }
 
     .sectionBlogRelated01-list {
@@ -60,6 +71,30 @@
                     outline-offset: 0.2rem;
                 }
             }
+        }
+    }
+
+    .sectionBlogRelated01-media {
+        order: -2;
+        position: relative;
+        width: 100%;
+        min-width: 0;
+        aspect-ratio: 16 / 9;
+        flex: 0 0 auto;
+        margin: 0;
+        overflow: hidden;
+        border-radius: 0.75rem;
+        background: c.$color01bis4;
+
+        img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            max-width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+            object-position: 50% 50%;
         }
     }
 

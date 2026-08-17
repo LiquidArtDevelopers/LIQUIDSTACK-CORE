@@ -11,7 +11,9 @@ final class MediaAssetPage
     /**
      * @param list<array{
      *   public_id: string,label: string,source_width: int,source_height: int,
-     *   created_at: string,thumbnail_width: int
+     *   created_at: string,thumbnail_width: int,
+     *   variants?: list<array{width: int,height: int,bytes: int}>,
+     *   usage_status?: 'used'|'unused'|'unknown',delete_version?: string|null
      * }> $items
      */
     public function __construct(

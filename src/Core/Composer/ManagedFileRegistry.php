@@ -146,6 +146,7 @@ final class ManagedFileRegistry
 
         if (in_array($sourceId, [
             'resources/js/_inlineEditor.js',
+            'resources/js/_inlineResponsivePicture.js',
             'stubs/App/app/updateLanguage.php',
         ], true)) {
             return 'runtime:inline-editor';

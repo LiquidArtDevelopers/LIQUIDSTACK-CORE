@@ -566,16 +566,21 @@ function schemaWebPageAccessibility(
     global $arrayRutasGet;
     $alternates = [];
 
-    $indice = array_search( $url, array_keys( $arrayRutasGet[$lang] ), true );
-    foreach ( $arrayRutasGet as $langCode => $routes ) {
-        $keys = array_keys( $routes );
-        if ( isset( $keys[$indice] ) ) {
-            $alternates[] = [
-                '@type'     => 'WebPage',
-                '@id'       => $raiz . $keys[$indice],
-                'url'       => $raiz . $keys[$indice],
-                'inLanguage'=> $langCode
-            ];
+    $localizedRoutes = is_array($arrayRutasGet[$lang] ?? null)
+        ? $arrayRutasGet[$lang]
+        : [];
+    $indice = array_search($url, array_keys($localizedRoutes), true);
+    if ($indice !== false) {
+        foreach ($arrayRutasGet as $langCode => $routes) {
+            $keys = array_keys($routes);
+            if (isset($keys[$indice])) {
+                $alternates[] = [
+                    '@type'     => 'WebPage',
+                    '@id'       => $raiz . $keys[$indice],
+                    'url'       => $raiz . $keys[$indice],
+                    'inLanguage'=> $langCode
+                ];
+            }
         }
     }
     if ( $alternates ) {
@@ -899,4 +904,3 @@ namespace {
         return core_shouldExcludeFromSitemap($url, $meta);
     }
 }
-

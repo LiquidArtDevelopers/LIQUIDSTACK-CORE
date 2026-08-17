@@ -7,6 +7,8 @@ namespace App\Core\Blog\Http;
 use App\Core\Blog\BlogException;
 use App\Core\Blog\Categories\BlogCategoryDraft;
 use App\Core\Blog\Categories\BlogCategoryException;
+use App\Core\Blog\Categories\BlogCategoryLocalization;
+use App\Core\Blog\Categories\BlogCategoryQuickSlug;
 use App\Core\Blog\Categories\BlogCategoryService;
 use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
@@ -60,11 +62,33 @@ final class BlogCategoryAdminHttpController
         if ($context instanceof Response) {
             return $context;
         }
+        $locale = $request->query('locale');
+        if (is_string($locale) && !$this->isActiveLocale($locale)) {
+            return $this->plain(422, 'Unprocessable content');
+        }
 
         try {
+            $categories = $service->list(
+                BlogCategoryService::MAX_ASSIGNMENTS,
+                0,
+                is_string($locale) ? $locale : null
+            );
+            if ($this->isAsyncJsonRequest($request)) {
+                return $this->jsonForRequest($request, 200, [
+                    'ok' => true,
+                    'locale' => is_string($locale) ? $locale : null,
+                    'locales' => $this->activeLocalePayload(),
+                    'categories' => array_map(
+                        fn (BlogCategoryLocalization $category): array =>
+                            $this->categoryPayload($category),
+                        $categories
+                    ),
+                ]);
+            }
+
             return $this->htmlForRequest($request, 200, $this->renderer->index(
                 $this->basePath(),
-                $service->list(),
+                $categories,
                 $this->runtime->authorization()->hasCapability(
                     $context['session'],
                     self::EDIT_CAPABILITY
@@ -72,8 +96,8 @@ final class BlogCategoryAdminHttpController
                 $this->activeLocalePublicPaths(),
                 $this->shellContext($context, '/blog/categories')
             ));
-        } catch (BlogCategoryException) {
-            return $this->plain(503, 'Service unavailable');
+        } catch (BlogCategoryException $exception) {
+            return $this->domainFailureForRequest($request, $exception);
         }
     }
 
@@ -154,19 +178,29 @@ final class BlogCategoryAdminHttpController
             $category = (string) $request->form('category');
             $draft = $this->draft($request);
             if ($category === '') {
-                $service->create($gate, $locale, $draft);
+                $stored = $service->create($gate, $locale, $draft);
             } else {
-                $service->addLocalization(
+                $stored = $service->addLocalization(
                     $gate,
                     $category,
                     $locale,
                     $draft
                 );
             }
+            if ($this->isAsyncJsonRequest($request)) {
+                return $this->json(200, [
+                    'ok' => true,
+                    'category' => $this->categoryPayload($stored),
+                    'category_locales' => $service->localesForCategory(
+                        $stored->categoryPublicId(),
+                        $this->activeLanguages()
+                    ),
+                ]);
+            }
 
             return $this->updatedRedirect();
         } catch (BlogCategoryException|BlogException $exception) {
-            return $this->domainFailure($exception);
+            return $this->domainFailureForRequest($request, $exception);
         }
     }
 
@@ -222,7 +256,7 @@ final class BlogCategoryAdminHttpController
             return $context;
         }
         try {
-            $service->save(
+            $stored = $service->save(
                 $this->runtime->mutationGate(
                     $context['session'],
                     (string) $request->form('csrf'),
@@ -233,10 +267,60 @@ final class BlogCategoryAdminHttpController
                 (int) $request->form('lock_version'),
                 $this->draft($request)
             );
+            if ($this->isAsyncJsonRequest($request)) {
+                return $this->json(200, [
+                    'ok' => true,
+                    'category' => $this->categoryPayload($stored),
+                ]);
+            }
 
             return $this->updatedRedirect();
         } catch (BlogCategoryException|BlogException $exception) {
-            return $this->domainFailure($exception);
+            return $this->domainFailureForRequest($request, $exception);
+        }
+    }
+
+    public function delete(Request $request): Response
+    {
+        if (!$this->accepts($request, 'delete')) {
+            return $this->plain(400, 'Bad request');
+        }
+        $context = $this->authorizedContext(
+            $request,
+            self::EDIT_CAPABILITY,
+            true
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+        $categoryPublicId = (string) $request->form('category');
+        $locale = (string) $request->form('locale');
+        if (!$this->isActiveLocale($locale)) {
+            return $this->plain(422, 'Unprocessable content');
+        }
+        try {
+            $aggregateDeleted = $this->service()->deleteLocalization(
+                $this->runtime->mutationGate(
+                    $context['session'],
+                    (string) $request->form('csrf'),
+                    self::EDIT_CAPABILITY
+                ),
+                $categoryPublicId,
+                $locale,
+                (int) $request->form('lock_version')
+            );
+            if ($this->isAsyncJsonRequest($request)) {
+                return $this->json(200, [
+                    'ok' => true,
+                    'category_public_id' => $categoryPublicId,
+                    'locale' => $locale,
+                    'aggregate_deleted' => $aggregateDeleted,
+                ]);
+            }
+
+            return $this->updatedRedirect();
+        } catch (BlogCategoryException|BlogException $exception) {
+            return $this->domainFailureForRequest($request, $exception);
         }
     }
 
@@ -260,15 +344,17 @@ final class BlogCategoryAdminHttpController
         try {
             $post = (string) $request->query('post');
             // Loading the post enforces existence without exposing its DB ID.
-            $this->runtime->blogService()->loadPost($post, $locale);
+            $variant = $this->runtime->blogService()->loadPost($post, $locale);
 
             return $this->htmlForRequest($request, 200, $this->renderer->assignmentForm(
                 $this->basePath(),
                 $context['csrf'],
                 $post,
                 $locale,
+                $variant->lockVersion(),
+                $service->categoryWorkspaceVersion($post),
                 $service->list(BlogCategoryService::MAX_ASSIGNMENTS, 0, $locale),
-                $service->assignedToPost($post),
+                $service->assignedToVariant($post, $locale),
                 $this->shellContext($context, '/blog/categories/assign')
             ));
         } catch (BlogCategoryException|BlogException $exception) {
@@ -292,19 +378,57 @@ final class BlogCategoryAdminHttpController
         }
         $categories = $request->form('categories', []);
         try {
-            $service->assignToPost(
-                $this->runtime->mutationGate(
-                    $context['session'],
-                    (string) $request->form('csrf'),
-                    self::EDIT_CAPABILITY
-                ),
-                (string) $request->form('post'),
-                is_array($categories) ? array_values($categories) : []
+            $gate = $this->runtime->mutationGate(
+                $context['session'],
+                (string) $request->form('csrf'),
+                self::EDIT_CAPABILITY
             );
+            $values = is_array($categories) ? array_values($categories) : [];
+            $workspaceVersion = null;
+            if (
+                is_string($request->form('locale'))
+                && is_string($request->form('lock_version'))
+                && is_string($request->form('category_workspace_version'))
+            ) {
+                $workspaceVersion = $service->assignToVariant(
+                    $gate,
+                    (string) $request->form('post'),
+                    (string) $request->form('locale'),
+                    (int) $request->form('lock_version'),
+                    (int) $request->form('category_workspace_version'),
+                    $values
+                );
+            } else {
+                if ($service->privateWorkflowEnabled()) {
+                    throw new BlogCategoryException(
+                        BlogCategoryException::INVALID_INPUT
+                    );
+                }
+                $service->assignToPost(
+                    $gate,
+                    (string) $request->form('post'),
+                    $values
+                );
+            }
+
+            if ($this->isAsyncJsonRequest($request)) {
+                if (!is_int($workspaceVersion)) {
+                    return $this->json(422, [
+                        'ok' => false,
+                        'error' => 'variant_identity_required',
+                    ]);
+                }
+
+                return $this->json(200, [
+                    'ok' => true,
+                    'lock_version' => (int) $request->form('lock_version'),
+                    'category_workspace_version' => $workspaceVersion,
+                ]);
+            }
 
             return $this->updatedRedirect();
         } catch (BlogCategoryException|BlogException $exception) {
-            return $this->domainFailure($exception);
+            return $this->domainFailureForRequest($request, $exception);
         }
     }
 
@@ -342,6 +466,8 @@ final class BlogCategoryAdminHttpController
             $activePath,
             assets: new WebAdminPageAssets([
                 '/assets/modules/blog/blog-admin.css',
+            ], [
+                '/assets/modules/blog/blog-admin-list.js',
             ])
         );
     }
@@ -420,10 +546,40 @@ final class BlogCategoryAdminHttpController
 
     private function draft(Request $request): BlogCategoryDraft
     {
+        $name = (string) $request->form('name');
+        $slug = $request->form('slug');
+
         return new BlogCategoryDraft(
-            (string) $request->form('name'),
-            (string) $request->form('slug')
+            $name,
+            is_string($slug) ? $slug : BlogCategoryQuickSlug::fromName($name)
         );
+    }
+
+    /** @return array<string, mixed> */
+    private function categoryPayload(
+        BlogCategoryLocalization $category
+    ): array {
+        return [
+            'category_public_id' => $category->categoryPublicId(),
+            'locale' => $category->locale(),
+            'name' => $category->draft()->name(),
+            'slug' => $category->draft()->slug(),
+            'lock_version' => $category->lockVersion(),
+            'updated_at' => $category->updatedAt()->format(
+                'Y-m-d\TH:i:s.u\Z'
+            ),
+        ];
+    }
+
+    /** @return list<array{locale: string, public_path: string}> */
+    private function activeLocalePayload(): array
+    {
+        $result = [];
+        foreach ($this->activeLocalePublicPaths() as $locale => $path) {
+            $result[] = ['locale' => $locale, 'public_path' => $path];
+        }
+
+        return $result;
     }
 
     private function isActiveLocale(string $locale): bool
@@ -481,6 +637,7 @@ final class BlogCategoryAdminHttpController
             'create' => $this->requestPolicy->acceptsCreate($request),
             'edit' => $this->requestPolicy->acceptsEdit($request),
             'save' => $this->requestPolicy->acceptsSave($request),
+            'delete' => $this->requestPolicy->acceptsDelete($request),
             'assignment' => $this->requestPolicy->acceptsAssign($request),
             'assignment_save' =>
                 $this->requestPolicy->acceptsAssignmentSave($request),
@@ -513,9 +670,53 @@ final class BlogCategoryAdminHttpController
                 $this->plain(404, 'Not found'),
             BlogCategoryException::LOCALE_CONFLICT,
             BlogCategoryException::SLUG_CONFLICT,
-            BlogCategoryException::LOCK_CONFLICT =>
+            BlogCategoryException::LOCK_CONFLICT,
+            BlogCategoryException::IN_USE,
+            BlogCategoryException::RESERVED =>
                 $this->plain(409, 'Conflict'),
             default => $this->plain(503, 'Service unavailable'),
+        };
+    }
+
+    private function domainFailureForRequest(
+        Request $request,
+        BlogCategoryException|BlogException $exception
+    ): Response {
+        if (!$this->isAsyncJsonRequest($request)) {
+            return $this->domainFailure($exception);
+        }
+        [$status, $code] = $this->domainIssue($exception);
+
+        return $this->json($status, [
+            'ok' => false,
+            'error' => $code,
+        ]);
+    }
+
+    /** @return array{int, string} */
+    private function domainIssue(
+        BlogCategoryException|BlogException $exception
+    ): array {
+        if ($exception instanceof BlogException) {
+            return match ($exception->issueCode()) {
+                BlogException::ACTOR_GATE_FAILED => [403, 'forbidden'],
+                BlogException::POST_NOT_FOUND,
+                BlogException::VARIANT_NOT_FOUND => [404, 'not_found'],
+                BlogException::INVALID_INPUT => [422, 'invalid_input'],
+                default => [503, 'unavailable'],
+            };
+        }
+
+        return match ($exception->issueCode()) {
+            BlogCategoryException::INVALID_INPUT => [422, 'invalid_input'],
+            BlogCategoryException::NOT_FOUND,
+            BlogCategoryException::POST_NOT_FOUND => [404, 'not_found'],
+            BlogCategoryException::IN_USE => [409, 'category_in_use'],
+            BlogCategoryException::RESERVED => [409, 'category_reserved'],
+            BlogCategoryException::LOCALE_CONFLICT,
+            BlogCategoryException::SLUG_CONFLICT,
+            BlogCategoryException::LOCK_CONFLICT => [409, 'conflict'],
+            default => [503, 'unavailable'],
         };
     }
 
@@ -587,6 +788,53 @@ final class BlogCategoryAdminHttpController
         return new Response(303, '', ['Location' => $path] + $this->headers(
             "default-src 'none'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'"
         ));
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function json(int $status, array $payload): Response
+    {
+        return new Response(
+            $status,
+            json_encode(
+                $payload,
+                JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+                    | JSON_THROW_ON_ERROR
+            ),
+            $this->headers(
+                "default-src 'none'; form-action 'none'; frame-ancestors "
+                    . "'none'; base-uri 'none'"
+            ) + ['Content-Type' => 'application/json; charset=utf-8']
+        );
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function jsonForRequest(
+        Request $request,
+        int $status,
+        array $payload
+    ): Response {
+        $response = $this->json($status, $payload);
+        if ($request->method() !== 'HEAD') {
+            return $response;
+        }
+
+        return new Response($status, '', $response->headers());
+    }
+
+    private function isAsyncJsonRequest(Request $request): bool
+    {
+        $editor = strtolower(trim((string) $request->header(
+            'x-liquidstack-editor'
+        )));
+        $manager = strtolower(trim((string) $request->header(
+            'x-liquidstack-category-manager'
+        )));
+
+        return in_array('async', [$editor, $manager], true)
+            && preg_match(
+                '/(?:^|,)\s*application\/json(?:\s*;[^,]*)?(?:,|$)/i',
+                (string) $request->header('accept')
+            ) === 1;
     }
 
     /** @return array<string, string> */

@@ -68,7 +68,7 @@ El índice debe reproducir la precedencia real del helper `controller()`:
 
 Un recurso local con el mismo nombre debe prevalecer sobre el de CORE. El
 catálogo no puede generarse únicamente desde CORE: durante la auditoría inicial
-AIWA contenía un controlador adicional propio.
+un consumidor contenía un controlador adicional propio.
 
 La extensión debe vigilar cambios en:
 
@@ -233,7 +233,7 @@ Orden recomendado:
 
 1. desarrollar y probar la extensión localmente;
 2. generar un `.vsix` para uso interno;
-3. validar el flujo en CORE, AIWA y un consumidor limpio;
+3. validar el flujo en CORE, un consumidor de referencia y un consumidor limpio;
 4. publicar cuando sea estable;
 5. solo entonces recomendar su ID desde `.vscode/extensions.json`, sin
    pretender instalarla automáticamente.
@@ -267,7 +267,7 @@ Orden recomendado:
    representativos.
 4. Crear el MVP de `CompletionItemProvider`.
 5. Añadir navegación, hover y comando de inserción.
-6. Empaquetar un VSIX y probarlo en AIWA.
+6. Empaquetar un VSIX y probarlo en un consumidor de referencia.
 7. Documentar instalación y decidir el mecanismo de publicación.
 
 ## Referencias oficiales

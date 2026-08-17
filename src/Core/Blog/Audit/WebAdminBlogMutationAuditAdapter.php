@@ -36,6 +36,8 @@ final class WebAdminBlogMutationAuditAdapter implements
         BlogMutationAuditEvent::TRASH => 'blog.article.trashed',
         BlogMutationAuditEvent::RESTORE_FROM_TRASH =>
             'blog.article.restored_from_trash',
+        BlogMutationAuditEvent::URL_GONE => 'blog.article.url_gone',
+        BlogMutationAuditEvent::URL_REDIRECT => 'blog.article.url_redirect',
     ];
 
     public function __construct(

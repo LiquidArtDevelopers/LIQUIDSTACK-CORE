@@ -137,10 +137,26 @@ final class BlogLegacyDocumentFactoryTest extends TestCase
         );
     }
 
-    public function testInvalidLegacyTextAndOversizedInputFailClosed(): void
+    public function testMarkupLikeLegacyTextRemainsLiteral(): void
+    {
+        $body = '<script>not executable legacy text</script>';
+        $document = (new BlogLegacyDocumentFactory(
+            new LegacyDocumentUuidSequence([$this->id(1)])
+        ))->create($body);
+
+        self::assertSame(
+            $body,
+            $document->blocks()[0]['content'][0]['text']
+        );
+        self::assertSame(
+            $body,
+            (new BlogDocumentTextProjector())->project($document)
+        );
+    }
+
+    public function testInvalidEncodingControlsAndOversizedInputFailClosed(): void
     {
         foreach ([
-            '<script>not legacy plain text</script>',
             "Invalid\x07control",
             "Invalid \xC3\x28",
             str_repeat('a', BlogDocument::MAX_BODY_TEXT_BYTES + 1),

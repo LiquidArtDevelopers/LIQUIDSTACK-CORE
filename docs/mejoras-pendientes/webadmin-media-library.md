@@ -1,15 +1,15 @@
 # Biblioteca de medios de WebAdmin
 
-> Estado (2026-08-02): biblioteca y vinculación con el editor estructurado Blog
-> implementadas en CORE, incluido el comando operativo e idempotente de
-> inicialización. La gestión del ciclo de vida y otros formatos siguen
+> Estado (2026-08-17, CORE `Unreleased`): biblioteca, vinculación con el editor
+> estructurado Blog y retirada recuperable mediante cuarentena implementadas.
+> La purga irreversible, restauración operativa y otros formatos siguen
 > pendientes. La adopción en consumidores exige migración e inicialización de
 > storage explícitas; los eventos automáticos de Composer no realizan ninguna.
 
 ## Contrato implementado
 
 WebAdmin incorpora una biblioteca privada compartida por los módulos que la
-necesiten. Permite subir una imagen JPEG, PNG o WebP, validarla, normalizarla y
+necesiten. Permite subir una imagen JPEG, PNG, WebP o AVIF, validarla, normalizarla y
 generar variantes AVIF responsive. Blog la consume mediante una frontera
 cross-scope; la biblioteca sigue perteneciendo a WebAdmin.
 
@@ -26,12 +26,19 @@ cross-scope; la biblioteca sigue perteneciendo a WebAdmin.
   de `/admin`. Solo `/admin/media` puede responder como no preparado hasta
   aplicar su migración explícita.
 
-La migración implementada es `0002_webadmin_media_library`. Sustituye la
-postcondición exacta de `0001_webadmin_identity_and_access` únicamente después
-de quedar aplicada y verificar el contrato combinado 0001 + 0002. El gate base
+Las migraciones implementadas son `0002_webadmin_media_library`,
+`0003_webadmin_media_avif_source` y la aditiva
+`0005_webadmin_media_quarantine` (la 0004 pertenece al perfil WebAdmin). La
+0003 amplía el MIME de origen sin
+reescribir el checksum publicado de la 0002 y verifica el contrato combinado
+0001 + 0002 + 0003. El gate base
 de WebAdmin exige siempre la fundacional 0001, valida checksum y scope de lo ya
 aplicado y tolera migraciones conocidas pendientes. El gate específico de
-medios exige también 0002.
+medios exige también 0002. Un gate incremental separado exige 0003 solo al
+admitir un original AVIF: pendiente no bloquea `/admin/media`, Blog, la
+selección de assets ni las entradas JPEG/PNG/WebP. Otro gate incremental
+habilita la retirada solo al verificar 0005; mientras esté pendiente, la
+biblioteca conserva lectura y subida pero no muestra ni acepta esa mutación.
 
 ## Persistencia mínima
 
@@ -42,6 +49,12 @@ original del fichero.
 `{prefix}media_variants` conserva asset, ancho, alto, bytes, SHA-256, clave
 relativa opaca, MIME AVIF y fecha. La combinación asset + ancho y cada clave de
 storage son únicas.
+
+`{prefix}media_quarantines` conserva una fila por asset retirado: estado,
+versión CAS, prefijos original y de cuarentena, manifiesto canónico con su
+SHA-256, request id idempotente, actor, fecha y versión de lock. Las filas de
+asset y variantes permanecen intactas para que la operación sea recuperable;
+las consultas ordinarias las excluyen mientras exista la cuarentena.
 
 ALT, title y pie no pertenecen al asset compartido: son datos localizados de
 cada uso de la imagen dentro de Blog u otro editor.
@@ -56,6 +69,8 @@ storage/liquidstack/webadmin/media/.liquidstack-webadmin-media
 storage/liquidstack/webadmin/media/.liquidstack-webadmin-media.lock
 storage/liquidstack/webadmin/media/.gitignore
 storage/liquidstack/webadmin/media/.staging/
+storage/liquidstack/webadmin/media/.quarantine/assets/{shard}/{uuid}/{request-uuid}/
+storage/liquidstack/webadmin/media/.quarantine/manifests/{request-uuid}.json
 storage/liquidstack/webadmin/media/{shard}/{uuid}/480.avif
 storage/liquidstack/webadmin/media/{shard}/{uuid}/900.avif
 storage/liquidstack/webadmin/media/{shard}/{uuid}/1800.avif
@@ -128,7 +143,8 @@ exportación e importación con hashes continúa pendiente.
 
 ## Contrato de imagen
 
-- Entrada real JPEG, PNG o WebP; no se confía en extensión o MIME del browser.
+- Entrada real JPEG, PNG o WebP y, con 0003 lista, también AVIF; no se confía en
+  extensión o MIME del browser.
 - Máximo 12 MiB, 12.000 píxeles por lado y 40 megapíxeles.
 - Rechazo de SVG, GIF, PDF, HEIC, animaciones, multiframe y poliglotas.
 - Verificación coincidente con `fileinfo` y el decodificador.
@@ -145,9 +161,9 @@ reutiliza.
 
 ## Seguridad y escritura atómica
 
-Las capacidades son `webadmin.media.view` y
-`webadmin.media.upload`. La subida revalida sesión, CSRF, lifecycle,
-`auth_version` y ambas capacidades dentro de la transacción.
+Las capacidades son `webadmin.media.view`, `webadmin.media.upload` y
+`webadmin.media.delete`. Subida y retirada revalidan sesión, CSRF, lifecycle,
+`auth_version` y sus capacidades dentro de la transacción.
 
 El procesado ocurre en staging aleatorio dentro del mismo storage. Solo tras
 verificar todas las variantes se renombra al directorio UUID definitivo; a
@@ -158,13 +174,24 @@ huérfanos derivados de un crash entre rename y commit.
 La auditoría registra `webadmin.media.created` y el UUID, nunca nombre de
 origen, path, hash, contenido o metadatos privados.
 
+La retirada solo se ofrece cuando todos los proveedores activos pueden
+resolver referencias y el resultado agregado es cero. Estado `used`,
+proveedor no preparado o inspección fallida cierran la operación. Bajo el lock
+DB de cuota y el lock privado del storage, el directorio UUID se renombra de
+forma atómica dentro de la misma raíz y se escribe un manifiesto durable. DB y
+auditoría (`webadmin.media.quarantined`) se confirman después; si fallan, el
+rename se compensa y el manifiesto transitorio se retira. Esta fase no elimina
+bytes ni filas de forma irreversible.
+
 ## Superficie HTTP y UI
 
 Rutas bajo el prefijo WebAdmin configurable:
 
 - `GET|HEAD /admin/media`;
 - `POST /admin/media/upload`;
+- `POST /admin/media/delete`;
 - `GET|HEAD /admin/media/updated`;
+- `GET|HEAD /admin/media/deleted`;
 - `GET|HEAD /admin/media/file?asset={uuid}&width={width}`.
 
 La UI es SSR y accesible: navegación “Biblioteca de
@@ -172,6 +199,10 @@ medios”, listado paginado, cards con miniatura privada, etiqueta, dimensiones 
 fecha, y formulario de una imagen. Explica formatos, límites, conversión
 automática y que ALT/title se asignan al usar el asset. Las respuestas privadas
 mantienen `no-store`, `noindex`, `nosniff` y CSP con `img-src 'self'`.
+Solo una card con conocimiento completo y estado “Sin usar” muestra la acción
+de cuarentena. JavaScript abre un diálogo accesible y reemplaza de forma
+reactiva el fragmento SSR del catálogo; sin JavaScript, el mismo formulario
+POST usa PRG y una confirmación SSR segura.
 
 El objeto `Request` ofrece soporte multipart acotado mediante un value
 object `UploadedFile`, sin elevar el límite de 1 MiB de formularios normales ni
@@ -212,7 +243,10 @@ storage privado y responde `404` uniforme ante cualquier fallo.
 
 ## Pendientes reales
 
-- Borrado, reemplazo y garbage collection con protección de referencias.
+- Operación autorizada de restauración y purga/garbage collection posterior a
+  una retención definida, verificando de nuevo referencias, manifiesto y
+  auditoría. No existe purga irreversible ni cron automático en esta fase.
+- Reemplazo de assets conservando usos y revisiones.
 - Crop, focal point, vídeo, audio, SVG, S3/CDN o procesamiento asíncrono.
 - Carpetas, etiquetas, buscador, deduplicación y promoción automática entre
   entornos.
@@ -232,6 +266,10 @@ storage privado y responde `404` uniforme ante cualquier fallo.
 - Procesado con fakes y suite Imagick opt-in: MIME, límites, multiframe,
   dimensiones, no-upscale, AVIF reabierto y metadatos eliminados.
 - Rollback coordinado de DB, ficheros y auditoría.
+- Cuarentena bajo locks DB+storage, CAS, idempotencia, manifiesto durable,
+  exclusión del catálogo y compensación real de filesystem ante rollback DB.
+- Estado `used`/`unknown` sin botón ni mutación; diálogo reactivo y fallback
+  SSR con la misma política server-side.
 - Sesión, CSRF, capacidades, revocación concurrente, cuota y rate limit.
 - GET/HEAD sin mutaciones y entrega binaria privada con cabeceras correctas.
 - Composer require/update/remove sin tocar DB ni storage.

@@ -1,0 +1,149 @@
+.webadmin .webadminMediaPicker {
+    width: min(72rem, calc(100% - 2rem));
+    max-width: none;
+    max-height: calc(100dvh - 2rem);
+    padding: 0;
+    overflow: hidden;
+    color: var(--ls-webadmin-text);
+    border: 0;
+    border-radius: 1rem;
+    background: var(--ls-webadmin-surface-strong);
+    box-shadow: var(--ls-webadmin-shadow);
+}
+
+.webadmin .webadminMediaPicker::backdrop {
+    background: rgba(20, 20, 20, 0.72);
+    backdrop-filter: blur(0.2rem);
+}
+
+.webadmin .webadminMediaPicker__inner {
+    max-height: calc(100dvh - 2rem);
+    padding: clamp(1rem, 2vw, 1.75rem);
+    display: grid;
+    gap: 1rem;
+    overflow: auto;
+}
+
+.webadmin .webadminMediaPicker__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.webadmin .webadminMediaPicker__header h2,
+.webadmin .webadminMediaPicker__active h3 {
+    margin: 0;
+}
+
+.webadmin .webadminMediaPicker [role="search"] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 0.75rem;
+}
+
+.webadmin .webadminMediaPicker [role="search"] label {
+    grid-column: 1 / -1;
+}
+
+.webadmin .webadminMediaPicker__grid {
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: 0.9rem;
+    list-style: none;
+}
+
+.webadmin .webadminMediaPicker__grid button {
+    width: 100%;
+    height: 100%;
+    padding: 0.7rem;
+    display: grid;
+    align-content: start;
+    gap: 0.5rem;
+    text-align: start;
+    color: var(--ls-webadmin-text);
+    border: 0.12rem solid var(--ls-webadmin-border);
+    border-radius: 0.8rem;
+    background: var(--ls-webadmin-surface-strong);
+}
+
+.webadmin .webadminMediaPicker__grid button:hover,
+.webadmin .webadminMediaPicker__grid button[aria-pressed="true"] {
+    border-color: var(--ls-webadmin-accent);
+    box-shadow: 0 0 0 0.18rem var(--ls-webadmin-accent-soft);
+}
+
+.webadmin .webadminMediaPicker__grid button:focus-visible {
+    outline: 0.18rem solid var(--ls-webadmin-focus);
+    outline-offset: 0.18rem;
+}
+
+.webadmin .webadminMediaPicker__grid img,
+.webadmin .webadminMediaPicker [data-webadmin-media-picker-active] img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    display: block;
+    object-fit: cover;
+    border-radius: 0.55rem;
+    background: #ececec;
+}
+
+.webadmin .webadminMediaPicker__grid span,
+.webadmin .webadminMediaPicker__grid small,
+.webadmin .webadminMediaPicker__grid time {
+    color: var(--ls-webadmin-muted);
+}
+
+.webadmin .webadminMediaPicker [data-webadmin-media-picker-active] {
+    padding: 0.8rem;
+    border-radius: 0.8rem;
+    background: var(--ls-webadmin-accent-soft);
+}
+
+.webadmin .webadminMediaPicker [data-webadmin-media-picker-active] figure {
+    width: min(100%, 16rem);
+    margin: 0.6rem 0 0;
+}
+
+.webadmin .webadminMediaPicker nav,
+.webadmin .webadminMediaPicker [data-webadmin-media-picker-fallback] {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.webadmin .webadminMediaPicker [data-webadmin-media-picker-fallback] label {
+    flex-basis: 100%;
+}
+
+.webadmin .webadminMediaPicker[data-webadmin-media-picker-enhanced="true"]
+    [data-webadmin-media-picker-fallback] label,
+.webadmin .webadminMediaPicker[data-webadmin-media-picker-enhanced="true"]
+    [data-webadmin-media-picker-fallback] select {
+    display: none;
+}
+
+.webadmin .webadminMediaPicker [data-webadmin-media-picker-upload] {
+    padding-block-start: 1rem;
+    display: grid;
+    gap: 0.8rem;
+    border-block-start: 0.08rem solid var(--ls-webadmin-border);
+}
+
+@media (max-width: 42rem) {
+    .webadmin .webadminMediaPicker [role="search"] {
+        grid-template-columns: 1fr;
+    }
+
+    .webadmin .webadminMediaPicker [role="search"] label {
+        grid-column: auto;
+    }
+
+    .webadmin .webadminMediaPicker__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

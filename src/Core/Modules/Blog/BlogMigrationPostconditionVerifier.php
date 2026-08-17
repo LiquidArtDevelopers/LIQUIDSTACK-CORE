@@ -26,7 +26,13 @@ final class BlogMigrationPostconditionVerifier implements
         private readonly bool $expectStructuredContentExtension = false,
         private readonly bool $expectSitemapStateExtension = false,
         private readonly bool $expectPostTombstoneExtension = false,
-        private readonly bool $expectAnalyticsExtension = false
+        private readonly bool $expectAnalyticsExtension = false,
+        private readonly bool $expectLayoutEditorExtension = false,
+        private readonly bool $expectEditorPreferencesExtension = false,
+        private readonly bool $expectPrivateDraftPublicationExtension = false,
+        private readonly bool $expectRobotsPreferencesExtension = false,
+        private readonly bool $expectUrlHistoryExtension = false,
+        private readonly bool $expectCopyOperationExtension = false
     ) {
     }
 
@@ -163,6 +169,58 @@ final class BlogMigrationPostconditionVerifier implements
                     $scope->tableName($suffix)
                 );
             }
+        }
+        if ($this->expectLayoutEditorExtension) {
+            foreach (
+                ['content_layout_docs', 'content_layout_revisions'] as $suffix
+            ) {
+                $expected[] = 'table:' . strtolower(
+                    $scope->tableName($suffix)
+                );
+            }
+        }
+        if ($this->expectEditorPreferencesExtension) {
+            $expected[] = 'table:' . strtolower(
+                $scope->tableName('editor_preferences')
+            );
+        }
+        if ($this->expectPrivateDraftPublicationExtension) {
+            foreach ([
+                'editorial_workspaces',
+                'category_assignment_heads',
+                'category_assignment_workspaces',
+                'category_assignment_workspace_items',
+                'publication_heads',
+            ] as $suffix) {
+                $expected[] = 'table:' . strtolower(
+                    $scope->tableName($suffix)
+                );
+            }
+            $expected[] = 'index:' . strtolower(
+                $scope->tableName('ix_cawi_category')
+            );
+        }
+        if ($this->expectRobotsPreferencesExtension) {
+            foreach (['robots_settings', 'revision_robots'] as $suffix) {
+                $expected[] = 'table:' . strtolower(
+                    $scope->tableName($suffix)
+                );
+            }
+        }
+        if ($this->expectUrlHistoryExtension) {
+            $expected[] = 'table:' . strtolower(
+                $scope->tableName('url_history')
+            );
+            foreach (['ix_uh_owner', 'ix_uh_target'] as $suffix) {
+                $expected[] = 'index:' . strtolower(
+                    $scope->tableName($suffix)
+                );
+            }
+        }
+        if ($this->expectCopyOperationExtension) {
+            $expected[] = 'table:' . strtolower(
+                $scope->tableName('copy_operations')
+            );
         }
         sort($expected, SORT_STRING);
 
@@ -490,6 +548,64 @@ final class BlogMigrationPostconditionVerifier implements
                     'utf8mb4_unicode_ci',
                 ];
             }
+        }
+        if ($this->expectLayoutEditorExtension) {
+            foreach (
+                ['content_layout_docs', 'content_layout_revisions'] as $suffix
+            ) {
+                $expected[strtolower($scope->tableName($suffix))] = [
+                    'BASE TABLE',
+                    'INNODB',
+                    'utf8mb4_unicode_ci',
+                ];
+            }
+        }
+        if ($this->expectEditorPreferencesExtension) {
+            $expected[strtolower(
+                $scope->tableName('editor_preferences')
+            )] = [
+                'BASE TABLE',
+                'INNODB',
+                'utf8mb4_unicode_ci',
+            ];
+        }
+        if ($this->expectPrivateDraftPublicationExtension) {
+            foreach ([
+                'editorial_workspaces',
+                'category_assignment_heads',
+                'category_assignment_workspaces',
+                'category_assignment_workspace_items',
+                'publication_heads',
+            ] as $suffix) {
+                $expected[strtolower($scope->tableName($suffix))] = [
+                    'BASE TABLE',
+                    'INNODB',
+                    'utf8mb4_unicode_ci',
+                ];
+            }
+        }
+        if ($this->expectRobotsPreferencesExtension) {
+            foreach (['robots_settings', 'revision_robots'] as $suffix) {
+                $expected[strtolower($scope->tableName($suffix))] = [
+                    'BASE TABLE',
+                    'INNODB',
+                    'utf8mb4_unicode_ci',
+                ];
+            }
+        }
+        if ($this->expectUrlHistoryExtension) {
+            $expected[strtolower($scope->tableName('url_history'))] = [
+                'BASE TABLE',
+                'INNODB',
+                'utf8mb4_unicode_ci',
+            ];
+        }
+        if ($this->expectCopyOperationExtension) {
+            $expected[strtolower($scope->tableName('copy_operations'))] = [
+                'BASE TABLE',
+                'INNODB',
+                'utf8mb4_unicode_ci',
+            ];
         }
         ksort($expected, SORT_STRING);
 

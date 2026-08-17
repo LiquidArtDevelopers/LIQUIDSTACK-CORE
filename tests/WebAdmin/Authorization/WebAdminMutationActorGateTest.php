@@ -128,7 +128,7 @@ final class WebAdminMutationActorGateTest extends TestCase
         self::assertTrue($this->pdo->inTransaction());
         self::assertSame([
             'last_seen_at' => self::NOW,
-            'idle_expires_at' => '2030-01-01 00:40:00.000000',
+            'idle_expires_at' => self::ABSOLUTE,
         ], $this->sessionTimes());
 
         self::assertTrue($this->pdo->rollBack());

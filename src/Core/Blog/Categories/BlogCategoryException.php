@@ -14,6 +14,8 @@ final class BlogCategoryException extends RuntimeException
     public const LOCALE_CONFLICT = 'blog.category.locale_conflict';
     public const SLUG_CONFLICT = 'blog.category.slug_conflict';
     public const LOCK_CONFLICT = 'blog.category.lock_conflict';
+    public const IN_USE = 'blog.category.in_use';
+    public const RESERVED = 'blog.category.reserved';
     public const STORAGE_UNAVAILABLE = 'blog.category.storage_unavailable';
 
     private const MESSAGES = [
@@ -23,6 +25,8 @@ final class BlogCategoryException extends RuntimeException
         self::LOCALE_CONFLICT => 'Blog category locale already exists.',
         self::SLUG_CONFLICT => 'Blog category slug is unavailable.',
         self::LOCK_CONFLICT => 'Blog category localization has changed.',
+        self::IN_USE => 'Blog category is assigned and cannot be deleted.',
+        self::RESERVED => 'Reserved Blog category cannot be changed.',
         self::STORAGE_UNAVAILABLE => 'Blog category storage is unavailable.',
     ];
 

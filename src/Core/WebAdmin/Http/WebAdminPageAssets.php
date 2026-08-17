@@ -7,11 +7,12 @@ namespace App\Core\WebAdmin\Http;
 use InvalidArgumentException;
 
 /**
- * Same-origin, module-owned assets added to the common WebAdmin document.
+ * Same-origin assets added to the common WebAdmin document.
  *
  * CORE's WebAdmin stylesheet and script are always emitted by the document
  * renderer. This value object only carries the additional assets required by
- * a private feature such as Blog.
+ * a private feature such as Blog. Scripts stay module-owned; stylesheets may
+ * additionally reference a flat, hashed Vite build below /assets/css.
  */
 final class WebAdminPageAssets
 {
@@ -64,14 +65,21 @@ final class WebAdminPageAssets
 
         $normalized = [];
         foreach ($paths as $path) {
+            $moduleOwned = is_string($path) && preg_match(
+                '#\A/assets/modules/[a-z][a-z0-9-]*/'
+                    . '[A-Za-z0-9][A-Za-z0-9._/-]*\.'
+                    . preg_quote($extension, '#') . '\z#D',
+                $path
+            ) === 1;
+            $projectStylesheet = $extension === 'css'
+                && is_string($path)
+                && preg_match(
+                    '#\A/assets/css/[A-Za-z0-9][A-Za-z0-9._-]*\.css\z#D',
+                    $path
+                ) === 1;
             if (
                 !is_string($path)
-                || preg_match(
-                    '#\A/assets/modules/[a-z][a-z0-9-]*/'
-                    . '[A-Za-z0-9][A-Za-z0-9._/-]*\.'
-                    . preg_quote($extension, '#') . '\z#',
-                    $path
-                ) !== 1
+                || (!$moduleOwned && !$projectStylesheet)
                 || str_contains($path, '..')
                 || str_contains($path, '//')
             ) {

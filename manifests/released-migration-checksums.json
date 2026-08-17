@@ -1,17 +1,34 @@
 {
     "schema": 1,
-    "frozen_through": "v1.13.0",
+    "frozen_through": "v1.21.1",
     "modules": {
         "webadmin": {
             "0001_webadmin_identity_and_access": "8ae682db1275f779938b247a2bddbe20ecc01bc2e972499fef60104d4d141d27",
-            "0002_webadmin_media_library": "2c3595970aa0adfc618dc0437806d955d26dfd05a1e4466d69a44c036524c52e"
+            "0002_webadmin_media_library": "2c3595970aa0adfc618dc0437806d955d26dfd05a1e4466d69a44c036524c52e",
+            "0003_webadmin_media_avif_source": "ecddd34bd8a1b39be542fc3e47fada4ee79b95927ab7d1e63c6cd15caa7f7048",
+            "0004_webadmin_profile_preferences": "32c12ee11814c0ed7cc8f21b7ed9f1009978c7a850caf582b225b1691dc72173",
+            "0005_webadmin_media_quarantine": "d252e20d70d50e1919d2cd858017c6d63b66c35d669466b30aaec5c7826ef07d"
         },
         "blog": {
             "0001_blog_posts": "51cb25e2bc0029ee61decac1810f055543591589a2026fffbe2c04dbc45f9d77",
             "0002_blog_capabilities": "09e727d09bce7f0c60306099a15df21b882766f878eb0be4c40aca546791d2e7",
             "0003_blog_categories": "6a78d00acae0d13d175f2632ccb1598b4f1d53ba9c09f5840ea3f73c88661e97",
             "0004_blog_category_capabilities": "c8b6f45611a344342b16f147d0edbe62e765ed6e1a70ebead8793dbc9b846345",
-            "0005_blog_structured_content": "4aca1e340d1a818940173feebeeaf67b5c319b464f8ec67e9b5691542753a4bd"
+            "0005_blog_structured_content": "4aca1e340d1a818940173feebeeaf67b5c319b464f8ec67e9b5691542753a4bd",
+            "0006_blog_sitemap_publication_state": "c9d6b26281a35fe4190db7cc2402fb163d9546387476190d0d7077d2d5d5cad8",
+            "0007_blog_post_tombstones": "e75445d2c440bb5e0fa17e41c1a36833b48bbdb20258bea6e9a830c039c7ad32",
+            "0008_blog_article_delete_capability": "a8efddc1fa22ae5ac81dae64d8a950f80550001340e661b667de5a8a419f1a2b",
+            "0009_blog_analytics": "91cfcbcfa7ebba5e77018b924284bb6a07a0b6cb8c00e59f03ed80149e3d73a9",
+            "0010_blog_analytics_view_capability": "ca2f6a15e58cab0f54cbcd41032a31d7acc796b6d920d2f25e6b59bc9de8d3af",
+            "0011_blog_layout_editor_v2": "12d59ea0546272e00e92350cf380bb6d493c0783fb665878ee501e2cd8c58448",
+            "0012_blog_editor_preferences": "45cfcd81f3ec2371eae92302da052c46306358aed8d50b34fca7d5af80b23c82",
+            "0013_blog_settings_manage_capability": "9cf4940e3910162ae9b9efeb94883176d49f92a75ab9ee78ef1b3dd71c3e09fb",
+            "0014_blog_private_draft_publication": "dc2fd2d8aa9bfbb8fc803e711cc5140cc026ae6bc2f443b450b9e82d80d8afda",
+            "0015_blog_robots_preferences": "27e9b92cdbab9c28538a9f42a91d42e24381ad162d22f13e4ba843de4580666f",
+            "0016_blog_url_history": "c06ec813029da517e21882b65a848f0632a7fcd93e12668b820ef06ea70ee2ea",
+            "0017_blog_dummy_category": "9a62a791e33f83ce9932c311dc8e2aff36a5af2b0b916519f22e590b2018ee32",
+            "0018_blog_dummy_category_normalization": "32730febd8e9a78647f93fe6678448377a4e9a7ba4e0b1301b1c5edafdc3e0c0",
+            "0019_blog_copy_operation_idempotency": "313437bf2e27749b1b7fb0fac3ad655aefa4d367e256c3c0142cd2160b17360a"
         }
     }
 }

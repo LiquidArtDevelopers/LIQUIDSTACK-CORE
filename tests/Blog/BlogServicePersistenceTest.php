@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Core\Blog\Admin\BlogAdminCatalogQuery;
 use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogPostVariant;
@@ -10,6 +11,7 @@ use App\Core\Blog\BlogSitemapEntry;
 use App\Core\Blog\Audit\BlogMutationAuditEvent;
 use App\Core\Blog\Audit\BlogMutationAuditPortInterface;
 use App\Core\Blog\Persistence\BlogPersistenceException;
+use App\Core\Blog\Persistence\BlogPostLocaleBatchCatalogRepositoryInterface;
 use App\Core\Blog\Persistence\BlogPostLocaleCatalogRepositoryInterface;
 use App\Core\Blog\Persistence\BlogRepositoryInterface;
 use App\Core\Blog\Persistence\PdoBlogRepository;
@@ -154,6 +156,39 @@ final class BlogServicePersistenceTest extends TestCase
         self::assertSame(1, $this->tableCount('ls_blog_post_localizations'));
     }
 
+    public function testLiteralMarkupAndSqlLookingCopyRoundTripSafely(): void
+    {
+        $draft = new BlogDraft(
+            h1: 'Tiempo de respuesta <24 h',
+            bodyText: '<strong>Texto literal</strong> SELECT * FROM posts; '
+                . 'DROP TABLE posts; --',
+            slug: 'texto-literal-seguro',
+            seoTitle: '<strong>Título literal</strong>',
+            metaDescription: 'Comparación de tiempo <24 h.',
+            excerpt: '<em>Extracto literal</em>'
+        );
+        $service = $this->service([
+            self::POST_A,
+            self::LOCAL_A_ES,
+        ]);
+
+        $service->createPost(
+            $this->gate(self::ACTOR_A),
+            'es',
+            $draft
+        );
+        $stored = $service->loadPost(self::POST_A, 'es')->draft();
+
+        self::assertSame($draft->h1(), $stored->h1());
+        self::assertSame($draft->bodyText(), $stored->bodyText());
+        self::assertSame($draft->seoTitle(), $stored->seoTitle());
+        self::assertSame(
+            $draft->metaDescription(),
+            $stored->metaDescription()
+        );
+        self::assertSame($draft->excerpt(), $stored->excerpt());
+    }
+
     public function testActorGateFailureRollsBackAndRepositoryRemainsReusable(): void
     {
         $service = $this->service([
@@ -272,6 +307,14 @@ final class BlogServicePersistenceTest extends TestCase
             ['es', 'eu'],
             $service->localesForPost(self::POST_A)
         );
+        self::assertSame(
+            [self::POST_A => ['es', 'eu']],
+            $service->localesForPosts([self::POST_A])
+        );
+        $this->expectBlogIssue(
+            BlogException::INVALID_INPUT,
+            fn () => $service->localesForPosts([self::POST_A, self::POST_A])
+        );
 
         $this->expectBlogIssue(
             BlogException::LOCALE_CONFLICT,
@@ -366,6 +409,79 @@ final class BlogServicePersistenceTest extends TestCase
                 fn () => $service->listPosts($page[0], $page[1])
             );
         }
+    }
+
+    public function testAdminCatalogSearchCombinesLiteralCasefoldedFilters(): void
+    {
+        $this->service([self::POST_B, self::LOCAL_B_ES])->createPost(
+            $this->gate(self::ACTOR_A),
+            'es',
+            $this->draft('cafe-porcentaje', 'Café 100% seguro')
+        );
+        $service = $this->service([
+            self::POST_A,
+            self::LOCAL_A_ES,
+            self::LOCAL_A_EU,
+        ]);
+        $service->createPost(
+            $this->gate(self::ACTOR_A),
+            'es',
+            $this->draft('cafe-decoy', 'Café 1000 seguro')
+        );
+        $service->addLocalization(
+            $this->gate(self::ACTOR_A),
+            self::POST_A,
+            'eu',
+            $this->draft('matrix-euskaraz', 'MÁTRIX euskaraz')
+        );
+        self::assertSame(1, $this->pdo->exec(
+            "UPDATE ls_blog_post_localizations SET status = 'published', "
+                . "published_at = '2030-01-01 08:30:00.000000' "
+                . "WHERE slug = 'cafe-porcentaje'"
+        ));
+        foreach (BlogMigrationProvider::migrations() as $migration) {
+            if (!in_array($migration->id(), [
+                '0003_blog_categories',
+                '0017_blog_dummy_category',
+            ], true)) {
+                continue;
+            }
+            foreach ($migration->statementsFor(
+                'sqlite',
+                $this->scope
+            ) as $statement) {
+                self::assertNotFalse($this->pdo->exec($statement));
+            }
+        }
+        $catalogService = new BlogService(new PdoBlogRepository(
+            $this->pdo,
+            $this->scope,
+            reservedCategoryPolicyEnabled: true
+        ));
+
+        $literal = $catalogService->searchPosts(new BlogAdminCatalogQuery(
+            search: 'CAFÉ 100%',
+            status: BlogPostVariant::PUBLISHED,
+            locale: 'es'
+        ));
+        self::assertCount(1, $literal);
+        self::assertSame('cafe-porcentaje', $literal[0]->slug());
+
+        $slug = $catalogService->searchPosts(new BlogAdminCatalogQuery(
+            search: 'EUSKARAZ',
+            status: BlogPostVariant::DRAFT,
+            locale: 'eu'
+        ));
+        self::assertCount(1, $slug);
+        self::assertSame('matrix-euskaraz', $slug[0]->slug());
+
+        self::assertSame([], $catalogService->searchPosts(
+            new BlogAdminCatalogQuery(
+                search: 'CAFÉ 100%',
+                status: BlogPostVariant::DRAFT,
+                locale: 'es'
+            )
+        ));
     }
 
     public function testLoadUsesOnlyPublicPostUuidAndCanonicalLocale(): void
@@ -1062,6 +1178,10 @@ final class BlogServicePersistenceTest extends TestCase
         self::assertTrue(is_subclass_of(
             PdoBlogRepository::class,
             BlogPostLocaleCatalogRepositoryInterface::class
+        ));
+        self::assertTrue(is_subclass_of(
+            PdoBlogRepository::class,
+            BlogPostLocaleBatchCatalogRepositoryInterface::class
         ));
     }
 

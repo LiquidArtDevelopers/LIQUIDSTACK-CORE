@@ -38,11 +38,9 @@ final class BlogSeoCompetingPage
             || trim($h1) !== $h1
             || $h1 === ''
             || preg_match('/[\x00-\x1F\x7F]/', $h1 . ($seoTitle ?? '')) === 1
-            || strip_tags($h1) !== $h1
             || ($seoTitle !== null && (
                 trim($seoTitle) !== $seoTitle
                 || $seoTitle === ''
-                || strip_tags($seoTitle) !== $seoTitle
             ))
             || ($postPublicId !== null && preg_match(
                 '/\A[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/',

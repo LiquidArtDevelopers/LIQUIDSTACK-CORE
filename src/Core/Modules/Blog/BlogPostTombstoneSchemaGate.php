@@ -5,31 +5,28 @@ declare(strict_types=1);
 namespace App\Core\Modules\Blog;
 
 use App\Core\Modules\Migrations\MigrationFeatureGate;
+use App\Core\Modules\Migrations\MigrationRuntimeTableShapeProbe;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
 use PDO;
 use Throwable;
 
-/** Optional feature gate that keeps pre-0007 Blog reads operational. */
+/** Optional request-time tombstone gate; older Blog reads remain usable. */
 final class BlogPostTombstoneSchemaGate
 {
-    private readonly BlogPostTombstoneMigrationPostconditionVerifier
-        $analyticsExtendedSchemaVerifier;
+    /** @var array<string, list<string>> */
+    private const RUNTIME_TABLES = [
+        'post_tombstones' => [
+            'post_localization_id', 'trashed_by_user_public_id', 'trashed_at',
+        ],
+    ];
 
     public function __construct(
         private readonly MigrationFeatureGate $migrationGate =
             new MigrationFeatureGate(),
-        private readonly BlogPostTombstoneMigrationPostconditionVerifier
-            $schemaVerifier =
-                new BlogPostTombstoneMigrationPostconditionVerifier(),
-        ?BlogPostTombstoneMigrationPostconditionVerifier
-            $analyticsExtendedSchemaVerifier = null
+        private readonly MigrationRuntimeTableShapeProbe $shapeProbe =
+            new MigrationRuntimeTableShapeProbe()
     ) {
-        $this->analyticsExtendedSchemaVerifier =
-            $analyticsExtendedSchemaVerifier
-            ?? new BlogPostTombstoneMigrationPostconditionVerifier(
-                expectAnalyticsExtension: true
-            );
     }
 
     public function isReady(
@@ -39,22 +36,17 @@ final class BlogPostTombstoneSchemaGate
     ): bool {
         try {
             $scope = $scopes->get('blog');
-            if (
-                $scope === null
-                || !$this->migrationGate->isReady(
+            return $scope !== null
+                && $this->migrationGate->isReady(
                     $pdo,
                     $registry,
                     $scopes,
                     BlogMigrationRequirements::postTombstones()
                 )
-            ) {
-                return false;
-            }
-
-            return $this->schemaVerifier->verify($pdo, $scope)
-                || $this->analyticsExtendedSchemaVerifier->verify(
+                && $this->shapeProbe->hasColumns(
                     $pdo,
-                    $scope
+                    $scope,
+                    self::RUNTIME_TABLES
                 );
         } catch (Throwable) {
             return false;

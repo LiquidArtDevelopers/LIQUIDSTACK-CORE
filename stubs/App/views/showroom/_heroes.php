@@ -16,7 +16,12 @@ $hero04Content = controller('moduleH1Type01', 3, [
     '{a-button-primary}' => $heroButton,
 ]);
 
-echo controller('hero01', 0, ['{hero01-content}' => $hero01Content]);
+// `contrast_surface` es opt-in: protege el copy sin alterar consumidores
+// existentes que usan la superficie translúcida de moduleH1Type01.
+echo controller('hero01', 0, [
+    '{hero01-content}' => $hero01Content,
+    'contrast_surface' => true,
+]);
 echo controller('hero00', 0, ['{hero00-content}' => $hero00Content]);
 echo controller('hero02', 0, ['{hero02-content}' => $hero02Content]);
 

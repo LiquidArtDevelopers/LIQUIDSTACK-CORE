@@ -46,6 +46,60 @@ final class WebAdminMigrationProvider implements MigrationProviderInterface
                 '0001_webadmin_identity_and_access',
             ]
         );
+
+        yield MigrationDefinition::sql(
+            id: '0003_webadmin_media_avif_source',
+            description: 'Admite AVIF como imagen de origen en la biblioteca.',
+            statementsByDriver: [
+                'mysql' => self::mysqlMediaAvifSourceStatements(),
+                'sqlite' => self::sqliteMediaAvifSourceStatements(),
+            ],
+            destructive: true,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new WebAdminMediaMigrationPostconditionVerifier(
+                    acceptAvifSource: true
+                ),
+            supersedesPostconditions: [
+                '0001_webadmin_identity_and_access',
+                '0002_webadmin_media_library',
+            ]
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0004_webadmin_profile_preferences',
+            description: 'Anade preferencias de perfil y zona horaria IANA.',
+            statementsByDriver: [
+                'mysql' => self::mysqlProfilePreferenceStatements(),
+                'sqlite' => self::sqliteProfilePreferenceStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new WebAdminProfileMigrationPostconditionVerifier()
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0005_webadmin_media_quarantine',
+            description: 'Anade cuarentena recuperable para medios sin referencias.',
+            statementsByDriver: [
+                'mysql' => self::mysqlMediaQuarantineStatements(),
+                'sqlite' => self::sqliteMediaQuarantineStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new WebAdminMediaQuarantineMigrationPostconditionVerifier(),
+            supersedesPostconditions: [
+                '0001_webadmin_identity_and_access',
+                '0002_webadmin_media_library',
+                '0003_webadmin_media_avif_source',
+                '0004_webadmin_profile_preferences',
+            ]
+        );
     }
 
     /** @return list<string> */
@@ -807,6 +861,267 @@ SQL,
 INSERT INTO {{table:state}} ("state_key", "value_text")
 VALUES ('media.quota_lock', 'v1')
 ON CONFLICT("state_key") DO NOTHING
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlMediaAvifSourceStatements(): array
+    {
+        return [
+            <<<'SQL'
+ALTER TABLE {{table:media_assets}}
+    /*!80016 DROP CHECK {{table:c_ma_mime}}, */
+    /*M! DROP CONSTRAINT {{table:c_ma_mime}}, */
+    ADD CONSTRAINT {{table:c_ma_mime}} CHECK (
+        `source_mime` IN ('image/jpeg', 'image/png', 'image/webp', 'image/avif')
+    )
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteMediaAvifSourceStatements(): array
+    {
+        return [
+            'PRAGMA defer_foreign_keys = ON',
+            <<<'SQL'
+CREATE TABLE {{table:media_variants_avif_source}} AS
+SELECT
+    "id", "asset_id", "width", "height", "bytes", "sha256",
+    "storage_key", "mime", "created_at"
+FROM {{table:media_variants}}
+SQL,
+            <<<'SQL'
+CREATE TABLE {{table:media_assets_avif_source}} (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "public_id" TEXT COLLATE BINARY NOT NULL UNIQUE CHECK (length("public_id") = 36),
+    "label" TEXT NOT NULL CHECK (length("label") BETWEEN 1 AND 120),
+    "source_mime" TEXT COLLATE BINARY NOT NULL CHECK ("source_mime" IN ('image/jpeg', 'image/png', 'image/webp', 'image/avif')),
+    "source_width" INTEGER NOT NULL CHECK ("source_width" BETWEEN 1 AND 12000),
+    "source_height" INTEGER NOT NULL CHECK ("source_height" BETWEEN 1 AND 12000),
+    "source_bytes" INTEGER NOT NULL CHECK ("source_bytes" BETWEEN 1 AND 12582912),
+    "source_sha256" TEXT COLLATE BINARY NOT NULL CHECK (length("source_sha256") = 64),
+    "created_by_user_id" INTEGER NOT NULL REFERENCES {{table:users}} ("id") ON DELETE RESTRICT,
+    "created_at" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f000', 'now')),
+    CHECK (("source_width" * "source_height") <= 40000000)
+)
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:media_assets_avif_source}} (
+    "id", "public_id", "label", "source_mime", "source_width",
+    "source_height", "source_bytes", "source_sha256",
+    "created_by_user_id", "created_at"
+)
+SELECT
+    "id", "public_id", "label", "source_mime", "source_width",
+    "source_height", "source_bytes", "source_sha256",
+    "created_by_user_id", "created_at"
+FROM {{table:media_assets}}
+SQL,
+            'DROP TABLE {{table:media_variants}}',
+            'DROP TABLE {{table:media_assets}}',
+            'ALTER TABLE {{table:media_assets_avif_source}} RENAME TO {{table:media_assets}}',
+            'CREATE INDEX {{table:ix_ma_created}} ON {{table:media_assets}} ("created_at", "id")',
+            'CREATE INDEX {{table:ix_ma_author}} ON {{table:media_assets}} ("created_by_user_id")',
+            <<<'SQL'
+CREATE TABLE {{table:media_variants}} (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "asset_id" INTEGER NOT NULL REFERENCES {{table:media_assets}} ("id") ON DELETE CASCADE,
+    "width" INTEGER NOT NULL CHECK ("width" BETWEEN 1 AND 2560),
+    "height" INTEGER NOT NULL CHECK ("height" BETWEEN 1 AND 2560),
+    "bytes" INTEGER NOT NULL CHECK ("bytes" > 0),
+    "sha256" TEXT COLLATE BINARY NOT NULL CHECK (length("sha256") = 64),
+    "storage_key" TEXT COLLATE BINARY NOT NULL UNIQUE CHECK (length("storage_key") BETWEEN 1 AND 255),
+    "mime" TEXT COLLATE BINARY NOT NULL CHECK ("mime" = 'image/avif'),
+    "created_at" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f000', 'now')),
+    UNIQUE ("asset_id", "width")
+)
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:media_variants}} (
+    "id", "asset_id", "width", "height", "bytes", "sha256",
+    "storage_key", "mime", "created_at"
+)
+SELECT
+    "id", "asset_id", "width", "height", "bytes", "sha256",
+    "storage_key", "mime", "created_at"
+FROM {{table:media_variants_avif_source}}
+SQL,
+            'DROP TABLE {{table:media_variants_avif_source}}',
+            'CREATE INDEX {{table:ix_mv_asset}} ON {{table:media_variants}} ("asset_id")',
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlProfilePreferenceStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:user_profiles}} (
+    `user_id` BIGINT UNSIGNED NOT NULL,
+    `time_zone` VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    `lock_version` BIGINT UNSIGNED NOT NULL DEFAULT 1,
+    `updated_by_user_id` BIGINT UNSIGNED NOT NULL,
+    `updated_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (`user_id`),
+    KEY `idx_wa_profiles_updater` (`updated_by_user_id`),
+    CONSTRAINT {{table:f_up_user}} FOREIGN KEY (`user_id`)
+        REFERENCES {{table:users}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:f_up_updater}} FOREIGN KEY (`updated_by_user_id`)
+        REFERENCES {{table:users}} (`id`) ON DELETE RESTRICT,
+    CONSTRAINT {{table:c_up_timezone}} CHECK (
+        `time_zone` IS NULL OR CHAR_LENGTH(`time_zone`) BETWEEN 1 AND 64
+    ),
+    CONSTRAINT {{table:c_up_lock}} CHECK (`lock_version` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteProfilePreferenceStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:user_profiles}} (
+    "user_id" INTEGER PRIMARY KEY
+        REFERENCES {{table:users}} ("id") ON DELETE CASCADE,
+    "time_zone" TEXT COLLATE BINARY NULL
+        CHECK ("time_zone" IS NULL OR length("time_zone") BETWEEN 1 AND 64),
+    "lock_version" INTEGER NOT NULL DEFAULT 1 CHECK ("lock_version" > 0),
+    "updated_by_user_id" INTEGER NOT NULL
+        REFERENCES {{table:users}} ("id") ON DELETE RESTRICT,
+    "updated_at" TEXT NOT NULL
+        DEFAULT (strftime('%Y-%m-%d %H:%M:%f000', 'now'))
+)
+SQL,
+            'CREATE INDEX IF NOT EXISTS {{table:ix_up_updater}} '
+                . 'ON {{table:user_profiles}} ("updated_by_user_id")',
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlMediaQuarantineStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:media_quarantines}} (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `asset_id` BIGINT UNSIGNED NOT NULL,
+    `public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `state` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `asset_version` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `original_storage_prefix` VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `quarantine_storage_prefix` VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `manifest_storage_key` VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `manifest_json` TEXT NOT NULL,
+    `manifest_sha256` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `request_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `quarantined_by_user_id` BIGINT UNSIGNED NOT NULL,
+    `quarantined_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `lock_version` BIGINT UNSIGNED NOT NULL DEFAULT 1,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_wa_mq_asset` (`asset_id`),
+    UNIQUE KEY `uq_wa_mq_public` (`public_id`),
+    UNIQUE KEY `uq_wa_mq_quarantine` (`quarantine_storage_prefix`),
+    UNIQUE KEY `uq_wa_mq_manifest` (`manifest_storage_key`),
+    UNIQUE KEY `uq_wa_mq_request` (`request_id`),
+    KEY `idx_wa_mq_actor` (`quarantined_by_user_id`),
+    KEY `idx_wa_mq_date` (`quarantined_at`, `id`),
+    CONSTRAINT {{table:f_mq_asset}} FOREIGN KEY (`asset_id`)
+        REFERENCES {{table:media_assets}} (`id`) ON DELETE RESTRICT,
+    CONSTRAINT {{table:f_mq_actor}} FOREIGN KEY (`quarantined_by_user_id`)
+        REFERENCES {{table:users}} (`id`) ON DELETE RESTRICT,
+    CONSTRAINT {{table:c_mq_public}} CHECK (CHAR_LENGTH(`public_id`) = 36),
+    CONSTRAINT {{table:c_mq_state}} CHECK (`state` = 'quarantined'),
+    CONSTRAINT {{table:c_mq_asset_version}} CHECK (CHAR_LENGTH(`asset_version`) = 64),
+    CONSTRAINT {{table:c_mq_original}} CHECK (CHAR_LENGTH(`original_storage_prefix`) BETWEEN 39 AND 255),
+    CONSTRAINT {{table:c_mq_target}} CHECK (CHAR_LENGTH(`quarantine_storage_prefix`) BETWEEN 1 AND 255),
+    CONSTRAINT {{table:c_mq_manifest_key}} CHECK (CHAR_LENGTH(`manifest_storage_key`) BETWEEN 1 AND 255),
+    CONSTRAINT {{table:c_mq_manifest_json}} CHECK (CHAR_LENGTH(`manifest_json`) BETWEEN 2 AND 65535),
+    CONSTRAINT {{table:c_mq_manifest_hash}} CHECK (CHAR_LENGTH(`manifest_sha256`) = 64),
+    CONSTRAINT {{table:c_mq_request}} CHECK (CHAR_LENGTH(`request_id`) = 36),
+    CONSTRAINT {{table:c_mq_lock}} CHECK (`lock_version` > 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+            <<<'SQL'
+INSERT IGNORE INTO {{table:capabilities}}
+    (`module_id`, `code`, `label_key`, `is_delegable`)
+VALUES
+    ('webadmin', 'webadmin.media.delete', 'webadmin.capabilities.media_delete', 1)
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:role_capabilities}} (`role_id`, `capability_id`)
+SELECT `r`.`id`, `c`.`id`
+FROM {{table:roles}} AS `r`
+CROSS JOIN {{table:capabilities}} AS `c`
+WHERE `r`.`code` IN ('system_superadmin', 'site_admin')
+  AND `c`.`code` = 'webadmin.media.delete'
+  AND `c`.`module_id` = 'webadmin'
+  AND `c`.`label_key` = 'webadmin.capabilities.media_delete'
+  AND `c`.`is_delegable` = 1
+ON DUPLICATE KEY UPDATE `role_id` = VALUES(`role_id`)
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteMediaQuarantineStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:media_quarantines}} (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "asset_id" INTEGER NOT NULL UNIQUE
+        REFERENCES {{table:media_assets}} ("id") ON DELETE RESTRICT,
+    "public_id" TEXT COLLATE BINARY NOT NULL UNIQUE
+        CHECK (length("public_id") = 36),
+    "state" TEXT COLLATE BINARY NOT NULL
+        CHECK ("state" = 'quarantined'),
+    "asset_version" TEXT COLLATE BINARY NOT NULL
+        CHECK (length("asset_version") = 64),
+    "original_storage_prefix" TEXT COLLATE BINARY NOT NULL
+        CHECK (length("original_storage_prefix") BETWEEN 39 AND 255),
+    "quarantine_storage_prefix" TEXT COLLATE BINARY NOT NULL UNIQUE
+        CHECK (length("quarantine_storage_prefix") BETWEEN 1 AND 255),
+    "manifest_storage_key" TEXT COLLATE BINARY NOT NULL UNIQUE
+        CHECK (length("manifest_storage_key") BETWEEN 1 AND 255),
+    "manifest_json" TEXT NOT NULL
+        CHECK (length("manifest_json") BETWEEN 2 AND 65535),
+    "manifest_sha256" TEXT COLLATE BINARY NOT NULL
+        CHECK (length("manifest_sha256") = 64),
+    "request_id" TEXT COLLATE BINARY NOT NULL UNIQUE
+        CHECK (length("request_id") = 36),
+    "quarantined_by_user_id" INTEGER NOT NULL
+        REFERENCES {{table:users}} ("id") ON DELETE RESTRICT,
+    "quarantined_at" TEXT NOT NULL
+        DEFAULT (strftime('%Y-%m-%d %H:%M:%f000', 'now')),
+    "lock_version" INTEGER NOT NULL DEFAULT 1 CHECK ("lock_version" > 0)
+)
+SQL,
+            'CREATE INDEX IF NOT EXISTS {{table:ix_mq_actor}} '
+                . 'ON {{table:media_quarantines}} ("quarantined_by_user_id")',
+            'CREATE INDEX IF NOT EXISTS {{table:ix_mq_date}} '
+                . 'ON {{table:media_quarantines}} ("quarantined_at", "id")',
+            <<<'SQL'
+INSERT INTO {{table:capabilities}}
+    ("module_id", "code", "label_key", "is_delegable")
+VALUES
+    ('webadmin', 'webadmin.media.delete', 'webadmin.capabilities.media_delete', 1)
+ON CONFLICT("code") DO NOTHING
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:role_capabilities}} ("role_id", "capability_id")
+SELECT "r"."id", "c"."id"
+FROM {{table:roles}} AS "r"
+CROSS JOIN {{table:capabilities}} AS "c"
+WHERE "r"."code" IN ('system_superadmin', 'site_admin')
+  AND "c"."code" = 'webadmin.media.delete'
+  AND "c"."module_id" = 'webadmin'
+  AND "c"."label_key" = 'webadmin.capabilities.media_delete'
+  AND "c"."is_delegable" = 1
+ON CONFLICT("role_id", "capability_id") DO NOTHING
 SQL,
         ];
     }

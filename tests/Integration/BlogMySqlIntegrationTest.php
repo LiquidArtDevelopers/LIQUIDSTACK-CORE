@@ -8,6 +8,8 @@ use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
+use App\Core\Blog\EditorialWorkflow\Persistence\BlogEditorialWorkflowPersistenceException;
+use App\Core\Blog\EditorialWorkflow\Persistence\PdoBlogEditorialWorkspaceRepository;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Http\BlogAdminHttpRuntime;
 use App\Core\Blog\Persistence\PdoBlogRepository;
@@ -18,17 +20,22 @@ use App\Core\Blog\PublicFeed\PdoBlogPublicCatalogRepository;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredDraft;
+use App\Core\Blog\StructuredContent\Media\PdoWebAdminMediaAvailabilityAdapter;
 use App\Core\Blog\StructuredContent\Persistence\PdoBlogStructuredContentRepository;
 use App\Core\Database\SharedPdoConnectionFactory;
 use App\Core\Modules\Blog\BlogCapabilitySeedPostcondition;
 use App\Core\Modules\Blog\BlogCategoryCapabilitySeedPostcondition;
 use App\Core\Modules\Blog\BlogCategoryHttpSchemaGate;
 use App\Core\Modules\Blog\BlogCategoryMigrationPostconditionVerifier;
+use App\Core\Modules\Blog\BlogCopyOperationMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogHttpSchemaGate;
 use App\Core\Modules\Blog\BlogInitialSchemaContract;
 use App\Core\Modules\Blog\BlogStructuredContentMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogStructuredContentSchemaGate;
 use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationApplyOptions;
+use App\Core\Modules\Migrations\MigrationDatabasePlanner;
+use App\Core\Modules\Migrations\MigrationException;
 use App\Core\Modules\Migrations\MigrationRegistry;
 use App\Core\Modules\Migrations\MigrationRunner;
 use App\Core\Modules\Migrations\MigrationScope;
@@ -50,6 +57,7 @@ use App\Core\WebAdmin\Support\ClockInterface;
 use App\Core\WebAdmin\Support\RandomUuidV4Generator;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Process\Process;
 
 final class BlogMySqlMutableClockFixture implements ClockInterface
 {
@@ -104,6 +112,14 @@ final class BlogMySqlIntegrationTest extends TestCase
         '55555555-5555-4555-8555-555555555555';
     private const REVISION_PUBLIC_ID =
         '66666666-6666-4666-8666-666666666666';
+    private const DUPLICATE_OPERATION_PUBLIC_ID =
+        '77777777-7777-4777-8777-777777777777';
+    private const LOCALE_COPY_OPERATION_PUBLIC_ID =
+        '88888888-8888-4888-8888-888888888888';
+    private const CONCURRENT_DUPLICATE_OPERATION_PUBLIC_ID =
+        '99999999-9999-4999-8999-999999999999';
+    private const CONCURRENT_LOCALE_OPERATION_PUBLIC_ID =
+        '12121212-1212-4212-8212-121212121212';
 
     public function testRealMySqlBlogLifecycle(): void
     {
@@ -168,7 +184,30 @@ final class BlogMySqlIntegrationTest extends TestCase
 
             $cleanupArmed = true;
             $runner = new MigrationRunner();
-            $firstRun = $runner->apply($connection, $catalog, $scopes);
+            $preview = (new MigrationDatabasePlanner())->plan(
+                $connection,
+                $catalog,
+                $scopes
+            );
+            try {
+                $firstRun = $runner->apply(
+                    $connection,
+                    $catalog,
+                    $scopes,
+                    new MigrationApplyOptions(
+                        expectedPlanHash: $preview->hash(),
+                        allowDestructive: true,
+                        backupConfirmed: true
+                    )
+                );
+            } catch (MigrationException $exception) {
+                self::fail(sprintf(
+                    'Migration failed at %s:%s (%s).',
+                    $exception->moduleId() ?? 'unknown',
+                    $exception->migrationId() ?? 'unknown',
+                    $exception->issueCode()
+                ));
+            }
             self::assertTrue($firstRun->changed());
             $applied = array_map(
                 static fn (array $entry): string =>
@@ -187,8 +226,20 @@ final class BlogMySqlIntegrationTest extends TestCase
                 'blog:0008_blog_article_delete_capability',
                 'blog:0009_blog_analytics',
                 'blog:0010_blog_analytics_view_capability',
+                'blog:0011_blog_layout_editor_v2',
+                'blog:0012_blog_editor_preferences',
+                'blog:0013_blog_settings_manage_capability',
+                'blog:0014_blog_private_draft_publication',
+                'blog:0015_blog_robots_preferences',
+                'blog:0016_blog_url_history',
+                'blog:0017_blog_dummy_category',
+                'blog:0018_blog_dummy_category_normalization',
+                'blog:0019_blog_copy_operation_idempotency',
                 'webadmin:0001_webadmin_identity_and_access',
                 'webadmin:0002_webadmin_media_library',
+                'webadmin:0003_webadmin_media_avif_source',
+                'webadmin:0004_webadmin_profile_preferences',
+                'webadmin:0005_webadmin_media_quarantine',
             ], $applied);
 
             $this->assertAllExpectedTablesExist(
@@ -203,27 +254,16 @@ final class BlogMySqlIntegrationTest extends TestCase
                 $webAdminScope
             );
             self::assertTrue(
-                (new WebAdminMediaMigrationPostconditionVerifier())->verify(
+                (new WebAdminMediaMigrationPostconditionVerifier(
+                    acceptAvifSource: true
+                ))->verify(
                     $connection,
                     $webAdminScope
                 )
             );
-            $structuredContentVerifier =
-                new BlogStructuredContentMigrationPostconditionVerifier(
-                    expectSitemapStateExtension: true
-                );
             self::assertTrue(
-                $structuredContentVerifier->verify(
-                    $connection,
-                    $blogScope
-                )
-            );
-            $categoryVerifier = new BlogCategoryMigrationPostconditionVerifier(
-                expectStructuredContentExtension: true,
-                expectSitemapStateExtension: true
-            );
-            self::assertTrue(
-                $categoryVerifier->verify($connection, $blogScope)
+                (new BlogCopyOperationMigrationPostconditionVerifier())
+                    ->verify($connection, $blogScope)
             );
             self::assertTrue(
                 (new BlogCapabilitySeedPostcondition())->verify(
@@ -581,27 +621,43 @@ final class BlogMySqlIntegrationTest extends TestCase
                 $webAdminPrefix,
                 $blogPrefix
             );
+            $this->assertStructuredCopyActionsAgainstRealMySql(
+                $editGate,
+                $connection,
+                $blogScope,
+                $webAdminScope,
+                $created->postPublicId(),
+                $basque,
+                $clock
+            );
+            $this->assertConcurrentCopyIdempotencyAgainstRealMySql(
+                $connection,
+                $configuration,
+                $blogScope,
+                $webAdminScope,
+                $created->postPublicId(),
+                $basque
+            );
+            $this->assertPrivateWorkflowCasAcrossConnections(
+                $connection,
+                $secondConnection,
+                $blogScope,
+                $created->postPublicId(),
+                $winner,
+                $clock->now()
+            );
             self::assertTrue(
-                (new WebAdminMediaMigrationPostconditionVerifier())->verify(
+                (new WebAdminMediaMigrationPostconditionVerifier(
+                    acceptAvifSource: true
+                ))->verify(
                     $connection,
                     $webAdminScope
                 )
             );
             self::assertTrue(
-                $categoryVerifier->verify($connection, $blogScope)
+                (new BlogCopyOperationMigrationPostconditionVerifier())
+                    ->verify($connection, $blogScope)
             );
-            self::assertTrue(
-                $structuredContentVerifier->verify(
-                    $connection,
-                    $blogScope
-                )
-            );
-            $this->assertStructuredDataDriftIsDetectedAndRestored(
-                $connection,
-                $blogScope,
-                $structuredContentVerifier
-            );
-
             $this->assertBlogAudit(
                 $connection,
                 $webAdminPrefix,
@@ -928,6 +984,785 @@ final class BlogMySqlIntegrationTest extends TestCase
         self::assertSame(1, $assignment->rowCount());
     }
 
+    private function assertStructuredCopyActionsAgainstRealMySql(
+        callable $actorGate,
+        PDO $connection,
+        MigrationScope $blogScope,
+        MigrationScope $webAdminScope,
+        string $sourcePostPublicId,
+        BlogPostVariant $source,
+        ClockInterface $clock
+    ): void {
+        $content = new PdoBlogStructuredContentRepository(
+            $connection,
+            $blogScope
+        );
+        $service = new BlogService(
+            new PdoBlogRepository($connection, $blogScope),
+            new RandomUuidV4Generator(),
+            $clock,
+            structuredContentRepository: $content,
+            mediaAvailability: new PdoWebAdminMediaAvailabilityAdapter(
+                $connection,
+                $webAdminScope
+            )
+        );
+        $sourceCurrent = $content->current(
+            $source->localizationPublicId()
+        );
+        self::assertNotNull($sourceCurrent);
+        $sourceBeforeCopies = $service->loadPost(
+            $sourcePostPublicId,
+            $source->locale()
+        );
+        $sourceCanonicalJson = $sourceCurrent->snapshot()->canonicalJson();
+        $sourceRevisionCount = count($content->listRevisions(
+            $source->localizationPublicId(),
+            10,
+            0
+        ));
+        $postCount = $this->tableCount(
+            $connection,
+            $blogScope->tableName('posts')
+        );
+        $localizationCount = $this->tableCount(
+            $connection,
+            $blogScope->tableName('post_localizations')
+        );
+        $this->assertBlogCopyIssue(
+            BlogException::LOCK_CONFLICT,
+            fn (): BlogPostVariant => $service->duplicatePost(
+                $actorGate,
+                $sourcePostPublicId,
+                $source->locale(),
+                $sourceBeforeCopies->lockVersion() + 1
+            )
+        );
+
+        $duplicate = $service->duplicatePost(
+            $actorGate,
+            $sourcePostPublicId,
+            $source->locale(),
+            $sourceBeforeCopies->lockVersion(),
+            self::DUPLICATE_OPERATION_PUBLIC_ID
+        );
+        $duplicateReplay = $service->duplicatePost(
+            $actorGate,
+            $sourcePostPublicId,
+            $source->locale(),
+            $sourceBeforeCopies->lockVersion(),
+            self::DUPLICATE_OPERATION_PUBLIC_ID
+        );
+        self::assertSame(
+            $duplicate->postPublicId(),
+            $duplicateReplay->postPublicId()
+        );
+        self::assertSame(
+            $duplicate->localizationPublicId(),
+            $duplicateReplay->localizationPublicId()
+        );
+        $this->assertBlogCopyIssue(
+            BlogException::IDEMPOTENCY_CONFLICT,
+            fn (): BlogPostVariant => $service->duplicatePost(
+                $actorGate,
+                $sourcePostPublicId,
+                $source->locale(),
+                $sourceBeforeCopies->lockVersion() + 1,
+                self::DUPLICATE_OPERATION_PUBLIC_ID
+            )
+        );
+        $this->assertInitialStructuredCopy($content, $duplicate);
+
+        $localeCopy = $service->addLocalizationCopy(
+            $actorGate,
+            $duplicate->postPublicId(),
+            $duplicate->locale(),
+            'es',
+            $duplicate->lockVersion(),
+            self::LOCALE_COPY_OPERATION_PUBLIC_ID
+        );
+        $localeReplay = $service->addLocalizationCopy(
+            $actorGate,
+            $duplicate->postPublicId(),
+            $duplicate->locale(),
+            'es',
+            $duplicate->lockVersion(),
+            self::LOCALE_COPY_OPERATION_PUBLIC_ID
+        );
+        self::assertSame(
+            $localeCopy->localizationPublicId(),
+            $localeReplay->localizationPublicId()
+        );
+        $this->assertInitialStructuredCopy($content, $localeCopy);
+
+        $this->assertBlogCopyIssue(
+            BlogException::LOCALE_CONFLICT,
+            fn (): BlogPostVariant => $service->addLocalizationCopy(
+                $actorGate,
+                $duplicate->postPublicId(),
+                $duplicate->locale(),
+                'es',
+                $duplicate->lockVersion()
+            )
+        );
+        self::assertSame(
+            $sourceCanonicalJson,
+            $content->current(
+                $source->localizationPublicId()
+            )?->snapshot()->canonicalJson()
+        );
+        self::assertCount(
+            $sourceRevisionCount,
+            $content->listRevisions(
+                $source->localizationPublicId(),
+                10,
+                0
+            )
+        );
+        self::assertSame(
+            $postCount + 1,
+            $this->tableCount(
+                $connection,
+                $blogScope->tableName('posts')
+            )
+        );
+        self::assertSame(
+            $localizationCount + 2,
+            $this->tableCount(
+                $connection,
+                $blogScope->tableName('post_localizations')
+            )
+        );
+        self::assertSame(
+            2,
+            $this->tableCount(
+                $connection,
+                $blogScope->tableName('copy_operations')
+            )
+        );
+        $sourceAfterCopies = $service->loadPost(
+            $sourcePostPublicId,
+            $source->locale()
+        );
+        self::assertSame(
+            $sourceBeforeCopies->lockVersion(),
+            $sourceAfterCopies->lockVersion()
+        );
+        self::assertEquals(
+            $sourceBeforeCopies->draft(),
+            $sourceAfterCopies->draft()
+        );
+        self::assertSame(
+            $sourceBeforeCopies->status(),
+            $sourceAfterCopies->status()
+        );
+    }
+
+    private function assertConcurrentCopyIdempotencyAgainstRealMySql(
+        PDO $connection,
+        BlogMySqlTestConfiguration $configuration,
+        MigrationScope $blogScope,
+        MigrationScope $webAdminScope,
+        string $sourcePostPublicId,
+        BlogPostVariant $source
+    ): void {
+        $repository = new PdoBlogRepository($connection, $blogScope);
+        $content = new PdoBlogStructuredContentRepository(
+            $connection,
+            $blogScope
+        );
+        $sourceBefore = $repository->variant(
+            $sourcePostPublicId,
+            $source->locale()
+        );
+        self::assertNotNull($sourceBefore);
+
+        $postsBefore = $this->tableCount(
+            $connection,
+            $blogScope->tableName('posts')
+        );
+        $localizationsBefore = $this->tableCount(
+            $connection,
+            $blogScope->tableName('post_localizations')
+        );
+        $operationsBefore = $this->tableCount(
+            $connection,
+            $blogScope->tableName('copy_operations')
+        );
+        $samePayload = [
+            'operation' => 'duplicate_post',
+            'operation_id' =>
+                self::CONCURRENT_DUPLICATE_OPERATION_PUBLIC_ID,
+            'source_post_public_id' => $sourcePostPublicId,
+            'source_locale' => $source->locale(),
+            'destination_locale' => $source->locale(),
+            'expected_lock_version' => $sourceBefore->lockVersion(),
+            'actor_public_id' => self::ACTOR_PUBLIC_ID,
+        ];
+        $sameResults = $this->runConcurrentCopyWorkers(
+            $configuration,
+            $blogScope,
+            $webAdminScope,
+            [$samePayload, $samePayload]
+        );
+        self::assertSame([0, 0], array_column(
+            $sameResults,
+            'exit_code'
+        ));
+        $sameDestinationPosts = array_values(array_unique(array_map(
+            static fn (array $result): string =>
+                (string) $result['payload']['post_public_id'],
+            $sameResults
+        )));
+        $sameDestinationLocalizations = array_values(array_unique(array_map(
+            static fn (array $result): string =>
+                (string) $result['payload']['localization_public_id'],
+            $sameResults
+        )));
+        self::assertCount(
+            1,
+            $sameDestinationPosts,
+            'Concurrent idempotent replays must return one destination post.'
+        );
+        self::assertCount(
+            1,
+            $sameDestinationLocalizations,
+            'Concurrent idempotent replays must return one localization.'
+        );
+        self::assertSame(
+            $postsBefore + 1,
+            $this->tableCount($connection, $blogScope->tableName('posts'))
+        );
+        self::assertSame(
+            $localizationsBefore + 1,
+            $this->tableCount(
+                $connection,
+                $blogScope->tableName('post_localizations')
+            )
+        );
+        self::assertSame(
+            $operationsBefore + 1,
+            $this->tableCount(
+                $connection,
+                $blogScope->tableName('copy_operations')
+            )
+        );
+        $sameCopy = $repository->variant(
+            $sameDestinationPosts[0],
+            $source->locale()
+        );
+        self::assertNotNull($sameCopy);
+        self::assertSame(
+            $sameDestinationLocalizations[0],
+            $sameCopy->localizationPublicId()
+        );
+        $this->assertInitialStructuredCopy($content, $sameCopy);
+        $sameOperation = $this->copyOperationRow(
+            $connection,
+            $blogScope,
+            self::CONCURRENT_DUPLICATE_OPERATION_PUBLIC_ID
+        );
+        self::assertSame(
+            $sameDestinationPosts[0],
+            $sameOperation['result_post_public_id']
+        );
+        self::assertSame(
+            $source->locale(),
+            $sameOperation['result_locale']
+        );
+        self::assertNotNull($sameOperation['completed_at']);
+
+        $postsAfterReplay = $this->tableCount(
+            $connection,
+            $blogScope->tableName('posts')
+        );
+        $localizationsAfterReplay = $this->tableCount(
+            $connection,
+            $blogScope->tableName('post_localizations')
+        );
+        $operationsAfterReplay = $this->tableCount(
+            $connection,
+            $blogScope->tableName('copy_operations')
+        );
+        $differentPayloadBase = [
+            'operation' => 'add_locale',
+            'operation_id' => self::CONCURRENT_LOCALE_OPERATION_PUBLIC_ID,
+            'source_post_public_id' => $sourcePostPublicId,
+            'source_locale' => $source->locale(),
+            'expected_lock_version' => $sourceBefore->lockVersion(),
+            'actor_public_id' => self::ACTOR_PUBLIC_ID,
+        ];
+        $differentResults = $this->runConcurrentCopyWorkers(
+            $configuration,
+            $blogScope,
+            $webAdminScope,
+            [
+                $differentPayloadBase + ['destination_locale' => 'en'],
+                $differentPayloadBase + ['destination_locale' => 'fr'],
+            ]
+        );
+        $differentExitCodes = array_column(
+            $differentResults,
+            'exit_code'
+        );
+        sort($differentExitCodes, SORT_NUMERIC);
+        self::assertSame(
+            [0, 4],
+            $differentExitCodes,
+            'Different concurrent payloads must yield one winner and one '
+                . 'idempotency conflict.'
+        );
+        $winnerResults = array_values(array_filter(
+            $differentResults,
+            static fn (array $result): bool => $result['exit_code'] === 0
+        ));
+        $conflictResults = array_values(array_filter(
+            $differentResults,
+            static fn (array $result): bool => $result['exit_code'] === 4
+        ));
+        self::assertCount(1, $winnerResults);
+        self::assertCount(1, $conflictResults);
+        self::assertSame(
+            BlogException::IDEMPOTENCY_CONFLICT,
+            $conflictResults[0]['payload']['issue'] ?? null
+        );
+        $winningLocale = (string) (
+            $winnerResults[0]['payload']['locale'] ?? ''
+        );
+        self::assertContains($winningLocale, ['en', 'fr']);
+        $losingLocale = $winningLocale === 'en' ? 'fr' : 'en';
+        self::assertSame(
+            $sourcePostPublicId,
+            $winnerResults[0]['payload']['post_public_id'] ?? null
+        );
+        self::assertSame(
+            $postsAfterReplay,
+            $this->tableCount($connection, $blogScope->tableName('posts'))
+        );
+        self::assertSame(
+            $localizationsAfterReplay + 1,
+            $this->tableCount(
+                $connection,
+                $blogScope->tableName('post_localizations')
+            )
+        );
+        self::assertSame(
+            $operationsAfterReplay + 1,
+            $this->tableCount(
+                $connection,
+                $blogScope->tableName('copy_operations')
+            )
+        );
+        $winningCopy = $repository->variant(
+            $sourcePostPublicId,
+            $winningLocale
+        );
+        self::assertNotNull($winningCopy);
+        self::assertNull($repository->variant(
+            $sourcePostPublicId,
+            $losingLocale
+        ));
+        $this->assertInitialStructuredCopy($content, $winningCopy);
+        $differentOperation = $this->copyOperationRow(
+            $connection,
+            $blogScope,
+            self::CONCURRENT_LOCALE_OPERATION_PUBLIC_ID
+        );
+        self::assertSame(
+            $sourcePostPublicId,
+            $differentOperation['result_post_public_id']
+        );
+        self::assertSame(
+            $winningLocale,
+            $differentOperation['destination_locale']
+        );
+        self::assertSame(
+            $winningLocale,
+            $differentOperation['result_locale']
+        );
+        self::assertNotNull($differentOperation['completed_at']);
+
+        $sourceAfter = $repository->variant(
+            $sourcePostPublicId,
+            $source->locale()
+        );
+        self::assertNotNull($sourceAfter);
+        self::assertSame(
+            $sourceBefore->lockVersion(),
+            $sourceAfter->lockVersion()
+        );
+        self::assertEquals($sourceBefore->draft(), $sourceAfter->draft());
+        self::assertSame($sourceBefore->status(), $sourceAfter->status());
+    }
+
+    /**
+     * @param list<array{
+     *   operation: string,
+     *   operation_id: string,
+     *   source_post_public_id: string,
+     *   source_locale: string,
+     *   destination_locale: string,
+     *   expected_lock_version: int,
+     *   actor_public_id: string
+     * }> $requests
+     * @return list<array{exit_code: int, payload: array<string, mixed>}>
+     */
+    private function runConcurrentCopyWorkers(
+        BlogMySqlTestConfiguration $configuration,
+        MigrationScope $blogScope,
+        MigrationScope $webAdminScope,
+        array $requests
+    ): array {
+        self::assertCount(2, $requests);
+        $worker = dirname(__DIR__)
+            . DIRECTORY_SEPARATOR . 'Integration'
+            . DIRECTORY_SEPARATOR . 'fixtures'
+            . DIRECTORY_SEPARATOR . 'blog_mysql_copy_worker.php';
+        self::assertFileExists($worker);
+        $markers = [
+            $this->unusedCopyWorkerPath('ls-blog-copy-a-'),
+            $this->unusedCopyWorkerPath('ls-blog-copy-b-'),
+        ];
+        $start = $this->unusedCopyWorkerPath('ls-blog-copy-go-');
+        $processes = [];
+        foreach ($requests as $position => $request) {
+            $processes[] = $this->copyWorkerProcess(
+                $worker,
+                $configuration,
+                $blogScope,
+                $webAdminScope,
+                $markers[$position],
+                $start,
+                $request
+            );
+        }
+
+        try {
+            foreach ($processes as $process) {
+                $process->start();
+            }
+            foreach ($markers as $marker) {
+                $this->waitForCopyWorkerMarker($marker, $processes);
+            }
+            foreach ($processes as $process) {
+                self::assertTrue(
+                    $process->isRunning(),
+                    'Both copy workers must be live at the race barrier.'
+                );
+            }
+            self::assertSame(2, file_put_contents($start, 'go', LOCK_EX));
+
+            $results = [];
+            foreach ($processes as $process) {
+                $exitCode = $process->wait();
+                $output = trim($process->getOutput());
+                try {
+                    $payload = json_decode(
+                        $output,
+                        true,
+                        32,
+                        JSON_THROW_ON_ERROR
+                    );
+                } catch (JsonException $exception) {
+                    self::fail(sprintf(
+                        'Copy worker exited %d without valid JSON: %s (%s)',
+                        $exitCode,
+                        $output,
+                        trim($process->getErrorOutput())
+                    ));
+                }
+                self::assertIsArray($payload);
+                $results[] = [
+                    'exit_code' => $exitCode,
+                    'payload' => $payload,
+                ];
+            }
+
+            return $results;
+        } finally {
+            foreach ($processes as $process) {
+                if ($process->isRunning()) {
+                    $process->stop(1.0);
+                }
+            }
+            foreach (array_merge($markers, [$start]) as $path) {
+                $this->removeCopyWorkerPath($path);
+            }
+        }
+    }
+
+    /**
+     * @param array{
+     *   operation: string,
+     *   operation_id: string,
+     *   source_post_public_id: string,
+     *   source_locale: string,
+     *   destination_locale: string,
+     *   expected_lock_version: int,
+     *   actor_public_id: string
+     * } $request
+     */
+    private function copyWorkerProcess(
+        string $worker,
+        BlogMySqlTestConfiguration $configuration,
+        MigrationScope $blogScope,
+        MigrationScope $webAdminScope,
+        string $marker,
+        string $start,
+        array $request
+    ): Process {
+        $process = new Process(
+            [PHP_BINARY, $worker],
+            dirname(__DIR__, 2),
+            [
+                'LIQUIDSTACK_TEST_WORKER_AUTOLOAD' => dirname(__DIR__, 2)
+                    . DIRECTORY_SEPARATOR . 'vendor'
+                    . DIRECTORY_SEPARATOR . 'autoload.php',
+                'LIQUIDSTACK_TEST_WORKER_MARKER' => $marker,
+                'LIQUIDSTACK_TEST_WORKER_START' => $start,
+                'LIQUIDSTACK_TEST_WORKER_HOST' => $configuration->host()
+                    . ':' . $configuration->port(),
+                'LIQUIDSTACK_TEST_WORKER_USERNAME' =>
+                    $configuration->username(),
+                'LIQUIDSTACK_TEST_WORKER_PASSWORD' =>
+                    $configuration->password(),
+                'LIQUIDSTACK_TEST_WORKER_DATABASE' =>
+                    $configuration->database(),
+                'LIQUIDSTACK_TEST_WORKER_BLOG_PREFIX' =>
+                    $blogScope->tablePrefix(),
+                'LIQUIDSTACK_TEST_WORKER_WEBADMIN_PREFIX' =>
+                    $webAdminScope->tablePrefix(),
+                'LIQUIDSTACK_TEST_WORKER_COPY_ACTION' =>
+                    $request['operation'],
+                'LIQUIDSTACK_TEST_WORKER_OPERATION_ID' =>
+                    $request['operation_id'],
+                'LIQUIDSTACK_TEST_WORKER_SOURCE_POST' =>
+                    $request['source_post_public_id'],
+                'LIQUIDSTACK_TEST_WORKER_SOURCE_LOCALE' =>
+                    $request['source_locale'],
+                'LIQUIDSTACK_TEST_WORKER_DESTINATION_LOCALE' =>
+                    $request['destination_locale'],
+                'LIQUIDSTACK_TEST_WORKER_EXPECTED_LOCK' =>
+                    (string) $request['expected_lock_version'],
+                'LIQUIDSTACK_TEST_WORKER_ACTOR' =>
+                    $request['actor_public_id'],
+            ]
+        );
+        $process->setTimeout(20.0);
+
+        return $process;
+    }
+
+    /** @param list<Process> $processes */
+    private function waitForCopyWorkerMarker(
+        string $marker,
+        array $processes
+    ): void {
+        $deadline = microtime(true) + 4.0;
+        while (!is_file($marker) && microtime(true) < $deadline) {
+            foreach ($processes as $process) {
+                if (!$process->isRunning()) {
+                    break 2;
+                }
+            }
+            usleep(10_000);
+        }
+        self::assertFileExists(
+            $marker,
+            'An isolated Blog copy worker did not reach the race barrier.'
+        );
+    }
+
+    private function unusedCopyWorkerPath(string $prefix): string
+    {
+        if (!in_array($prefix, [
+            'ls-blog-copy-a-',
+            'ls-blog-copy-b-',
+            'ls-blog-copy-go-',
+        ], true)) {
+            throw new RuntimeException('Unsafe Blog worker marker prefix.');
+        }
+        $path = rtrim(sys_get_temp_dir(), '\\/')
+            . DIRECTORY_SEPARATOR . $prefix . bin2hex(random_bytes(8))
+            . '.tmp';
+        if (file_exists($path)) {
+            throw new RuntimeException('Blog worker path already exists.');
+        }
+
+        return $path;
+    }
+
+    private function removeCopyWorkerPath(string $path): void
+    {
+        $temporaryRoot = realpath(sys_get_temp_dir());
+        $parent = realpath(dirname($path));
+        $basename = basename($path);
+        if (
+            $temporaryRoot === false
+            || $parent !== $temporaryRoot
+            || preg_match(
+                '/\Als-blog-copy-(?:a|b|go)-[a-f0-9]{16}\.tmp\z/D',
+                $basename
+            ) !== 1
+        ) {
+            throw new RuntimeException('Unsafe Blog worker file path.');
+        }
+        if (is_file($path) && !unlink($path)) {
+            throw new RuntimeException('Could not remove a Blog worker file.');
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function copyOperationRow(
+        PDO $connection,
+        MigrationScope $scope,
+        string $operationPublicId
+    ): array {
+        $statement = $connection->prepare(
+            'SELECT request_public_id, payload_sha256, actor_public_id, '
+            . 'operation, source_post_public_id, source_locale, '
+            . 'destination_locale, expected_lock_version, '
+            . 'result_post_public_id, result_locale, completed_at FROM '
+            . $scope->quotedTable('copy_operations', 'mysql')
+            . ' WHERE request_public_id = :request_public_id'
+        );
+        self::assertNotFalse($statement);
+        self::assertTrue($statement->execute([
+            'request_public_id' => $operationPublicId,
+        ]));
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        self::assertCount(
+            1,
+            $rows,
+            'Each concurrent operation ID must own exactly one durable row.'
+        );
+
+        return $rows[0];
+    }
+
+    private function assertInitialStructuredCopy(
+        PdoBlogStructuredContentRepository $content,
+        BlogPostVariant $copy
+    ): void {
+        $current = $content->current($copy->localizationPublicId());
+        $revisions = $content->listRevisions(
+            $copy->localizationPublicId(),
+            10,
+            0
+        );
+        self::assertNotNull($current);
+        self::assertCount(1, $current->snapshot()->mediaReferences());
+        self::assertCount(1, $revisions);
+        self::assertSame(1, $revisions[0]->revisionNumber());
+        self::assertSame(1, $revisions[0]->variantLockVersion());
+        self::assertSame(1, $revisions[0]->mediaCount());
+        self::assertSame(
+            $current->snapshot()->canonicalJson(),
+            $content->revision(
+                $revisions[0]->revisionPublicId()
+            )?->snapshot()->canonicalJson()
+        );
+    }
+
+    /** @param callable(): BlogPostVariant $mutation */
+    private function assertBlogCopyIssue(
+        string $expectedIssue,
+        callable $mutation
+    ): void {
+        try {
+            $mutation();
+            self::fail('The structured copy mutation should have failed.');
+        } catch (BlogException $exception) {
+            self::assertSame($expectedIssue, $exception->issueCode());
+        }
+    }
+
+    private function assertPrivateWorkflowCasAcrossConnections(
+        PDO $firstConnection,
+        PDO $secondConnection,
+        MigrationScope $scope,
+        string $postPublicId,
+        BlogPostVariant $variant,
+        DateTimeImmutable $now
+    ): void {
+        $first = new PdoBlogEditorialWorkspaceRepository(
+            $firstConnection,
+            $scope
+        );
+        $second = new PdoBlogEditorialWorkspaceRepository(
+            $secondConnection,
+            $scope
+        );
+        $state = $first->variantState($postPublicId, $variant->locale());
+        self::assertNotNull($state);
+        self::assertTrue($firstConnection->beginTransaction());
+        try {
+            self::assertTrue($first->publishSnapshot(
+                $state->localizationPublicId(),
+                $state->lockVersion(),
+                BlogPostVariant::DRAFT,
+                $variant->draft(),
+                self::ACTOR_PUBLIC_ID,
+                $now
+            ));
+            self::assertTrue($firstConnection->commit());
+        } catch (Throwable $exception) {
+            if ($firstConnection->inTransaction()) {
+                $firstConnection->rollBack();
+            }
+            throw $exception;
+        }
+
+        $contentVersion = $state->lockVersion() + 1;
+        self::assertTrue($firstConnection->beginTransaction());
+        self::assertTrue($first->advancePrivateLock(
+            $state->localizationPublicId(),
+            $contentVersion,
+            self::ACTOR_PUBLIC_ID
+        ));
+        self::assertTrue($firstConnection->commit());
+        self::assertTrue($secondConnection->beginTransaction());
+        self::assertFalse($second->advancePrivateLock(
+            $state->localizationPublicId(),
+            $contentVersion,
+            self::ACTOR_PUBLIC_ID
+        ));
+        self::assertTrue($secondConnection->commit());
+
+        $staleCategoryVersion = $second->categoryWorkspaceVersion(
+            $postPublicId
+        );
+        self::assertSame(0, $staleCategoryVersion);
+        $baseAssignmentVersion = $first->categoryAssignmentVersion(
+            $postPublicId
+        );
+        self::assertTrue($firstConnection->beginTransaction());
+        self::assertSame(1, $first->replaceWorkspaceCategories(
+            $postPublicId,
+            [self::CATEGORY_PUBLIC_ID],
+            0,
+            $baseAssignmentVersion,
+            self::ACTOR_PUBLIC_ID,
+            $now
+        ));
+        self::assertTrue($firstConnection->commit());
+
+        self::assertTrue($secondConnection->beginTransaction());
+        try {
+            $second->replaceWorkspaceCategories(
+                $postPublicId,
+                [self::CATEGORY_PUBLIC_ID],
+                $staleCategoryVersion,
+                $baseAssignmentVersion,
+                self::ACTOR_PUBLIC_ID,
+                $now
+            );
+            self::fail('A stale category workspace CAS must never win.');
+        } catch (BlogEditorialWorkflowPersistenceException) {
+            self::assertTrue($secondConnection->rollBack());
+        }
+    }
+
     private function seedMediaFixture(
         PDO $connection,
         WebAdminTableNames $tables,
@@ -1059,17 +1894,21 @@ final class BlogMySqlIntegrationTest extends TestCase
     ): void {
         $this->assertSafePrefixes($webAdminPrefix, $blogPrefix);
         foreach ([
-            $webAdminPrefix . 'media_assets',
-            $webAdminPrefix . 'media_variants',
-            $blogPrefix . 'categories',
-            $blogPrefix . 'category_locales',
-            $blogPrefix . 'post_categories',
-            $blogPrefix . 'content_docs',
-            $blogPrefix . 'content_revisions',
-            $blogPrefix . 'content_media',
-            $blogPrefix . 'revision_media',
-        ] as $table) {
-            self::assertSame(1, $this->tableCount($connection, $table));
+            $webAdminPrefix . 'media_assets' => 1,
+            $webAdminPrefix . 'media_variants' => 1,
+            $blogPrefix . 'categories' => 2,
+            $blogPrefix . 'category_locales' => 2,
+            $blogPrefix . 'post_categories' => 1,
+            $blogPrefix . 'content_docs' => 1,
+            $blogPrefix . 'content_revisions' => 1,
+            $blogPrefix . 'content_media' => 1,
+            $blogPrefix . 'revision_media' => 1,
+        ] as $table => $expected) {
+            self::assertSame(
+                $expected,
+                $this->tableCount($connection, $table),
+                'Unexpected fixture row count for ' . $table . '.'
+            );
         }
     }
 
@@ -1185,6 +2024,51 @@ final class BlogMySqlIntegrationTest extends TestCase
                 'scope_hash' => $webAdminScope->hash(),
             ],
             [
+                'module_id' => 'blog',
+                'migration_id' => '0011_blog_layout_editor_v2',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0012_blog_editor_preferences',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0013_blog_settings_manage_capability',
+                'scope_hash' => $webAdminScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0014_blog_private_draft_publication',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0015_blog_robots_preferences',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0016_blog_url_history',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0017_blog_dummy_category',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0018_blog_dummy_category_normalization',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0019_blog_copy_operation_idempotency',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
                 'module_id' => 'webadmin',
                 'migration_id' => '0001_webadmin_identity_and_access',
                 'scope_hash' => $webAdminScope->hash(),
@@ -1192,6 +2076,21 @@ final class BlogMySqlIntegrationTest extends TestCase
             [
                 'module_id' => 'webadmin',
                 'migration_id' => '0002_webadmin_media_library',
+                'scope_hash' => $webAdminScope->hash(),
+            ],
+            [
+                'module_id' => 'webadmin',
+                'migration_id' => '0003_webadmin_media_avif_source',
+                'scope_hash' => $webAdminScope->hash(),
+            ],
+            [
+                'module_id' => 'webadmin',
+                'migration_id' => '0004_webadmin_profile_preferences',
+                'scope_hash' => $webAdminScope->hash(),
+            ],
+            [
+                'module_id' => 'webadmin',
+                'migration_id' => '0005_webadmin_media_quarantine',
                 'scope_hash' => $webAdminScope->hash(),
             ],
         ], $rows);
@@ -1419,7 +2318,12 @@ final class BlogMySqlIntegrationTest extends TestCase
         foreach (WebAdminInitialSchemaContract::tableSuffixes() as $suffix) {
             $tables[] = $webAdminPrefix . $suffix;
         }
-        foreach (['media_assets', 'media_variants'] as $suffix) {
+        foreach ([
+            'media_assets',
+            'media_variants',
+            'media_quarantines',
+            'user_profiles',
+        ] as $suffix) {
             $tables[] = $webAdminPrefix . $suffix;
         }
         foreach (BlogInitialSchemaContract::tableSuffixes() as $suffix) {
@@ -1437,6 +2341,18 @@ final class BlogMySqlIntegrationTest extends TestCase
             'post_tombstones',
             'analytics_sessions',
             'analytics_views',
+            'content_layout_docs',
+            'content_layout_revisions',
+            'editor_preferences',
+            'editorial_workspaces',
+            'category_assignment_heads',
+            'category_assignment_workspaces',
+            'category_assignment_workspace_items',
+            'publication_heads',
+            'robots_settings',
+            'revision_robots',
+            'url_history',
+            'copy_operations',
         ] as $suffix) {
             $tables[] = $blogPrefix . $suffix;
         }

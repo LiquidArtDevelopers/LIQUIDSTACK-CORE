@@ -26,6 +26,8 @@ final class BlogMutationAuditEvent
     public const DUPLICATE = 'duplicate';
     public const TRASH = 'trash';
     public const RESTORE_FROM_TRASH = 'restore_from_trash';
+    public const URL_GONE = 'url_gone';
+    public const URL_REDIRECT = 'url_redirect';
 
     private const OPERATIONS = [
         self::CREATE,
@@ -37,6 +39,8 @@ final class BlogMutationAuditEvent
         self::DUPLICATE,
         self::TRASH,
         self::RESTORE_FROM_TRASH,
+        self::URL_GONE,
+        self::URL_REDIRECT,
     ];
 
     private readonly DateTimeImmutable $occurredAt;

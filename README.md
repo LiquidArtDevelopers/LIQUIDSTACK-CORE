@@ -180,8 +180,12 @@ completamente offline y solo enumera metadatos. `--dry-run` compara el catálogo
 con `ls_module_migrations`, pero no escribe. `--apply` muestra el plan, exige
 `--yes` o confirmación interactiva y lo aplica con lock y verificación del
 hash. Una migración destructiva requiere además
-`--allow-destructive --backup-confirmed`; en JSON, `--apply` siempre requiere
-`--yes`. Ninguna salida incluye credenciales, claves, correos, DSN, SQL ni
+`--allow-destructive --backup-confirmed`. Sin ambos flags, `--apply` aplica
+solo el prefijo no destructivo pendiente de cada módulo y deja las destructivas
+con un aviso. Una migración posterior del mismo módulo también queda pendiente para
+no saltarse el orden append-only; las migraciones seguras de otros módulos sí
+pueden avanzar. En JSON, `--apply` siempre requiere `--yes`. Ninguna salida
+incluye credenciales, claves, correos, DSN, SQL ni
 mensajes PDO.
 
 `liquidstack:media:init`, en su modo normal, no consulta ni modifica la DB, no
@@ -285,8 +289,11 @@ Un `migration.postcondition_failed` en una ampliación posterior requiere la
 misma cautela aunque el siguiente dry-run la siga mostrando como `pending`:
 MySQL/MariaDB puede haber confirmado su DDL. Solo se repite después de comparar
 el estado real con el contrato y determinar que la corrección pertenece al
-verificador o al runtime; si el esquema no es exacto, se restaura o se prepara
-una recuperación explícita.
+verificador o al runtime. En ese caso el planner solo desbloquea un superseder
+no transaccional y `retrySafe` cuyo estado completo sea exacto y cuyos
+supersedidos conserven registros íntegros; sigue pendiente hasta que un nuevo
+`--apply` reejecuta el SQL idempotente, verifica y registra. Si el esquema no es
+exacto, se restaura o se prepara una recuperación explícita.
 
 El entorno operativo de WebAdmin necesita una clave base64url canónica de 32
 bytes bajo `LIQUIDSTACK_WEBADMIN_SECURITY_KEY`. Puede generarse una vez con:
@@ -478,14 +485,16 @@ previa privada conserva un documento aislado para representar fielmente
 `header` y `main`, siempre bajo autenticación, `no-store` y `noindex`.
 
 `0005_blog_structured_content` incorpora `/admin/blog/editor`, documento actual,
-referencias de medios y revisiones inmutables. El JSON canónico v1 admite ocho
-bloques controlados: párrafo, heading H2-H6, lista, callout, enlace, imagen,
-YouTube y CTA. El lienzo visual representa el `header` con su H1 y la estructura
-del futuro `main` sin anidar otro `main` ni emitir un segundo H1 en la propia
-página administrativa. Un H2 abre una `section`, un H3 abre un `article` dentro
-de ella y H4-H6 pertenecen a ese artículo; los niveles no pueden saltarse y al
-mover o retirar un encabezado viaja todo su subárbol semántico. El H1 permanece
-separado y `body_text` se deriva en servidor.
+referencias de medios y revisiones inmutables. El JSON canónico v1 histórico
+admite ocho bloques controlados: párrafo, heading H2-H6, lista, callout, enlace,
+imagen, YouTube y CTA. `0011_blog_layout_editor_v2` añade el modelo actual de
+Section, Article y Contenedor con una a cinco columnas, anchos y presentación
+tipados. Todo el contenido escrito nuevo pertenece a `Texto`, que integra
+párrafos, H2-H6, listas, citas, destacados y enlaces inline; Enlace standalone
+se proyecta a Botón y HTML mantiene una fuente HTML/CSS saneada. El lienzo
+representa el `header` con su H1 y el `main` estructurado sin duplicar landmarks
+ni emitir otro H1 en WebAdmin. El H1 permanece separado y `body_text` se deriva
+en servidor.
 
 Al crear una variante se elige expresamente uno de los locales activos que el
 artículo todavía no utiliza, mostrando la ruta configurada en `public_paths`.
@@ -524,6 +533,14 @@ return [
         'eu' => '/eu/albisteak',
         'en' => '/en/news',
     ],
+    'public_index' => [
+        'page_size' => 12,
+        'pagination_paths' => [
+            'es' => '/noticias/pagina/{page}',
+            'eu' => '/eu/albisteak/orria/{page}',
+            'en' => '/en/news/page/{page}',
+        ],
+    ],
     'sitemap_path' => '/blog-sitemap.xml',
     'sitemap_cache' => [
         'enabled' => false,
@@ -537,10 +554,43 @@ return [
 ];
 ```
 
+`public_index` configura el lote SSR y las rutas limpias de continuación;
+esas rutas siguen declarándose en el router project-owned. El backend
+reutilizable vive en `src/Core/Blog/PublicIndex` y Composer instala el soporte
+de un solo require `App/app/_moduleBlogPublicIndex.php`. La extensión opcional
+`App/config/modules/blog-public-index.php` queda reservada a una fuente
+`preview` de desarrollo; si no existe preview, el fichero no es necesario. La
+seguridad compartida del índice y los artículos se configura, cuando hace falta,
+en `App/config/modules/blog-public.php`. La vista solo compone controladores incondicionales
+sobre HTML neutro; cada recurso decide su estado vacío y trae su propia
+presentación. El encabezado principal se inyecta en un recurso hero con raíz
+`<header>` antes de `<main>`. Dentro de este, `sectionBlogCatalog01` aporta el
+H2 del contexto y recibe búsqueda, categorías y resultados como slots hermanos;
+los formularios quedan fuera de la frontera sustituible para conservar sus
+listeners. `moduleBlogResults01` recibe en slots opcionales la colección,
+paginación y archivo ya renderizados y posee el target singleton
+`#blog-results[data-blog-results]`, evitando un wrapper funcional escrito a
+mano en cada vista. Bajo ese catálogo, `moduleBlogGrid02`, Pagination01 y
+Archive01 mantienen comportamiento y estilos sobre raíces siempre neutras, de
+modo que el H2 exterior no contiene otra `section` ni otro `nav`. Las cards de
+la rejilla son `<article>`/H3 y exponen un CTA `cta_label` localizado hacia la
+misma URL pública; Results01 solo admite hijos `div` sin `role` y
+Catalog01 conserva una segunda validación de la composición. La vista no lee
+superglobals, abre PDO, construye consultas
+ni emite cabeceras. GET y HEAD comparten estado HTTP/SEO, y la respuesta parcial
+puede transportar el mismo documento SSR completo con
+`Vary: X-LiquidStack-Partial` para la mejora progresiva.
+
 `public_article_view` es opcional y aditivo. Debe apuntar mediante una ruta
 relativa a un PHP regular y legible bajo `App/views`, sin traversal ni
-symlinks. La vista recibe `$blogArticle` como view model tipado para componer el
-shell, head, navegación, footer, tema y CSP del proyecto. Sus alternates SEO
+symlinks. La vista recibe `$blogArticle` y `$blogArticleShell` como contratos
+tipados y comienza con el único require gestionado
+`App/app/_moduleBlogPublicArticle.php`. El hook prepara las variables de shell,
+catálogo y assets sin emitir HTML ni cabeceras. La vista compone head,
+navegación, footer, tema y layout; la política configurada en
+`App/config/modules/blog-public.php`, su CSP y su nonce pertenecen al
+controlador y a la `Response`. La vista solo consume el nonce entregado y nunca
+llama `header()` ni requiere seguridad local. Sus alternates SEO
 incluyen solo traducciones publicadas; la navegación de idioma separada cae al
 índice localizado cuando falta una variante. Si se omite, CORE conserva el HTML
 standalone y carga su CSS neutral responsive gestionado.
@@ -633,18 +683,65 @@ distribuyen selectivamente y no forman parte de este gate operativo.
 La familia visual pública también es selectiva. Su fuente canónica vive bajo
 `modules/blog/resources/project/` y el manifiesto publica, solo con
 `liquidstack/blog`, `artBlogArticle01`, `moduleBlogArchive01`,
-`moduleBlogFilters01`, `sectionBlogGrid01`, `sectionBlogList01`,
-`sectionBlogFeatured01`, `sectionBlogRelated01` y `sectionBlogSlider01`, junto
-a su helper y hooks de showroom. Cada recurso agrupa controlador, template,
-SCSS y JS como una unidad gestionada; una copia local desconocida se preserva
-y un proyecto core-only o WebAdmin-only no recibe esos ficheros. Los ejemplos
-Matrix pertenecen exclusivamente al showroom y nunca sustituyen contenido de
-la DB.
+`moduleBlogFilters01`, `moduleBlogSearch01`, `moduleBlogCategoryBar01`,
+`moduleBlogPagination01`, `moduleBlogResults01`, `sectionBlogCatalog01`,
+`sectionBlogGrid01`, `sectionBlogList01`,
+`sectionBlogFeatured01`, `sectionBlogRelated01`, `sectionBlogSlider01`,
+`moduleBlogGrid02`, `sectionBlogSlider02` y `sectionBlogStack01`, junto a su
+helper, el loader compartido y los hooks de showroom. Search01 y CategoryBar01
+se combinan sobre el runtime GET/SSR preservando el estado mutuo; Pagination01
+aporta enlaces SSR y un runtime progresivo que sustituye la región de
+resultados sin recarga, conservando History API y el fallback nativo. List01
+centra su columna. Grid02 ofrece rejilla regular o
+bento, media `16:9`/`16rem`, título visible y CTA compacto sin sombra;
+Slider01 y Slider02 trasladan Draggable, Inertia,
+snap, wrap y autoplay
+accesible de `artSlider01` a runtimes multiinstancia con movimiento reducido,
+fallback scroll-snap y cleanup. Ambos priorizan una `thumbnail` explícita y
+Slider02 acota su media a `16:9` con `object-fit: cover`. Stack01 aplica
+ScrollTrigger solo a 3–8 cards cuando el viewport es apto y mantiene en
+cualquier otro caso un listado vertical funcional. Cada recurso agrupa
+controlador, template, SCSS y JS como una unidad gestionada; una copia local
+desconocida se preserva y un proyecto core-only o WebAdmin-only no recibe esos
+ficheros. Los ejemplos Matrix pertenecen exclusivamente al showroom, incluyen
+una muestra SSR paginada de 4 sobre 10 y nunca sustituyen contenido de la DB.
 El helper común mantiene una API estable y aditiva en su propio grupo, de modo
 que una personalización de un recurso no congela los demás. Si el contrato
 SCSS del consumidor no puede verificarse, CORE conserva los assets
 autocontenidos del módulo pero aplaza conjuntamente esta familia visual y sus
 hooks hasta una actualización posterior con `_config.scss` reparado.
+
+`BlogPublicResourceQuery` permite los órdenes cerrados
+`newest|oldest|updated`, mantiene Dummy excluido y proyecta las categorías de
+todas las cards mediante una única consulta batch sin IDs ni N+1.
+Una vista que solo necesita la colección reciente requiere
+`App/app/_moduleBlogPublicCollections.php` como único soporte y usa
+`$blogPublicCollections->latest($locale, $limit)`: recibe un view model
+`ready|empty|unavailable` sin instanciar feeds, factories ni queries en la
+vista. Una selección avanzada se encapsula en soporte backend propio.
+`BlogPublicResourceBatch` entrega `items`, `has_next`, `next_offset` y una
+`next_url` relativa a la raíz. El runtime module-owned
+`src/js/modules/blog/blogCollectionLoader.js` mejora el enlace SSR con carga
+HTML incremental manual o próxima al final, valida mismo origen y colección,
+deduplica cards y conserva estados de carga, error, reintento y fin. El helper
+visual acepta categorías y media explícitas, y el feed puede enriquecer cada
+lote con miniaturas mediante un adaptador opcional entre Blog y WebAdmin. El
+adaptador ejecuta como máximo dos `SELECT` constantes por lote: el primero lee
+documentos y referencias; solo si de ahí resulta algún medio elegible, el
+segundo carga sus variantes. Toma la portada o la primera imagen según el orden
+del documento `CURRENT` publicado y no expone IDs ni introduce N+1. Solo proyecta
+variantes AVIF válidas: `src` es la mayor disponible de hasta 900 px y `srcset`
+queda ascendente; `sizes` pertenece al recurso, no al backend. Si el esquema o
+el storage no están listos, o una card presenta datos corruptos, esa card sigue
+siendo textual. El helper valida estrictamente `src`, `srcset` y `sizes` y aplica
+el `sizes` propio de cada composición. Los 16 derivados AVIF de los cuatro
+Dummy del showroom tienen su fuente gestionada por Composer en
+`resources/img/dummy/responsive` —480, 899/900, 1800 y 2560 px— y se sincronizan
+al consumidor. Este corte se integra en CORE principal dentro de `Unreleased`;
+su publicación versionada sigue condicionada a la matriz completa de adopción.
+La QA funcional-visual en Chrome real está cerrada a 390, 768 y
+1280 px, con filtros, paginación, sliders multiinstancia y geometría responsive
+sin overflow ni errores de consola.
 
 La frontera HTTP exige HTTPS fuera del laboratorio. `npm run lad` puede usar
 HTTP únicamente con `DEV_MODE=1`, una `RAIZ` loopback, coincidencia exacta de
@@ -1178,13 +1275,15 @@ Despues de publicar:
   estado de WebAdmin, Media, categorías y editor estructurado, y siguientes
   cortes de SEO, IA, indexación y futuro maquetador.
 - [Promoción de la DB modular entre local y producción](docs/mejoras-pendientes/promocion-db-modulos-local-produccion.md):
-  AIWA trabaja actualmente sobre XAMPP local; queda definido el contrato para
+  el consumidor de referencia trabaja actualmente sobre XAMPP local; queda
+  definido el contrato para
   proyectos que usen DB local o producción y el protocolo para cambiar de
   entorno sin modificar código, reutilizar secretos ni mover datos de forma
   implícita.
 - [Auditoría de compatibilidad en proyectos consumidores](docs/mejoras-pendientes/auditoria-compatibilidad-proyectos-consumidores.md):
-  protocolo obligatorio para probar las actualizaciones de CORE en AIWA,
-  ARRO, un starter BASE limpio y el resto de consumidores antes de desplegar
+  protocolo obligatorio para probar las actualizaciones de CORE en dos
+  consumidores de referencia, un starter BASE limpio y el resto de
+  consumidores antes de desplegar
   una versión estructural de forma general.
 - [Autocompletado de recursos LiquidStack para VS Code](docs/mejoras-pendientes/autocompletado-vscode-recursos.md):
   propuesta de extensión propia para insertar controladores y completar sus

@@ -165,6 +165,17 @@ las claves existentes del contexto. Un cambio incompatible requiere versionar
 el helper o migrar coordinadamente todos sus consumidores; no debe forzar a
 agrupar y congelar recursos independientes.
 
+Los adaptadores públicos Blog viajan en tres grupos independientes y
+allowlisted: `App/app/_moduleBlogPublicIndex.php` en
+`public-index-support`, `App/app/_moduleBlogPublicArticle.php` en
+`public-article-support` y `App/app/_moduleBlogPublicCollections.php` en
+`public-collections-support`. No comparten atomicidad con `resource-support`:
+una personalización del helper visual o del loader no puede bloquear la
+instalación o actualización del hook que requiere una vista. La funcionalidad
+reutilizable permanece autoloaded bajo `src/Core/Blog`; cada adaptador traduce
+el contexto del stack a contratos tipados y una vista requiere solo el hook de
+su superficie.
+
 Los recursos estándar modulares comparten el gate del contrato SCSS base. Si
 `src/scss/_config.scss` no puede verificarse, el instalador omite durante ese
 ciclo todos sus controladores, templates, SCSS, JS y hooks de showroom, y
@@ -222,8 +233,9 @@ El primer contrato dedicado está limitado a `localhost` o redes confiables.
 No debe utilizarse a través de un transporte no confiable hasta que CORE
 incorpore un perfil TLS probado con CA y verificación del servidor.
 
-AIWA desarrolla actualmente estos módulos contra una DB local de XAMPP. El
-mismo código deberá poder apuntar en otros proyectos a local, staging o
+El consumidor de referencia desarrolla actualmente estos módulos contra una DB
+local de XAMPP. El mismo código deberá poder apuntar en otros proyectos a local,
+staging o
 producción cambiando únicamente secretos `LIQUIDSTACK_DB_*`. La promoción a
 una DB vacía y el traslado de datos existentes son operaciones diferentes;
 ninguna se infiere de un cambio de entorno. El diseño y runbook pendientes se
@@ -269,7 +281,16 @@ El comando exige exactamente uno de estos modos:
 
 `--apply` exige `--yes` o confirmación interactiva. En formato JSON exige
 siempre `--yes`. Las migraciones destructivas requieren simultáneamente
-`--allow-destructive` y `--backup-confirmed`; `--lock-timeout` admite entre 0
+`--allow-destructive` y `--backup-confirmed`.
+
+Sin esos dos flags, el CLI deja la destructiva pendiente, aplica el prefijo
+seguro de cada módulo y avisa del estado restante. Desde la primera pendiente
+destructiva también difiere los IDs posteriores de ese mismo módulo para no
+registrarlos fuera de orden; otros módulos pueden seguir avanzando. El motor
+conserva el bloqueo por defecto para llamadas que no opten expresamente por
+este filtrado seguro.
+
+`--lock-timeout` admite entre 0
 y 300 segundos. El runtime utiliza la única conexión modular resuelta, el
 scope configurable de WebAdmin y `ls_blog_` para Blog, pero nunca imprime
 secretos, sentencias SQL ni mensajes internos de PDO.
@@ -324,11 +345,15 @@ El contrato SQL ejecutable es deliberadamente limitado en este corte:
   estado hace falta restaurar o definir una recuperación explícita.
 - Si una versión anterior del verificador falla después de que MySQL/MariaDB
   haya confirmado el DDL de una migración posterior, no se registra esa
-  migración a mano ni se fuerza una adopción. Aunque el esquema parcial parezca
-  exacto, se restaura el backup verificado anterior al lote, se actualiza CORE
-  con el verificador corregido y solo entonces se repiten `--dry-run` y el
-  `--apply` expresamente autorizado. Así el registro y el DDL vuelven a avanzar
-  como una única operación auditable.
+  migración a mano ni se fuerza una adopción. Con el verificador corregido, el
+  planner admite una reanudación acotada únicamente cuando el superseder
+  pendiente es no transaccional y `retrySafe`, su postcondición exacta ya se
+  cumple, todos sus contratos supersedidos tienen checksum y scope registrados
+  exactos y al menos un verificador antiguo refleja el nuevo superset como
+  drift. La entrada sigue siendo `pending`: el `--apply` expresamente
+  autorizado reejecuta el SQL idempotente, vuelve a verificar y solo después
+  registra la migración. Si una sola prueba no se cumple, el plan permanece
+  bloqueado y se restaura el backup o se diseña una recuperación explícita.
 
 ### Configuración y readiness de WebAdmin
 
@@ -348,11 +373,15 @@ return [
     ],
     'session' => [
         'cookie_name' => 'LS_WEBADMIN_SID',
-        'idle_ttl_seconds' => 1800,
-        'absolute_ttl_seconds' => 28800,
+        'idle_ttl_seconds' => 2592000,
+        'absolute_ttl_seconds' => 2592000,
     ],
 ];
 ```
+
+La sesión autenticada dura como máximo 30 días. La actividad válida desliza
+el vencimiento por inactividad sin superar ese límite absoluto; escribir en
+un formulario sin realizar peticiones al servidor no renueva la sesión.
 
 Credenciales, hosts y correos no se admiten en ese array. `shared` reutiliza
 los nombres de entorno legacy; para optar por la conexión dedicada se cambia
@@ -399,6 +428,9 @@ de WebAdmin. Tras aplicar `0002_webadmin_media_library`, el operador ejecuta
 `composer liquidstack:media:init`: su modo normal es una mutación exclusiva de
 filesystem, confirmada de forma interactiva o con `--yes` (`--format=json`
 también exige `--yes`), que no abre PDO, procesa imágenes ni configura SMTP.
+La migración aditiva `0003_webadmin_media_avif_source` habilita únicamente la
+entrada nativa AVIF. Mientras esté pendiente, la biblioteca y Blog siguen
+operativos y las subidas JPEG, PNG y WebP conservan el contrato anterior.
 En desarrollo solo admite el default privado
 `storage/liquidstack/webadmin/media` cuando
 `DEV_MODE=1` y `RAIZ` es loopback canónica; producción exige
@@ -528,7 +560,7 @@ activación y recuperación, el outbox SMTP, el diagnóstico operativo, el motor
 de migraciones, la gestión delegada de editores, la biblioteca de medios y su
 inicialización explícita constituyen el corte actual de WebAdmin.
 
-Blog 0001 a 0010 están implementados sobre esa base: migraciones propias y
+Blog 0001 a 0019 están implementados sobre esa base: migraciones propias y
 cross-scope, capacidades delegables, artículos con variantes localizadas,
 categorías, documentos estructurados y revisiones, borrador/publicación,
 bloqueo optimista, duplicación completa, papelera recuperable por tombstones,
@@ -537,6 +569,16 @@ resolución pública tardía sin sesión legacy, medios por prefijo pre-bootstra
 y sitemap DB-backed pre-bootstrap exacto. Las lecturas editoriales y públicas
 excluyen tombstones; no existe purga editorial y publicar exige restaurar y publicar de
 forma explícita.
+
+La duplicación independiente y el alta de locale no clonan la publicación ni
+el historial fuente: una copia estructurada crea su documento actual y revisión
+inicial `1`. El duplicado toma categorías del workspace post-wide privado o de
+la relación live; el nuevo locale comparte la asignación del agregado. Un
+workspace editorial que no corresponda a la cabecera pública actual falla
+cerrado. `0019_blog_copy_operation_idempotency` persiste una clave ligada al
+actor, operación, fuente, locales, lock y payload para que replays idénticos
+devuelvan el primer destino y una reutilización incompatible no pueda crear otra
+copia.
 
 El editor proyecta el documento sobre un lienzo visual neutral, no sobre un
 segundo `main` ni un segundo H1 del documento administrativo. Conceptualmente
@@ -563,10 +605,14 @@ principio progresivo y mantienen su formulario nativo como fallback.
 El detalle público conserva un renderer standalone compatible, semántico y
 seguro, con CSS responsive publicado únicamente al activar Blog. Como punto de
 extensión aditivo, el proyecto puede declarar una vista regular bajo
-`App/views` y recibir un view model tipado sin PDO, IDs internos ni secretos.
-Ese shell project-owned compone head, navegación, footer, tema, assets y CSP;
-CORE mantiene las demás cabeceras defensivas y falla cerrado si la vista emite
-una salida vacía o lanza una excepción. Omitir la clave no cambia la salida
+`App/views` y recibir un view model y un contexto de shell tipados, sin PDO,
+IDs internos ni secretos. La vista comienza con el único require gestionado
+`App/app/_moduleBlogPublicArticle.php` y compone head, navegación, footer, tema,
+assets y layout. La seguridad del índice y el artículo se configura de forma
+compartida en `App/config/modules/blog-public.php`; el controlador crea el
+nonce y aplica CSP y cabeceras defensivas sobre la `Response`. La vista solo
+consume ese nonce y no emite cabeceras ni requiere seguridad local. CORE falla
+cerrado si la vista emite una salida vacía o lanza una excepción. Omitir la clave no cambia la salida
 standalone de consumidores existentes. Las claves `article-basic-01` y
 `article-cover-01` siguen siendo contratos de documento y portada; nuevas
 composiciones visuales mediante recursos LiquidStack permanecen aditivas.
@@ -581,7 +627,7 @@ modificadores y con `cookie_social=true` crea un iframe de
 `youtube-nocookie.com`; sin JavaScript o consentimiento la navegación externa
 permanece intacta, y revocar el permiso desmonta cualquier iframe activo. La
 CSP standalone permite exclusivamente el script propio y ese origen de frame;
-un shell project-owned debe declarar el mismo contrato con su nonce. La
+un shell project-owned recibe el mismo contrato y nonce desde el controlador. La
 frontera de sesión pública ya está implementada: el detalle modular no hereda
 la sesión legacy y el índice project-owned puede declarar `session => false`
 en su ruta estática dentro del prefijo Blog. `BlogPublicFeedFactory` comparte
@@ -589,18 +635,62 @@ ya una única conexión y runtime para cards generales, filtros y cards por
 categoría; el factory específico de categorías se conserva como adaptador
 compatible.
 
-La primera familia visual Blog ya usa ownership selectivo. Incluye
-`moduleBlogFilters01`, `sectionBlogGrid01`, `sectionBlogList01`,
-`sectionBlogFeatured01` y `sectionBlogSlider01`, junto a su helper y hooks de
-showroom. Controladores, templates, SCSS y JS se publican únicamente cuando
+La familia visual Blog usa ownership selectivo. Incluye `artBlogArticle01`,
+`moduleBlogArchive01`, `moduleBlogFilters01`, `moduleBlogPagination01`,
+`moduleBlogResults01`, `sectionBlogCatalog01`, `sectionBlogGrid01`,
+`sectionBlogList01`, `sectionBlogFeatured01`, `sectionBlogRelated01`,
+`sectionBlogSlider01` y, desde el corte RESOURCE-001,
+`moduleBlogGrid02`, `sectionBlogSlider02` y `sectionBlogStack01`. Grid02 ofrece
+composición regular o bento y revelado GSAP incremental; Slider02 encapsula por
+instancia Draggable, Inertia, snap, wrap y autoplay configurable con pausa,
+fallback scroll-snap, movimiento reducido y cleanup; Stack01 usa ScrollTrigger
+solo con 3–8 cards y degrada a lista vertical fuera de sus condiciones de
+viewport. Controladores, templates, SCSS y JS se publican únicamente cuando
 está activo `liquidstack/blog`; un proyecto core-only o WebAdmin-only no recibe
 esos ficheros. Las claves Matrix legacy de los catálogos base se conservan de
 forma aditiva durante la transición y no son contenido público de DB.
 
-La búsqueda pública y los filtros de categorías `any|all` ya están
-implementados mediante `BlogPublicCatalogQuery` y
-`BlogPublicFeed::cardsForQuery()`, con SSR funcional y mejora progresiva. Las
-vistas de archivo, los relacionados y RSS permanecen fuera de este corte.
+`sectionBlogCatalog01` posee el H2 y la única sección del catálogo. Los recursos
+`moduleBlogGrid02`, Pagination01 y Archive01 tienen siempre raíces neutras;
+conservan su lógica sin introducir landmarks y no publican parámetros para
+cambiar el tag. El catálogo falla cerrado si un slot intenta introducir otra
+`section` o `nav`.
+
+Una vista que solo necesita una colección pública acotada requiere
+`App/app/_moduleBlogPublicCollections.php` como único soporte y consume el view
+model `ready|empty|unavailable` que entrega `latest($locale, $limit)`. Feeds,
+factories, queries y manejo de fallos permanecen fuera de la maquetación.
+
+La búsqueda pública, los filtros de categorías `any|all`, archivo y
+relacionados están implementados sobre un mismo `BlogPublicFeed`. El contrato
+para recursos usa `BlogPublicResourceQuery`, incluida la allowlist de orden
+`newest|oldest|updated`, y `BlogPublicResourceBatch` como proyección inmutable
+de `items`, `has_next`, `next_offset` y `next_url`. Las categorías localizadas
+de todas las cards se obtienen en una consulta batch acotada, excluyen Dummy y
+no exponen IDs. El loader compartido vive en el namespace module-owned
+con origen en
+`modules/blog/resources/project/src/js/modules/blog/blogCollectionLoader.js` y
+destino `src/js/modules/blog/blogCollectionLoader.js`: mejora el siguiente
+enlace SSR con HTML parcial same-origin, deduplica por clave estable, mantiene
+estados de carga/error/reintento/fin, aborta generaciones obsoletas y notifica
+los nodos anexados a cada recurso. Sin JavaScript sigue operativa la navegación
+SSR.
+
+El helper de presentación admite categorías y `media|thumbnail` por card,
+valida estrictamente `src`, los candidatos ascendentes de `srcset` y `sizes`, y
+aplica el `sizes` propio de cada recurso. El runtime público puede inyectar un
+repositorio batch opcional que compone los scopes Blog y WebAdmin con un máximo
+de dos `SELECT` constantes por lote. El primero obtiene documentos y referencias
+publicables; el segundo consulta variantes solo si la selección anterior produjo
+algún medio elegible. La selección respeta portada o primera imagen por
+orden del documento `CURRENT` publicado; solo proyecta AVIF válidos, usa como
+`src` la mayor variante de hasta 900 px, no entrega IDs ni `sizes` desde backend
+y evita N+1. Schema o storage no preparados y datos corruptos fallan cerrados a
+la card textual. Los 16 derivados Dummy del showroom tienen fuente gestionada
+por Composer en `resources/img/dummy/responsive`, cubren 480, 899/900, 1800 y
+2560 px y no sustituyen una proyección real del feed.
+RESOURCE-001 se integra en CORE principal dentro de `Unreleased`; la release
+versionada permanece condicionada a la matriz de adopción final.
 
 Siguen fuera de este corte el análisis de búsqueda avanzado, la traducción IA, las
 plantillas visuales adicionales, los formatos de medios aún no admitidos, la

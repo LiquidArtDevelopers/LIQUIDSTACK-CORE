@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Core\Blog\Admin\BlogAdminCatalogQuery;
 use App\Core\Blog\Analytics\BlogArticleAnalyticsSummary;
 use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogPostSummary;
@@ -9,6 +10,10 @@ use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Http\BlogAdminHtmlRenderer;
 use App\Core\Blog\Http\BlogLocalePresentation;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
+use App\Core\Blog\Seo\BlogUrlResolution;
+use App\Core\WebAdmin\Profile\WebAdminPublicProfile;
+use App\Core\WebAdmin\Profile\WebAdminTimeZone;
 use PHPUnit\Framework\TestCase;
 
 final class BlogAdminHtmlRendererTest extends TestCase
@@ -45,9 +50,19 @@ final class BlogAdminHtmlRendererTest extends TestCase
             $html
         );
         self::assertStringContainsString('/admin/blog/editor/preview', $html);
+        self::assertStringContainsString(
+            'data-blog-private-preview data-blog-preview-title="Matrix '
+                . '&amp; &quot;agents&quot;"',
+            $html
+        );
+        self::assertStringNotContainsString('target="_blank"', $html);
         self::assertStringContainsString('/admin/blog/editor?', $html);
         self::assertStringContainsString('Vista previa', $html);
-        self::assertStringContainsString('>Editar</a>', $html);
+        self::assertStringContainsString('aria-label="Editar"', $html);
+        self::assertStringContainsString(
+            '<span class="webadmin-srOnly">Editar</span>',
+            $html
+        );
         self::assertStringContainsString('T&iacute;tulo', $html);
         self::assertStringNotContainsString('scope="col">H1', $html);
         self::assertStringContainsString(
@@ -67,6 +82,16 @@ final class BlogAdminHtmlRendererTest extends TestCase
             $html
         );
         self::assertStringContainsString('/admin/blog/posts/new', $html);
+        self::assertStringContainsString(
+            '<p class="blogAdminPage__primaryAction"><a class="'
+                . 'webadminAction webadminAction--primary" '
+                . 'href="/admin/blog/posts/new">Crear art&iacute;culo</a></p>',
+            $html
+        );
+        self::assertStringNotContainsString(
+            'Volver a la gesti&oacute;n web',
+            $html
+        );
     }
 
     public function testEditFormCarriesCsrfVersionAndPlainTextEscaped(): void
@@ -105,9 +130,56 @@ final class BlogAdminHtmlRendererTest extends TestCase
         self::assertStringNotContainsString('name="locale" required', $html);
         self::assertStringContainsString('Safe &amp; plain', $html);
         self::assertStringContainsString('/admin/blog/posts/preview', $html);
-        self::assertStringContainsString('versi&oacute;n guardada', $html);
+        self::assertStringContainsString(
+            'lectura privada del contenido guardado',
+            $html
+        );
+        self::assertStringContainsString(
+            'sin medios ni estilos p&uacute;blicos',
+            $html
+        );
         self::assertStringContainsString('/admin/blog/posts/publish', $html);
         self::assertStringNotContainsString('33333333-', $html);
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Guardar cambios</button>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Publicar</button>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<a class="webadminAction webadminAction--secondary" '
+                . 'href="/admin/blog/posts/preview?',
+            $html
+        );
+
+        $privateWorkflowHtml = (new BlogAdminHtmlRenderer())->editForm(
+            '/admin/blog',
+            'csrf-token-safe',
+            $variant,
+            true,
+            privateDraftPublicationReady: true
+        );
+        self::assertStringNotContainsString(
+            '/admin/blog/posts/publish',
+            $privateWorkflowHtml
+        );
+        self::assertStringContainsString(
+            '/admin/blog/editor?post=11111111-1111-4111-8111-111111111111'
+                . '&amp;locale=es',
+            $privateWorkflowHtml
+        );
+        self::assertStringContainsString(
+            'Editar y publicar desde el editor visual',
+            $privateWorkflowHtml
+        );
+        self::assertStringContainsString(
+            '<a class="webadminAction webadminAction--primary" ',
+            $privateWorkflowHtml
+        );
     }
 
     public function testPrivatePreviewEscapesStoredContentWithoutPublicSeo(): void
@@ -163,6 +235,16 @@ final class BlogAdminHtmlRendererTest extends TestCase
             'SEO description must stay private',
             $html
         );
+        self::assertStringContainsString(
+            'Lectura privada del contenido guardado',
+            $html
+        );
+        self::assertStringContainsString(
+            'representaci&oacute;n textual sin medios ni estilos '
+                . 'p&uacute;blicos',
+            $html
+        );
+        self::assertStringNotContainsString('Vista previa privada', $html);
         self::assertStringNotContainsString('rel="canonical"', $html);
         self::assertStringNotContainsString(
             '<meta name="description"',
@@ -223,6 +305,11 @@ final class BlogAdminHtmlRendererTest extends TestCase
         );
         self::assertStringContainsString(
             '<option value="en">en &mdash; /international/insights</option>',
+            $new
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Crear borrador y abrir editor</button>',
             $new
         );
 
@@ -310,7 +397,7 @@ final class BlogAdminHtmlRendererTest extends TestCase
                 . '&amp;locale=es',
             $editor
         );
-        self::assertStringNotContainsString(
+        self::assertStringContainsString(
             '/admin/blog/editor?post=33333333-3333-4333-8333-333333333333'
                 . '&amp;locale=es',
             $editor
@@ -349,6 +436,19 @@ final class BlogAdminHtmlRendererTest extends TestCase
             '/admin/blog/editor/preview?',
             $withoutMedia
         );
+        self::assertStringNotContainsString(
+            'data-blog-private-preview',
+            $withoutMedia
+        );
+        self::assertSame(2, substr_count(
+            $withoutMedia,
+            'aria-label="Lectura textual del contenido guardado"'
+        ));
+        self::assertStringNotContainsString(
+            'aria-label="Vista previa"',
+            $withoutMedia
+        );
+        self::assertStringNotContainsString('target="_blank"', $withoutMedia);
         self::assertStringNotContainsString(
             '/admin/blog/posts/new',
             $withoutMedia
@@ -393,26 +493,122 @@ final class BlogAdminHtmlRendererTest extends TestCase
             ],
             csrf: 'csrf-safe',
             canDelete: true,
-            canDuplicate: true
+            canDuplicate: true,
+            localesByPost: [
+                '11111111-1111-4111-8111-111111111111' => ['eu', 'en'],
+                '33333333-3333-4333-8333-333333333333' => ['en'],
+            ],
+            canAddLocalization: true
         );
 
-        self::assertStringContainsString('>Vista previa</a>', $html);
+        self::assertStringContainsString('aria-label="Vista previa"', $html);
         self::assertStringContainsString(
-            'href="/en/news/neo-awakens"',
+            'data-blog-private-preview data-blog-preview-title="Matrix '
+                . 'zirriborroa"',
             $html
         );
-        self::assertStringContainsString('>Vista web</a>', $html);
+        self::assertStringContainsString(
+            'href="/en/news/neo-awakens" target="_blank" rel="noopener"',
+            $html
+        );
+        self::assertStringContainsString('aria-label="Vista web"', $html);
         self::assertSame(2, substr_count(
             $html,
             'action="/admin/blog/posts/duplicate"'
         ));
+        self::assertSame(2, preg_match_all(
+            '/name="operation_id" value="[0-9a-f]{8}-[0-9a-f]{4}-4'
+                . '[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}" '
+                . 'data-blog-language-operation>/',
+            $html
+        ));
+        self::assertSame(2, preg_match_all(
+            '/<form[^>]+action="\/admin\/blog\/posts\/duplicate"[^>]*>'
+                . '.*?name="operation_id"/s',
+            $html
+        ));
+        self::assertSame(2, preg_match_all(
+            '/<form class="blogAdminPage__inlineAction".*?<\/form>/s',
+            $html,
+            $inlineForms
+        ));
+        foreach ($inlineForms[0] as $inlineForm) {
+            self::assertStringNotContainsString('name="operation_id"',
+                $inlineForm);
+        }
         self::assertSame(1, substr_count(
             $html,
             'action="/admin/blog/posts/trash"'
         ));
-        self::assertStringContainsString('>Duplicar</button>', $html);
-        self::assertStringContainsString('>Borrar</button>', $html);
-        self::assertStringContainsString('Retira primero</small>', $html);
+        self::assertSame(1, substr_count(
+            $html,
+            'action="/admin/blog/posts/unpublish"'
+        ));
+        self::assertSame(4, substr_count(
+            $html,
+            'name="destination_locale"'
+        ));
+        self::assertSame(4, preg_match_all(
+            '/data-blog-language-operation-id="([0-9a-f]{8}-[0-9a-f]{4}-4'
+                . '[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})"/',
+            $html,
+            $optionOperationIds
+        ));
+        self::assertCount(4, array_unique($optionOperationIds[1]));
+        self::assertStringContainsString(
+            'aria-label="Duplicar o a&ntilde;adir idioma"',
+            $html
+        );
+        self::assertMatchesRegularExpression(
+            '/name="destination_locale" value="en"[^>]* disabled/',
+            $html
+        );
+        self::assertStringContainsString(
+            'Ya existe una variante activa o en la Papelera; '
+                . 'rest&aacute;urala si procede.',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-language-outcome-status',
+            $html
+        );
+        self::assertMatchesRegularExpression(
+            '/<input type="radio"[^>]+aria-labelledby="([^"]+)" '
+                . 'aria-describedby="([^"]+)"[^>]*>.*?'
+                . '<span class="blogAdminPage__locale" id="\\1">.*?'
+                . '<small id="\\2">/s',
+            $html
+        );
+        self::assertStringContainsString(
+            'class="blogAdminPage__languageActions webadminActionGroup"',
+            $html
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit" data-blog-language-submit>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--secondary" '
+                . 'type="button" hidden data-blog-language-close>',
+            $html
+        );
+        self::assertStringContainsString('aria-label="Borrar"', $html);
+        self::assertStringContainsString('aria-label="Retirar"', $html);
+        self::assertStringNotContainsString('a&amp;ntilde;adir', $html);
+        self::assertStringContainsString(
+            '<strong>Retirar</strong> despublica y conserva contenido',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-confirm-action="trash"',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-confirm-action="unpublish"',
+            $html
+        );
+        self::assertStringNotContainsString('Retira primero</small>', $html);
         self::assertStringContainsString(
             '/assets/modules/blog/flags/es-pv.svg',
             $html
@@ -426,6 +622,59 @@ final class BlogAdminHtmlRendererTest extends TestCase
             BlogLocalePresentation::label('en'),
             $html
         );
+    }
+
+    public function testCatalogShowsAccessibleEditorialStatusIndicators(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $draft = new BlogPostSummary(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            'matrix-draft',
+            'Matrix borrador',
+            BlogPostVariant::DRAFT,
+            null,
+            1,
+            $now
+        );
+        $published = new BlogPostSummary(
+            '33333333-3333-4333-8333-333333333333',
+            '44444444-4444-4444-8444-444444444444',
+            'es',
+            'matrix-published',
+            'Matrix publicado',
+            BlogPostVariant::PUBLISHED,
+            $now,
+            2,
+            $now
+        );
+
+        $html = (new BlogAdminHtmlRenderer())->index(
+            '/admin/blog',
+            [$draft, $published],
+            false
+        );
+
+        self::assertStringContainsString(
+            '<span class="blogAdminPage__postStatus '
+                . 'blogAdminPage__postStatus--draft"><span class="'
+                . 'blogAdminPage__postStatusLed" aria-hidden="true"></span>'
+                . '<span>Borrador</span></span>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<span class="blogAdminPage__postStatus '
+                . 'blogAdminPage__postStatus--published"><span class="'
+                . 'blogAdminPage__postStatusLed" aria-hidden="true"></span>'
+                . '<span>Publicado</span></span>',
+            $html
+        );
+        self::assertSame(2, substr_count(
+            $html,
+            'class="blogAdminPage__postStatusLed" aria-hidden="true"'
+        ));
+        self::assertStringContainsString('sort=status', $html);
     }
 
     public function testTrashListsRecoverableDraftsWithCsrfProtectedRestore(): void
@@ -442,13 +691,23 @@ final class BlogAdminHtmlRendererTest extends TestCase
             7,
             $now
         );
+        $profile = new WebAdminPublicProfile(
+            '33333333-3333-4333-8333-333333333333',
+            'Editora de ejemplo',
+            'editor',
+            'Editor',
+            WebAdminTimeZone::fromIana('Europe/Madrid'),
+            true,
+            3
+        );
 
         $html = (new BlogAdminHtmlRenderer())->trash(
             '/admin/blog',
             [$summary],
             0,
             false,
-            'csrf-trash'
+            'csrf-trash',
+            viewerProfile: $profile
         );
 
         self::assertStringContainsString('Papelera del Blog', $html);
@@ -465,7 +724,75 @@ final class BlogAdminHtmlRendererTest extends TestCase
             'name="lock_version" value="7"',
             $html
         );
-        self::assertStringContainsString('>Restaurar</button>', $html);
+        self::assertStringContainsString('aria-label="Restaurar"', $html);
+        self::assertStringContainsString(
+            '<th scope="col">Estado</th>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<span class="blogAdminPage__postStatus '
+                . 'blogAdminPage__postStatus--deleted"><span class="'
+                . 'blogAdminPage__postStatusLed" aria-hidden="true"></span>'
+                . '<span>Eliminado</span></span>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<span class="webadmin-srOnly">Restaurar</span>',
+            $html
+        );
+        self::assertStringContainsString('12:00 · 01/08/2026', $html);
+    }
+
+    public function testEmptyTrashKeepsTheFiveColumnTableContract(): void
+    {
+        $html = (new BlogAdminHtmlRenderer())->trash(
+            '/admin/blog',
+            [],
+            0,
+            false,
+            'csrf-trash'
+        );
+
+        self::assertStringContainsString('<th scope="col">Estado</th>', $html);
+        self::assertStringContainsString(
+            '<td colspan="5">La papelera est&aacute; vac&iacute;a.</td>',
+            $html
+        );
+    }
+
+    public function testAdminDatesUseTheLiveViewerProfileTimeZone(): void
+    {
+        $summary = new BlogPostSummary(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            'matrix',
+            'Matrix localizada',
+            BlogPostVariant::DRAFT,
+            null,
+            2,
+            new DateTimeImmutable('2026-08-07T09:35:00Z')
+        );
+        $profile = new WebAdminPublicProfile(
+            '33333333-3333-4333-8333-333333333333',
+            'Editora de ejemplo',
+            'editor',
+            'Editor',
+            WebAdminTimeZone::fromIana('Europe/Madrid'),
+            true,
+            3
+        );
+
+        $html = (new BlogAdminHtmlRenderer())->index(
+            '/admin/blog',
+            [$summary],
+            false,
+            viewerProfile: $profile
+        );
+
+        self::assertStringContainsString('11:35 · 07/08/2026', $html);
+        self::assertStringNotContainsString('7 de agosto de 2026', $html);
+        self::assertStringNotContainsString('2026-08-07 09:35', $html);
     }
 
     public function testListShowsConsentedAnalyticsWithExplicitBlogDefinitions(): void
@@ -480,7 +807,10 @@ final class BlogAdminHtmlRendererTest extends TestCase
             BlogPostVariant::PUBLISHED,
             $now,
             2,
-            $now
+            $now,
+            'Trinity & Neo',
+            ['Noticias', 'Matrix & Zion'],
+            BlogRobotsPreferences::noIndexNoFollow()
         );
         $metric = new BlogArticleAnalyticsSummary(
             $summary->localizationPublicId(),
@@ -507,8 +837,21 @@ final class BlogAdminHtmlRendererTest extends TestCase
         );
 
         foreach ([
-            'Visitas',
-            'Visitantes &uacute;nicos',
+            'Autor',
+            'Categor&iacute;as',
+            'Index / Follow',
+            'Trinity &amp; Neo',
+            '<ul class="blogAdminPage__categoryStack"><li>Noticias</li>'
+                . '<li>Matrix &amp; Zion</li></ul>',
+            'aria-label="Index desactivado"',
+            'aria-label="Follow desactivado"',
+            'blogAdminPage__statusIcon--disabled',
+            'title="Vistas"',
+            '<span class="webadmin-srOnly">Vistas</span>',
+            'title="Visitantes únicos"',
+            'title="Habituales"',
+            'Vistas',
+            'Visitantes únicos',
             'Habituales',
             'Interacci&oacute;n media',
             'Rebote del Blog',
@@ -520,7 +863,7 @@ final class BlogAdminHtmlRendererTest extends TestCase
             'visitantes que han aceptado',
             'no se guarda la IP',
             'id="blog-analytics-bounce-help"',
-            '?period=90&amp;offset=50',
+            '?period=90&amp;offset=20',
         ] as $expected) {
             self::assertStringContainsString($expected, $html);
         }
@@ -601,8 +944,187 @@ final class BlogAdminHtmlRendererTest extends TestCase
         self::assertStringContainsString('Retira la variante', $html);
         self::assertStringContainsString(' readonly', $html);
         self::assertStringContainsString('/posts/unpublish', $html);
+        self::assertStringContainsString(
+            'action="/admin/blog/posts/unpublish" data-blog-confirm-form '
+                . 'data-blog-confirm-action="unpublish" '
+                . 'data-blog-title="Matrix"',
+            $html
+        );
         self::assertStringNotContainsString('/posts/save', $html);
         self::assertStringNotContainsString('Guardar cambios', $html);
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--danger" '
+                . 'type="submit">Retirar</button>',
+            $html
+        );
+    }
+
+    public function testCatalogFiltersAreNativeGetAndPaginationPreservesThem(): void
+    {
+        $query = new BlogAdminCatalogQuery(
+            search: 'Matrix & agents',
+            status: BlogPostVariant::DRAFT,
+            locale: 'eu',
+            offset: 40,
+            sort: BlogAdminCatalogQuery::SORT_TITLE,
+            direction: BlogAdminCatalogQuery::DIRECTION_ASC
+        );
+        $html = (new BlogAdminHtmlRenderer())->index(
+            basePath: '/admin/blog',
+            summaries: [],
+            canEdit: true,
+            offset: 40,
+            hasNext: true,
+            publicPaths: [
+                'es' => '/es/noticias',
+                'eu' => '/eu/albisteak',
+            ],
+            showAnalytics: true,
+            analyticsPeriodDays: 90,
+            catalogQuery: $query
+        );
+
+        self::assertStringContainsString(
+            'method="get" action="/admin/blog" data-blog-admin-filter-form',
+            $html
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Aplicar filtros</button>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<a class="webadminAction webadminAction--secondary" '
+                . 'href="/admin/blog" data-blog-admin-filter-reset>'
+                . 'Limpiar filtros</a>',
+            $html
+        );
+        self::assertStringContainsString(
+            'name="q" value="Matrix &amp; agents"',
+            $html
+        );
+        self::assertStringContainsString(
+            '<option value="draft" selected>Borrador</option>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<option value="eu" selected>EU</option>',
+            $html
+        );
+        self::assertStringContainsString(
+            'name="per_page" aria-controls="blog-admin-results"'
+                . '><option value="10">10</option><option value="20" selected>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<input type="hidden" name="sort" value="title">',
+            $html
+        );
+        self::assertStringContainsString(
+            '<input type="hidden" name="dir" value="asc">',
+            $html
+        );
+        self::assertStringContainsString(
+            '<th scope="col" aria-sort="ascending"><a class="'
+                . 'blogAdminPage__sort"',
+            $html
+        );
+        self::assertStringContainsString(
+            'title="No ordenable: un art&iacute;culo puede pertenecer a varias '
+                . 'categor&iacute;as">Categor&iacute;as</th>',
+            $html
+        );
+        self::assertStringNotContainsString('sort=categories', $html);
+        self::assertStringContainsString(
+            'data-blog-admin-results data-blog-admin-result-count="0"',
+            $html
+        );
+        self::assertStringContainsString(
+            'No hay art&iacute;culos que coincidan con los filtros.',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-admin-pagination',
+            $html
+        );
+        self::assertStringContainsString(
+            'rel="prev" href="/admin/blog?q=Matrix%20%26%20agents'
+                . '&amp;status=draft&amp;locale=eu&amp;sort=title&amp;dir=asc'
+                . '&amp;period=90&amp;offset=20"',
+            $html
+        );
+        self::assertStringContainsString(
+            'rel="next" href="/admin/blog?q=Matrix%20%26%20agents'
+                . '&amp;status=draft&amp;locale=eu&amp;sort=title&amp;dir=asc'
+                . '&amp;period=90&amp;offset=60"',
+            $html
+        );
+    }
+
+    public function testRetiredUrlManagerExplainsAndProtectsSeoDecisions(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $variant = new BlogPostVariant(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            new BlogDraft('Matrix retirada', '', 'matrix-retirada'),
+            BlogPostVariant::DRAFT,
+            null,
+            7,
+            '33333333-3333-4333-8333-333333333333',
+            '33333333-3333-4333-8333-333333333333',
+            $now,
+            $now
+        );
+        $replacement = new BlogPostSummary(
+            '44444444-4444-4444-8444-444444444444',
+            '55555555-5555-4555-8555-555555555555',
+            'es',
+            'matrix-equivalente',
+            'Matrix equivalente',
+            BlogPostVariant::PUBLISHED,
+            $now,
+            2,
+            $now
+        );
+        $html = (new BlogAdminHtmlRenderer())->urlManager(
+            '/admin/blog',
+            'csrf-safe',
+            $variant,
+            new BlogUrlResolution(BlogUrlResolution::TEMPORARY_NOT_FOUND),
+            [$replacement]
+        );
+
+        self::assertStringContainsString('responde 404', $html);
+        self::assertStringContainsString('Mant&eacute;n el 404 temporal', $html);
+        self::assertStringContainsString(
+            'data-blog-confirm-action="gone"',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-confirm-action="redirect"',
+            $html
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--danger" '
+                . 'type="submit">Marcar como 410</button>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Crear redirecci&oacute;n 301</button>',
+            $html
+        );
+        self::assertStringContainsString('value="matrix-retirada"', $html);
+        self::assertStringContainsString(
+            'value="44444444-4444-4444-8444-444444444444"',
+            $html
+        );
+        self::assertStringNotContainsString(
+            'value="11111111-1111-4111-8111-111111111111">Matrix retirada',
+            $html
+        );
     }
 
     public function testPaginationIsAccessibleBoundedAndOmitsZeroOffset(): void
@@ -620,7 +1142,12 @@ final class BlogAdminHtmlRendererTest extends TestCase
             $first
         );
         self::assertStringContainsString(
-            'rel="next" href="/admin/blog?offset=50"',
+            'rel="next" href="/admin/blog?offset=20"',
+            $first
+        );
+        self::assertDoesNotMatchRegularExpression(
+            '/<nav class="blogAdminPage__pagination"[\s\S]*?'
+                . 'class="webadminAction/',
             $first
         );
         self::assertStringNotContainsString('rel="prev"', $first);
@@ -629,7 +1156,7 @@ final class BlogAdminHtmlRendererTest extends TestCase
             '/admin/blog',
             [],
             true,
-            50,
+            20,
             false
         );
         self::assertStringContainsString(

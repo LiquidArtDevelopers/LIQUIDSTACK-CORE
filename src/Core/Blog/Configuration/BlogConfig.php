@@ -34,7 +34,10 @@ final class BlogConfig
         private readonly BlogSitemapCacheConfig $sitemapCache =
             new BlogSitemapCacheConfig(),
         private readonly BlogAnalyticsConfig $analytics =
-            new BlogAnalyticsConfig()
+            new BlogAnalyticsConfig(),
+        private readonly ?BlogPreviewAssetAdapterPath
+            $previewAssetAdapter = null,
+        ?BlogPublicIndexConfig $publicIndex = null
     ) {
         $defaultLocale ??= array_key_first($publicPaths);
         if (
@@ -47,9 +50,12 @@ final class BlogConfig
             );
         }
         $this->defaultLocale = $defaultLocale;
+        $this->publicIndex = $publicIndex
+            ?? BlogPublicIndexConfig::defaults($publicPaths);
     }
 
     private readonly string $defaultLocale;
+    private readonly BlogPublicIndexConfig $publicIndex;
 
     /** @param list<string> $languages */
     public static function defaults(array $languages): self
@@ -127,6 +133,21 @@ final class BlogConfig
         return $this->analytics;
     }
 
+    public function previewAssetAdapter(): ?string
+    {
+        return $this->previewAssetAdapter?->relativePath();
+    }
+
+    public function previewAssetAdapterPath(): ?string
+    {
+        return $this->previewAssetAdapter?->absolutePath();
+    }
+
+    public function publicIndex(): BlogPublicIndexConfig
+    {
+        return $this->publicIndex;
+    }
+
     /** @return array<string, mixed> */
     public function toSafeArray(): array
     {
@@ -140,11 +161,16 @@ final class BlogConfig
             ],
             'sitemap_cache' => $this->sitemapCache->toSafeArray(),
             'analytics' => $this->analytics->toSafeArray(),
+            'public_index' => $this->publicIndex->toSafeArray(),
         ];
 
         if ($this->publicArticleView !== null) {
             $safe['public_article_view'] =
                 $this->publicArticleView->relativePath();
+        }
+        if ($this->previewAssetAdapter !== null) {
+            $safe['preview_asset_adapter'] =
+                $this->previewAssetAdapter->relativePath();
         }
 
         return $safe;

@@ -84,6 +84,14 @@ final class InstallerAgentGuidanceTest extends TestCase
             $this->projectRoot
                 . '/.codex/skills/liquidstack-module-operations/SKILL.md'
         );
+        self::assertFileEquals(
+            dirname(__DIR__, 2) . '/.codex/skills/test-functional-ui/SKILL.md',
+            $this->projectRoot . '/.codex/skills/test-functional-ui/SKILL.md'
+        );
+        self::assertFileEquals(
+            dirname(__DIR__, 2) . '/.codex/skills/test-functional-ui/agents/openai.yaml',
+            $this->projectRoot . '/.codex/skills/test-functional-ui/agents/openai.yaml'
+        );
         self::assertDirectoryDoesNotExist($this->projectRoot . '/.agents');
         self::assertSame(
             [
@@ -91,6 +99,7 @@ final class InstallerAgentGuidanceTest extends TestCase
                 'liquidstack-module-operations',
                 'liquidstack-resource-migration',
                 'seo-content',
+                'test-functional-ui',
             ],
             $this->readManagedSkills($this->projectRoot . '/.codex/skills')
         );
@@ -134,6 +143,7 @@ final class InstallerAgentGuidanceTest extends TestCase
                 'liquidstack-module-operations',
                 'liquidstack-resource-migration',
                 'seo-content',
+                'test-functional-ui',
             ],
             $this->readManagedSkills($this->projectRoot . '/.codex/skills')
         );

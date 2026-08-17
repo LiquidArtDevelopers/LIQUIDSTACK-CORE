@@ -91,10 +91,10 @@ final class WebAdminBootstrapService
     ];
 
     /**
-     * Additive WebAdmin features may extend protected roles after 0001. They
-     * are optional as one complete, exact set so bootstrap remains compatible
-     * both before and after the feature migration without accepting arbitrary
-     * privilege drift.
+     * Additive WebAdmin features may extend protected roles after 0001. Their
+     * metadata remains exact, while the accepted set advances by migration
+     * frontier so bootstrap stays compatible before and after each addition
+     * without accepting arbitrary privilege drift.
      *
      * @var array<string, array{label: string, delegable: int}>
      */
@@ -107,6 +107,16 @@ final class WebAdminBootstrapService
             'label' => 'webadmin.capabilities.media_view',
             'delegable' => 1,
         ],
+        'webadmin.media.delete' => [
+            'label' => 'webadmin.capabilities.media_delete',
+            'delegable' => 1,
+        ],
+    ];
+
+    /** @var list<string> */
+    private const MEDIA_BASE_CAPABILITIES = [
+        'webadmin.media.upload',
+        'webadmin.media.view',
     ];
 
     private readonly ClockInterface $clock;
@@ -557,7 +567,8 @@ final class WebAdminBootstrapService
     private function assertRoleCapabilities(
         array $rows,
         array $requiredCodes,
-        bool $mediaFeatureApplied
+        bool $mediaFeatureApplied,
+        bool $mediaDeleteCapabilityApplied
     ): void {
         $actual = [];
         $optionalPresent = [];
@@ -596,8 +607,11 @@ final class WebAdminBootstrapService
 
         $actualOptional = array_keys($optionalPresent);
         $expectedOptional = $mediaFeatureApplied
-            ? array_keys(self::OPTIONAL_CAPABILITY_SPECS)
+            ? self::MEDIA_BASE_CAPABILITIES
             : [];
+        if ($mediaDeleteCapabilityApplied) {
+            $expectedOptional[] = 'webadmin.media.delete';
+        }
         sort($actualOptional, SORT_STRING);
         sort($expectedOptional, SORT_STRING);
         if ($actualOptional !== $expectedOptional) {
@@ -694,7 +708,8 @@ final class WebAdminBootstrapService
         $this->assertRoleCapabilities(
             $repository->roleCapabilities($roleId),
             $spec['capabilities'],
-            $repository->mediaFeatureIsApplied()
+            $repository->mediaFeatureIsApplied(),
+            $repository->capabilityIsPresent('webadmin.media.delete')
         );
 
         return $roleId;

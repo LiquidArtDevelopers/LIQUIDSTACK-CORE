@@ -60,7 +60,8 @@ final class MigrationDatabasePlanner
             $pdo,
             $catalog,
             $appliedByKey,
-            $scopes
+            $scopes,
+            $driver
         );
 
         foreach ($catalog->entries() as $catalogEntry) {
@@ -260,9 +261,18 @@ final class MigrationDatabasePlanner
         PDO $pdo,
         MigrationCatalog $catalog,
         array $appliedByKey,
-        MigrationScopeCollection $scopes
+        MigrationScopeCollection $scopes,
+        string $driver
     ): array {
         $superseded = [];
+        $catalogByKey = [];
+        foreach ($catalog->entries() as $entry) {
+            $catalogByKey[$this->key(
+                $entry['module'],
+                $entry['migration']->id()
+            )] = $entry;
+        }
+
         foreach ($catalog->entries() as $entry) {
             $migration = $entry['migration'];
             $module = $entry['module'];
@@ -271,16 +281,31 @@ final class MigrationDatabasePlanner
                 $migration->id()
             )] ?? null;
             $scope = $migration->targetScope($module, $scopes);
-            if (
-                !$record instanceof AppliedMigration
-                || $scope === null
-                || $record->checksum() !== $migration->checksum()
-                || $record->scopeHash() !== $scope->hash()
-                || !$this->postconditionIsSatisfied(
+            $recordedSupersederIsValid = $record instanceof AppliedMigration
+                && $scope !== null
+                && $record->checksum() === $migration->checksum()
+                && $record->scopeHash() === $scope->hash()
+                && $this->postconditionIsSatisfied(
                     $pdo,
                     $migration,
                     $scope
-                )
+                );
+            $verifiedPendingSupersederCanResume =
+                !($record instanceof AppliedMigration)
+                && $scope !== null
+                && $this->verifiedPendingSupersederCanResume(
+                    $pdo,
+                    $migration,
+                    $module,
+                    $scope,
+                    $driver,
+                    $catalogByKey,
+                    $appliedByKey,
+                    $scopes
+                );
+            if (
+                !$recordedSupersederIsValid
+                && !$verifiedPendingSupersederCanResume
             ) {
                 continue;
             }
@@ -288,14 +313,88 @@ final class MigrationDatabasePlanner
                 $migration->supersededPostconditionIds()
                 as $targetId
             ) {
-                // Only a recorded and currently valid superseder can retire
-                // the old verifier. Pending or drifted composite migrations
-                // must still prove the state they extend.
+                // A recorded valid superseder retires its old verifier. A
+                // pending superseder may do so only for the narrowly verified
+                // recovery path below; it remains pending and the runner must
+                // re-execute its retry-safe SQL before recording it.
                 $superseded[$this->key($module, $targetId)] = true;
             }
         }
 
         return $superseded;
+    }
+
+    /**
+     * MySQL/MariaDB can commit DDL before a postcondition verifier fails. The
+     * corrected runtime may resume that exact state without adopting it: the
+     * migration remains pending, its idempotent SQL runs again, its verifier
+     * runs again and only then is the registry record written.
+     *
+     * To avoid hiding unrelated drift, every superseded migration must already
+     * have the exact expected registry record and at least one of its obsolete
+     * verifiers must now fail because the verified superset is present.
+     *
+     * @param array<string, array{module: string, migration: MigrationDefinition}> $catalogByKey
+     * @param array<string, AppliedMigration> $appliedByKey
+     */
+    private function verifiedPendingSupersederCanResume(
+        PDO $pdo,
+        MigrationDefinition $migration,
+        string $module,
+        MigrationScope $scope,
+        string $driver,
+        array $catalogByKey,
+        array $appliedByKey,
+        MigrationScopeCollection $scopes
+    ): bool {
+        $supersededIds = $migration->supersededPostconditionIds();
+        if (
+            $supersededIds === []
+            || $migration->postconditionVerifier() === null
+            || $migration->isTransactionalFor($driver)
+            || !$migration->isRetrySafe()
+            || !$migration->isExecutableFor($driver)
+            || !$this->hasValidRuntimeSql($migration, $scope, $driver)
+            || !$this->preconditionIsSatisfied($pdo, $migration, $scope)
+            || !$this->postconditionIsSatisfied($pdo, $migration, $scope)
+        ) {
+            return false;
+        }
+
+        $obsoleteVerifierDrifted = false;
+        foreach ($supersededIds as $targetId) {
+            $targetKey = $this->key($module, $targetId);
+            $targetEntry = $catalogByKey[$targetKey] ?? null;
+            $targetRecord = $appliedByKey[$targetKey] ?? null;
+            if (
+                !is_array($targetEntry)
+                || !$targetRecord instanceof AppliedMigration
+            ) {
+                return false;
+            }
+
+            $targetMigration = $targetEntry['migration'] ?? null;
+            if (!$targetMigration instanceof MigrationDefinition) {
+                return false;
+            }
+            $targetScope = $targetMigration->targetScope($module, $scopes);
+            if (
+                $targetScope === null
+                || $targetRecord->checksum() !== $targetMigration->checksum()
+                || $targetRecord->scopeHash() !== $targetScope->hash()
+            ) {
+                return false;
+            }
+            if (!$this->postconditionIsSatisfied(
+                $pdo,
+                $targetMigration,
+                $targetScope
+            )) {
+                $obsoleteVerifierDrifted = true;
+            }
+        }
+
+        return $obsoleteVerifierDrifted;
     }
 
     private function hasValidRuntimeSql(

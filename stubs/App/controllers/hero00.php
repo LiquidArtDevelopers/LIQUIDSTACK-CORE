@@ -29,12 +29,6 @@ function controller_hero00(int $i = 0, array $params = []): string
             . ltrim($src, '/');
     };
 
-    $escapeCssString = static fn (string $value): string => str_replace(
-        ["\\", '"', "\r", "\n", "\f"],
-        ["\\\\", '\\"', '\D ', '\A ', '\C '],
-        $value
-    );
-
     $mobileUrl = $assetUrl((string) (
         $GLOBALS['hero00_bg_mobile']->src
         ?? 'assets/img/dummy/dummy_900.avif'
@@ -51,6 +45,23 @@ function controller_hero00(int $i = 0, array $params = []): string
         $GLOBALS['hero00_bg_fallback']->src
         ?? 'assets/img/dummy/dummy_900.avif'
     ));
+    $fallbackImage = $GLOBALS['hero00_bg_fallback'] ?? null;
+    $imageAlt = is_object($fallbackImage) && isset($fallbackImage->alt)
+        ? (string) $fallbackImage->alt
+        : '';
+    $imageTitle = is_object($fallbackImage) && isset($fallbackImage->title)
+        ? (string) $fallbackImage->title
+        : '';
+    $imageWidth = max(1, (int) (
+        is_object($fallbackImage) && isset($fallbackImage->width)
+            ? $fallbackImage->width
+            : 2560
+    ));
+    $imageHeight = max(1, (int) (
+        is_object($fallbackImage) && isset($fallbackImage->height)
+            ? $fallbackImage->height
+            : 1600
+    ));
 
     $devMode = filter_var(
         $_ENV['DEV_MODE'] ?? getenv('DEV_MODE') ?? false,
@@ -59,29 +70,37 @@ function controller_hero00(int $i = 0, array $params = []): string
 
     $editorAttributes = $devMode
         ? 'data-inline-background'
-            . ' data-inline-background-target=".bg"'
+            . ' data-inline-background-target=".hero00-media"'
+            . ' data-inline-background-picture-source=".hero00-picture source"'
             . ' data-inline-background-mobile-key="hero00_bg_mobile"'
             . ' data-inline-background-tablet-key="hero00_bg_tablet"'
             . ' data-inline-background-desktop-key="hero00_bg_desktop"'
             . ' data-inline-background-fallback-key="hero00_bg_fallback"'
+            . ' data-inline-background-mobile-descriptor="480w"'
+            . ' data-inline-background-tablet-descriptor="900w"'
+            . ' data-inline-background-desktop-descriptor="1800w"'
         : '';
 
     $vars = [
-        '{editor-attributes}' => $editorAttributes,
-        '{hero00-content}'    => '',
-        '{bg-mobile-dl}'      => 'hero00_bg_mobile',
-        '{bg-mobile-src}'     => $escapeAttr($mobileUrl),
-        '{bg-tablet-dl}'      => 'hero00_bg_tablet',
-        '{bg-tablet-src}'     => $escapeAttr($tabletUrl),
-        '{bg-desktop-dl}'     => 'hero00_bg_desktop',
-        '{bg-desktop-src}'    => $escapeAttr($desktopUrl),
-        '{bg-fallback-dl}'    => 'hero00_bg_fallback',
-        '{bg-fallback-src}'   => $escapeAttr($fallbackUrl),
-        '{bg-fallback-style}' => $escapeAttr(
-            'background-image: url("'
-            . $escapeCssString($fallbackUrl)
-            . '");'
+        '{editor-attributes}'     => $editorAttributes,
+        '{hero00-content}'        => '',
+        '{img-dl}'                => 'hero00_bg_fallback',
+        '{img-src}'               => $escapeAttr($fallbackUrl),
+        '{img-mobile-src}'        => $escapeAttr($mobileUrl),
+        '{img-tablet-src}'        => $escapeAttr($tabletUrl),
+        '{img-desktop-src}'       => $escapeAttr($desktopUrl),
+        '{img-fallback-src}'      => $escapeAttr($fallbackUrl),
+        '{img-srcset}'            => $escapeAttr(
+            $mobileUrl . ' 480w, '
+            . $tabletUrl . ' 900w, '
+            . $desktopUrl . ' 1800w'
         ),
+        '{img-sizes}'             => '100vw',
+        '{img-alt}'               => $escapeAttr($imageAlt),
+        '{img-title}'             => $escapeAttr($imageTitle),
+        '{img-width}'             => (string) $imageWidth,
+        '{img-height}'            => (string) $imageHeight,
+        '{img-object-position-y}' => 'center',
     ];
     $vars = array_replace($vars, $params);
     return render('App/templates/_hero00.html', $vars);

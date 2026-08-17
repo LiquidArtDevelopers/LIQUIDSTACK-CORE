@@ -34,6 +34,12 @@ final class ComposerPackageModuleContractTest extends TestCase
             'liquidstack/blog',
             $composer['require']
         );
+        self::assertArrayNotHasKey('ext-dom', $composer['require']);
+        self::assertSame(
+            'Required when liquidstack/blog is enabled for structured HTML '
+                . 'sanitization and consent-safe iframe projection.',
+            $composer['suggest']['ext-dom'] ?? null
+        );
 
         $catalog = ModuleCatalog::fromCoreRoot($coreRoot);
         $catalogSelectors = array_map(

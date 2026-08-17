@@ -7,6 +7,7 @@ use Symfony\Component\Filesystem\Filesystem;
 
 require_once dirname(__DIR__, 2) . '/stubs/App/controllers/art16.php';
 require_once dirname(__DIR__, 2) . '/stubs/App/controllers/hero00.php';
+require_once dirname(__DIR__, 2) . '/stubs/App/controllers/moduleH1Type01.php';
 
 final class ExistingResourceEditorContractTest extends TestCase
 {
@@ -30,7 +31,7 @@ final class ExistingResourceEditorContractTest extends TestCase
         $this->previousWorkingDirectory = (string) getcwd();
         $this->previousEnv = $_ENV;
 
-        foreach (['art16', 'hero00'] as $resource) {
+        foreach (['art16', 'hero00', 'moduleH1Type01'] as $resource) {
             $target = $this->fixtureRoot
                 . "/App/templates/_{$resource}.html";
 
@@ -137,10 +138,28 @@ final class ExistingResourceEditorContractTest extends TestCase
         self::assertStringNotContainsString('{header-primary}', $html);
     }
 
-    public function testHero00EscapesAbsoluteAndRelativeBackgrounds(): void
+    public function testHero00RendersEscapedResponsiveImageWithoutInlineStyle(): void
     {
         $html = controller_hero00();
 
+        self::assertStringContainsString(
+            'https://cdn.example.test/hero-mobile.avif 480w',
+            $html
+        );
+        self::assertStringContainsString(
+            'https://www.example.test/base/assets/img/dummy/hero-tablet.avif 900w',
+            $html
+        );
+        self::assertStringNotContainsString(
+            'https://www.example.test/base/https://',
+            $html
+        );
+        self::assertStringContainsString(
+            'fallback.avif&quot;);color:red;/*',
+            $html
+        );
+        self::assertStringContainsString('<picture class="hero00-picture">', $html);
+        self::assertStringContainsString('class="hero00-media bg"', $html);
         self::assertStringContainsString(
             'data-bg-mobile="https://cdn.example.test/hero-mobile.avif"',
             $html
@@ -149,16 +168,62 @@ final class ExistingResourceEditorContractTest extends TestCase
             'data-bg-tablet="https://www.example.test/base/assets/img/dummy/hero-tablet.avif"',
             $html
         );
-        self::assertStringNotContainsString(
-            'https://www.example.test/base/https://',
+        self::assertStringContainsString(
+            'data-bg-desktop="https://cdn.example.test/hero-desktop.avif"',
             $html
         );
         self::assertStringContainsString(
-            'fallback.avif\\&quot;);color:red;/*',
+            'data-inline-background-picture-source=".hero00-picture source"',
             $html
         );
+        foreach ([
+            'mobile' => '480w',
+            'tablet' => '900w',
+            'desktop' => '1800w',
+        ] as $variant => $descriptor) {
+            self::assertStringContainsString(
+                "data-inline-background-{$variant}-descriptor=\"{$descriptor}\"",
+                $html
+            );
+        }
+        self::assertStringNotContainsString('style=', $html);
         self::assertStringContainsString('data-inline-background', $html);
         self::assertMatchesRegularExpression('/^\s*<header\b/', $html);
+    }
+
+    public function testModuleH1Type01PrefersInjectedCopyWithoutGlobals(): void
+    {
+        foreach (['h1_text', 'p01_text', 'p02_text'] as $suffix) {
+            $this->unsetGlobal("moduleH1Type01_87_{$suffix}");
+        }
+
+        $html = controller_moduleH1Type01(87, [
+            '{h1-text}' => 'Título inyectado',
+            '{p-01-text}' => 'Primer texto inyectado.',
+            '{p-02-text}' => 'Segundo texto inyectado.',
+        ]);
+
+        self::assertStringContainsString('Título inyectado', $html);
+        self::assertStringContainsString('Primer texto inyectado.', $html);
+        self::assertStringContainsString('Segundo texto inyectado.', $html);
+        self::assertStringNotContainsString('{h1-text}', $html);
+    }
+
+    public function testModuleH1Type01HasAnEmptySafeFallback(): void
+    {
+        foreach (['h1_text', 'p01_text', 'p02_text'] as $suffix) {
+            $this->unsetGlobal("moduleH1Type01_88_{$suffix}");
+        }
+
+        $html = controller_moduleH1Type01(88);
+
+        self::assertStringContainsString(
+            'data-lang="moduleH1Type01_88_h1_text"',
+            $html
+        );
+        self::assertStringNotContainsString('{h1-text}', $html);
+        self::assertStringNotContainsString('{p-01-text}', $html);
+        self::assertStringNotContainsString('{p-02-text}', $html);
     }
 
     private function setGlobal(string $key, mixed $value): void
@@ -170,5 +235,16 @@ final class ExistingResourceEditorContractTest extends TestCase
         }
 
         $GLOBALS[$key] = $value;
+    }
+
+    private function unsetGlobal(string $key): void
+    {
+        if (!array_key_exists($key, $this->globalState)) {
+            $this->globalState[$key] = array_key_exists($key, $GLOBALS)
+                ? ['exists' => true, 'value' => $GLOBALS[$key]]
+                : ['exists' => false];
+        }
+
+        unset($GLOBALS[$key]);
     }
 }

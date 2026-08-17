@@ -1,0 +1,219 @@
+@use '../config' as c;
+
+.sectionBlogStack01 {
+    --blog-stack-enabled: 0;
+    --blog-stack-top: 4rem;
+    --blog-stack-step: 0.75rem;
+    width: 100%;
+    padding: clamp(3rem, 8vw, 7rem) c.$padMin;
+    display: grid;
+    align-items: stretch;
+    justify-content: stretch;
+    justify-items: stretch;
+    gap: clamp(1.5rem, 4vw, 3rem);
+    color: c.$color00;
+    background: c.$color01;
+
+    > h1,
+    > h2,
+    > h3,
+    > h4,
+    > h5,
+    > h6,
+    .sectionBlogStack01-list,
+    .sectionBlogStack01-pagination {
+        width: min(100%, c.$textMax);
+        margin-inline: auto;
+    }
+
+    .sectionBlogStack01-list {
+        display: grid;
+        gap: clamp(1rem, 3vw, 2rem);
+
+        &:not(:has(.sectionBlogStack01-item)) {
+            display: none;
+        }
+    }
+
+    .sectionBlogStack01-item {
+        min-width: 0;
+        min-height: 15rem;
+        padding: clamp(1.4rem, 5vw, 3rem);
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        border: 1px solid c.$color00bis3;
+        border-radius: 1.25rem;
+        color: c.$color01;
+        background: c.$color00;
+        box-shadow: 0 1.25rem 3.5rem c.$color01bis2;
+
+        &:focus-within {
+            z-index: 100;
+        }
+
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            margin: 0;
+            font-size: clamp(1.4rem, 5vw, 2.5rem);
+            line-height: 1.15;
+            overflow-wrap: anywhere;
+
+            a {
+                color: c.$color01;
+                text-decoration-color: transparent;
+                text-underline-offset: 0.18em;
+
+                &:hover {
+                    color: c.$color02;
+                    text-decoration-color: currentColor;
+                }
+
+                &:focus-visible {
+                    border-radius: 0.15rem;
+                    outline: 0.18rem solid c.$color02;
+                    outline-offset: 0.2rem;
+                }
+            }
+        }
+    }
+
+    .sectionBlogStack01-date {
+        order: -1;
+        color: c.$color01bis;
+        font-family: c.$fuente02;
+        font-size: 0.8rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .sectionBlogStack01-media {
+        order: -2;
+        margin: calc(clamp(1.4rem, 5vw, 3rem) * -1);
+        margin-bottom: 0.35rem;
+        overflow: hidden;
+        border-radius: 1.2rem 1.2rem 0 0;
+        background: c.$color01bis4;
+
+        img {
+            width: 100%;
+            max-height: 22rem;
+            aspect-ratio: 16 / 9;
+            display: block;
+            object-fit: cover;
+        }
+    }
+
+    .sectionBlogStack01-categories {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        list-style: none;
+
+        a,
+        span {
+            padding: 0.25rem 0.55rem;
+            display: inline-flex;
+            border-radius: 999px;
+            color: c.$color02;
+            background: c.$color00bis;
+            font-size: 0.75rem;
+            text-decoration: none;
+        }
+
+        a:focus-visible {
+            outline: 0.15rem solid c.$color02;
+            outline-offset: 0.12rem;
+        }
+    }
+
+    .sectionBlogStack01-excerpt {
+        max-width: 70ch;
+        color: c.$color01bis;
+        overflow-wrap: anywhere;
+    }
+
+    .sectionBlogStack01-pagination {
+        display: grid;
+        justify-items: center;
+        gap: 0.75rem;
+    }
+
+    .sectionBlogStack01-next {
+        min-height: 2.75rem;
+        padding: 0.7rem 1.15rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid c.$color03;
+        border-radius: 999px;
+        color: c.$color01;
+        background: c.$color03;
+        font-weight: 700;
+        text-decoration: none;
+
+        &:hover {
+            color: c.$color00;
+            background: transparent;
+        }
+
+        &:focus-visible {
+            outline: 0.18rem solid c.$color03;
+            outline-offset: 0.2rem;
+        }
+
+        &[aria-disabled='true'] {
+            opacity: 0.55;
+            pointer-events: none;
+        }
+    }
+
+    .sectionBlogStack01-status {
+        min-height: 1.5em;
+        margin: 0;
+        color: c.$color00bis1;
+        text-align: center;
+
+        &[data-state='error'] {
+            color: c.$color03;
+        }
+    }
+
+    @media (min-width: c.$tablet) {
+        padding-inline: c.$padMax;
+    }
+
+    @media (min-width: c.$desktop) {
+        --blog-stack-enabled: 1;
+
+        &.is-stack-enhanced {
+            .sectionBlogStack01-list {
+                gap: clamp(3rem, 8vh, 6rem);
+                padding-bottom: clamp(2rem, 8vh, 6rem);
+            }
+
+            .sectionBlogStack01-item {
+                position: relative;
+                z-index: calc(var(--blog-stack-index, 0) + 1);
+                will-change: transform;
+
+                &:focus-within {
+                    z-index: 100;
+                }
+            }
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .sectionBlogStack01-item {
+            position: relative;
+            transform: none;
+            will-change: auto;
+        }
+    }
+}

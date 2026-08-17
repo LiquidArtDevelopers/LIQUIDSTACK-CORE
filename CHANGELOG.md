@@ -4,6 +4,228 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Cambiado
+- El índice público del Blog dispone ahora de una fachada tipada y reutilizable
+  en `src/Core/Blog/PublicIndex`: valida request y rutas, reutiliza una sola
+  fachada/feed por request para filtros, archivo, resultados y paginación, y proyecta
+  estados HTTP/SEO sin generar HTML. El soporte gestionado de un solo require
+  `App/app/_moduleBlogPublicIndex.php` resuelve también CSP, redirects, HEAD y
+  extensiones project-owned antes del `DOCTYPE`; las vistas consumidoras quedan
+  reducidas a HTML neutro y snipers incondicionales, mientras cada recurso
+  decide su estado vacío y posee sus estilos. El H1 del índice se compone en
+  un recurso hero con raíz `<header>` antes de `<main>`, y
+  `sectionBlogCatalog01` agrupa bajo su H2 la búsqueda, las categorías y la
+  región de resultados como slots hermanos. `moduleBlogResults01` compone
+  colección, paginador y archivo mediante slots opcionales y es propietario
+  del target reactivo singleton, que ya no se escribe como `div` crudo en la
+  vista. `moduleBlogGrid02`, Pagination01 y Archive01 conservan sus hooks y
+  estilos sobre raíces siempre neutras; las cards continúan como
+  `<article>`/H3 y Grid02 añade un CTA localizado, visible y sin sombra junto
+  a un título que conserva el tamaño del heading. La rejilla regular mantiene
+  tres cards iguales por fila en desktop —también con 3, 9 o 15 resultados— y
+  centra únicamente los restos reales de una o dos cards. Archive01 recupera
+  un ancho de contenido autocontenido y centra sus filas 1/2/N sin depender de
+  la vista. Search01 y CategoryBar01 incorporan un padding responsive más
+  generoso; CategoryBar01 amplía también la separación entre grupos, chips y
+  acciones sin estrechar los controles en móvil. El compositor rechaza
+  landmarks anidados. GET, HEAD y la
+  variante parcial conservan paridad de status, cache,
+  robots y canonical; los fallos de
+  runtime/PDO degradan a 503 recuperable. `public_index` configura el tamaño de
+  lote y las rutas limpias por locale, mientras la paginación mantiene enlaces
+  SSR y mejora progresiva sin recarga. El adaptador usa el grupo independiente
+  `public-index-support`, de modo que una personalización visual no bloquea su
+  distribución.
+- `sectionBlogSlider01` y `sectionBlogSlider02` eliminan la opción pública
+  `wrap`: todo conjunto no vacío forma un carril visual continuo cuando la
+  mejora JavaScript es elegible, incluido un único artículo. El SSR conserva
+  una sola copia semántica de cada card y el runtime replica conjuntos a ambos
+  lados hasta cubrir el viewport; esas copias son `inert`, `aria-hidden`, no
+  retienen IDs, IDREF, claves de card ni elementos enfocables y se desmontan al
+  limpiar. Un propietario por raíz compartido mediante `Symbol.for` evita que
+  dos identidades ESM/HMR se destruyan entre sí y provoquen parpadeos. Se
+  distingue además el foco nacido de un `pointerdown` del foco de teclado: el
+  primer clic limpio sobre el título o CTA ya no recentra el carril ni se
+  cancela como si fuese un arrastre, mientras un drag real sigue suprimiendo
+  la navegación accidental. `sectionBlogRelated01` usa una caja acotada
+  (`border-box` y `min-width: 0`) para que su padding y contenido flexible no
+  ensanchen el grid del artículo en tablet; su miniatura queda contenida en una
+  caja `16:9`, sin margen intrínseco y con `object-fit: cover`, incluso cuando
+  el medio de origen es vertical, panorámico o cuadrado. Se conservan Draggable, Inertia,
+  snap, autoplay, controles, teclado,
+  multiinstancia y cleanup; cero resultados sigue siendo vacío y los fallbacks
+  sin mejora conservan los originales SSR. La regresión de recursos queda en
+  `212` pruebas y `6.455` aserciones; la comprobación Chrome posterior a cada
+  reinstalación en un consumidor de referencia forma parte del gate previo a
+  publicar el corte.
+- Se incorpora la skill genérica `$test-functional-ui` para cerrar cualquier
+  interfaz funcional con dos capas inseparables: pruebas técnicas y exploración
+  adversarial de todos los recorridos de usuario en navegador real. La guía se
+  distribuye automáticamente a los stacks consumidores y exige tantear usos
+  habituales, alternativos, incorrectos e inesperados sin confundir cobertura
+  de recorridos con una promesa de ausencia absoluta de defectos desconocidos.
+- CORE amplía la familia pública Blog con `moduleBlogGrid02` regular/bento,
+  `sectionBlogSlider02` multiinstancia, `sectionBlogStack01` y los controles
+  combinables `moduleBlogSearch01`, `moduleBlogCategoryBar01` y
+  `moduleBlogPagination01`. Search01 y CategoryBar01 conservan mutuamente
+  búsqueda, orden y categorías sobre el mismo runtime GET/SSR; Pagination01
+  conserva enlaces SSR y añade sustitución parcial progresiva con history,
+  popstate, timeout y fallback nativo. `sectionBlogList01` centra su columna editorial
+  y `sectionBlogSlider01` incorpora miniaturas explícitas y la experiencia GSAP
+  de `artSlider01`: Draggable, Inertia, snap, bucle visual continuo, autoplay
+  pausable, teclado,
+  varias instancias, fallbacks accesibles y cleanup completo. Slider02 mantiene
+  esa interacción —6 s de espera y 2 s de transición por defecto— y limita cada
+  media a `16:9` con `object-fit: cover`, priorizando `thumbnail` cuando llega
+  proyectada. Stack01 usa ScrollTrigger solo con 3–8 cards y un viewport apto;
+  Grid02 limita también su media a `16:9`/`16rem`, prefiere `thumbnail` y revela
+  de forma incremental los nuevos lotes. El showroom incluye una
+  composición paginada que muestra 4 de 10 fixtures Matrix por página.
+  `BlogPublicResourceQuery` incorpora el orden cerrado
+  `newest|oldest|updated`, proyecta categorías en una consulta batch sin IDs ni
+  N+1 y `BlogPublicResourceBatch` transporta items y continuación. Un loader
+  module-owned mejora el enlace SSR con HTML same-origin, modos manual/near-end,
+  deduplicación, estados y aborto seguro. El helper acepta categorías y media
+  explícitas y valida estrictamente `src`, `srcset` y `sizes`, aplicando el
+  `sizes` específico de cada recurso. La media automática del feed usa ya un
+  adaptador batch opcional Blog+WebAdmin con un máximo de dos `SELECT` constantes
+  por lote: el primero inspecciona documentos y referencias y el segundo solo
+  carga variantes cuando se ha elegido algún medio. Selecciona la portada o
+  primera imagen del documento `CURRENT` publicado y proyecta AVIF sin IDs ni
+  N+1. Usa como `src` la mayor variante de hasta 900 px y
+  un `srcset` ascendente, dejando `sizes` fuera del backend; un esquema o storage
+  no preparado y cualquier dato corrupto degradan solo a la card textual. Los
+  16 derivados Dummy del showroom —480, 899/900, 1800 y 2560 px— tienen fuente
+  gestionada por Composer en `resources/img/dummy/responsive`, se sincronizan al
+  consumidor y respetan cualquier miniatura que ya entregue el feed. La QA
+  funcional-visual en Chrome real queda cerrada a 390, 768 y 1280 px; corrigió
+  además la altura intrínseca de Grid02 y aisló Pagination01 del `nav` global.
+  El corte queda integrado en CORE principal dentro de `Unreleased`; la
+  publicación versionada permanece condicionada a la matriz de adopción.
+- Duplicar un artículo o añadir un locale crea un borrador privado con lock
+  inicial, documento actual y revisión propia número `1` cuando la fuente es
+  estructurada, sin clonar publicación ni historial. El duplicado independiente
+  toma las categorías del workspace post-wide privado o, si no existe, de la
+  relación live; el nuevo locale comparte la asignación de su agregado. Un
+  workspace editorial stale, incompatible o corrupto falla cerrado. La nueva
+  migración aditiva `0019_blog_copy_operation_idempotency` registra la intención
+  completa y hace seguro el replay o doble submit: el mismo `operation_id` y
+  payload devuelve el destino original, mientras una reutilización incompatible
+  responde con conflicto contextual sin crear un segundo borrador. Cada opción
+  de idioma dispone de su propio UUID y se resincroniza en `pageshow` para
+  BFCache; si el destino de un replay ya está en Papelera, la operación responde
+  `409` contextual sin duplicar ni degradar a indisponibilidad.
+- El catálogo editorial retira el módulo independiente `Enlace`; su lectura
+  histórica se proyecta sin pérdida a un `Botón` primario y los enlaces inline
+  continúan dentro de `Texto`. `Botón` incorpora alineación izquierda, centrada
+  o derecha. El módulo `HTML` comparte el editor de fuente y expone únicamente
+  HTML/CSS. HTML y Texto avanzado admiten iframes saneados de YouTube, Vimeo y
+  Google Maps: el SSR los mantiene inertes y el runtime solo los materializa
+  con consentimiento social CookieLad, retirándolos al revocarlo.
+- Hero00 usa media responsive `<picture>/<img>` sin estilo inline, conserva un
+  único parallax sobre `.hero00-media` con movimiento reducido y permite
+  encuadrar la portada arriba, al centro o abajo desde el selector multimedia.
+  Imagen añade altura automática o 5–100dvh, cover/contain, posición vertical,
+  radio 0–50% y overlay seguro con modo, color corporativo o libre y opacidad.
+- `Texto` representa cada Intro sobre una línea vacía como un nodo
+  `{"type":"break"}` y un `<br>` raíz persistente. Escribir en la línea activa
+  sustituye solo ese salto por un `<p>`; `Ctrl+Intro` conserva el `<br>` inline.
+  Visual, HTML tipado y avanzado, SSR y la proyección V1 preservan posición y
+  multiplicidad sin crear `<p></p>`.
+- Las nuevas altas editoriales unifican Párrafo, Título H2-H6, Lista, Cita y
+  Destacado dentro de un único módulo `Texto`. Los nodos independientes legacy
+  se proyectan uno a uno en memoria al abrir; cancelar no escribe, mientras que
+  guardar, restaurar, duplicar o copiar un locale persiste ya la forma unificada
+  sin modificar revisiones históricas. Visual incorpora selector de bloque e
+  iconos accesibles de cita/destacado. Intro crea la siguiente unidad semántica;
+  dos pulsaciones al final de una lista salen al flujo raíz y escribir convierte
+  únicamente la línea activa en párrafo, mientras `Ctrl+Intro` inserta un `<br>`
+  en la unidad actual. HTML y
+  CSS ofrecen sugerencias contextuales navegables con teclado a partir de las
+  allowlists del saneador. Un `Texto`
+  tipado o su HTML avanzado admiten hasta 200.000 bytes, frente al máximo global
+  de 300.000 bytes del documento; CSS conserva su límite independiente de
+  30.000 bytes. Las listas quedan acotadas a cuatro niveles y usan una sangría
+  moderada; las citas se presentan con línea izquierda y cursiva, y los
+  destacados con fondo sutil, sin borde y con padding.
+- Artículo y Contenedor permiten cambiar visiblemente entre presets de una a
+  cinco columnas, con proporciones controladas, guías punteadas traslúcidas y
+  acciones `+` en columnas vacías. Aumentar columnas conserva el contenido en
+  la primera; reducirlas reúne los hijos por orden visual sin perder UUID ni
+  configuración. Los módulos pueden moverse entre columnas mediante arrastre o
+  destinos de teclado, manteniendo Subir/Bajar como fallback y el apilado
+  responsive sin overflow.
+- El editor de `Texto` unifica una experiencia Visual/HTML/CSS sin pérdida:
+  controles SVG y paletas de muestras, fuente Dark Modern con ajuste de líneas,
+  gutter medido, pares automáticos, sangría de cuatro espacios e historial
+  propio para escritura, IME y operaciones estructurales. El HTML avanzado que
+  puede proyectarse al flujo de párrafos, H2-H6, listas, citas y destacados, y
+  el CSS meramente presentacional, siguen editables en Visual. Los atributos
+  seguros de esos contenedores, incluida una clase propia, se preservan al
+  aplicar formato inline, dividir con Intro o transformar entre P, H2-H6, Cita
+  y Destacado. El CSS presentacional seguro se aplica directamente al único
+  canvas editable, con nonce CSP y scope exclusivo; ya no existe una segunda
+  vista ni un segundo scroll. Las listas con estructura o atributos complejos y
+  el CSS sensible al layout permanecen cerrados a cambios estructurales desde
+  Visual y se editan en preview sandbox y fuente. El canvas ya representa el
+  contenido avanzado, color y negrita se componen sin crear párrafos vacíos y cancelar o
+  deshacer hasta el origen conserva exactamente la fuente y el JSON. Los
+  selectores seguros pueden declararse antes de existir en el HTML y el iframe
+  inline usa un nonce nuevo por respuesta, coordinado con las CSP del padre y
+  del `srcdoc`, sin conceder permisos al sandbox.
+- La toolbar de Texto respeta `hidden` aunque su layout base sea flex y mantiene
+  invisible el `select` nativo de tamaño también cuando está deshabilitado, por
+  lo que no vuelve a superponer su etiqueta o flecha sobre el icono SVG.
+- La proyección V2→V1 de un `Texto` avanzado conserva cada LF como `break`,
+  divide líneas largas solo en límites UTF-8 válidos y falla cerrada al superar
+  el máximo de nodos. El texto visible de compatibilidad ya no puede divergir
+  del que valida el borrador estructurado.
+- La preview visual privada vive en `/admin/blog/editor/preview`; la ruta legacy
+  `/admin/blog/posts/preview` se identifica como lectura textual sin medios ni
+  estilos. La preview moderna abre de inmediato su estado de guardado, mantiene
+  el iframe sin `src` hasta confirmar el snapshot y valida URL same-origin,
+  marcador SSR, presencia de hojas públicas y carga completa de todas ellas
+  antes de declarar éxito. Sus stylesheets son bloqueantes antes de
+  `customCss()` y el CSS avanzado recibe un nonce coordinado con la CSP. Login,
+  error HTTP, marcador/hoja ausente o timeout de `12 s` fallan cerrados, ocultan
+  el iframe y deshabilitan los dispositivos; cerrar o reabrir cancela timers y
+  callbacks obsoletos.
+- Los gates HTTP de Blog y WebAdmin sustituyen las cadenas de postcondiciones
+  exhaustivas por registros de migración/checksum, probes de tablas y columnas
+  mediante consultas de cero filas e invariantes operativas acotadas. Las
+  auditorías completas de DDL, índices, claves, triggers, semillas y filas se
+  conservan sin cambios en migraciones, `--dry-run` y `doctor`.
+- Los encabezados estructurados proponen H2 en sección y H3 en artículo o
+  contenedor, pero permiten elegir H2-H6 —nunca H1— y conservan el nivel real en
+  validación, preview y SSR. Las guías de sección añaden una sangría responsive
+  exclusiva del constructor para que sus hijos no queden a sangre.
+- La columna Estado de Gestión Blog combina texto oscuro con un LED editorial:
+  verde con un pulso de tres segundos para `Publicado`, ámbar fijo para
+  `Borrador` y rojo fijo con
+  `Eliminado` en la nueva columna de la papelera. El icono es decorativo, el
+  texto evita depender del color y `prefers-reduced-motion` detiene el pulso.
+- Gestión Blog y su papelera muestran `Actualizado` con fecha corta
+  `dd/mm/aaaa`, manteniendo la hora localizada y la zona IANA del perfil. La
+  firma pública del artículo conserva deliberadamente la fecha larga según su
+  locale.
+- El editor Blog intercepta el guardado progresivo antes de cualquier
+  sincronización o validación, conserva el fallback SSR sin JavaScript y elimina
+  por completo `beforeunload`, `window.confirm` y los avisos nativos. Los enlaces
+  internos y el logout con cambios pendientes usan ahora un diálogo LiquidStack
+  accesible para guardar, descartar o continuar; los fallos y excepciones
+  mantienen el formulario, el foco y la URL.
+- Blog añade `0018_blog_dummy_category_normalization`: conserva categorías y
+  relaciones históricas, pero incorpora idempotentemente el UUID Dummy canónico
+  a toda asignación viva o workspace ligada a un slug legacy exacto `dummy`.
+  Gestión Blog excluye esa identidad antes de filtros, orden y paginación, sin
+  opt-out, y los gates privados y públicos fallan cerrados hasta completar la
+  normalización.
+- El planner de migraciones puede reanudar de forma auditable un superseder
+  `retrySafe` cuyo DDL MySQL/MariaDB quedó confirmado antes de fallar un
+  verificador: exige el superset exacto, registros anteriores íntegros y drift
+  de un verificador ya supersedido; la migración sigue pendiente hasta
+  reejecutar su SQL idempotente y verificar antes de registrarla. El verificador
+  Blog 0015 acepta además los tipos con display width de MariaDB y cualifica sus
+  metadatos de claves foráneas.
 - La sincronización gestionada tolera los handles temporales que Vite, PHP u
   otros watchers pueden mantener sobre backups ya confirmados en Windows. El
   cleanup hace reintentos acotados y, si el bloqueo persiste, queda marcado
@@ -53,8 +275,10 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   conserva su documento aislado para representar el `header` y el `main`.
 - El editor Blog pasa a un lienzo visual que proyecta `header`, H1 y el futuro
   `main` sin anidar landmarks ni duplicar el H1 en la página administrativa.
-  Los encabezados admiten H2-H6 sin saltos: H2 abre `section`, H3 abre
-  `article` y mover o retirar un encabezado conserva todo su subárbol
+  Los encabezados admiten H2-H6 sin H1: una sección exige un primer encabezado
+  y propone H2, mientras artículo y contenedor proponen H3, pero la persona
+  puede cambiar cualquiera de ellos a H2-H6 y dejar los saltos para la
+  auditoría SEO. Mover o retirar un contenedor conserva todo su subárbol
   semántico. La creación exige elegir expresamente un locale activo todavía
   libre y muestra su `public_paths`; ese locale queda estable y nunca se
   sustituye por un prefijo inferido. El inspector integra asignación de
@@ -141,6 +365,26 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   de cada consumidor.
 
 ### Corregido
+- El guardado estructurado ya no convierte un nodo semántico `break` en un LF
+  para rechazarlo después como carácter de control. Backend y editor comparten
+  ahora el cómputo de bytes y los límites agregados/escalares para saltos raíz,
+  saltos inline, listas y contenido avanzado, evitando el falso `422`.
+- El detalle de revisión incorpora restauración accesible con CSRF y lock
+  optimista. Restaurar añade una revisión canónica inmutable; una revisión
+  ausente, un lock stale o contenido inválido devuelve un error contextual en
+  el shell sin alterar documento, referencias ni historial.
+- El selector de idioma conserva un fallback `details` compuesto y usable sin
+  JavaScript. La preview alinea CSS y runtime con `loading|ready|error`, devuelve
+  foco a una acción operable, conserva anuncios vivos, admite zoom/viewport
+  corto, falla cerrada a los `12 s` e ignora cargas obsoletas tras cerrar,
+  reabrir o iniciar una generación nueva.
+- El editor Visual de `Texto` permite salir de la última entrada de una lista
+  con doble Intro y escribir inmediatamente en el párrafo hermano. El filler de
+  caret y el `list-style-type` que usa la preview existen solo en el DOM visual:
+  no entran en el flujo ni en el HTML serializado, no dejan un párrafo residual
+  al cambiar de pestaña sin escribir y siguen rechazados por la fuente HTML
+  estricta. Se preservan `ul`/`ol`, clase, ARIA, marcador, `start`, CSS, marcas e
+  IDs de los elementos anteriores sin duplicarlos.
 - `hero03` conserva un único H1 semántico en el bloque de marca y convierte
   su texto frontal animado en contenido decorativo oculto a tecnologías de
   asistencia; el historial gestionado reconoce tanto esta versión como las
@@ -257,6 +501,13 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   y los artículos continúan usando la resolución pública tardía.
 
 ### Añadido
+- Comando seguro `composer liquidstack:blog:adopt-unified-text` para planificar
+  en dry-run la normalización del contenido activo y, con `--apply --yes`,
+  adoptar exactamente un `--post` y un `--locale` bajo la identidad de
+  `--actor`. Excluye siempre Dummy y papelera, vuelve a comprobar lock, estado y
+  huella dentro del guardado ordinario, crea current+revisión en borradores y
+  solo un workspace privado en publicaciones; nunca republica ni reescribe el
+  historial.
 - Proyección pública Blog unificada: una instancia de
   `BlogPublicFeedFactory` comparte runtime y conexión PDO para cards generales,
   filtros y cards por categoría. El factory específico anterior permanece

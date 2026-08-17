@@ -488,6 +488,7 @@ final class PrivateMediaStorageTest extends TestCase
     {
         $root = $this->sandbox . '/concurrent-media';
         $script = $this->sandbox . '/initialize.php';
+        $release = $this->sandbox . '/initialize.release';
         $autoload = dirname(__DIR__, 3) . '/vendor/autoload.php';
         $this->filesystem->dumpFile(
             $script,
@@ -495,30 +496,53 @@ final class PrivateMediaStorageTest extends TestCase
                 . '$storage = new \\App\\Core\\WebAdmin\\Media\\PrivateMediaStorage('
                 . var_export($this->projectRoot, true) . ', '
                 . var_export($root, true) . '); '
+                . '$ready = $argv[1]; $release = $argv[2]; '
+                . 'file_put_contents($ready, "ready"); '
+                . 'while (!is_file($release)) { usleep(1000); } '
                 . 'echo json_encode($storage->initialize()->toSafeArray(), '
                 . 'JSON_THROW_ON_ERROR);'
         );
-        $first = new Process([PHP_BINARY, $script]);
-        $second = new Process([PHP_BINARY, $script]);
+        $processes = [];
+        $readyPaths = [];
+        for ($index = 0; $index < 8; ++$index) {
+            $ready = $this->sandbox . '/initialize.' . $index . '.ready';
+            $process = new Process([PHP_BINARY, $script, $ready, $release]);
+            $process->start();
+            $processes[] = $process;
+            $readyPaths[] = $ready;
+        }
+        $deadline = microtime(true) + 10;
+        do {
+            clearstatcache();
+            $readyCount = count(array_filter($readyPaths, 'is_file'));
+            if ($readyCount === count($processes)) {
+                break;
+            }
+            usleep(1000);
+        } while (microtime(true) < $deadline);
+        $this->filesystem->dumpFile($release, 'release');
 
-        $first->start();
-        $second->start();
-        $first->wait();
-        $second->wait();
-
-        self::assertTrue($first->isSuccessful(), $first->getErrorOutput());
-        self::assertTrue($second->isSuccessful(), $second->getErrorOutput());
-        $statuses = [
-            json_decode($first->getOutput(), true, 512, JSON_THROW_ON_ERROR)[
-                'status'
-            ],
-            json_decode($second->getOutput(), true, 512, JSON_THROW_ON_ERROR)[
-                'status'
-            ],
-        ];
+        $statuses = [];
+        foreach ($processes as $process) {
+            $process->wait();
+            self::assertTrue(
+                $process->isSuccessful(),
+                $process->getErrorOutput()
+            );
+            $statuses[] = json_decode(
+                $process->getOutput(),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            )['status'];
+        }
+        self::assertSame(count($processes), $readyCount);
         sort($statuses);
         self::assertSame(
-            ['already_initialized', 'initialized'],
+            array_merge(
+                array_fill(0, count($processes) - 1, 'already_initialized'),
+                ['initialized']
+            ),
             $statuses
         );
         $storage = new PrivateMediaStorage($this->projectRoot, $root);

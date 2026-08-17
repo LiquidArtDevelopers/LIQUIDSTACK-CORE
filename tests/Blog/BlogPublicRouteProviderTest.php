@@ -162,6 +162,9 @@ PHP
         $view = $this->root . '/App/views/blog/public-article.php';
         $this->filesystem->dumpFile($view, <<<'PHP'
 <?php
+if (!$blogArticleShell instanceof \App\Core\Blog\Http\BlogPublicArticleShellContext) {
+    throw new \RuntimeException('Unexpected public-shell context.');
+}
 echo '<!doctype html><html><body data-project-shell="true"><h1>'
     . htmlspecialchars($blogArticle->h1(), ENT_QUOTES, 'UTF-8')
     . '</h1>' . $blogArticle->bodyHtml();
@@ -169,6 +172,11 @@ foreach ($blogArticle->languageNavigationUrls() as $locale => $url) {
     echo '<a data-language="' . htmlspecialchars($locale, ENT_QUOTES, 'UTF-8')
         . '" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '"></a>';
 }
+echo '<script nonce="'
+    . htmlspecialchars($blogArticleShell->nonce(), ENT_QUOTES, 'UTF-8')
+    . '" src="'
+    . htmlspecialchars($blogArticleShell->publicRuntimeUrl(), ENT_QUOTES, 'UTF-8')
+    . '" defer></script>';
 echo '</body></html>';
 PHP);
         $this->filesystem->dumpFile(
@@ -277,10 +285,40 @@ PHP
             'data-language="en" href="https://example.test/en/news"',
             $response->body()
         );
-        self::assertArrayNotHasKey(
-            'Content-Security-Policy',
-            $response->headers()
+        $getCsp = $response->headers()['Content-Security-Policy'] ?? '';
+        self::assertSame(1, preg_match(
+            "/'nonce-([A-Za-z0-9_-]{32})'/",
+            $getCsp,
+            $getNonceMatch
+        ));
+        self::assertStringContainsString(
+            '<script nonce="' . ($getNonceMatch[1] ?? '')
+                . '" src="/assets/modules/blog/blog-public.js" defer>',
+            $response->body()
         );
+
+        $articleHead = $routes->dispatch(Request::fromServer([
+            'REQUEST_METHOD' => 'HEAD',
+            'REQUEST_URI' => '/noticias/matrix',
+            'HTTPS' => 'on',
+        ]));
+        self::assertNotNull($articleHead);
+        self::assertSame(200, $articleHead->status());
+        self::assertSame('', $articleHead->body());
+        self::assertSame(
+            array_keys($response->headers()),
+            array_keys($articleHead->headers())
+        );
+        self::assertSame(1, preg_match(
+            "/'nonce-([A-Za-z0-9_-]{32})'/",
+            $articleHead->headers()['Content-Security-Policy'] ?? '',
+            $headNonceMatch
+        ));
+        self::assertNotSame(
+            $getNonceMatch[1] ?? '',
+            $headNonceMatch[1] ?? ''
+        );
+        self::assertSame(1, $factory->calls);
 
         $sitemap = $routes->dispatch(Request::fromServer([
             'REQUEST_METHOD' => 'GET',

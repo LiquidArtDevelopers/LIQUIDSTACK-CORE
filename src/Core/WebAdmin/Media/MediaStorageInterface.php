@@ -14,6 +14,11 @@ interface MediaStorageInterface
 
     public function removeAsset(string $publicId): void;
 
+    public function quarantine(
+        MediaDeletionCandidate $candidate,
+        string $requestId
+    ): MediaQuarantineLease;
+
     public function storageKey(string $publicId, int $width): string;
 
     public function readVerified(MediaStoredVariant $variant): MediaFilePayload;

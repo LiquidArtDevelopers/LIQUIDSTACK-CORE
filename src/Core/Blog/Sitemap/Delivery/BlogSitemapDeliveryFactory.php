@@ -178,7 +178,16 @@ final class BlogSitemapDeliveryFactory implements
             throw new BlogPublicHttpRuntimeException();
         }
 
-        $service = new BlogService(new PdoBlogRepository($pdo, $blogScope));
+        $service = new BlogService(new PdoBlogRepository(
+            $pdo,
+            $blogScope,
+            reservedCategoryPolicyEnabled: $this->featureGate->isReady(
+                $pdo,
+                $registry,
+                $scopes,
+                BlogMigrationRequirements::categoriesPublic()
+            )
+        ));
         if ($storage === null || $identity === null) {
             $xml = $this->renderer->render(
                 $service->sitemapEntries(),

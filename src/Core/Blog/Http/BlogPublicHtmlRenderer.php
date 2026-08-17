@@ -9,22 +9,33 @@ use App\Core\Blog\BlogInput;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Configuration\BlogAnalyticsConfig;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
 use App\Core\Blog\StructuredContent\Rendering\BlogDocumentHtmlRenderer;
+use App\Core\Blog\StructuredContent\Rendering\BlogArticleHeaderResourceRenderer;
+use App\Core\Blog\StructuredContent\Rendering\BlogArticleHeaderMedia;
+use App\Core\Blog\StructuredContent\Rendering\BlogArticleHeaderAttribution;
+use App\Core\Blog\StructuredContent\Presentation\BlogHeaderSelection;
 use App\Core\Blog\StructuredContent\Rendering\BlogImageResolverInterface;
+use App\Core\Blog\PublicShell\BlogPublicShellDefaultSecurityPolicy;
 use Throwable;
+use App\Core\WebAdmin\Profile\WebAdminPublicProfile;
 
 final class BlogPublicHtmlRenderer
 {
     public const STANDALONE_STYLESHEET =
         '/assets/modules/blog/blog-public.css';
     public const STANDALONE_SCRIPT =
-        '/assets/modules/blog/blog-public.js';
+        BlogPublicArticleShellContext::PUBLIC_RUNTIME_URL;
 
     private readonly ?string $projectArticleView;
 
-    public function __construct(?string $projectArticleView = null)
+    public function __construct(
+        ?string $projectArticleView = null,
+        private readonly BlogPublicationDateFormatter $dateFormatter =
+            new BlogPublicationDateFormatter()
+    )
     {
         if ($projectArticleView === null) {
             $this->projectArticleView = null;
@@ -63,7 +74,10 @@ final class BlogPublicHtmlRenderer
         array $languageNavigationUrls = [],
         array $relatedArticles = [],
         ?BlogAnalyticsConfig $analytics = null,
-        #[\SensitiveParameter] ?string $analyticsPageGrant = null
+        #[\SensitiveParameter] ?string $analyticsPageGrant = null,
+        ?BlogRobotsPreferences $robotsPreferences = null,
+        ?WebAdminPublicProfile $authorProfile = null,
+        ?BlogPublicArticleShellContext $shellContext = null
     ): string {
         if (
             filter_var($canonicalUrl, FILTER_VALIDATE_URL) === false
@@ -82,7 +96,11 @@ final class BlogPublicHtmlRenderer
             $languageNavigationUrls,
             $relatedArticles,
             $analytics,
-            $analyticsPageGrant
+            $analyticsPageGrant,
+            $robotsPreferences,
+            $authorProfile,
+            null,
+            $shellContext
         );
     }
 
@@ -101,7 +119,11 @@ final class BlogPublicHtmlRenderer
         array $languageNavigationUrls = [],
         array $relatedArticles = [],
         ?BlogAnalyticsConfig $analytics = null,
-        #[\SensitiveParameter] ?string $analyticsPageGrant = null
+        #[\SensitiveParameter] ?string $analyticsPageGrant = null,
+        ?BlogRobotsPreferences $robotsPreferences = null,
+        ?WebAdminPublicProfile $authorProfile = null,
+        #[\SensitiveParameter] ?string $styleNonce = null,
+        ?BlogPublicArticleShellContext $shellContext = null
     ): string {
         if (
             filter_var($canonicalUrl, FILTER_VALIDATE_URL) === false
@@ -120,7 +142,11 @@ final class BlogPublicHtmlRenderer
             $languageNavigationUrls,
             $relatedArticles,
             $analytics,
-            $analyticsPageGrant
+            $analyticsPageGrant,
+            $robotsPreferences,
+            $authorProfile,
+            $styleNonce,
+            $shellContext
         );
     }
 
@@ -138,7 +164,10 @@ final class BlogPublicHtmlRenderer
         array $languageNavigationPaths = [],
         array $relatedArticles = [],
         ?BlogAnalyticsConfig $analytics = null,
-        #[\SensitiveParameter] ?string $analyticsPageGrant = null
+        #[\SensitiveParameter] ?string $analyticsPageGrant = null,
+        ?BlogRobotsPreferences $robotsPreferences = null,
+        ?WebAdminPublicProfile $authorProfile = null,
+        ?BlogPublicArticleShellContext $shellContext = null
     ): string {
         return $this->renderDocument(
             $variant,
@@ -155,7 +184,11 @@ final class BlogPublicHtmlRenderer
             ),
             $relatedArticles,
             $analytics,
-            $analyticsPageGrant
+            $analyticsPageGrant,
+            $robotsPreferences,
+            $authorProfile,
+            null,
+            $shellContext
         );
     }
 
@@ -175,7 +208,11 @@ final class BlogPublicHtmlRenderer
         array $languageNavigationPaths = [],
         array $relatedArticles = [],
         ?BlogAnalyticsConfig $analytics = null,
-        #[\SensitiveParameter] ?string $analyticsPageGrant = null
+        #[\SensitiveParameter] ?string $analyticsPageGrant = null,
+        ?BlogRobotsPreferences $robotsPreferences = null,
+        ?WebAdminPublicProfile $authorProfile = null,
+        #[\SensitiveParameter] ?string $styleNonce = null,
+        ?BlogPublicArticleShellContext $shellContext = null
     ): string {
         return $this->renderDocument(
             $variant,
@@ -192,7 +229,11 @@ final class BlogPublicHtmlRenderer
             ),
             $relatedArticles,
             $analytics,
-            $analyticsPageGrant
+            $analyticsPageGrant,
+            $robotsPreferences,
+            $authorProfile,
+            $styleNonce,
+            $shellContext
         );
     }
 
@@ -211,7 +252,11 @@ final class BlogPublicHtmlRenderer
         array $languageNavigationUrls = [],
         array $relatedArticles = [],
         ?BlogAnalyticsConfig $analytics = null,
-        #[\SensitiveParameter] ?string $analyticsPageGrant = null
+        #[\SensitiveParameter] ?string $analyticsPageGrant = null,
+        ?BlogRobotsPreferences $robotsPreferences = null,
+        ?WebAdminPublicProfile $authorProfile = null,
+        #[\SensitiveParameter] ?string $styleNonce = null,
+        ?BlogPublicArticleShellContext $shellContext = null
     ): string {
         if (
             $variant->status() !== BlogPostVariant::PUBLISHED
@@ -222,6 +267,7 @@ final class BlogPublicHtmlRenderer
         }
 
         $draft = $variant->draft();
+        $robotsPreferences ??= $draft->robotsPreferences();
         $documentRenderer = $document === null || $imageResolver === null
             ? null
             : new BlogDocumentHtmlRenderer($imageResolver);
@@ -231,9 +277,43 @@ final class BlogPublicHtmlRenderer
         $main = $document === null
             ? $body
             : $this->structuredMain($document, $documentRenderer);
+        $customCss = $document === null || $documentRenderer === null
+            ? '' : $documentRenderer->renderScopedCss($document);
         $headerMedia = $document === null
-            ? ''
+            ? null
             : $this->structuredHeaderMedia($document, $documentRenderer);
+        $headerMediaHtml = $headerMedia?->html() ?? '';
+        $headerSelection = $document === null
+            ? BlogHeaderSelection::forTemplate(
+                BlogDocumentTemplateRegistry::ARTICLE_BASIC
+            )
+            : BlogHeaderSelection::forDocument($document);
+        $publishedAt = $variant->publishedAt();
+        if ($publishedAt === null) {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+        $localizedPublicationDate = $authorProfile === null
+            ? null : $this->dateFormatter->format(
+                $publishedAt,
+                $variant->locale(),
+                $authorProfile
+            );
+        $attribution = $authorProfile?->displayName() === null
+            ? null : new BlogArticleHeaderAttribution(
+                (string) $authorProfile->displayName(),
+                $authorProfile->roleLabel(),
+                (string) $localizedPublicationDate,
+                $publishedAt
+            );
+        $headerHtml = (new BlogArticleHeaderResourceRenderer())
+            ->renderSelection(
+                $headerSelection,
+                $draft->h1(),
+                $draft->excerpt(),
+                null,
+                $headerMedia,
+                $attribution
+            );
         $alternates = $this->normalizeAlternates(
             $variant,
             $canonicalUrl,
@@ -257,10 +337,6 @@ final class BlogPublicHtmlRenderer
                 $imageResolver,
                 $canonicalUrl
             );
-        $publishedAt = $variant->publishedAt();
-        if ($publishedAt === null) {
-            throw new BlogException(BlogException::INVALID_STATE);
-        }
         $article = new BlogPublicArticleViewModel(
             $variant->locale(),
             $canonicalUrl,
@@ -273,7 +349,7 @@ final class BlogPublicHtmlRenderer
             (string) $draft->excerpt(),
             $body,
             $main,
-            $headerMedia,
+            $headerMediaHtml,
             $coverImageUrl,
             $document?->template()
                 ?? BlogDocumentTemplateRegistry::ARTICLE_BASIC,
@@ -285,17 +361,32 @@ final class BlogPublicHtmlRenderer
                 ?? BlogAnalyticsConfig::DEFAULT_RETENTION_DAYS,
             $analytics?->sessionTimeoutSeconds()
                 ?? BlogAnalyticsConfig::DEFAULT_SESSION_TIMEOUT_SECONDS,
-            $analyticsPageGrant
+            $analyticsPageGrant,
+            $headerMedia,
+            $robotsPreferences,
+            $headerSelection,
+            $headerHtml,
+            $authorProfile?->displayName(),
+            $authorProfile?->roleLabel(),
+            $localizedPublicationDate,
+            $customCss
         );
 
         return $this->projectArticleView === null
-            ? $this->renderStandalone($article)
-            : $this->renderProjectView($article);
+            ? $this->renderStandalone($article, $styleNonce)
+            : $this->renderProjectView(
+                $article,
+                $shellContext ?? new BlogPublicArticleShellContext(
+                    (new BlogPublicShellDefaultSecurityPolicy())->context()
+                )
+            );
     }
 
     private function renderStandalone(
-        BlogPublicArticleViewModel $article
+        BlogPublicArticleViewModel $article,
+        #[\SensitiveParameter] ?string $styleNonce
     ): string {
+        $header = $article->headerHtml();
         $analyticsAttributes = $article->analyticsEnabled()
             ? ' data-blog-analytics-enabled="true"'
                 . ' data-blog-analytics-retention-days="'
@@ -306,6 +397,21 @@ final class BlogPublicHtmlRenderer
                 . $this->escape((string) $article->analyticsPageGrant()) . '"'
             : '';
 
+        $customStyle = '';
+        if ($article->customCss() !== '') {
+            if (
+                !is_string($styleNonce)
+                || preg_match(
+                    '/\A[A-Za-z0-9+\/_-]{16,128}={0,2}\z/D',
+                    $styleNonce
+                ) !== 1
+            ) {
+                throw new BlogException(BlogException::INVALID_STATE);
+            }
+            $customStyle = '<style nonce="' . $this->escape($styleNonce) . '">'
+                . $article->customCss() . '</style>';
+        }
+
         return '<!doctype html><html lang="'
             . $this->escape($article->locale())
             . '"' . $analyticsAttributes . '><head><meta charset="utf-8">'
@@ -313,7 +419,8 @@ final class BlogPublicHtmlRenderer
             . '<title>' . $this->escape($article->seoTitle())
             . '</title><meta name="description" content="'
             . $this->escape($article->metaDescription()) . '">'
-            . '<meta name="robots" content="index,follow">'
+            . '<meta name="robots" content="'
+            . $this->escape($article->robotsDirective()) . '">'
             . '<link rel="canonical" href="'
             . $this->escape($article->canonicalUrl()) . '">'
             . $this->alternateHead(
@@ -345,19 +452,17 @@ final class BlogPublicHtmlRenderer
                     . $this->escape($article->coverImageUrl()) . '">')
             . '<link rel="stylesheet" href="'
             . self::STANDALONE_STYLESHEET . '">'
+            . $customStyle
             . '<script src="' . self::STANDALONE_SCRIPT
             . '" defer></script>'
-            . '</head><body>'
-            . '<header class="blogArticleHeader"><h1>'
-            . $this->escape($article->h1()) . '</h1><p>'
-            . $this->escape($article->excerpt())
-            . '</p>' . $article->headerMediaHtml() . '</header>'
+            . '</head><body>' . $header
             . '<main>' . $article->mainHtml() . '</main>'
             . '</body></html>';
     }
 
     private function renderProjectView(
-        BlogPublicArticleViewModel $blogArticle
+        BlogPublicArticleViewModel $blogArticle,
+        BlogPublicArticleShellContext $blogArticleShell
     ): string {
         $view = $this->projectArticleView;
         if (
@@ -374,10 +479,11 @@ final class BlogPublicHtmlRenderer
         try {
             (static function (
                 string $_liquidstackArticleView,
-                BlogPublicArticleViewModel $blogArticle
+                BlogPublicArticleViewModel $blogArticle,
+                BlogPublicArticleShellContext $blogArticleShell
             ): void {
                 require $_liquidstackArticleView;
-            })($view, $blogArticle);
+            })($view, $blogArticle, $blogArticleShell);
 
             if (ob_get_level() !== $bufferLevel + 1) {
                 throw new BlogException(BlogException::INVALID_STATE);
@@ -435,12 +541,12 @@ final class BlogPublicHtmlRenderer
     private function structuredHeaderMedia(
         BlogDocument $document,
         ?BlogDocumentHtmlRenderer $renderer
-    ): string {
+    ): ?BlogArticleHeaderMedia {
         if ($renderer === null) {
             throw new BlogException(BlogException::INVALID_STATE);
         }
 
-        return $renderer->renderHeaderMedia($document);
+        return $renderer->headerMedia($document);
     }
 
     private function structuredMain(
@@ -569,7 +675,7 @@ final class BlogPublicHtmlRenderer
         BlogImageResolverInterface $imageResolver,
         string $canonicalUrl
     ): ?string {
-        if ($document->template() !== BlogDocumentTemplateRegistry::ARTICLE_COVER) {
+        if (!BlogDocumentTemplateRegistry::hasCover($document->template())) {
             return null;
         }
         $cover = $document->blocks()[0] ?? null;

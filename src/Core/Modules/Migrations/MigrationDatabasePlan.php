@@ -76,6 +76,56 @@ final class MigrationDatabasePlan
         return false;
     }
 
+    /**
+     * Selects the pending prefix that can be applied without crossing a
+     * deferred destructive migration. Migration identifiers are append-only
+     * inside each module, so every later entry of the same module must remain
+     * pending once a destructive predecessor has been deferred.
+     *
+     * @return array{
+     *     selected: list<array<string, mixed>>,
+     *     deferred: list<array<string, mixed>>
+     * }
+     */
+    public function pendingSelection(bool $includeDestructive): array
+    {
+        $pending = $this->pendingEntries();
+        if ($includeDestructive) {
+            return [
+                'selected' => $pending,
+                'deferred' => [],
+            ];
+        }
+
+        $selected = [];
+        $deferred = [];
+        $blockedModules = [];
+
+        foreach ($pending as $entry) {
+            $module = (string) $entry['module'];
+            if (isset($blockedModules[$module])) {
+                $entry['defer_reason'] = 'destructive_predecessor';
+                $deferred[] = $entry;
+
+                continue;
+            }
+            if ($entry['destructive'] === true) {
+                $blockedModules[$module] = true;
+                $entry['defer_reason'] = 'destructive_gate';
+                $deferred[] = $entry;
+
+                continue;
+            }
+
+            $selected[] = $entry;
+        }
+
+        return [
+            'selected' => $selected,
+            'deferred' => $deferred,
+        ];
+    }
+
     public function hash(): string
     {
         return hash('sha256', (string) json_encode([

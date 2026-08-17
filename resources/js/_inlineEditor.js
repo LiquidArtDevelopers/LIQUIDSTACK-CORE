@@ -1,4 +1,5 @@
 import configScss from "../../scss/_config.scss?raw";
+import { applyInlineResponsivePicture } from "./_inlineResponsivePicture.js";
 
 const STYLE_ID = "dev-inline-editor-style";
 const DEFAULT_COLOR_OPTIONS = [
@@ -1942,9 +1943,14 @@ export default function initInlineEditor() {
     return `${window.location.origin.replace(/\/$/, "")}/${rawValue.replace(/^\/+/, "")}`;
   };
 
-  const applyResponsiveBackground = (target) => {
+  const applyResponsiveBackground = (target, container = null) => {
     if (!(target instanceof HTMLElement)) {
-      return;
+      return false;
+    }
+
+    if (applyInlineResponsivePicture(container, target)) {
+      target.style.removeProperty("background-image");
+      return true;
     }
 
     const responsiveUrl = window.innerWidth < 800
@@ -1956,7 +1962,7 @@ export default function initInlineEditor() {
 
     if (!activeUrl) {
       target.style.removeProperty("background-image");
-      return;
+      return false;
     }
 
     const safeUrl = activeUrl.replace(/["\\\n\r]/g, "");
@@ -1965,6 +1971,8 @@ export default function initInlineEditor() {
       `url("${safeUrl}")`,
       "important",
     );
+
+    return true;
   };
 
   const getBackgroundDefinitions = (container) => {
@@ -2025,6 +2033,25 @@ export default function initInlineEditor() {
       throw new Error("No se encontró el elemento visual del fondo.");
     }
 
+    const pictureSourceSelector = String(
+      container.dataset.inlineBackgroundPictureSource || "",
+    ).trim();
+    if (pictureSourceSelector !== "") {
+      let pictureSource;
+      try {
+        pictureSource = container.querySelector(pictureSourceSelector);
+      } catch (error) {
+        throw new Error("El selector responsive del fondo no es valido.");
+      }
+      if (
+        target.tagName !== "IMG"
+        || !(pictureSource instanceof Element)
+        || pictureSource.tagName !== "SOURCE"
+      ) {
+        throw new Error("No se encontro el picture responsive del fondo.");
+      }
+    }
+
     const definitions = getBackgroundDefinitions(container);
     if (!definitions.length) {
       throw new Error("El fondo no tiene claves de idioma configuradas.");
@@ -2075,6 +2102,22 @@ export default function initInlineEditor() {
     showModal({
       entries,
       onSubmit: async (payloadEntries) => {
+        if (pictureSourceSelector !== "") {
+          const completePicture = payloadEntries.every((payloadEntry) => {
+            const values = payloadEntry.values || {};
+            const sourceValue = typeof values === "object"
+              ? values.src
+              : values;
+
+            return String(sourceValue || "").trim() !== "";
+          });
+          if (!completePicture || payloadEntries.length !== 4) {
+            throw new Error(
+              "El picture responsive necesita sus cuatro imagenes.",
+            );
+          }
+        }
+
         const updatesByScope = new Map();
         const nextValues = new Map();
 
@@ -2121,6 +2164,16 @@ export default function initInlineEditor() {
             return;
           }
 
+          if (
+            pictureSourceSelector !== ""
+            && definition.variant === "fallback"
+          ) {
+            const imageValue = entry.valueType === "object"
+              ? savedValue
+              : { src: savedValue };
+            applyValuesToElement(target, imageValue, config);
+          }
+
           const sourceValue = savedValue
             && typeof savedValue === "object"
             && !Array.isArray(savedValue)
@@ -2134,7 +2187,10 @@ export default function initInlineEditor() {
         });
 
         if (definitions.some((definition) => definition.variant !== "image")) {
-          applyResponsiveBackground(target);
+          const refreshed = applyResponsiveBackground(target, container);
+          if (pictureSourceSelector !== "" && !refreshed) {
+            throw new Error("No se pudo refrescar el fondo responsive.");
+          }
         }
       },
       onClose: () => {

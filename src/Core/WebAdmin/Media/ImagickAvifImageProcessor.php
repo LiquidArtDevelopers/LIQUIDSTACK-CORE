@@ -11,12 +11,18 @@ use Throwable;
 final class ImagickAvifImageProcessor implements MediaImageProcessorInterface
 {
     public const QUALITY = 74;
-    public const MASTER_LIMIT = 2560;
+    public const MASTER_LIMIT = MediaVariantWidthPolicy::MASTER_LIMIT;
     private const MIME_FORMATS = [
         'image/jpeg' => 'JPEG',
         'image/png' => 'PNG',
         'image/webp' => 'WEBP',
+        'image/avif' => 'AVIF',
     ];
+
+    public function __construct(
+        private readonly bool $acceptAvifSource = true
+    ) {
+    }
 
     public function process(
         UploadedFile $upload,
@@ -38,6 +44,11 @@ final class ImagickAvifImageProcessor implements MediaImageProcessorInterface
             $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path);
             if (!is_string($mime) || !isset(self::MIME_FORMATS[$mime])) {
                 throw new MediaException('webadmin.media.source_type_rejected');
+            }
+            if ($mime === 'image/avif' && !$this->acceptAvifSource) {
+                throw new MediaException(
+                    'webadmin.media.avif_source_schema_pending'
+                );
             }
             $this->assertCanonicalContainer($path, $mime, $upload->size());
 
@@ -98,12 +109,8 @@ final class ImagickAvifImageProcessor implements MediaImageProcessorInterface
             $masterWidth = $image->getImageWidth();
             $masterHeight = $image->getImageHeight();
 
-            $widths = [];
-            foreach ([480, 900, 1800, $masterWidth] as $target) {
-                $widths[min($target, $masterWidth)] = true;
-            }
-            $widths = array_keys($widths);
-            sort($widths, SORT_NUMERIC);
+            $widths = (new MediaVariantWidthPolicy())
+                ->widthsForMaster($masterWidth);
             $variants = [];
             foreach ($widths as $targetWidth) {
                 $variant = clone $image;
@@ -313,6 +320,10 @@ final class ImagickAvifImageProcessor implements MediaImageProcessorInterface
                 $this->assertPngChunks($handle, $size);
                 return;
             }
+            if ($mime === 'image/avif') {
+                $this->assertAvifSourceBoxes($handle, $size);
+                return;
+            }
             if (
                 substr($head, 0, 4) !== 'RIFF'
                 || substr($head, 8, 4) !== 'WEBP'
@@ -405,6 +416,74 @@ final class ImagickAvifImageProcessor implements MediaImageProcessorInterface
             }
         }
         if (!$sawIend || $offset !== $size) {
+            throw new MediaException('webadmin.media.source_polyglot_rejected');
+        }
+    }
+
+    /** @param resource $handle */
+    private function assertAvifSourceBoxes($handle, int $size): void
+    {
+        fseek($handle, 0);
+        $offset = 0;
+        $boxes = 0;
+        $sawFileType = false;
+        while ($offset < $size) {
+            if (++$boxes > 4096 || $size - $offset < 8) {
+                throw new MediaException('webadmin.media.source_container_invalid');
+            }
+            $header = fread($handle, 8);
+            if (!is_string($header) || strlen($header) !== 8) {
+                throw new MediaException('webadmin.media.source_container_invalid');
+            }
+            $parts = unpack('Nsize/a4type', $header);
+            $boxSize = is_array($parts) ? ($parts['size'] ?? -1) : -1;
+            $type = is_array($parts) ? ($parts['type'] ?? '') : '';
+            $headerBytes = 8;
+            if ($boxSize === 1) {
+                $large = fread($handle, 8);
+                if (!is_string($large) || strlen($large) !== 8) {
+                    throw new MediaException('webadmin.media.source_container_invalid');
+                }
+                $words = unpack('Nhigh/Nlow', $large);
+                if (!is_array($words)) {
+                    throw new MediaException('webadmin.media.source_container_invalid');
+                }
+                $boxSize = ((int) $words['high'] * 4294967296)
+                    + (int) $words['low'];
+                $headerBytes = 16;
+            }
+            if (
+                !is_int($boxSize)
+                || $boxSize < $headerBytes
+                || $boxSize === 0
+                || $boxSize > $size - $offset
+            ) {
+                throw new MediaException('webadmin.media.source_container_invalid');
+            }
+            $payloadBytes = $boxSize - $headerBytes;
+            if ($offset === 0) {
+                if ($type !== 'ftyp' || $payloadBytes < 8
+                    || (($payloadBytes - 8) % 4) !== 0) {
+                    throw new MediaException('webadmin.media.source_signature_mismatch');
+                }
+                $payload = fread($handle, $payloadBytes);
+                if (!is_string($payload) || strlen($payload) !== $payloadBytes) {
+                    throw new MediaException('webadmin.media.source_container_invalid');
+                }
+                $brands = [substr($payload, 0, 4)];
+                for ($position = 8; $position < $payloadBytes; $position += 4) {
+                    $brands[] = substr($payload, $position, 4);
+                }
+                if (!array_intersect(['avif', 'avis'], $brands)) {
+                    throw new MediaException('webadmin.media.source_signature_mismatch');
+                }
+                $sawFileType = true;
+            } else {
+                fseek($handle, $payloadBytes, SEEK_CUR);
+            }
+            $offset += $boxSize;
+        }
+        if (!$sawFileType || $offset !== $size || ftell($handle) !== $size) {
             throw new MediaException('webadmin.media.source_polyglot_rejected');
         }
     }

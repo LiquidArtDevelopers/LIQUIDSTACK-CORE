@@ -1,0 +1,82 @@
+@use '../config' as c;
+
+.moduleBlogPagination01 {
+    position: static;
+    inset: auto;
+    z-index: auto;
+    width: min(calc(100% - (2 * c.$padMin)), c.$textMax);
+    height: auto;
+    margin-inline: auto;
+    padding-inline: 0;
+    padding-block: clamp(1.5rem, 4vw, 3rem);
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    overflow: visible;
+    background: transparent;
+    transition: none;
+    color: c.$color01;
+
+    > a,
+    .moduleBlogPagination01-pages a,
+    .moduleBlogPagination01-pages span {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        padding: 0.55rem 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid c.$color01bis4;
+        border-radius: 999px;
+        color: c.$color02;
+        background: c.$color00;
+        line-height: 1;
+        text-align: center;
+        text-decoration: none;
+    }
+
+    > a {
+        padding-inline: 1rem;
+    }
+
+    a {
+        &:hover {
+            border-color: c.$color02;
+            color: c.$color00;
+            background: c.$color02;
+        }
+
+        &:focus-visible {
+            outline: 0.18rem solid c.$color02;
+            outline-offset: 0.2rem;
+        }
+    }
+
+    > .moduleBlogPagination01-pages {
+        width: auto;
+        height: auto;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+        list-style: none;
+
+        span[aria-current='page'] {
+            border-color: c.$color02;
+            color: c.$color00;
+            background: c.$color02;
+            font-weight: 700;
+        }
+    }
+
+    @media (min-width: c.$tablet) {
+        width: min(calc(100% - (2 * c.$padMax)), c.$textMax);
+        padding-inline: 0;
+    }
+}

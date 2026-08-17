@@ -284,6 +284,129 @@ final class PrivateMediaStorage implements MediaStorageInterface
         $this->removeOwnedTree($path, false);
     }
 
+    public function quarantine(
+        MediaDeletionCandidate $candidate,
+        string $requestId
+    ): MediaQuarantineLease {
+        $this->assertInitialized();
+        $publicId = $candidate->publicId();
+        $this->assertUuid($publicId);
+        $this->assertUuid($requestId);
+
+        $lock = $this->acquireStorageLock();
+        try {
+            $this->assertInitialized();
+            $shard = substr($publicId, 0, 2);
+            $originalPrefix = $shard . '/' . $publicId;
+            $quarantinePrefix = '.quarantine/assets/' . $shard . '/'
+                . $publicId . '/' . $requestId;
+            $manifestKey = '.quarantine/manifests/' . $requestId . '.json';
+            $manifest = $candidate->manifest(
+                $requestId,
+                $originalPrefix,
+                $quarantinePrefix,
+                $manifestKey
+            );
+
+            $source = $this->root . DIRECTORY_SEPARATOR
+                . str_replace('/', DIRECTORY_SEPARATOR, $originalPrefix);
+            $target = $this->root . DIRECTORY_SEPARATOR
+                . str_replace('/', DIRECTORY_SEPARATOR, $quarantinePrefix);
+            $manifestPath = $this->root . DIRECTORY_SEPARATOR
+                . str_replace('/', DIRECTORY_SEPARATOR, $manifestKey);
+            $this->assertCanonicalAssetPath($source);
+            if (file_exists($target) || is_link($target)
+                || file_exists($manifestPath) || is_link($manifestPath)) {
+                throw new MediaException(
+                    'webadmin.media.quarantine_storage_conflict'
+                );
+            }
+
+            $this->ensureDirectory(dirname($target));
+            $this->ensureDirectory(dirname($manifestPath));
+            if (!@rename($source, $target)) {
+                throw new MediaException('webadmin.media.quarantine_move_failed');
+            }
+
+            try {
+                $this->assertCanonicalQuarantinePath(
+                    $target,
+                    $publicId,
+                    $requestId
+                );
+                $this->writeQuarantineManifest($manifestPath, $manifest);
+            } catch (Throwable $exception) {
+                if (!@rename($target, $source)) {
+                    throw new MediaException(
+                        'webadmin.media.rollback_cleanup_failed'
+                    );
+                }
+                @unlink($manifestPath);
+                if ($exception instanceof MediaException) {
+                    throw $exception;
+                }
+                throw new MediaException(
+                    'webadmin.media.quarantine_manifest_write_failed'
+                );
+            }
+
+            $restore = function () use (
+                $source,
+                $target,
+                $manifestPath,
+                $manifest,
+                $publicId,
+                $requestId
+            ): void {
+                $this->assertInitialized();
+                if (file_exists($source) || is_link($source)) {
+                    throw new MediaException(
+                        'webadmin.media.quarantine_restore_conflict'
+                    );
+                }
+                $this->assertCanonicalQuarantinePath(
+                    $target,
+                    $publicId,
+                    $requestId
+                );
+                $this->assertQuarantineManifest(
+                    $manifestPath,
+                    $manifest
+                );
+                $this->ensureDirectory(dirname($source));
+                if (!@rename($target, $source)) {
+                    throw new MediaException(
+                        'webadmin.media.quarantine_restore_failed'
+                    );
+                }
+                if (!@unlink($manifestPath)) {
+                    throw new MediaException(
+                        'webadmin.media.rollback_cleanup_failed'
+                    );
+                }
+                @rmdir(dirname($target));
+                @rmdir(dirname(dirname($target)));
+            };
+            $release = static function () use ($lock): void {
+                @flock($lock, LOCK_UN);
+                @fclose($lock);
+            };
+
+            return new MediaQuarantineLease(
+                $manifest,
+                $restore,
+                $release
+            );
+        } catch (Throwable $exception) {
+            @flock($lock, LOCK_UN);
+            @fclose($lock);
+            if ($exception instanceof MediaException) {
+                throw $exception;
+            }
+            throw new MediaException('webadmin.media.quarantine_failed');
+        }
+    }
+
     public function storageKey(string $publicId, int $width): string
     {
         $this->assertUuid($publicId);
@@ -708,6 +831,141 @@ final class PrivateMediaStorage implements MediaStorageInterface
         }
     }
 
+    /** @return resource */
+    private function acquireStorageLock()
+    {
+        $lockPath = $this->root . DIRECTORY_SEPARATOR
+            . self::INITIALIZATION_LOCK;
+        $this->assertNoLinks($lockPath);
+        $lock = @fopen($lockPath, 'c+b');
+        if ($lock === false || is_link($lockPath) || !is_file($lockPath)) {
+            if (is_resource($lock)) {
+                fclose($lock);
+            }
+            throw new MediaException('webadmin.media.storage_lock_failed');
+        }
+        if (!flock($lock, LOCK_EX)) {
+            fclose($lock);
+            throw new MediaException('webadmin.media.storage_lock_failed');
+        }
+
+        return $lock;
+    }
+
+    private function assertCanonicalAssetPath(string $path): void
+    {
+        $this->assertNoLinks($path);
+        $real = realpath($path);
+        $root = realpath($this->root);
+        if (
+            $real === false
+            || $root === false
+            || !is_dir($real)
+            || is_link($path)
+            || !$this->isCanonicalAssetDirectory($real, $root)
+        ) {
+            throw new MediaException(
+                'webadmin.media.quarantine_source_invalid'
+            );
+        }
+    }
+
+    private function assertCanonicalQuarantinePath(
+        string $path,
+        string $publicId,
+        string $requestId
+    ): void {
+        $this->assertNoLinks($path);
+        $real = realpath($path);
+        $expected = $this->root . DIRECTORY_SEPARATOR . '.quarantine'
+            . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR
+            . substr($publicId, 0, 2) . DIRECTORY_SEPARATOR . $publicId
+            . DIRECTORY_SEPARATOR . $requestId;
+        if (
+            $real === false
+            || !is_dir($real)
+            || is_link($path)
+            || $this->normalizedForComparison($real)
+                !== $this->normalizedForComparison($expected)
+        ) {
+            throw new MediaException(
+                'webadmin.media.quarantine_target_invalid'
+            );
+        }
+    }
+
+    private function writeQuarantineManifest(
+        string $path,
+        MediaQuarantineManifest $manifest
+    ): void {
+        $this->assertNoLinks($path);
+        $temporary = dirname($path) . DIRECTORY_SEPARATOR
+            . '.pending-' . bin2hex(random_bytes(16));
+        $handle = @fopen($temporary, 'x+b');
+        if ($handle === false) {
+            throw new MediaException(
+                'webadmin.media.quarantine_manifest_write_failed'
+            );
+        }
+        $complete = false;
+        try {
+            $remaining = $manifest->json();
+            while ($remaining !== '') {
+                $written = fwrite($handle, $remaining);
+                if (!is_int($written) || $written < 1) {
+                    throw new MediaException(
+                        'webadmin.media.quarantine_manifest_write_failed'
+                    );
+                }
+                $remaining = substr($remaining, $written);
+            }
+            if (!fflush($handle)) {
+                throw new MediaException(
+                    'webadmin.media.quarantine_manifest_write_failed'
+                );
+            }
+            fclose($handle);
+            $handle = null;
+            if (!@rename($temporary, $path)) {
+                throw new MediaException(
+                    'webadmin.media.quarantine_manifest_write_failed'
+                );
+            }
+            @chmod($path, 0600);
+            $this->assertQuarantineManifest($path, $manifest);
+            $complete = true;
+        } finally {
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+            if (!$complete && (file_exists($temporary) || is_link($temporary))) {
+                @unlink($temporary);
+            }
+        }
+    }
+
+    private function assertQuarantineManifest(
+        string $path,
+        MediaQuarantineManifest $manifest
+    ): void {
+        $this->assertNoLinks($path);
+        if (!is_file($path) || !is_readable($path)) {
+            throw new MediaException(
+                'webadmin.media.quarantine_manifest_invalid'
+            );
+        }
+        $contents = file_get_contents($path);
+        if (
+            !is_string($contents)
+            || !hash_equals($manifest->json(), $contents)
+            || !hash_equals($manifest->sha256(), hash('sha256', $contents))
+        ) {
+            throw new MediaException(
+                'webadmin.media.quarantine_manifest_invalid'
+            );
+        }
+    }
+
     private function assertValidInitializationMarker(string $marker): void
     {
         $this->assertNoLinks($marker);
@@ -855,8 +1113,14 @@ final class PrivateMediaStorage implements MediaStorageInterface
     private function ensureDirectory(string $path): void
     {
         $this->assertNoLinks(dirname($path));
-        if (!is_dir($path) && !@mkdir($path, 0700, true)) {
-            throw new MediaException('webadmin.media.storage_create_failed');
+        if (!is_dir($path)) {
+            @mkdir($path, 0700, true);
+            clearstatcache(true, $path);
+            if (!is_dir($path)) {
+                throw new MediaException(
+                    'webadmin.media.storage_create_failed'
+                );
+            }
         }
         if (!is_dir($path) || is_link($path) || !is_writable($path)) {
             throw new MediaException('webadmin.media.storage_not_writable');

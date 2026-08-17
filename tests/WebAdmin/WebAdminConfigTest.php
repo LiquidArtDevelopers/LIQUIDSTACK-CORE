@@ -49,8 +49,8 @@ final class WebAdminConfigTest extends TestCase
         );
         self::assertSame('LS_WEBADMIN_ACTION', $config->actionCookieName());
         self::assertSame('/admin', $config->cookiePath());
-        self::assertSame(1800, $config->idleTtlSeconds());
-        self::assertSame(28800, $config->absoluteTtlSeconds());
+        self::assertSame(2_592_000, $config->idleTtlSeconds());
+        self::assertSame(2_592_000, $config->absoluteTtlSeconds());
 
         $safe = $config->toSafeArray();
         self::assertTrue($safe['session']['secure']);
@@ -89,8 +89,8 @@ final class WebAdminConfigTest extends TestCase
         self::assertSame('/admin', $config->basePath());
         self::assertSame('ls_webadmin_', $config->tablePrefix());
         self::assertSame('LS_WEBADMIN_SID', $config->cookieName());
-        self::assertSame(1800, $config->idleTtlSeconds());
-        self::assertSame(28800, $config->absoluteTtlSeconds());
+        self::assertSame(2_592_000, $config->idleTtlSeconds());
+        self::assertSame(2_592_000, $config->absoluteTtlSeconds());
     }
 
     public function testProjectCanOverrideOnlyNonSecretSettings(): void
@@ -307,6 +307,22 @@ PHP);
             ['session' => [
                 'idle_ttl_seconds' => 1800,
                 'absolute_ttl_seconds' => 900,
+            ]],
+            'config.invalid_ttl',
+            'session.absolute_ttl_seconds',
+        ];
+        yield 'idle lifetime above thirty days' => [
+            ['session' => [
+                'idle_ttl_seconds' => 2_592_001,
+                'absolute_ttl_seconds' => 2_592_001,
+            ]],
+            'config.invalid_ttl',
+            'session.idle_ttl_seconds',
+        ];
+        yield 'absolute lifetime above thirty days' => [
+            ['session' => [
+                'idle_ttl_seconds' => 2_592_000,
+                'absolute_ttl_seconds' => 2_592_001,
             ]],
             'config.invalid_ttl',
             'session.absolute_ttl_seconds',

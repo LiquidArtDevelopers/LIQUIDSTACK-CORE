@@ -9,8 +9,16 @@ use App\Core\Modules\Blog\BlogAnalyticsCapabilitySeedPostcondition;
 use App\Core\Modules\Blog\BlogAnalyticsMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogArticleDeleteCapabilitySeedPostcondition;
 use App\Core\Modules\Blog\BlogInitialNamespacePrecondition;
+use App\Core\Modules\Blog\BlogLayoutEditorMigrationPostconditionVerifier;
+use App\Core\Modules\Blog\BlogEditorPreferencesMigrationPostconditionVerifier;
+use App\Core\Modules\Blog\BlogDummyCategoryNormalizationPostcondition;
+use App\Core\Modules\Blog\BlogCopyOperationMigrationPostconditionVerifier;
+use App\Core\Modules\Blog\BlogSettingsCapabilitySeedPostcondition;
 use App\Core\Modules\Blog\BlogMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogMigrationProvider;
+use App\Core\Modules\Blog\BlogPrivateDraftPublicationMigrationPostconditionVerifier;
+use App\Core\Modules\Blog\BlogRobotsPreferencesMigrationPostconditionVerifier;
+use App\Core\Modules\Blog\BlogUrlHistoryMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogStructuredContentMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogSitemapStateMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogPostTombstoneMigrationPostconditionVerifier;
@@ -30,7 +38,7 @@ final class BlogMigrationProviderTest extends TestCase
         self::assertSame('blog', BlogMigrationProvider::moduleId());
         $migrations = $this->migrations();
 
-        self::assertCount(10, $migrations);
+        self::assertCount(19, $migrations);
         self::assertSame(
             [
                 '0001_blog_posts',
@@ -43,6 +51,15 @@ final class BlogMigrationProviderTest extends TestCase
                 '0008_blog_article_delete_capability',
                 '0009_blog_analytics',
                 '0010_blog_analytics_view_capability',
+                '0011_blog_layout_editor_v2',
+                '0012_blog_editor_preferences',
+                '0013_blog_settings_manage_capability',
+                '0014_blog_private_draft_publication',
+                '0015_blog_robots_preferences',
+                '0016_blog_url_history',
+                '0017_blog_dummy_category',
+                '0018_blog_dummy_category_normalization',
+                '0019_blog_copy_operation_idempotency',
             ],
             array_map(
                 static fn (MigrationDefinition $migration): string =>
@@ -76,6 +93,15 @@ final class BlogMigrationProviderTest extends TestCase
         self::assertSame('webadmin', $migrations[7]->targetScopeModuleId());
         self::assertNull($migrations[8]->targetScopeModuleId());
         self::assertSame('webadmin', $migrations[9]->targetScopeModuleId());
+        self::assertNull($migrations[10]->targetScopeModuleId());
+        self::assertNull($migrations[11]->targetScopeModuleId());
+        self::assertSame('webadmin', $migrations[12]->targetScopeModuleId());
+        self::assertNull($migrations[13]->targetScopeModuleId());
+        self::assertNull($migrations[14]->targetScopeModuleId());
+        self::assertNull($migrations[15]->targetScopeModuleId());
+        self::assertNull($migrations[16]->targetScopeModuleId());
+        self::assertNull($migrations[17]->targetScopeModuleId());
+        self::assertNull($migrations[18]->targetScopeModuleId());
         $scopes = MigrationScopeCollection::fromTablePrefixes([
             'blog' => 'ls_blog_',
             'webadmin' => 'ls_webadmin_',
@@ -137,6 +163,60 @@ final class BlogMigrationProviderTest extends TestCase
             BlogAnalyticsCapabilitySeedPostcondition::class,
             $migrations[9]->postconditionVerifier()
         );
+        self::assertInstanceOf(
+            BlogLayoutEditorMigrationPostconditionVerifier::class,
+            $migrations[10]->postconditionVerifier()
+        );
+        self::assertInstanceOf(
+            BlogEditorPreferencesMigrationPostconditionVerifier::class,
+            $migrations[11]->postconditionVerifier()
+        );
+        self::assertInstanceOf(
+            BlogSettingsCapabilitySeedPostcondition::class,
+            $migrations[12]->postconditionVerifier()
+        );
+        self::assertInstanceOf(
+            BlogPrivateDraftPublicationMigrationPostconditionVerifier::class,
+            $migrations[13]->postconditionVerifier()
+        );
+        self::assertInstanceOf(
+            BlogRobotsPreferencesMigrationPostconditionVerifier::class,
+            $migrations[14]->postconditionVerifier()
+        );
+        self::assertInstanceOf(
+            BlogUrlHistoryMigrationPostconditionVerifier::class,
+            $migrations[15]->postconditionVerifier()
+        );
+        self::assertInstanceOf(
+            BlogDummyCategoryNormalizationPostcondition::class,
+            $migrations[17]->postconditionVerifier()
+        );
+        self::assertSame(
+            ['0016_blog_url_history', '0017_blog_dummy_category'],
+            $migrations[17]->supersededPostconditionIds()
+        );
+        self::assertInstanceOf(
+            BlogCopyOperationMigrationPostconditionVerifier::class,
+            $migrations[18]->postconditionVerifier()
+        );
+        self::assertSame(
+            [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+                '0009_blog_analytics',
+                '0011_blog_layout_editor_v2',
+                '0012_blog_editor_preferences',
+                '0014_blog_private_draft_publication',
+                '0015_blog_robots_preferences',
+                '0016_blog_url_history',
+                '0017_blog_dummy_category',
+                '0018_blog_dummy_category_normalization',
+            ],
+            $migrations[18]->supersededPostconditionIds()
+        );
         self::assertSame(
             [
                 '0001_blog_posts',
@@ -154,6 +234,38 @@ final class BlogMigrationProviderTest extends TestCase
                 '0008_blog_article_delete_capability',
             ],
             $migrations[9]->supersededPostconditionIds()
+        );
+        self::assertSame(
+            [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+                '0009_blog_analytics',
+            ],
+            $migrations[10]->supersededPostconditionIds()
+        );
+        self::assertSame(
+            [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+                '0009_blog_analytics',
+                '0011_blog_layout_editor_v2',
+            ],
+            $migrations[11]->supersededPostconditionIds()
+        );
+        self::assertSame(
+            [
+                '0002_blog_capabilities',
+                '0004_blog_category_capabilities',
+                '0008_blog_article_delete_capability',
+                '0010_blog_analytics_view_capability',
+            ],
+            $migrations[12]->supersededPostconditionIds()
         );
     }
 

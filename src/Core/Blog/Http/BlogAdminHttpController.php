@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core\Blog\Http;
 
+use App\Core\Blog\Admin\BlogAdminCatalogQuery;
 use App\Core\Blog\Analytics\BlogAnalyticsCapabilities;
 use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogException;
@@ -11,6 +12,7 @@ use App\Core\Blog\BlogPostSummary;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Routing\BlogPublicationRouteGuard;
+use App\Core\Blog\Seo\BlogUrlResolution;
 use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
@@ -83,21 +85,84 @@ final class BlogAdminHttpController
             return $context;
         }
 
-        $offset = $request->query('offset');
-        $offset = is_string($offset) ? (int) $offset : 0;
-        $summaries = $this->runtime->service()->listPosts(
-            BlogService::DEFAULT_LIST_LIMIT + 1,
-            $offset
-        );
-        $hasNext = count($summaries) > BlogService::DEFAULT_LIST_LIMIT
+        $publicPaths = $this->activeLocalePublicPaths();
+        try {
+            $offsetValue = $request->query('offset');
+            $searchValue = $request->query('q');
+            $statusValue = $request->query('status');
+            $localeValue = $request->query('locale');
+            $pageSizeValue = $request->query('per_page');
+            $sortValue = $request->query('sort');
+            $directionValue = $request->query('dir');
+            $catalogQuery = new BlogAdminCatalogQuery(
+                search: is_string($searchValue) ? $searchValue : null,
+                status: is_string($statusValue) ? $statusValue : null,
+                locale: is_string($localeValue) ? $localeValue : null,
+                offset: is_string($offsetValue) ? (int) $offsetValue : 0,
+                pageSize: is_string($pageSizeValue)
+                    ? (int) $pageSizeValue
+                    : BlogAdminCatalogQuery::DEFAULT_PAGE_SIZE,
+                sort: is_string($sortValue)
+                    ? $sortValue
+                    : BlogAdminCatalogQuery::DEFAULT_SORT,
+                direction: is_string($directionValue)
+                    ? $directionValue
+                    : BlogAdminCatalogQuery::DEFAULT_DIRECTION
+            );
+            if (
+                $catalogQuery->locale() !== null
+                && !array_key_exists($catalogQuery->locale(), $publicPaths)
+            ) {
+                return $this->plain(400, 'Bad request');
+            }
+        } catch (BlogException) {
+            return $this->plain(400, 'Bad request');
+        }
+
+        try {
+            $summaries = $this->runtime->service()->searchPosts($catalogQuery);
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+        $offset = $catalogQuery->offset();
+        $pageSize = $catalogQuery->pageSize();
+        $hasNext = count($summaries) > $pageSize
             && $offset <= BlogService::MAX_LIST_OFFSET
-                - BlogService::DEFAULT_LIST_LIMIT;
+                - $pageSize;
         $visibleSummaries = array_slice(
             $summaries,
             0,
-            BlogService::DEFAULT_LIST_LIMIT
+            $pageSize
         );
         $authorization = $this->runtime->authorization();
+        $canEdit = $authorization->hasCapability(
+            $context['session'],
+            self::EDIT_CAPABILITY
+        );
+        $canViewMedia = $authorization->hasCapability(
+            $context['session'],
+            MediaService::VIEW_CAPABILITY
+        );
+        $canAddLocalization = $canEdit && $canViewMedia;
+        $canDuplicate = $canAddLocalization
+            && $authorization->hasCapability(
+                $context['session'],
+                BlogCategoryAdminHttpController::EDIT_CAPABILITY
+            );
+        $localesByPost = [];
+        if ($canAddLocalization) {
+            try {
+                $postPublicIds = [];
+                foreach ($visibleSummaries as $summary) {
+                    $postPublicIds[$summary->postPublicId()] = true;
+                }
+                $localesByPost = $this->runtime->service()->localesForPosts(
+                    array_keys($postPublicIds)
+                );
+            } catch (BlogException $exception) {
+                return $this->domainFailure($exception);
+            }
+        }
         $periodValue = $request->query('period');
         $analyticsPeriodDays = is_string($periodValue)
             ? (int) $periodValue
@@ -136,34 +201,29 @@ final class BlogAdminHttpController
         return $this->htmlForRequest($request, 200, $this->renderer->index(
             basePath: $this->basePath(),
             summaries: $visibleSummaries,
-            canEdit: $authorization->hasCapability(
-                $context['session'],
-                self::EDIT_CAPABILITY
-            ),
+            canEdit: $canEdit,
             offset: $offset,
             hasNext: $hasNext,
             canPublish: $authorization->hasCapability(
                 $context['session'],
                 self::PUBLISH_CAPABILITY
             ),
-            canViewMedia: $authorization->hasCapability(
-                $context['session'],
-                MediaService::VIEW_CAPABILITY
-            ),
+            canViewMedia: $canViewMedia,
             shell: $this->shellContext($context, '/blog'),
-            publicPaths: $this->activeLocalePublicPaths(),
+            publicPaths: $publicPaths,
             csrf: $context['csrf'],
             canDelete: $authorization->hasCapability(
                 $context['session'],
                 self::DELETE_CAPABILITY
             ) && $this->runtime->service()->trashAvailable(),
-            canDuplicate: $authorization->hasCapability(
-                $context['session'],
-                BlogCategoryAdminHttpController::EDIT_CAPABILITY
-            ),
+            canDuplicate: $canDuplicate,
             analyticsByLocalization: $analyticsByLocalization,
             showAnalytics: $showAnalytics,
-            analyticsPeriodDays: $analyticsPeriodDays
+            analyticsPeriodDays: $analyticsPeriodDays,
+            catalogQuery: $catalogQuery,
+            localesByPost: $localesByPost,
+            canAddLocalization: $canAddLocalization,
+            viewerProfile: $this->viewerProfile($context['session'])
         ));
     }
 
@@ -204,7 +264,8 @@ final class BlogAdminHttpController
                     offset: $offset,
                     hasNext: $hasNext,
                     csrf: $context['csrf'],
-                    shell: $this->shellContext($context, '/blog/trash')
+                    shell: $this->shellContext($context, '/blog/trash'),
+                    viewerProfile: $this->viewerProfile($context['session'])
                 )
             );
         } catch (BlogException $exception) {
@@ -350,8 +411,60 @@ final class BlogAdminHttpController
                     self::PUBLISH_CAPABILITY
                 ),
                 canAddLocalization: $canAddLocalization,
-                shell: $this->shellContext($context, '/blog/posts/edit')
+                shell: $this->shellContext($context, '/blog/posts/edit'),
+                privateDraftPublicationReady:
+                    $this->privateDraftPublicationReady()
             ));
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+    }
+
+    public function urlManager(Request $request): Response
+    {
+        if (!$this->accepts($request, 'url_manager')) {
+            return $this->plain(400, 'Bad request');
+        }
+        $context = $this->authorizedContext(
+            $request,
+            self::PUBLISH_CAPABILITY
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+
+        try {
+            $variant = $this->runtime->service()->loadPost(
+                (string) $request->query('post'),
+                (string) $request->query('locale')
+            );
+            $slug = $variant->draft()->slug();
+            $resolution = $slug === null
+                ? null
+                : $this->runtime->service()->urlResolution(
+                    $variant->locale(),
+                    $slug
+                );
+            $replacements = $this->runtime->service()->searchPosts(
+                new BlogAdminCatalogQuery(
+                    status: BlogPostVariant::PUBLISHED,
+                    locale: $variant->locale(),
+                    pageSize: 50
+                )
+            );
+
+            return $this->htmlForRequest(
+                $request,
+                200,
+                $this->renderer->urlManager(
+                    $this->basePath(),
+                    $context['csrf'],
+                    $variant,
+                    $resolution,
+                    $replacements,
+                    $this->shellContext($context, '/blog/posts/url')
+                )
+            );
         } catch (BlogException $exception) {
             return $this->domainFailure($exception);
         }
@@ -376,19 +489,12 @@ final class BlogAdminHttpController
                 (string) $request->query('locale')
             );
             $authorization = $this->runtime->authorization();
-            $canPublish = $authorization->hasCapability(
-                $context['session'],
-                self::PUBLISH_CAPABILITY
-            );
             $canOpenEditor = $authorization->hasCapability(
                 $context['session'],
                 self::EDIT_CAPABILITY
             ) && $authorization->hasCapability(
                 $context['session'],
                 MediaService::VIEW_CAPABILITY
-            ) && (
-                $variant->status() === BlogPostVariant::DRAFT
-                || $canPublish
             );
 
             return $this->htmlForRequest($request, 200, $this->renderer->preview(
@@ -440,21 +546,51 @@ final class BlogAdminHttpController
         if (!$this->accepts($request, 'duplicate')) {
             return $this->plain(400, 'Bad request');
         }
-        $context = $this->authorizedDuplicateContext($request);
+        $sourceLocale = (string) $request->form('locale');
+        $destinationLocale = (string) $request->form(
+            'destination_locale'
+        );
+        if (!$this->isActiveLocale($destinationLocale)) {
+            return $this->plain(422, 'Unprocessable content');
+        }
+        $independentPost = hash_equals(
+            $sourceLocale,
+            $destinationLocale
+        );
+        $context = $this->authorizedDuplicateContext(
+            $request,
+            $independentPost
+        );
         if ($context instanceof Response) {
             return $context;
         }
 
         try {
-            $created = $this->runtime->service()->duplicatePost(
-                $this->duplicateMutationGate(
+            $gate = $independentPost
+                ? $this->duplicateMutationGate(
                     $context['session'],
                     (string) $request->form('csrf')
-                ),
-                (string) $request->form('post'),
-                (string) $request->form('locale'),
-                (int) $request->form('lock_version')
-            );
+                )
+                : $this->editorCreationMutationGate(
+                    $context['session'],
+                    (string) $request->form('csrf')
+                );
+            $created = $independentPost
+                ? $this->runtime->service()->duplicatePost(
+                    $gate,
+                    (string) $request->form('post'),
+                    $sourceLocale,
+                    (int) $request->form('lock_version'),
+                    (string) $request->form('operation_id')
+                )
+                : $this->runtime->service()->addLocalizationCopy(
+                    $gate,
+                    (string) $request->form('post'),
+                    $sourceLocale,
+                    $destinationLocale,
+                    (int) $request->form('lock_version'),
+                    (string) $request->form('operation_id')
+                );
 
             return $this->redirect(
                 $this->basePath() . '/editor?'
@@ -464,7 +600,29 @@ final class BlogAdminHttpController
                     ], '', '&', PHP_QUERY_RFC3986)
             );
         } catch (BlogException $exception) {
-            return $this->domainFailure($exception);
+            $status = match ($exception->issueCode()) {
+                BlogException::ACTOR_GATE_FAILED => 403,
+                BlogException::LOCALE_CONFLICT,
+                BlogException::LOCK_CONFLICT,
+                BlogException::INVALID_STATE,
+                BlogException::IDEMPOTENCY_CONFLICT,
+                BlogException::COPY_RESULT_TRASHED => 409,
+                BlogException::POST_NOT_FOUND,
+                BlogException::VARIANT_NOT_FOUND => 404,
+                BlogException::INVALID_INPUT => 422,
+                default => 503,
+            };
+
+            return $this->html(
+                $status,
+                $this->renderer->copyOperationFailed(
+                    $this->basePath(),
+                    (string) $request->form('post'),
+                    $sourceLocale,
+                    $exception->issueCode(),
+                    $this->shellContext($context, '/blog')
+                )
+            );
         }
     }
 
@@ -550,6 +708,15 @@ final class BlogAdminHttpController
 
         try {
             $post = (string) $request->form('post');
+            if ($this->privateDraftPublicationReady()) {
+                return $this->redirect(
+                    $this->basePath() . '/editor?'
+                        . http_build_query([
+                            'post' => $post,
+                            'locale' => $locale,
+                        ], '', '&', PHP_QUERY_RFC3986)
+                );
+            }
             $variant = $this->runtime->service()->loadPost($post, $locale);
             $slug = $variant->draft()->slug();
             if ($slug === null) {
@@ -578,6 +745,12 @@ final class BlogAdminHttpController
         }
     }
 
+    private function privateDraftPublicationReady(): bool
+    {
+        return method_exists($this->runtime, 'privateDraftPublicationReady')
+            && $this->runtime->privateDraftPublicationReady() === true;
+    }
+
     public function unpublish(Request $request): Response
     {
         if (!$this->accepts($request, 'transition')) {
@@ -593,7 +766,7 @@ final class BlogAdminHttpController
         }
 
         try {
-            $this->runtime->service()->unpublish(
+            $variant = $this->runtime->service()->unpublish(
                 $this->runtime->mutationGate(
                     $context['session'],
                     (string) $request->form('csrf'),
@@ -604,7 +777,48 @@ final class BlogAdminHttpController
                 (int) $request->form('lock_version')
             );
 
-            return $this->updatedRedirect();
+            return $this->redirectToUrlManager($variant);
+        } catch (BlogException $exception) {
+            return $this->domainFailure($exception);
+        }
+    }
+
+    public function finalizeUrl(Request $request): Response
+    {
+        if (!$this->requestPolicy->acceptsUrlResolution($request)) {
+            return $this->plain(400, 'Bad request');
+        }
+        $context = $this->authorizedContext(
+            $request,
+            self::PUBLISH_CAPABILITY,
+            true
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+        $locale = (string) $request->form('locale');
+        if (!$this->isActiveLocale($locale)) {
+            return $this->plain(422, 'Unprocessable content');
+        }
+        try {
+            $resolution = (string) $request->form('resolution');
+            $replacement = (string) $request->form('replacement_post');
+            $variant = $this->runtime->service()->finalizeRetiredUrl(
+                $this->runtime->mutationGate(
+                    $context['session'],
+                    (string) $request->form('csrf'),
+                    self::PUBLISH_CAPABILITY
+                ),
+                (string) $request->form('post'),
+                $locale,
+                (int) $request->form('lock_version'),
+                (string) $request->form('historical_slug'),
+                $resolution === BlogUrlResolution::REDIRECT
+                    ? BlogUrlResolution::REDIRECT : BlogUrlResolution::GONE,
+                $replacement === '' ? null : $replacement
+            );
+
+            return $this->redirectToUrlManager($variant);
         } catch (BlogException $exception) {
             return $this->domainFailure($exception);
         }
@@ -670,6 +884,22 @@ final class BlogAdminHttpController
                 self::VIEW_CAPABILITY
             ),
         ]);
+    }
+
+    private function viewerProfile(
+        #[\SensitiveParameter] string $sessionToken
+    ): ?\App\Core\WebAdmin\Profile\WebAdminPublicProfile {
+        if (!$this->runtime instanceof BlogAdminProfileHttpRuntimeInterface) {
+            return null;
+        }
+
+        try {
+            return $this->runtime->profileForSession($sessionToken);
+        } catch (Throwable) {
+            // Profile preferences are additive. Their temporary absence must
+            // not make the Blog administration unavailable.
+            return null;
+        }
     }
 
     /**
@@ -758,13 +988,15 @@ final class BlogAdminHttpController
      *
      * @return array{session: string, csrf: string}|Response
      */
-    private function authorizedDuplicateContext(Request $request): array|Response
-    {
+    private function authorizedDuplicateContext(
+        Request $request,
+        bool $requiresCategoryEdit
+    ): array|Response {
         $context = $this->authorizedEditorCreationContext($request, true);
         if ($context instanceof Response) {
             return $context;
         }
-        if (!$this->runtime->authorization()->hasCapability(
+        if ($requiresCategoryEdit && !$this->runtime->authorization()->hasCapability(
             $context['session'],
             BlogCategoryAdminHttpController::EDIT_CAPABILITY
         )) {
@@ -930,6 +1162,8 @@ final class BlogAdminHttpController
             'new' => $this->requestPolicy->acceptsNew($request),
             'create' => $this->requestPolicy->acceptsCreate($request),
             'edit' => $this->requestPolicy->acceptsEdit($request),
+            'url_manager' =>
+                $this->requestPolicy->acceptsUrlManager($request),
             'preview' => $this->requestPolicy->acceptsPreview($request),
             'save' => $this->requestPolicy->acceptsSave($request),
             'transition' => $this->requestPolicy->acceptsTransition($request),
@@ -952,6 +1186,7 @@ final class BlogAdminHttpController
             BlogException::LOCALE_CONFLICT,
             BlogException::SLUG_CONFLICT,
             BlogException::LOCK_CONFLICT,
+            BlogException::IDEMPOTENCY_CONFLICT,
             BlogException::INVALID_STATE =>
                 $this->plain(409, 'Conflict'),
             BlogException::POST_NOT_FOUND,
@@ -974,6 +1209,17 @@ final class BlogAdminHttpController
     private function updatedRedirect(): Response
     {
         return $this->redirect($this->basePath() . '/posts/updated');
+    }
+
+    private function redirectToUrlManager(BlogPostVariant $variant): Response
+    {
+        return $this->redirect(
+            $this->basePath() . '/posts/url?'
+                . http_build_query([
+                    'post' => $variant->postPublicId(),
+                    'locale' => $variant->locale(),
+                ], '', '&', PHP_QUERY_RFC3986)
+        );
     }
 
     private function redirectToLogin(): Response
@@ -1003,7 +1249,7 @@ final class BlogAdminHttpController
     ): Response {
         return new Response($status, $body, $headers + $this->headers(
             "default-src 'none'; style-src 'self'; script-src 'self'; "
-            . "img-src 'self'; "
+            . "img-src 'self'; frame-src 'self'; connect-src 'self'; "
             . "form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
         ) + [
             'Content-Type' => 'text/html; charset=utf-8',

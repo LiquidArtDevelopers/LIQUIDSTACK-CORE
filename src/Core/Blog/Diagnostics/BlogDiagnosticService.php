@@ -21,6 +21,7 @@ use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
 use App\Core\WebAdmin\Security\InvalidSecurityKey;
 use App\Core\WebAdmin\Security\SecurityKey;
+use DOMDocument;
 use PDO;
 use Throwable;
 
@@ -34,7 +35,8 @@ final class BlogDiagnosticService
         private readonly WebAdminConfigLoader $webAdminConfigLoader =
             new WebAdminConfigLoader(),
         private readonly ProjectAssetInspector $assetInspector =
-            new ProjectAssetInspector()
+            new ProjectAssetInspector(),
+        private readonly ?bool $domExtensionAvailable = null
     ) {
     }
 
@@ -174,6 +176,11 @@ final class BlogDiagnosticService
             $projectRoot,
             $requiredAssets
         );
+        $domExtensionReady = $this->domExtensionAvailable
+            ?? (
+                extension_loaded('dom')
+                && class_exists(DOMDocument::class, false)
+            );
         $blockers = [];
         if (!$configurationReady) {
             $blockers[] = 'configuration.invalid';
@@ -212,6 +219,9 @@ final class BlogDiagnosticService
         if (!$assets['ready']) {
             $blockers[] = 'assets.missing_or_invalid';
         }
+        if (!$domExtensionReady) {
+            $blockers[] = 'runtime.dom_extension_missing';
+        }
 
         return new BlogDiagnosticReport([
             'configuration' => [
@@ -232,6 +242,13 @@ final class BlogDiagnosticService
             ],
             'routing' => $routing,
             'assets' => $assets,
+            'runtime' => [
+                'dom_extension' => [
+                    'extension' => 'dom',
+                    'ready' => $domExtensionReady,
+                    'status' => $domExtensionReady ? 'ready' : 'missing',
+                ],
+            ],
             'dependency' => [
                 'webadmin_runtime_ready' =>
                     $webAdminRuntimeReady === true,

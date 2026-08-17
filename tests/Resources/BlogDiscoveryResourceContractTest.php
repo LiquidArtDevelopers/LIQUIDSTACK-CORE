@@ -65,7 +65,93 @@ final class BlogDiscoveryResourceContractTest extends TestCase
         ]));
     }
 
-    public function testArchiveIsAnAccessiblePresentationOnlyNavigation(): void
+    public function testRelatedMediaContainsZeroOneAndSeveralIntrinsicRatios(
+    ): void {
+        self::assertSame('', controller('sectionBlogRelated01', 0, [
+            'items_data' => [],
+        ]));
+
+        $single = $this->createXpath(controller('sectionBlogRelated01', 1, [
+            'items_data' => [
+                $this->cardWithMedia(
+                    '/es/noticias/vertical',
+                    'Vertical',
+                    '/media/vertical.avif',
+                    320,
+                    960
+                ),
+            ],
+        ]));
+        self::assertCount(1, $single->query('//article'));
+        self::assertCount(1, $single->query('//figure'));
+        self::assertSame('320', $single->evaluate('string(//img/@width)'));
+        self::assertSame('960', $single->evaluate('string(//img/@height)'));
+
+        $several = $this->createXpath(controller('sectionBlogRelated01', 2, [
+            'items_data' => [
+                $this->cardWithMedia(
+                    '/es/noticias/vertical',
+                    'Vertical',
+                    '/media/vertical.avif',
+                    320,
+                    960
+                ),
+                $this->cardWithMedia(
+                    '/es/noticias/panoramica',
+                    'Panoramica',
+                    '/media/panoramica.avif',
+                    2400,
+                    400
+                ),
+                $this->cardWithMedia(
+                    '/es/noticias/cuadrada',
+                    'Cuadrada',
+                    '/media/cuadrada.avif',
+                    640,
+                    640
+                ),
+            ],
+        ]));
+        self::assertCount(3, $several->query('//article'));
+        self::assertCount(3, $several->query('//figure'));
+        self::assertSame(
+            ['320x960', '2400x400', '640x640'],
+            array_map(
+                static fn (DOMElement $image): string =>
+                    $image->getAttribute('width')
+                        . 'x' . $image->getAttribute('height'),
+                iterator_to_array($several->query('//img'))
+            )
+        );
+
+        $scss = (string) file_get_contents(
+            self::moduleProjectRoot()
+                . '/src/scss/resources/_sectionBlogRelated01.scss'
+        );
+        self::assertMatchesRegularExpression(
+            '/\.sectionBlogRelated01-media\s*\{'
+                . '(?=[^}]*\bposition:\s*relative;)'
+                . '(?=[^}]*\bwidth:\s*100%;)'
+                . '(?=[^}]*\bmin-width:\s*0;)'
+                . '(?=[^}]*\baspect-ratio:\s*16\s*\/\s*9;)'
+                . '(?=[^}]*\bmargin:\s*0;)'
+                . '(?=[^}]*\boverflow:\s*hidden;)/s',
+            $scss
+        );
+        self::assertMatchesRegularExpression(
+            '/\.sectionBlogRelated01-media\s*\{.*?\bimg\s*\{'
+                . '(?=[^}]*\bposition:\s*absolute;)'
+                . '(?=[^}]*\binset:\s*0;)'
+                . '(?=[^}]*\bwidth:\s*100%;)'
+                . '(?=[^}]*\bmax-width:\s*100%;)'
+                . '(?=[^}]*\bheight:\s*100%;)'
+                . '(?=[^}]*\bdisplay:\s*block;)'
+                . '(?=[^}]*\bobject-fit:\s*cover;)/s',
+            $scss
+        );
+    }
+
+    public function testArchiveIsAnAccessiblePresentationOnlyModule(): void
     {
         $html = controller('moduleBlogArchive01', 1, [
             'header_level' => 3,
@@ -89,13 +175,14 @@ final class BlogDiscoveryResourceContractTest extends TestCase
         ]);
         $xpath = $this->createXpath($html);
 
-        self::assertCount(1, $xpath->query('/html/body/nav'));
-        self::assertCount(1, $xpath->query('//nav/h3'));
-        self::assertCount(1, $xpath->query('//nav/ol'));
-        self::assertCount(2, $xpath->query('//nav/ol/li/a'));
+        self::assertCount(1, $xpath->query('/html/body/div'));
+        self::assertCount(0, $xpath->query('//nav'));
+        self::assertCount(1, $xpath->query('//div/h3'));
+        self::assertCount(1, $xpath->query('//div/ol'));
+        self::assertCount(2, $xpath->query('//div/ol/li/a'));
         self::assertSame(
-            'moduleBlogArchive01-01-heading',
-            $xpath->evaluate('string(/html/body/nav/@aria-labelledby)')
+            '',
+            $xpath->evaluate('string(/html/body/div/@aria-labelledby)')
         );
         self::assertStringContainsString('aria-label="2 entradas"', $html);
         self::assertStringContainsString('aria-label="1 entrada"', $html);
@@ -169,9 +256,22 @@ final class BlogDiscoveryResourceContractTest extends TestCase
                 self::assertStringContainsString('position: static;', $scss);
                 self::assertStringContainsString('height: auto;', $scss);
                 self::assertStringContainsString('z-index: auto;', $scss);
+                self::assertMatchesRegularExpression(
+                    '/> h1,.*?> h6\s*\{[^}]*color:\s*c\.\$color02;/s',
+                    $scss
+                );
+                self::assertMatchesRegularExpression(
+                    '/> span:not\(\.moduleBlogArchive01-count\)\s*\{'
+                        . '[^}]*color:\s*inherit;/s',
+                    $scss
+                );
             } else {
                 self::assertStringContainsString(
                     'justify-content: center;',
+                    $scss
+                );
+                self::assertMatchesRegularExpression(
+                    '/\.sectionBlogRelated01\s*\{[^}]*box-sizing:\s*border-box;[^}]*min-width:\s*0;/s',
                     $scss
                 );
             }
@@ -195,6 +295,24 @@ final class BlogDiscoveryResourceContractTest extends TestCase
             'h1' => $title,
             'excerpt' => 'Una entrada relacionada de prueba Matrix.',
             'published_at' => '2026-08-03T09:00:00+00:00',
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function cardWithMedia(
+        string $url,
+        string $title,
+        string $src,
+        int $width,
+        int $height
+    ): array {
+        return $this->card($url, $title) + [
+            'thumbnail' => [
+                'src' => $src,
+                'alt' => $title,
+                'width' => $width,
+                'height' => $height,
+            ],
         ];
     }
 

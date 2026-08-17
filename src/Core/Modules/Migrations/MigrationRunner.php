@@ -27,6 +27,9 @@ final class MigrationRunner
         $options ??= new MigrationApplyOptions();
         $preflight = $this->planner->plan($pdo, $catalog, $scopes);
         $this->assertApplicable($preflight, $options);
+        $preflightSelection = $preflight->pendingSelection(
+            !$options->deferDestructive()
+        );
 
         if (
             $options->expectedPlanHash() !== null
@@ -34,8 +37,15 @@ final class MigrationRunner
         ) {
             throw new MigrationException('migrations.plan_changed');
         }
-        if ($preflight->pendingEntries() === []) {
-            return new MigrationRunResult($preflight->hash(), null, []);
+        if ($preflightSelection['selected'] === []) {
+            return new MigrationRunResult(
+                $preflight->hash(),
+                null,
+                [],
+                $this->deferredResultEntries(
+                    $preflightSelection['deferred']
+                )
+            );
         }
 
         $lock = $this->lockFactory->create($pdo);
@@ -54,6 +64,9 @@ final class MigrationRunner
             if ($lockedPlan->hash() !== $preflight->hash()) {
                 throw new MigrationException('migrations.plan_changed');
             }
+            $lockedSelection = $lockedPlan->pendingSelection(
+                !$options->deferDestructive()
+            );
 
             $this->registry->ensureExists($pdo);
             $batch = $this->registry->nextBatch($pdo);
@@ -61,7 +74,7 @@ final class MigrationRunner
             $definitions = $this->definitionsByKey($catalog);
             $applied = [];
 
-            foreach ($lockedPlan->pendingEntries() as $entry) {
+            foreach ($lockedSelection['selected'] as $entry) {
                 $module = (string) $entry['module'];
                 $id = (string) $entry['id'];
                 $definition = $definitions[$this->key($module, $id)] ?? null;
@@ -161,7 +174,10 @@ final class MigrationRunner
             $postflight = $this->planner->plan($pdo, $catalog, $scopes);
             if (
                 !$postflight->isApplicable()
-                || $postflight->pendingEntries() !== []
+                || !$this->samePendingEntries(
+                    $postflight->pendingEntries(),
+                    $lockedSelection['deferred']
+                )
             ) {
                 throw new MigrationException(
                     'migrations.postflight_failed'
@@ -172,7 +188,10 @@ final class MigrationRunner
             $result = new MigrationRunResult(
                 $lockedPlan->hash(),
                 $batch,
-                $applied
+                $applied,
+                $this->deferredResultEntries(
+                    $lockedSelection['deferred']
+                )
             );
         } catch (Throwable $exception) {
             $operationException = $exception instanceof MigrationException
@@ -207,7 +226,10 @@ final class MigrationRunner
                 $blocker['migration']
             );
         }
-        if ($plan->hasPendingDestructive()) {
+        if (
+            $plan->hasPendingDestructive()
+            && !$options->deferDestructive()
+        ) {
             if (!$options->allowDestructive()) {
                 throw new MigrationException(
                     'migrations.destructive_not_allowed'
@@ -219,6 +241,45 @@ final class MigrationRunner
                 );
             }
         }
+    }
+
+    /**
+     * @param list<array<string, mixed>> $entries
+     * @return list<array{
+     *     module: string,
+     *     id: string,
+     *     checksum: string,
+     *     destructive: bool,
+     *     reason: string
+     * }>
+     */
+    private function deferredResultEntries(array $entries): array
+    {
+        return array_map(
+            static fn (array $entry): array => [
+                'module' => (string) $entry['module'],
+                'id' => (string) $entry['id'],
+                'checksum' => (string) $entry['checksum'],
+                'destructive' => $entry['destructive'] === true,
+                'reason' => (string) ($entry['defer_reason'] ?? ''),
+            ],
+            $entries
+        );
+    }
+
+    /**
+     * @param list<array<string, mixed>> $actual
+     * @param list<array<string, mixed>> $expected
+     */
+    private function samePendingEntries(array $actual, array $expected): bool
+    {
+        $identity = static fn (array $entry): string => implode("\0", [
+            (string) $entry['module'],
+            (string) $entry['id'],
+            (string) $entry['checksum'],
+        ]);
+
+        return array_map($identity, $actual) === array_map($identity, $expected);
     }
 
     /** @return array<string, MigrationDefinition> */

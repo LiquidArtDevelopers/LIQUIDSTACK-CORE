@@ -12,11 +12,12 @@ use PDO;
 use PDOStatement;
 use Throwable;
 
-final class PdoMediaRepository implements MediaCatalogRepositoryInterface
+final class PdoMediaRepository implements MediaPickerCatalogRepositoryInterface
 {
     public function __construct(
         private readonly PDO $pdo,
-        private readonly WebAdminTableNames $tables
+        private readonly WebAdminTableNames $tables,
+        private readonly bool $quarantineEnabled = false
     ) {
         try {
             if ($pdo->getAttribute(PDO::ATTR_ERRMODE) !== PDO::ERRMODE_EXCEPTION
@@ -70,13 +71,25 @@ final class PdoMediaRepository implements MediaCatalogRepositoryInterface
             throw new MediaException('webadmin.media.pagination_invalid');
         }
         try {
+            $quarantineJoin = $this->quarantineEnabled
+                ? ' LEFT JOIN ' . $this->tables->table('media_quarantines')
+                    . ' q ON q.asset_id = a.id '
+                : ' ';
+            $quarantineWhere = $this->quarantineEnabled
+                ? 'WHERE q.asset_id IS NULL '
+                : '';
             $statement = $this->pdo->prepare(
-                'SELECT a.public_id, a.label, a.source_width, '
-                . 'a.source_height, a.created_at, MIN(v.width) AS thumbnail_width '
+                'SELECT a.id AS asset_id, a.public_id, a.label, a.source_mime, '
+                . 'a.source_width, a.source_height, a.source_bytes, '
+                . 'a.source_sha256, a.created_by_user_id, a.created_at, '
+                . 'MIN(v.width) AS thumbnail_width '
                 . 'FROM ' . $this->tables->table('media_assets') . ' a '
                 . 'JOIN ' . $this->tables->table('media_variants') . ' v '
-                . 'ON v.asset_id = a.id GROUP BY a.id, a.public_id, a.label, '
-                . 'a.source_width, a.source_height, a.created_at '
+                . 'ON v.asset_id = a.id' . $quarantineJoin
+                . $quarantineWhere
+                . 'GROUP BY a.id, a.public_id, a.label, a.source_mime, '
+                . 'a.source_width, a.source_height, a.source_bytes, '
+                . 'a.source_sha256, a.created_by_user_id, a.created_at '
                 . 'ORDER BY a.created_at DESC, a.id DESC LIMIT :limit OFFSET :offset'
             );
             $statement->bindValue('limit', $pageSize + 1, PDO::PARAM_INT);
@@ -85,15 +98,42 @@ final class PdoMediaRepository implements MediaCatalogRepositoryInterface
             $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
             $hasNext = count($rows) > $pageSize;
             $rows = array_slice($rows, 0, $pageSize);
+            $assetIds = array_map(
+                fn (array $row): int => $this->positiveInt(
+                    $row['asset_id'] ?? null
+                ),
+                $rows
+            );
+            $variantsByAsset = $this->variantRecordsByAssetIds($assetIds);
             $items = [];
             foreach ($rows as $row) {
+                $assetId = $this->positiveInt($row['asset_id'] ?? null);
+                $variants = $variantsByAsset[$assetId] ?? [];
+                if ($variants === []) {
+                    throw new MediaException('webadmin.media.variant_invalid');
+                }
+                $candidate = $this->quarantineEnabled
+                    ? $this->candidate($row, $variants)
+                    : null;
                 $items[] = [
-                    'public_id' => $this->uuid($row['public_id'] ?? null),
+                    'public_id' => $candidate?->publicId()
+                        ?? $this->uuid($row['public_id'] ?? null),
                     'label' => $this->label($row['label'] ?? null),
                     'source_width' => $this->positiveInt($row['source_width'] ?? null),
                     'source_height' => $this->positiveInt($row['source_height'] ?? null),
                     'created_at' => $this->timestamp($row['created_at'] ?? null)->format(DATE_ATOM),
                     'thumbnail_width' => $this->positiveInt($row['thumbnail_width'] ?? null),
+                    'variants' => $candidate?->variantPresentation()
+                        ?? array_map(
+                            static fn (array $variant): array => [
+                                'width' => $variant['width'],
+                                'height' => $variant['height'],
+                                'bytes' => $variant['bytes'],
+                            ],
+                            $variants
+                        ),
+                    'delete_version' => $this->quarantineEnabled
+                        ? $candidate->versionToken() : null,
                 ];
             }
 
@@ -103,6 +143,154 @@ final class PdoMediaRepository implements MediaCatalogRepositoryInterface
         } catch (Throwable) {
             throw new MediaException('webadmin.media.list_failed');
         }
+    }
+
+    public function pickerPage(MediaPickerQuery $query): MediaPickerPage
+    {
+        try {
+            $quarantineJoin = $this->quarantineEnabled
+                ? ' LEFT JOIN ' . $this->tables->table('media_quarantines')
+                    . ' q ON q.asset_id = a.id '
+                : ' ';
+            $conditions = [];
+            if ($this->quarantineEnabled) {
+                $conditions[] = 'q.asset_id IS NULL';
+            }
+            if ($query->search() !== null) {
+                $conditions[] = "a.label LIKE :search ESCAPE '!'";
+            }
+            $where = $conditions === []
+                ? '' : 'WHERE ' . implode(' AND ', $conditions) . ' ';
+            $statement = $this->pdo->prepare(
+                'SELECT a.id AS asset_id, a.public_id, a.label, '
+                . 'a.source_width, a.source_height, a.created_at, '
+                . 'MIN(v.width) AS thumbnail_width '
+                . 'FROM ' . $this->tables->table('media_assets') . ' a '
+                . 'JOIN ' . $this->tables->table('media_variants') . ' v '
+                . 'ON v.asset_id = a.id' . $quarantineJoin . $where
+                . 'GROUP BY a.id, a.public_id, a.label, '
+                . 'a.source_width, a.source_height, a.created_at '
+                . 'ORDER BY a.created_at DESC, a.id DESC '
+                . 'LIMIT :limit OFFSET :offset'
+            );
+            if ($query->search() !== null) {
+                $literal = str_replace(
+                    ['!', '%', '_'],
+                    ['!!', '!%', '!_'],
+                    $query->search()
+                );
+                $statement->bindValue(
+                    'search',
+                    '%' . $literal . '%',
+                    PDO::PARAM_STR
+                );
+            }
+            $statement->bindValue(
+                'limit',
+                $query->fetchLimit(),
+                PDO::PARAM_INT
+            );
+            $statement->bindValue(
+                'offset',
+                $query->offset(),
+                PDO::PARAM_INT
+            );
+            $statement->execute();
+            $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+            $hasNext = count($rows) > $query->pageSize();
+            $rows = array_slice($rows, 0, $query->pageSize());
+            $assetIds = array_map(
+                fn (array $row): int => $this->positiveInt(
+                    $row['asset_id'] ?? null
+                ),
+                $rows
+            );
+            $variantsByAsset = $this->variantRecordsByAssetIds($assetIds);
+            $items = [];
+            foreach ($rows as $row) {
+                $assetId = $this->positiveInt($row['asset_id'] ?? null);
+                $variants = $variantsByAsset[$assetId] ?? [];
+                if ($variants === []) {
+                    throw new MediaException('webadmin.media.variant_invalid');
+                }
+                $items[] = new MediaPickerItem(
+                    $this->uuid($row['public_id'] ?? null),
+                    $this->label($row['label'] ?? null),
+                    $this->positiveInt($row['source_width'] ?? null),
+                    $this->positiveInt($row['source_height'] ?? null),
+                    $this->timestamp($row['created_at'] ?? null),
+                    $this->positiveInt($row['thumbnail_width'] ?? null),
+                    array_map(
+                        static fn (array $variant): array => [
+                            'width' => $variant['width'],
+                            'height' => $variant['height'],
+                            'bytes' => $variant['bytes'],
+                        ],
+                        $variants
+                    )
+                );
+            }
+
+            return new MediaPickerPage($query, $items, $hasNext);
+        } catch (MediaException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new MediaException('webadmin.media.picker_list_failed');
+        }
+    }
+
+    /**
+     * @param list<int> $assetIds
+     * @return array<int, list<array{width:int,height:int,bytes:int,sha256:string,storage_key:string,mime:string,created_at:string}>>
+     */
+    private function variantRecordsByAssetIds(array $assetIds): array
+    {
+        if ($assetIds === []) {
+            return [];
+        }
+
+        $placeholders = [];
+        foreach ($assetIds as $index => $assetId) {
+            $placeholders[] = ':asset_' . $index;
+        }
+        $statement = $this->pdo->prepare(
+            'SELECT asset_id, width, height, bytes'
+            . ($this->quarantineEnabled
+                ? ', sha256, storage_key, mime, created_at' : '')
+            . ' FROM '
+            . $this->tables->table('media_variants')
+            . ' WHERE asset_id IN (' . implode(', ', $placeholders) . ') '
+            . 'ORDER BY asset_id ASC, width ASC'
+        );
+        foreach ($assetIds as $index => $assetId) {
+            $statement->bindValue('asset_' . $index, $assetId, PDO::PARAM_INT);
+        }
+        $statement->execute();
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        $result = [];
+        foreach ($rows as $row) {
+            $assetId = $this->positiveInt($row['asset_id'] ?? null);
+            $variant = [
+                'width' => $this->positiveInt($row['width'] ?? null),
+                'height' => $this->positiveInt($row['height'] ?? null),
+                'bytes' => $this->positiveInt($row['bytes'] ?? null),
+            ];
+            if ($this->quarantineEnabled) {
+                $variant += [
+                    'sha256' => $this->sha256($row['sha256'] ?? null),
+                    'storage_key' => $this->storageKey(
+                        $row['storage_key'] ?? null
+                    ),
+                    'mime' => $this->variantMime($row['mime'] ?? null),
+                    'created_at' => $this->timestamp(
+                        $row['created_at'] ?? null
+                    )->format('Y-m-d H:i:s.u'),
+                ];
+            }
+            $result[$assetId][] = $variant;
+        }
+
+        return $result;
     }
 
     public function catalogAssetsByPublicIds(array $publicIds): array
@@ -141,12 +329,20 @@ final class PdoMediaRepository implements MediaCatalogRepositoryInterface
         }
 
         try {
+            $quarantineJoin = $this->quarantineEnabled
+                ? ' LEFT JOIN ' . $this->tables->table('media_quarantines')
+                    . ' q ON q.asset_id = a.id '
+                : ' ';
+            $quarantineFilter = $this->quarantineEnabled
+                ? 'AND q.asset_id IS NULL '
+                : '';
             $statement = $this->pdo->prepare(
                 'SELECT a.public_id, a.label, '
                 . 'MIN(v.width) AS thumbnail_width FROM '
                 . $this->tables->table('media_assets') . ' a JOIN '
                 . $this->tables->table('media_variants') . ' v '
-                . 'ON v.asset_id = a.id WHERE v.mime = :mime '
+                . 'ON v.asset_id = a.id' . $quarantineJoin
+                . 'WHERE v.mime = :mime ' . $quarantineFilter
                 . 'AND a.public_id IN (' . implode(', ', $placeholders) . ') '
                 . 'GROUP BY a.id, a.public_id, a.label'
             );
@@ -185,11 +381,19 @@ final class PdoMediaRepository implements MediaCatalogRepositoryInterface
             return null;
         }
         try {
+            $quarantineJoin = $this->quarantineEnabled
+                ? ' LEFT JOIN ' . $this->tables->table('media_quarantines')
+                    . ' q ON q.asset_id = a.id '
+                : ' ';
+            $quarantineFilter = $this->quarantineEnabled
+                ? 'AND q.asset_id IS NULL '
+                : '';
             $statement = $this->pdo->prepare(
                 'SELECT v.storage_key, v.width, v.height, v.bytes, v.sha256 '
                 . 'FROM ' . $this->tables->table('media_variants') . ' v '
                 . 'JOIN ' . $this->tables->table('media_assets') . ' a '
-                . 'ON a.id = v.asset_id WHERE a.public_id = :public_id '
+                . 'ON a.id = v.asset_id' . $quarantineJoin
+                . 'WHERE a.public_id = :public_id ' . $quarantineFilter
                 . 'AND v.width = :width AND v.mime = :mime'
             );
             $statement->bindValue('public_id', $publicId);
@@ -221,9 +425,17 @@ final class PdoMediaRepository implements MediaCatalogRepositoryInterface
     public function totalVariantBytes(): int
     {
         try {
+            $sql = 'SELECT COALESCE(SUM(v.bytes), 0) FROM '
+                . $this->tables->table('media_variants') . ' v JOIN '
+                . $this->tables->table('media_assets')
+                . ' a ON a.id = v.asset_id';
+            if ($this->quarantineEnabled) {
+                $sql .= ' LEFT JOIN '
+                    . $this->tables->table('media_quarantines')
+                    . ' q ON q.asset_id = a.id WHERE q.asset_id IS NULL';
+            }
             $value = $this->pdo->query(
-                'SELECT COALESCE(SUM(bytes), 0) FROM '
-                . $this->tables->table('media_variants')
+                $sql
             )->fetchColumn();
 
             return $this->nonNegativeInt($value);
@@ -251,6 +463,260 @@ final class PdoMediaRepository implements MediaCatalogRepositoryInterface
             throw $exception;
         } catch (Throwable) {
             throw new MediaException('webadmin.media.quota_lock_invalid');
+        }
+    }
+
+    public function lockDeletionCandidate(
+        string $publicId
+    ): ?MediaDeletionCandidate {
+        if (
+            !$this->quarantineEnabled
+            || !$this->pdo->inTransaction()
+            || !$this->isUuid($publicId)
+        ) {
+            throw new MediaException(
+                'webadmin.media.delete_contract_invalid'
+            );
+        }
+        try {
+            $sql = 'SELECT a.id AS asset_id, a.public_id, a.label, '
+                . 'a.source_mime, a.source_width, a.source_height, '
+                . 'a.source_bytes, a.source_sha256, a.created_by_user_id, '
+                . 'a.created_at FROM '
+                . $this->tables->table('media_assets') . ' a LEFT JOIN '
+                . $this->tables->table('media_quarantines')
+                . ' q ON q.asset_id = a.id WHERE a.public_id = :public_id '
+                . 'AND q.asset_id IS NULL LIMIT 1';
+            if ($this->tables->driver() === 'mysql') {
+                $sql .= ' FOR UPDATE';
+            }
+            $statement = $this->pdo->prepare($sql);
+            $statement->execute(['public_id' => $publicId]);
+            $row = $statement->fetch(PDO::FETCH_ASSOC);
+            if ($row === false) {
+                return null;
+            }
+            if (!is_array($row)) {
+                throw new MediaException(
+                    'webadmin.media.delete_candidate_invalid'
+                );
+            }
+            $assetId = $this->positiveInt($row['asset_id'] ?? null);
+            $variantSql = 'SELECT asset_id, width, height, bytes, sha256, '
+                . 'storage_key, mime, created_at FROM '
+                . $this->tables->table('media_variants')
+                . ' WHERE asset_id = :asset_id ORDER BY width ASC';
+            if ($this->tables->driver() === 'mysql') {
+                $variantSql .= ' FOR UPDATE';
+            }
+            $variants = $this->pdo->prepare($variantSql);
+            $variants->bindValue('asset_id', $assetId, PDO::PARAM_INT);
+            $variants->execute();
+
+            return $this->candidate(
+                $row,
+                $this->normalizeVariantRows(
+                    $variants->fetchAll(PDO::FETCH_ASSOC)
+                )
+            );
+        } catch (MediaException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new MediaException(
+                'webadmin.media.delete_candidate_lookup_failed'
+            );
+        }
+    }
+
+    public function quarantinedPublicIdForRequest(
+        WebAdminAuthorizedActor $actor,
+        string $requestId,
+        string $publicId,
+        string $assetVersion
+    ): ?string {
+        if (
+            !$this->quarantineEnabled
+            || !$this->pdo->inTransaction()
+            || !$this->isUuid($requestId)
+            || !$this->isUuid($publicId)
+            || preg_match('/\A[0-9a-f]{64}\z/', $assetVersion) !== 1
+        ) {
+            throw new MediaException('webadmin.media.idempotency_invalid');
+        }
+        try {
+            $sql = 'SELECT public_id, asset_version, '
+                . 'quarantined_by_user_id FROM '
+                . $this->tables->table('media_quarantines')
+                . ' WHERE request_id = :request_id LIMIT 2';
+            if ($this->tables->driver() === 'mysql') {
+                $sql .= ' FOR UPDATE';
+            }
+            $statement = $this->pdo->prepare($sql);
+            $statement->execute(['request_id' => $requestId]);
+            $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+            if ($rows === []) {
+                return null;
+            }
+            if (count($rows) !== 1) {
+                throw new MediaException('webadmin.media.idempotency_conflict');
+            }
+            $row = $rows[0];
+            $resolvedPublicId = $this->uuid($row['public_id'] ?? null);
+            if (
+                $resolvedPublicId !== $publicId
+                || !is_string($row['asset_version'] ?? null)
+                || !hash_equals($row['asset_version'], $assetVersion)
+                || $this->positiveInt(
+                    $row['quarantined_by_user_id'] ?? null
+                ) !== $actor->userId()
+            ) {
+                throw new MediaException('webadmin.media.idempotency_conflict');
+            }
+
+            return $resolvedPublicId;
+        } catch (MediaException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new MediaException(
+                'webadmin.media.idempotency_lookup_failed'
+            );
+        }
+    }
+
+    public function recordQuarantine(
+        WebAdminAuthorizedActor $actor,
+        string $requestId,
+        MediaDeletionCandidate $candidate,
+        MediaQuarantineManifest $manifest,
+        ?string $ipHash,
+        DateTimeImmutable $occurredAt
+    ): void {
+        if (
+            !$this->quarantineEnabled
+            || !$this->pdo->inTransaction()
+            || $manifest->publicId() !== $candidate->publicId()
+            || $manifest->requestId() !== $requestId
+            || !hash_equals(
+                $manifest->assetVersion(),
+                $candidate->versionToken()
+            )
+        ) {
+            throw new MediaException(
+                'webadmin.media.quarantine_record_invalid'
+            );
+        }
+        try {
+            $statement = $this->pdo->prepare(
+                'INSERT INTO ' . $this->tables->table('media_quarantines')
+                . ' (asset_id, public_id, state, asset_version, '
+                . 'original_storage_prefix, quarantine_storage_prefix, '
+                . 'manifest_storage_key, manifest_json, manifest_sha256, '
+                . 'request_id, quarantined_by_user_id, quarantined_at, '
+                . 'lock_version) VALUES (:asset_id, :public_id, :state, '
+                . ':asset_version, :original_storage_prefix, '
+                . ':quarantine_storage_prefix, :manifest_storage_key, '
+                . ':manifest_json, :manifest_sha256, :request_id, :actor, '
+                . ':quarantined_at, 1)'
+            );
+            $statement->execute([
+                'asset_id' => $candidate->assetId(),
+                'public_id' => $candidate->publicId(),
+                'state' => 'quarantined',
+                'asset_version' => $candidate->versionToken(),
+                'original_storage_prefix' =>
+                    $manifest->originalStoragePrefix(),
+                'quarantine_storage_prefix' =>
+                    $manifest->quarantineStoragePrefix(),
+                'manifest_storage_key' => $manifest->manifestStorageKey(),
+                'manifest_json' => $manifest->json(),
+                'manifest_sha256' => $manifest->sha256(),
+                'request_id' => $requestId,
+                'actor' => $actor->userId(),
+                'quarantined_at' => self::format($occurredAt),
+            ]);
+
+            $audit = $this->pdo->prepare(
+                'INSERT INTO ' . $this->tables->table('audit_log')
+                . ' (request_id, actor_user_id, actor_session_public_id, '
+                . 'event_code, outcome, reason_code, target_type, '
+                . 'target_public_id, metadata_json, ip_hash, '
+                . 'user_agent_hash, occurred_at) VALUES (:request_id, '
+                . ':actor, :session_id, :event_code, :outcome, NULL, '
+                . ':target_type, :target_id, NULL, :ip_hash, NULL, '
+                . ':occurred_at)'
+            );
+            $audit->execute([
+                'request_id' => $requestId,
+                'actor' => $actor->userId(),
+                'session_id' => $actor->sessionPublicId(),
+                'event_code' => 'webadmin.media.quarantined',
+                'outcome' => 'success',
+                'target_type' => 'media_asset',
+                'target_id' => $candidate->publicId(),
+                'ip_hash' => $ipHash,
+                'occurred_at' => self::format($occurredAt),
+            ]);
+        } catch (Throwable) {
+            throw new MediaException(
+                'webadmin.media.quarantine_record_failed'
+            );
+        }
+    }
+
+    public function createdPublicIdForRequest(
+        WebAdminAuthorizedActor $actor,
+        string $requestId,
+        string $label,
+        string $sourceSha256
+    ): ?string {
+        if (
+            !$this->pdo->inTransaction()
+            || !$this->isUuid($requestId)
+            || preg_match('/\A[0-9a-f]{64}\z/', $sourceSha256) !== 1
+        ) {
+            throw new MediaException('webadmin.media.idempotency_invalid');
+        }
+
+        try {
+            $sql = 'SELECT l.target_public_id, a.label, a.source_sha256 FROM '
+                . $this->tables->table('audit_log') . ' l JOIN '
+                . $this->tables->table('media_assets') . ' a '
+                . 'ON a.public_id = l.target_public_id WHERE '
+                . 'l.request_id = :request_id AND l.actor_user_id = :actor '
+                . 'AND l.event_code = :event_code AND l.outcome = :outcome '
+                . 'AND l.target_type = :target_type ORDER BY l.id ASC LIMIT 2';
+            if ($this->tables->driver() === 'mysql') {
+                $sql .= ' FOR UPDATE';
+            }
+            $statement = $this->pdo->prepare($sql);
+            $statement->execute([
+                'request_id' => $requestId,
+                'actor' => $actor->userId(),
+                'event_code' => 'webadmin.media.created',
+                'outcome' => 'success',
+                'target_type' => 'media_asset',
+            ]);
+            $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+            if ($rows === []) {
+                return null;
+            }
+            if (count($rows) !== 1) {
+                throw new MediaException('webadmin.media.idempotency_conflict');
+            }
+            $row = $rows[0];
+            if (
+                $this->label($row['label'] ?? null) !== $label
+                || !is_string($row['source_sha256'] ?? null)
+                || !hash_equals($row['source_sha256'], $sourceSha256)
+            ) {
+                throw new MediaException('webadmin.media.idempotency_conflict');
+            }
+
+            return $this->uuid($row['target_public_id'] ?? null);
+        } catch (MediaException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new MediaException('webadmin.media.idempotency_lookup_failed');
         }
     }
 
@@ -402,8 +868,13 @@ final class PdoMediaRepository implements MediaCatalogRepositoryInterface
             throw new MediaException('webadmin.media.public_id_limit_invalid');
         }
         $statement = $this->pdo->prepare(
-            'SELECT public_id FROM ' . $this->tables->table('media_assets')
-            . ' ORDER BY id LIMIT :limit'
+            'SELECT a.public_id FROM '
+            . $this->tables->table('media_assets') . ' a'
+            . ($this->quarantineEnabled
+                ? ' LEFT JOIN ' . $this->tables->table('media_quarantines')
+                    . ' q ON q.asset_id = a.id WHERE q.asset_id IS NULL'
+                : '')
+            . ' ORDER BY a.id LIMIT :limit'
         );
         $statement->bindValue('limit', $limit, PDO::PARAM_INT);
         $statement->execute();
@@ -412,6 +883,105 @@ final class PdoMediaRepository implements MediaCatalogRepositoryInterface
             fn (mixed $value): string => $this->uuid($value),
             $statement->fetchAll(PDO::FETCH_COLUMN)
         );
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @param list<array{width:int,height:int,bytes:int,sha256:string,storage_key:string,mime:string,created_at:string}> $variants
+     */
+    private function candidate(
+        array $row,
+        array $variants
+    ): MediaDeletionCandidate {
+        return new MediaDeletionCandidate(
+            $this->positiveInt($row['asset_id'] ?? null),
+            $this->uuid($row['public_id'] ?? null),
+            $this->label($row['label'] ?? null),
+            $this->sourceMime($row['source_mime'] ?? null),
+            $this->positiveInt($row['source_width'] ?? null),
+            $this->positiveInt($row['source_height'] ?? null),
+            $this->positiveInt($row['source_bytes'] ?? null),
+            $this->sha256($row['source_sha256'] ?? null),
+            $this->positiveInt($row['created_by_user_id'] ?? null),
+            $this->timestamp($row['created_at'] ?? null)
+                ->format('Y-m-d H:i:s.u'),
+            $variants
+        );
+    }
+
+    /**
+     * @param mixed $rows
+     * @return list<array{width:int,height:int,bytes:int,sha256:string,storage_key:string,mime:string,created_at:string}>
+     */
+    private function normalizeVariantRows(mixed $rows): array
+    {
+        if (!is_array($rows) || $rows === []) {
+            throw new MediaException('webadmin.media.variant_invalid');
+        }
+        $variants = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                throw new MediaException('webadmin.media.variant_invalid');
+            }
+            $variants[] = [
+                'width' => $this->positiveInt($row['width'] ?? null),
+                'height' => $this->positiveInt($row['height'] ?? null),
+                'bytes' => $this->positiveInt($row['bytes'] ?? null),
+                'sha256' => $this->sha256($row['sha256'] ?? null),
+                'storage_key' => $this->storageKey(
+                    $row['storage_key'] ?? null
+                ),
+                'mime' => $this->variantMime($row['mime'] ?? null),
+                'created_at' => $this->timestamp(
+                    $row['created_at'] ?? null
+                )->format('Y-m-d H:i:s.u'),
+            ];
+        }
+
+        return $variants;
+    }
+
+    private function sourceMime(mixed $value): string
+    {
+        if (!is_string($value) || !in_array(
+            $value,
+            ['image/jpeg', 'image/png', 'image/webp', 'image/avif'],
+            true
+        )) {
+            throw new MediaException('webadmin.media.source_type_rejected');
+        }
+
+        return $value;
+    }
+
+    private function variantMime(mixed $value): string
+    {
+        if ($value !== 'image/avif') {
+            throw new MediaException('webadmin.media.variant_invalid');
+        }
+
+        return $value;
+    }
+
+    private function sha256(mixed $value): string
+    {
+        if (!is_string($value)
+            || preg_match('/\A[0-9a-f]{64}\z/', $value) !== 1) {
+            throw new MediaException('webadmin.media.hash_invalid');
+        }
+
+        return $value;
+    }
+
+    private function storageKey(mixed $value): string
+    {
+        if (!is_string($value) || strlen($value) > 255
+            || preg_match('#\A[0-9a-f]{2}/[0-9a-f-]{36}/[1-9][0-9]{0,3}\.avif\z#',
+                $value) !== 1) {
+            throw new MediaException('webadmin.media.storage_key_invalid');
+        }
+
+        return $value;
     }
 
     private function label(mixed $value): string

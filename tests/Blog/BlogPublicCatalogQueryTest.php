@@ -16,10 +16,15 @@ final class BlogPublicCatalogQueryTest extends TestCase
         self::assertSame('es', $defaults->locale());
         self::assertNull($defaults->search());
         self::assertSame([], $defaults->categorySlugs());
+        self::assertSame([], $defaults->excludedCategorySlugs());
         self::assertSame(BlogPublicCatalogQuery::MODE_ANY, $defaults->categoryMode());
         self::assertSame(12, $defaults->limit());
         self::assertSame(0, $defaults->offset());
         self::assertNull($defaults->excludeSlug());
+        self::assertSame(
+            BlogPublicCatalogQuery::ORDER_NEWEST,
+            $defaults->order()
+        );
         self::assertFalse($defaults->hasFilters());
 
         $query = new BlogPublicCatalogQuery(
@@ -29,7 +34,9 @@ final class BlogPublicCatalogQueryTest extends TestCase
             BlogPublicCatalogQuery::MODE_ALL,
             50,
             10_000,
-            'matrix-reloaded'
+            'matrix-reloaded',
+            ['dummy', 'interno', 'dummy'],
+            BlogPublicCatalogQuery::ORDER_UPDATED
         );
         self::assertSame('Matrix Reloaded', $query->search());
         self::assertSame(['noticias', 'cine'], $query->categorySlugs());
@@ -37,6 +44,14 @@ final class BlogPublicCatalogQueryTest extends TestCase
         self::assertSame(50, $query->limit());
         self::assertSame(10_000, $query->offset());
         self::assertSame('matrix-reloaded', $query->excludeSlug());
+        self::assertSame(
+            ['dummy', 'interno'],
+            $query->excludedCategorySlugs()
+        );
+        self::assertSame(
+            BlogPublicCatalogQuery::ORDER_UPDATED,
+            $query->order()
+        );
         self::assertTrue($query->hasFilters());
 
         self::assertTrue((new BlogPublicCatalogQuery(
@@ -128,8 +143,6 @@ final class BlogPublicCatalogQueryTest extends TestCase
             static fn (): BlogPublicCatalogQuery =>
                 new BlogPublicCatalogQuery('es', "\xC3\x28"),
             static fn (): BlogPublicCatalogQuery =>
-                new BlogPublicCatalogQuery('es', '<strong>matrix</strong>'),
-            static fn (): BlogPublicCatalogQuery =>
                 new BlogPublicCatalogQuery('es', null, ['No-Valida']),
             static fn (): BlogPublicCatalogQuery =>
                 new BlogPublicCatalogQuery('es', null, [42]),
@@ -164,6 +177,11 @@ final class BlogPublicCatalogQueryTest extends TestCase
                     0,
                     'No-Valido'
                 ),
+            static fn (): BlogPublicCatalogQuery =>
+                new BlogPublicCatalogQuery(
+                    locale: 'es',
+                    order: 'random'
+                ),
         ];
 
         foreach ($cases as $position => $case) {
@@ -178,5 +196,15 @@ final class BlogPublicCatalogQueryTest extends TestCase
                 );
             }
         }
+    }
+
+    public function testSearchKeepsLiteralTagLikeTextAsPlainData(): void
+    {
+        $query = new BlogPublicCatalogQuery(
+            'es',
+            '<strong>matrix</strong>'
+        );
+
+        self::assertSame('<strong>matrix</strong>', $query->search());
     }
 }

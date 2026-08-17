@@ -13,16 +13,27 @@ use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Http\BlogPublicHttpRuntime;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeFactoryInterface;
 use App\Core\Blog\Persistence\BlogRepositoryInterface;
+use App\Core\Blog\Persistence\BlogPersistenceException;
 use App\Core\Blog\PublishedPostCard;
+use App\Core\Blog\PublicDelivery\BlogPublicMediaRoute;
 use App\Core\Blog\PublicFeed\BlogPublicArchivePeriod;
 use App\Core\Blog\PublicFeed\BlogPublicArchivePeriodsQuery;
 use App\Core\Blog\PublicFeed\BlogPublicArchiveQuery;
+use App\Core\Blog\PublicFeed\BlogPublicCardCategory;
+use App\Core\Blog\PublicFeed\BlogPublicCardCategoryQuery;
+use App\Core\Blog\PublicFeed\BlogPublicCardCategoryRepositoryInterface;
+use App\Core\Blog\PublicFeed\BlogPublicCardMediaQuery;
+use App\Core\Blog\PublicFeed\BlogPublicCardMediaRepositoryInterface;
+use App\Core\Blog\PublicFeed\BlogPublicCardThumbnail;
+use App\Core\Blog\PublicFeed\BlogPublicCardThumbnailCandidate;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogRepositoryInterface;
 use App\Core\Blog\PublicFeed\BlogPublicDiscoveryRepositoryInterface;
 use App\Core\Blog\PublicFeed\BlogPublicFeed;
 use App\Core\Blog\PublicFeed\BlogPublicFeedFactory;
 use App\Core\Blog\PublicFeed\BlogPublicRelatedQuery;
+use App\Core\Blog\PublicFeed\BlogPublicResourceFeed;
+use App\Core\Blog\PublicFeed\BlogPublicResourceQuery;
 use App\Core\Modules\ModuleRuntimeContext;
 use PHPUnit\Framework\TestCase;
 
@@ -119,6 +130,7 @@ final class BlogPublicFeedTest extends TestCase
             ['DEV_MODE' => '1']
         );
 
+        self::assertSame($runtime->publicFeed(), $feed);
         self::assertSame([], $feed->cards('es'));
         self::assertSame('matrix', $feed->filtersForLocale('es')[0]['slug']);
         self::assertSame(
@@ -182,6 +194,7 @@ final class BlogPublicFeedTest extends TestCase
             'excerpt' => 'Neo descubre que el mundo no es lo que parece.',
             'published_at' => '2030-01-02T12:00:00+00:00',
             'updated_at' => '2030-01-03T13:00:00+00:00',
+            'categories' => [],
         ]], $feed->cardsForQuery($query));
     }
 
@@ -198,6 +211,269 @@ final class BlogPublicFeedTest extends TestCase
         } catch (BlogException $exception) {
             self::assertSame(
                 BlogException::STORAGE_UNAVAILABLE,
+                $exception->issueCode()
+            );
+        }
+    }
+
+    public function testResourceFeedSupportsTypedAndLegacyCategoryContracts(): void
+    {
+        $card = $this->card();
+        $catalog = new class($card) implements
+            BlogPublicCatalogRepositoryInterface {
+            /** @var list<BlogPublicCatalogQuery> */
+            public array $queries = [];
+
+            public function __construct(
+                private readonly PublishedPostCard $card
+            ) {
+            }
+
+            public function search(BlogPublicCatalogQuery $query): array
+            {
+                $this->queries[] = $query;
+
+                return [$this->card, $this->card];
+            }
+        };
+        $resourceFeed = new BlogPublicResourceFeed(new BlogPublicFeed(
+            $this->config(),
+            new BlogService($this->createMock(BlogRepositoryInterface::class)),
+            catalogRepository: $catalog
+        ));
+
+        $typed = new BlogPublicResourceQuery(
+            locale: 'es',
+            categoryScope: BlogPublicResourceQuery::SCOPE_ALL,
+            excludeDummy: true,
+            items: 1,
+            limit: 5
+        );
+        self::assertCount(1, $resourceFeed->cards($typed));
+        self::assertSame(['dummy'], $catalog->queries[0]->excludedCategorySlugs());
+
+        self::assertCount(2, $resourceFeed->cards([
+            'locale' => 'es',
+            'categories' => ['noticias'],
+            'category_mode' => 'all',
+            'limit' => 2,
+        ]));
+        self::assertSame(['noticias'], $catalog->queries[1]->categorySlugs());
+        self::assertSame('all', $catalog->queries[1]->categoryMode());
+
+        self::assertCount(1, $resourceFeed->cards([
+            'locale' => 'es',
+            'categoryScope' => 'all',
+            'excludeDummy' => true,
+            'items' => 1,
+            'limit' => 2,
+        ]));
+        self::assertSame(['dummy'], $catalog->queries[2]->excludedCategorySlugs());
+    }
+
+    public function testCardsReceiveIdFreeCategoriesThroughOneBatchCapability(): void
+    {
+        $card = $this->card();
+        $catalog = new class($card) implements
+            BlogPublicCatalogRepositoryInterface,
+            BlogPublicCardCategoryRepositoryInterface {
+            public ?BlogPublicCardCategoryQuery $categoryQuery = null;
+
+            public function __construct(
+                private readonly PublishedPostCard $card
+            ) {
+            }
+
+            public function search(BlogPublicCatalogQuery $query): array
+            {
+                return [$this->card];
+            }
+
+            public function categoriesForCards(
+                BlogPublicCardCategoryQuery $query
+            ): array {
+                $this->categoryQuery = $query;
+
+                return [
+                    'matrix-despierta' => [
+                        new BlogPublicCardCategory(
+                            'es',
+                            'noticias',
+                            'Noticias'
+                        ),
+                    ],
+                ];
+            }
+        };
+        $feed = new BlogPublicFeed(
+            $this->config(),
+            new BlogService($this->createMock(BlogRepositoryInterface::class)),
+            catalogRepository: $catalog
+        );
+
+        $cards = $feed->cardsForQuery(new BlogPublicCatalogQuery('es'));
+
+        self::assertSame(
+            ['matrix-despierta'],
+            $catalog->categoryQuery?->cardSlugs()
+        );
+        self::assertSame([[
+            'locale' => 'es',
+            'slug' => 'noticias',
+            'name' => 'Noticias',
+        ]], $cards[0]['categories']);
+        self::assertArrayNotHasKey('category_public_id', $cards[0]);
+    }
+
+    public function testCardsReceiveAnIdFreeResponsiveThumbnailAdditively(): void
+    {
+        $card = $this->card();
+        $catalog = $this->createMock(
+            BlogPublicCatalogRepositoryInterface::class
+        );
+        $catalog->method('search')->willReturn([$card]);
+        $asset = '91919191-9191-4191-8191-919191919191';
+        $media = new class($asset) implements
+            BlogPublicCardMediaRepositoryInterface {
+            public ?BlogPublicCardMediaQuery $query = null;
+
+            public function __construct(private readonly string $asset)
+            {
+            }
+
+            public function thumbnailsForCards(
+                BlogPublicCardMediaQuery $query
+            ): array {
+                $this->query = $query;
+
+                return ['matrix-despierta' => new BlogPublicCardThumbnail(
+                    'Neo despierta',
+                    [new BlogPublicCardThumbnailCandidate(
+                        BlogPublicMediaRoute::path($this->asset, 480),
+                        480,
+                        320
+                    )]
+                )];
+            }
+        };
+        $feed = new BlogPublicFeed(
+            $this->config(),
+            new BlogService($this->createMock(BlogRepositoryInterface::class)),
+            catalogRepository: $catalog,
+            mediaRepository: $media
+        );
+
+        $cards = $feed->cardsForQuery(new BlogPublicCatalogQuery('es'));
+
+        self::assertSame(['matrix-despierta'], $media->query?->cardSlugs());
+        self::assertSame([
+            'src' => BlogPublicMediaRoute::path($asset, 480),
+            'srcset' => BlogPublicMediaRoute::path($asset, 480) . ' 480w',
+            'alt' => 'Neo despierta',
+            'width' => 480,
+            'height' => 320,
+        ], $cards[0]['thumbnail']);
+        self::assertArrayNotHasKey('media_asset_public_id', $cards[0]);
+    }
+
+    public function testOptionalMediaFailureNeverDropsOtherwiseValidCards(): void
+    {
+        $catalog = $this->createMock(
+            BlogPublicCatalogRepositoryInterface::class
+        );
+        $catalog->method('search')->willReturn([$this->card()]);
+        $media = new class implements BlogPublicCardMediaRepositoryInterface {
+            public function thumbnailsForCards(
+                BlogPublicCardMediaQuery $query
+            ): array {
+                throw new BlogPersistenceException();
+            }
+        };
+        $feed = new BlogPublicFeed(
+            $this->config(),
+            new BlogService($this->createMock(BlogRepositoryInterface::class)),
+            catalogRepository: $catalog,
+            mediaRepository: $media
+        );
+
+        $cards = $feed->cardsForQuery(new BlogPublicCatalogQuery('es'));
+
+        self::assertCount(1, $cards);
+        self::assertSame('matrix-despierta', $cards[0]['slug']);
+        self::assertArrayNotHasKey('thumbnail', $cards[0]);
+    }
+
+    public function testResourceBatchUsesLookaheadAndProjectsNavigationState(): void
+    {
+        $card = $this->card();
+        $catalog = new class($card) implements
+            BlogPublicCatalogRepositoryInterface {
+            public ?BlogPublicCatalogQuery $query = null;
+
+            public function __construct(
+                private readonly PublishedPostCard $card
+            ) {
+            }
+
+            public function search(BlogPublicCatalogQuery $query): array
+            {
+                $this->query = $query;
+
+                return [$this->card, $this->card];
+            }
+        };
+        $resourceFeed = new BlogPublicResourceFeed(new BlogPublicFeed(
+            $this->config(),
+            new BlogService($this->createMock(BlogRepositoryInterface::class)),
+            catalogRepository: $catalog
+        ));
+
+        $batch = $resourceFeed->batch([
+            'locale' => 'es',
+            'items' => 1,
+            'offset' => 4,
+            'order' => BlogPublicResourceQuery::ORDER_UPDATED,
+        ], '/es/noticias?offset=5');
+
+        self::assertCount(1, $batch->items());
+        self::assertTrue($batch->hasNext());
+        self::assertSame(5, $batch->nextOffset());
+        self::assertSame('/es/noticias?offset=5', $batch->nextUrl());
+        self::assertSame(
+            BlogPublicCatalogQuery::ORDER_UPDATED,
+            $catalog->query?->order()
+        );
+        self::assertSame(2, $catalog->query?->limit());
+        self::assertSame([
+            'items' => $batch->items(),
+            'has_next' => true,
+            'next_offset' => 5,
+            'next_url' => '/es/noticias?offset=5',
+        ], $batch->toResourceData());
+
+        try {
+            $resourceFeed->batch([
+                'locale' => 'es',
+                'items' => 2,
+                'limit' => 2,
+            ]);
+            self::fail('A batch without a lookahead row was accepted.');
+        } catch (BlogException $exception) {
+            self::assertSame(
+                BlogException::INVALID_INPUT,
+                $exception->issueCode()
+            );
+        }
+
+        try {
+            $resourceFeed->batch([
+                'locale' => 'es',
+                'items' => 1,
+            ], 'https://example.test/page/2');
+            self::fail('An off-site next URL was accepted.');
+        } catch (BlogException $exception) {
+            self::assertSame(
+                BlogException::INVALID_INPUT,
                 $exception->issueCode()
             );
         }

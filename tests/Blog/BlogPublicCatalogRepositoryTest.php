@@ -7,6 +7,7 @@ namespace Tests\Blog;
 use App\Core\Blog\Persistence\BlogPersistenceException;
 use App\Core\Blog\PublicFeed\BlogPublicArchivePeriodsQuery;
 use App\Core\Blog\PublicFeed\BlogPublicArchiveQuery;
+use App\Core\Blog\PublicFeed\BlogPublicCardCategoryQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogRepositoryInterface;
 use App\Core\Blog\PublicFeed\BlogPublicRelatedQuery;
@@ -238,6 +239,64 @@ final class BlogPublicCatalogRepositoryTest extends TestCase
         );
     }
 
+    public function testDummyCategoryIsAlwaysExcludedAcrossPublicScopes(): void
+    {
+        $this->categoryIds['dummy'] = $this->insertCategory(3, [
+            'es' => ['dummy', 'Contenido de prueba'],
+        ]);
+        $this->insertPost(9, [
+            $this->published(
+                901,
+                'es',
+                'matrix-dummy',
+                'Matrix de prueba',
+                'Entrada visible solo cuando se admite contenido dummy.',
+                'Cuerpo de prueba.',
+                '2030-05-05 10:00:00.000000'
+            ),
+        ], ['news', 'dummy']);
+
+        self::assertNotContains('matrix-dummy', $this->slugs(
+            $this->repository->search(new BlogPublicCatalogQuery('es'))
+        ));
+
+        $allWithoutDummy = $this->repository->search(
+            new BlogPublicCatalogQuery(
+                'es',
+                null,
+                [],
+                BlogPublicCatalogQuery::MODE_ANY,
+                20,
+                0,
+                null,
+                ['dummy']
+            )
+        );
+        self::assertNotContains('matrix-dummy', $this->slugs($allWithoutDummy));
+        self::assertContains('matrix-reloaded', $this->slugs($allWithoutDummy));
+
+        $selectedWithoutDummy = $this->repository->search(
+            new BlogPublicCatalogQuery(
+                'es',
+                null,
+                ['noticias'],
+                BlogPublicCatalogQuery::MODE_ANY,
+                20,
+                0,
+                null,
+                ['dummy']
+            )
+        );
+        self::assertNotContains(
+            'matrix-dummy',
+            $this->slugs($selectedWithoutDummy)
+        );
+        self::assertContains(
+            'matrix-reloaded',
+            $this->slugs($selectedWithoutDummy)
+        );
+    }
+
     public function testPaginationUsesPublishedDateAndStablePublicIdOrder(): void
     {
         self::assertSame(
@@ -252,6 +311,72 @@ final class BlogPublicCatalogRepositoryTest extends TestCase
                 new BlogPublicCatalogQuery('es', null, [], 'any', 2, 999)
             ))
         );
+    }
+
+    public function testCatalogOrderingUsesOnlyTheTypedAllowlist(): void
+    {
+        self::assertSame(
+            [
+                'sin-categoria',
+                'animatrix',
+                'porcentaje-literal',
+                'primer-empate',
+                'matrix-reloaded',
+            ],
+            $this->slugs($this->repository->search(
+                new BlogPublicCatalogQuery(
+                    locale: 'es',
+                    limit: 20,
+                    order: BlogPublicCatalogQuery::ORDER_OLDEST
+                )
+            ))
+        );
+
+        $this->pdo->exec(
+            "UPDATE ls_blog_post_localizations "
+            . "SET updated_at = '2031-01-01 00:00:00.000000' "
+            . "WHERE slug = 'sin-categoria'"
+        );
+        self::assertSame(
+            'sin-categoria',
+            $this->repository->search(new BlogPublicCatalogQuery(
+                locale: 'es',
+                limit: 20,
+                order: BlogPublicCatalogQuery::ORDER_UPDATED
+            ))[0]->slug()
+        );
+    }
+
+    public function testCardCategoriesAreLocalizedAndLoadedAsOneBatch(): void
+    {
+        $categories = $this->discoveryRepository->categoriesForCards(
+            new BlogPublicCardCategoryQuery('es', [
+                'matrix-reloaded',
+                'porcentaje-literal',
+                'sin-categoria',
+                'matrix-reloaded',
+            ])
+        );
+
+        self::assertSame(
+            ['matrix-reloaded', 'porcentaje-literal', 'sin-categoria'],
+            array_keys($categories)
+        );
+        self::assertSame([
+            ['locale' => 'es', 'slug' => 'cine', 'name' => 'Cine'],
+            ['locale' => 'es', 'slug' => 'noticias', 'name' => 'Noticias'],
+        ], array_map(
+            static fn ($category): array => $category->toResourceData(),
+            $categories['matrix-reloaded']
+        ));
+        self::assertSame(
+            [['locale' => 'es', 'slug' => 'noticias', 'name' => 'Noticias']],
+            array_map(
+                static fn ($category): array => $category->toResourceData(),
+                $categories['porcentaje-literal']
+            )
+        );
+        self::assertSame([], $categories['sin-categoria']);
     }
 
     public function testRelatedPostsRequireAPublishedSourceAndRankSharedCategories(
@@ -399,6 +524,9 @@ final class BlogPublicCatalogRepositoryTest extends TestCase
             ),
             static fn (): array => $repository->archivePeriods(
                 new BlogPublicArchivePeriodsQuery('es')
+            ),
+            static fn (): array => $repository->categoriesForCards(
+                new BlogPublicCardCategoryQuery('es', ['matrix'])
             ),
         ] as $operation) {
             try {

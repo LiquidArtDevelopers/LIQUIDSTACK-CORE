@@ -532,6 +532,87 @@ final class ApplicableMigrationEngineTest extends TestCase
         self::assertTrue($result->changed());
     }
 
+    public function testExplicitDeferralAppliesSafeMigrationsFromOtherModules(): void
+    {
+        $this->writeManifest(
+            'webadmin',
+            [],
+            DestructiveMigrationProviderFixture::class
+        );
+        $this->writeManifest(
+            'blog',
+            ['webadmin'],
+            ApplicableBlogMigrationProviderFixture::class
+        );
+        $this->writeComposer(['liquidstack/blog' => '*']);
+        $catalog = $this->catalog();
+        $pdo = $this->sqlite();
+        $runner = new MigrationRunner();
+        $preview = (new MigrationDatabasePlanner())->plan(
+            $pdo,
+            $catalog,
+            $this->scopes()
+        );
+
+        $result = $runner->apply(
+            $pdo,
+            $catalog,
+            $this->scopes(),
+            new MigrationApplyOptions(
+                expectedPlanHash: $preview->hash(),
+                deferDestructive: true
+            )
+        );
+
+        self::assertSame([
+            'blog:0001_create_posts',
+        ], array_map(
+            static fn (array $entry): string =>
+                $entry['module'] . ':' . $entry['id'],
+            $result->applied()
+        ));
+        self::assertSame([
+            'webadmin:0001_destructive',
+        ], array_map(
+            static fn (array $entry): string =>
+                $entry['module'] . ':' . $entry['id'],
+            $result->deferred()
+        ));
+        self::assertSame(
+            ['destructive_gate'],
+            array_column($result->deferred(), 'reason')
+        );
+        self::assertSame(1, $this->tableCount($pdo, 'ls_blog_posts'));
+        self::assertSame(0, $this->tableCount(
+            $pdo,
+            'ls_webadmin_destructive'
+        ));
+        self::assertSame(1, (int) $pdo->query(
+            'SELECT COUNT(*) FROM ls_module_migrations'
+        )->fetchColumn());
+
+        try {
+            $runner->apply($pdo, $catalog, $this->scopes());
+            self::fail('El motor debe seguir bloqueando por defecto.');
+        } catch (MigrationException $exception) {
+            self::assertSame(
+                'migrations.destructive_not_allowed',
+                $exception->issueCode()
+            );
+        }
+    }
+
+    public function testDeferralCannotBeCombinedWithDestructiveAuthorization(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new MigrationApplyOptions(
+            allowDestructive: true,
+            backupConfirmed: true,
+            deferDestructive: true
+        );
+    }
+
     /** @dataProvider undeclaredDestructiveSqlProvider */
     public function testObviousDestructiveSqlCannotBypassTheDeclaredGate(
         string $mysql,

@@ -7,8 +7,14 @@
  */
 function controller_hero01(int $i = 0, array $params = []): string
 {
+    $contrastSurface = ($params['contrast_surface'] ?? false) === true;
+    unset($params['contrast_surface'], $params['{contrast-class}']);
+
     $vars = [
         '{hero01-content}' => '',
+        '{contrast-class}' => $contrastSurface
+            ? ' hero01--contrast-surface'
+            : '',
     ];
     $vars = array_replace($vars, $params);
     return render('App/templates/_hero01.html', $vars);

@@ -64,6 +64,7 @@ function controller_moduleBlogFilters01(
         'submit' => 'Aplicar filtros',
         'clear' => 'Limpiar filtros',
         'status' => 'Resultados actualizados',
+        'error' => 'No se pudo actualizar. Inténtalo de nuevo.',
     ], is_array($params['labels'] ?? null) ? $params['labels'] : []);
     foreach ($labels as $key => $label) {
         $labels[$key] = trim((string) $label);
@@ -153,5 +154,6 @@ function controller_moduleBlogFilters01(
         '{submit-label}' => liquidstack_blog_resource_escape($labels['submit']),
         '{clear-label}' => liquidstack_blog_resource_escape($labels['clear']),
         '{status-label}' => liquidstack_blog_resource_escape($labels['status']),
+        '{error-message}' => liquidstack_blog_resource_escape($labels['error']),
     ]);
 }

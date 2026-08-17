@@ -156,6 +156,18 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
         $routes->add(
             self::moduleId(),
             'GET',
+            $prefix . '/profile',
+            [$this, 'profile']
+        );
+        $routes->add(
+            self::moduleId(),
+            'POST',
+            $prefix . '/profile',
+            [$this, 'saveProfile']
+        );
+        $routes->add(
+            self::moduleId(),
+            'GET',
             $prefix . '/users',
             [$this, 'users']
         );
@@ -295,6 +307,16 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
     public function logout(Request $request): Response
     {
         return $this->handle('logout', $request);
+    }
+
+    public function profile(Request $request): Response
+    {
+        return $this->handle('profile', $request);
+    }
+
+    public function saveProfile(Request $request): Response
+    {
+        return $this->handle('saveProfile', $request);
     }
 
     public function users(Request $request): Response
@@ -445,6 +467,8 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
                 'resumeEditor',
                 'resendEditorInvitation',
                 'usersUpdated',
+                'profile',
+                'saveProfile',
             ], true)
             && $sessionToken === null
         ) {
@@ -507,6 +531,9 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
             'activationCompleted',
             'passwordResetCompleted' =>
                 $this->requestPolicy->acceptsSafeNavigation($request),
+            'profile' => $this->requestPolicy->acceptsProfileNavigation(
+                $request
+            ),
             'users' => $this->requestPolicy->acceptsUserListNavigation(
                 $request
             ),
@@ -533,6 +560,10 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
             'logout' => $this->requestPolicy->acceptsFormPost(
                 $request,
                 ['csrf']
+            ),
+            'saveProfile' => $this->requestPolicy->acceptsFormPost(
+                $request,
+                ['csrf', 'display_name', 'lock_version', 'time_zone']
             ),
             'inviteEditor' =>
                 $this->requestPolicy->acceptsCapabilitiesFormPost(

@@ -39,14 +39,16 @@ final class BlogStructuredDocumentRecord
         try {
             if (
                 $internalId < 1
-                || $persistedSchemaVersion !== $snapshot->schemaVersion()
+                || $persistedSchemaVersion
+                    !== $snapshot->compatibilitySchemaVersion()
                 || !hash_equals(
-                    $snapshot->templateKey(),
+                    $snapshot->compatibilityTemplateKey(),
                     $persistedTemplateKey
                 )
-                || $persistedDocumentBytes !== $snapshot->documentBytes()
+                || $persistedDocumentBytes
+                    !== $snapshot->compatibilityDocumentBytes()
                 || !hash_equals(
-                    $snapshot->documentSha256(),
+                    $snapshot->compatibilityDocumentSha256(),
                     $persistedDocumentSha256
                 )
                 || !hash_equals(
@@ -54,7 +56,7 @@ final class BlogStructuredDocumentRecord
                     $persistedBodyTextSha256
                 )
                 || !hash_equals(
-                    $snapshot->snapshotSha256(),
+                    $snapshot->compatibilitySnapshotSha256(),
                     $persistedSnapshotSha256
                 )
             ) {

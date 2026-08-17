@@ -121,8 +121,11 @@ final class WebAdminMediaRouteProvider implements ModuleRouteProviderInterface
         }
         foreach ([
             ['GET', $prefix, 'index'],
+            ['GET', $prefix . '/catalog', 'catalog'],
             ['POST', $prefix . '/upload', 'upload'],
+            ['POST', $prefix . '/delete', 'delete'],
             ['GET', $prefix . '/updated', 'updated'],
+            ['GET', $prefix . '/deleted', 'deleted'],
             ['GET', $prefix . '/file', 'file'],
         ] as [$method, $path, $handler]) {
             $routes->add(self::moduleId(), $method, $path, [$this, $handler]);
@@ -132,8 +135,11 @@ final class WebAdminMediaRouteProvider implements ModuleRouteProviderInterface
     }
 
     public function index(Request $request): Response { return $this->handle('index', $request); }
+    public function catalog(Request $request): Response { return $this->handle('catalog', $request); }
     public function upload(Request $request): Response { return $this->handle('upload', $request); }
+    public function delete(Request $request): Response { return $this->handle('delete', $request); }
     public function updated(Request $request): Response { return $this->handle('updated', $request); }
+    public function deleted(Request $request): Response { return $this->handle('deleted', $request); }
     public function file(Request $request): Response { return $this->handle('file', $request); }
 
     private function handle(string $operation, Request $request): Response
@@ -183,8 +189,11 @@ final class WebAdminMediaRouteProvider implements ModuleRouteProviderInterface
     {
         return match ($operation) {
             'index' => $this->requestPolicy->acceptsIndex($request),
+            'catalog' => $this->requestPolicy->acceptsCatalog($request),
             'upload' => $this->requestPolicy->acceptsUpload($request),
+            'delete' => $this->requestPolicy->acceptsDelete($request),
             'updated' => $this->requestPolicy->acceptsUpdated($request),
+            'deleted' => $this->requestPolicy->acceptsDeleted($request),
             'file' => $this->requestPolicy->acceptsFile($request),
             default => false,
         };

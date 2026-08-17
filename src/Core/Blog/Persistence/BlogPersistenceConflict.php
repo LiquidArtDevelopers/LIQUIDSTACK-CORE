@@ -11,10 +11,15 @@ final class BlogPersistenceConflict extends RuntimeException
 {
     public const LOCALE = 'locale';
     public const SLUG = 'slug';
+    public const IDEMPOTENCY = 'idempotency';
 
     public function __construct(private readonly string $kind)
     {
-        if (!in_array($kind, [self::LOCALE, self::SLUG], true)) {
+        if (!in_array(
+            $kind,
+            [self::LOCALE, self::SLUG, self::IDEMPOTENCY],
+            true
+        )) {
             throw new \LogicException('Unknown Blog persistence conflict.');
         }
 

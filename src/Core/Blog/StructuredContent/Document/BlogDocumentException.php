@@ -16,6 +16,8 @@ final class BlogDocumentException extends DomainException
     public const UNSUPPORTED_TEMPLATE = 'blog.document.template_unsupported';
     public const INVALID_TEMPLATE_CONTRACT =
         'blog.document.template_contract_invalid';
+    public const INVALID_HEADER_PRESENTATION =
+        'blog.document.header_presentation_invalid';
     public const INVALID_BLOCK = 'blog.document.block_invalid';
     public const INVALID_INLINE = 'blog.document.inline_invalid';
     public const DUPLICATE_ID = 'blog.document.id_duplicate';

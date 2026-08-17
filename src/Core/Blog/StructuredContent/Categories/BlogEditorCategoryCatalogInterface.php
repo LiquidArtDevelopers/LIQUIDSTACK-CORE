@@ -11,4 +11,6 @@ interface BlogEditorCategoryCatalogInterface
 {
     /** @return list<BlogEditorCategoryOption> */
     public function forPost(string $postPublicId, string $locale): array;
+
+    public function workspaceVersion(string $postPublicId): int;
 }

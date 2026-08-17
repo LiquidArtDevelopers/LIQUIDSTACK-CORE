@@ -3,12 +3,15 @@
 declare(strict_types=1);
 
 use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationApplyOptions;
 use App\Core\Modules\Migrations\MigrationDatabasePlanner;
 use App\Core\Modules\Migrations\MigrationRunner;
 use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\WebAdmin\WebAdminHttpSchemaGate;
+use App\Core\Modules\WebAdmin\WebAdminProfileHttpSchemaGate;
+use App\Core\Modules\WebAdmin\WebAdminProfileMigrationPostconditionVerifier;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -140,6 +143,73 @@ final class WebAdminHttpSchemaGateTest extends TestCase
         );
     }
 
+    public function testProfileHttpGateUsesAZeroRowShapeProbe(): void
+    {
+        $pdo = $this->sqliteWithSchema();
+        $pdo->clearSqlLog();
+
+        self::assertTrue((new WebAdminProfileHttpSchemaGate())->isReady(
+            $pdo,
+            $this->registry(),
+            $this->scopes()
+        ));
+
+        $sql = strtolower(implode("\n", $pdo->sqlLog()));
+        self::assertStringContainsString(
+            'ls_webadmin_user_profiles',
+            $sql
+        );
+        self::assertStringContainsString('where 1 = 0', $sql);
+        foreach ([
+            'information_schema',
+            'sqlite_master',
+            'pragma table_info',
+            'pragma index_list',
+            'pragma index_info',
+            'pragma foreign_key_list',
+            'show columns',
+            'show index',
+        ] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $sql);
+        }
+    }
+
+    public function testProfileShapeFailsClosedButIndexAuditStaysInPostcondition(): void
+    {
+        $missing = $this->sqliteWithSchema();
+        $missing->exec('DROP TABLE ls_webadmin_user_profiles');
+        self::assertFalse((new WebAdminProfileHttpSchemaGate())->isReady(
+            $missing,
+            $this->registry(),
+            $this->scopes()
+        ));
+
+        $missingColumn = $this->sqliteWithSchema();
+        $missingColumn->exec(
+            'ALTER TABLE ls_webadmin_user_profiles RENAME COLUMN updated_at '
+                . 'TO drifted_updated_at'
+        );
+        self::assertFalse((new WebAdminProfileHttpSchemaGate())->isReady(
+            $missingColumn,
+            $this->registry(),
+            $this->scopes()
+        ));
+
+        $indexDrift = $this->sqliteWithSchema();
+        $indexDrift->exec('DROP INDEX ls_webadmin_ix_up_updater');
+        self::assertTrue((new WebAdminProfileHttpSchemaGate())->isReady(
+            $indexDrift,
+            $this->registry(),
+            $this->scopes()
+        ));
+        self::assertFalse(
+            (new WebAdminProfileMigrationPostconditionVerifier())->verify(
+                $indexDrift,
+                $this->scope()
+            )
+        );
+    }
+
     public function testCanonicalSeedDriftFailsClosed(): void
     {
         $pdo = $this->sqliteWithSchema();
@@ -223,7 +293,11 @@ final class WebAdminHttpSchemaGateTest extends TestCase
         (new MigrationRunner())->apply(
             $pdo,
             $this->catalog(),
-            $this->scopes()
+            $this->scopes(),
+            new MigrationApplyOptions(
+                allowDestructive: true,
+                backupConfirmed: true
+            )
         );
 
         return $pdo;

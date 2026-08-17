@@ -1209,8 +1209,8 @@ final class WebAdminMailDispatchCommandTest extends TestCase
             WebAdminMailConfiguration::SMTP_USERNAME_ENV => '',
             WebAdminMailConfiguration::SMTP_PASSWORD_ENV => '',
             WebAdminMailConfiguration::FROM_ADDRESS_ENV =>
-                'webadmin@aiwa.test',
-            WebAdminMailConfiguration::FROM_NAME_ENV => 'AIWA WebAdmin dev',
+                'webadmin@example.test',
+            WebAdminMailConfiguration::FROM_NAME_ENV => 'Proyecto WebAdmin dev',
         ], $overrides));
     }
 
@@ -1275,7 +1275,11 @@ final class WebAdminMailDispatchCommandTest extends TestCase
             $pdo,
             $catalog,
             $scopes,
-            new MigrationApplyOptions(expectedPlanHash: $preview->hash())
+            new MigrationApplyOptions(
+                expectedPlanHash: $preview->hash(),
+                allowDestructive: true,
+                backupConfirmed: true
+            )
         );
     }
 

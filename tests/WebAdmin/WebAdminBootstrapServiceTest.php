@@ -219,6 +219,30 @@ final class WebAdminBootstrapServiceTest extends TestCase
         self::assertFalse($second->changed());
     }
 
+    public function testMediaDeleteCapabilityFromMigration0005SurvivesBootstrap(): void
+    {
+        $pdo = $this->sqliteWithSchema();
+        $this->applyWebAdminMigration(
+            $pdo,
+            '0005_webadmin_media_quarantine'
+        );
+
+        $result = $this->service($pdo)->bootstrap($this->environment());
+
+        self::assertSame(BootstrapResult::COMPLETED, $result->status());
+        self::assertSame([
+            'site_admin' => 1,
+            'system_superadmin' => 1,
+        ], array_map('intval', $pdo->query(
+            'SELECT r.code, COUNT(*) AS total '
+            . 'FROM ls_webadmin_role_capabilities rc '
+            . 'JOIN ls_webadmin_roles r ON r.id = rc.role_id '
+            . 'JOIN ls_webadmin_capabilities c ON c.id = rc.capability_id '
+            . "WHERE c.code = 'webadmin.media.delete' "
+            . 'GROUP BY r.code ORDER BY r.code'
+        )->fetchAll(PDO::FETCH_KEY_PAIR)));
+    }
+
     public function testAddingBlogAfterCompletedBootstrapGrantsProtectedAccounts(): void
     {
         $pdo = $this->sqliteWithSchema();
@@ -1313,6 +1337,28 @@ final class WebAdminBootstrapServiceTest extends TestCase
         }
 
         throw new RuntimeException('Blog capability migration is missing.');
+    }
+
+    private function applyWebAdminMigration(PDO $pdo, string $migrationId): void
+    {
+        $scope = MigrationScope::forTablePrefix(
+            'webadmin',
+            'ls_webadmin_'
+        );
+        foreach (WebAdminMigrationProvider::migrations() as $migration) {
+            if ($migration->id() !== $migrationId) {
+                continue;
+            }
+            foreach ($migration->statementsFor('sqlite', $scope) as $sql) {
+                $pdo->exec($sql);
+            }
+
+            return;
+        }
+
+        throw new RuntimeException(
+            sprintf('WebAdmin migration %s is missing.', $migrationId)
+        );
     }
 
     private function bootstrapState(PDO $pdo): string

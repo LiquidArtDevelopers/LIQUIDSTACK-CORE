@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Modules\Blog;
 
 use App\Core\Blog\Analytics\BlogAnalyticsCapabilities;
+use App\Core\Blog\EditorPreferences\BlogSettingsCapabilities;
 use App\Core\Modules\Migrations\MigrationDefinition;
 use App\Core\Modules\Migrations\MigrationProviderInterface;
 
@@ -192,6 +193,1092 @@ final class BlogMigrationProvider implements MigrationProviderInterface
             ],
             targetScopeModuleId: 'webadmin'
         );
+
+        yield MigrationDefinition::sql(
+            id: '0011_blog_layout_editor_v2',
+            description: 'Crea companions aditivos para el editor layout v2.',
+            statementsByDriver: [
+                'mysql' => self::mysqlLayoutEditorStatements(),
+                'sqlite' => self::sqliteLayoutEditorStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogLayoutEditorMigrationPostconditionVerifier(),
+            supersedesPostconditions: [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+                '0009_blog_analytics',
+            ]
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0012_blog_editor_preferences',
+            description: 'Crea preferencias globales opcionales del editor.',
+            statementsByDriver: [
+                'mysql' => self::mysqlEditorPreferencesStatements(),
+                'sqlite' => self::sqliteEditorPreferencesStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogEditorPreferencesMigrationPostconditionVerifier(),
+            supersedesPostconditions: [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+                '0009_blog_analytics',
+                '0011_blog_layout_editor_v2',
+            ]
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0013_blog_settings_manage_capability',
+            description: 'Registra la capacidad protegida de ajustes Blog.',
+            statementsByDriver: [
+                'mysql' => self::mysqlSettingsCapabilityStatements(),
+                'sqlite' => self::sqliteSettingsCapabilityStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogSettingsCapabilitySeedPostcondition(),
+            supersedesPostconditions: [
+                '0002_blog_capabilities',
+                '0004_blog_category_capabilities',
+                '0008_blog_article_delete_capability',
+                '0010_blog_analytics_view_capability',
+            ],
+            targetScopeModuleId: 'webadmin'
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0014_blog_private_draft_publication',
+            description: 'Crea borradores privados y cabezas de publicacion.',
+            statementsByDriver: [
+                'mysql' => self::mysqlPrivateDraftPublicationStatements(),
+                'sqlite' => self::sqlitePrivateDraftPublicationStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogPrivateDraftPublicationMigrationPostconditionVerifier(),
+            supersedesPostconditions: [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+                '0009_blog_analytics',
+                '0011_blog_layout_editor_v2',
+                '0012_blog_editor_preferences',
+            ]
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0015_blog_robots_preferences',
+            description: 'Persiste index y follow por variante del Blog.',
+            statementsByDriver: [
+                'mysql' => self::mysqlRobotsPreferencesStatements(),
+                'sqlite' => self::sqliteRobotsPreferencesStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogRobotsPreferencesMigrationPostconditionVerifier(),
+            supersedesPostconditions: [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+                '0009_blog_analytics',
+                '0011_blog_layout_editor_v2',
+                '0012_blog_editor_preferences',
+                '0014_blog_private_draft_publication',
+            ]
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0016_blog_url_history',
+            description: 'Persiste el ciclo SEO de URLs publicadas del Blog.',
+            statementsByDriver: [
+                'mysql' => self::mysqlUrlHistoryStatements(),
+                'sqlite' => self::sqliteUrlHistoryStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogUrlHistoryMigrationPostconditionVerifier(),
+            supersedesPostconditions: [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+                '0009_blog_analytics',
+                '0011_blog_layout_editor_v2',
+                '0012_blog_editor_preferences',
+                '0014_blog_private_draft_publication',
+                '0015_blog_robots_preferences',
+            ]
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0017_blog_dummy_category',
+            description: 'Reserva la categoria interna Dummy del Blog.',
+            statementsByDriver: [
+                'mysql' => self::mysqlDummyCategoryStatements(),
+                'sqlite' => self::sqliteDummyCategoryStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier: new BlogDummyCategorySeedPostcondition()
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0018_blog_dummy_category_normalization',
+            description: 'Normaliza asignaciones Dummy heredadas del Blog.',
+            statementsByDriver: [
+                'mysql' => self::mysqlDummyCategoryNormalizationStatements(),
+                'sqlite' => self::sqliteDummyCategoryNormalizationStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogDummyCategoryNormalizationPostcondition(),
+            supersedesPostconditions: [
+                '0016_blog_url_history',
+                '0017_blog_dummy_category',
+            ]
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0019_blog_copy_operation_idempotency',
+            description: 'Hace idempotentes las copias editoriales del Blog.',
+            statementsByDriver: [
+                'mysql' => self::mysqlCopyOperationStatements(),
+                'sqlite' => self::sqliteCopyOperationStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogCopyOperationMigrationPostconditionVerifier(),
+            supersedesPostconditions: [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+                '0009_blog_analytics',
+                '0011_blog_layout_editor_v2',
+                '0012_blog_editor_preferences',
+                '0014_blog_private_draft_publication',
+                '0015_blog_robots_preferences',
+                '0016_blog_url_history',
+                '0017_blog_dummy_category',
+                '0018_blog_dummy_category_normalization',
+            ]
+        );
+    }
+
+    /** @return list<string> */
+    private static function mysqlCopyOperationStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:copy_operations}} (
+    `request_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `payload_sha256` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `actor_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `operation` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `source_post_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `source_locale` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `destination_locale` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `expected_lock_version` BIGINT UNSIGNED NOT NULL,
+    `result_post_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    `result_locale` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    `created_at` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    `completed_at` DATETIME(6) NULL,
+    PRIMARY KEY (`request_public_id`),
+    CONSTRAINT {{table:c_co_request}} CHECK (
+        `request_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    ),
+    CONSTRAINT {{table:c_co_payload}} CHECK (
+        `payload_sha256` REGEXP '^[0-9a-f]{64}$'
+    ),
+    CONSTRAINT {{table:c_co_actor}} CHECK (CHAR_LENGTH(`actor_public_id`) = 36),
+    CONSTRAINT {{table:c_co_operation}} CHECK (
+        `operation` IN ('duplicate_post', 'add_locale')
+    ),
+    CONSTRAINT {{table:c_co_source}} CHECK (
+        CHAR_LENGTH(`source_post_public_id`) = 36
+    ),
+    CONSTRAINT {{table:c_co_locales}} CHECK (
+        CHAR_LENGTH(`source_locale`) BETWEEN 2 AND 16
+        AND CHAR_LENGTH(`destination_locale`) BETWEEN 2 AND 16
+    ),
+    CONSTRAINT {{table:c_co_version}} CHECK (`expected_lock_version` > 0),
+    CONSTRAINT {{table:c_co_result}} CHECK (
+        (`result_post_public_id` IS NULL AND `result_locale` IS NULL AND `completed_at` IS NULL)
+        OR (`result_post_public_id` IS NOT NULL AND `result_locale` = `destination_locale`
+            AND `completed_at` IS NOT NULL AND `completed_at` >= `created_at`)
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteCopyOperationStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:copy_operations}} (
+    "request_public_id" TEXT COLLATE BINARY NOT NULL PRIMARY KEY CHECK (
+        length("request_public_id") = 36
+        AND "request_public_id" = lower("request_public_id")
+    ),
+    "payload_sha256" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("payload_sha256") = 64
+        AND "payload_sha256" NOT GLOB '*[^0-9a-f]*'
+    ),
+    "actor_public_id" TEXT COLLATE BINARY NOT NULL
+        CHECK (length("actor_public_id") = 36),
+    "operation" TEXT COLLATE BINARY NOT NULL
+        CHECK ("operation" IN ('duplicate_post', 'add_locale')),
+    "source_post_public_id" TEXT COLLATE BINARY NOT NULL
+        CHECK (length("source_post_public_id") = 36),
+    "source_locale" TEXT COLLATE BINARY NOT NULL
+        CHECK (length("source_locale") BETWEEN 2 AND 16),
+    "destination_locale" TEXT COLLATE BINARY NOT NULL
+        CHECK (length("destination_locale") BETWEEN 2 AND 16),
+    "expected_lock_version" INTEGER NOT NULL
+        CHECK ("expected_lock_version" > 0),
+    "result_post_public_id" TEXT COLLATE BINARY NULL,
+    "result_locale" TEXT COLLATE BINARY NULL,
+    "created_at" TEXT NOT NULL
+        DEFAULT (strftime('%Y-%m-%d %H:%M:%f000', 'now')),
+    "completed_at" TEXT NULL,
+    CHECK (
+        ("result_post_public_id" IS NULL AND "result_locale" IS NULL
+            AND "completed_at" IS NULL)
+        OR ("result_post_public_id" IS NOT NULL
+            AND "result_locale" = "destination_locale"
+            AND "completed_at" IS NOT NULL
+            AND "completed_at" >= "created_at")
+    )
+) WITHOUT ROWID
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlDummyCategoryNormalizationStatements(): array
+    {
+        return [
+            <<<'SQL'
+INSERT IGNORE INTO {{table:post_categories}} (
+    `public_id`, `post_id`, `category_id`, `assigned_by_user_public_id`
+)
+SELECT
+    CONCAT(
+        SUBSTRING(
+            '89abcdef01234567',
+            LOCATE(
+                SUBSTRING(LOWER(canonical_post.`public_id`), 1, 1),
+                '0123456789abcdef'
+            ),
+            1
+        ),
+        SUBSTRING(LOWER(canonical_post.`public_id`), 2)
+    ),
+    legacy_posts.`post_id`, canonical_category.`id`,
+    '00000000-0000-4000-8000-000000000001'
+FROM (
+    SELECT DISTINCT legacy_relation.`post_id`
+    FROM {{table:post_categories}} legacy_relation
+    JOIN {{table:category_locales}} legacy_locale
+        ON legacy_locale.`category_id` = legacy_relation.`category_id`
+    WHERE legacy_locale.`slug` = 'dummy'
+) legacy_posts
+JOIN {{table:posts}} canonical_post
+    ON canonical_post.`id` = legacy_posts.`post_id`
+JOIN {{table:categories}} canonical_category
+    ON canonical_category.`public_id` =
+        '00000000-0000-4000-8000-000000000017'
+WHERE NOT EXISTS (
+    SELECT 1 FROM {{table:post_categories}} canonical_relation
+    WHERE canonical_relation.`post_id` = legacy_posts.`post_id`
+    AND canonical_relation.`category_id` = canonical_category.`id`
+)
+SQL,
+            <<<'SQL'
+INSERT IGNORE INTO {{table:category_assignment_workspace_items}} (
+    `post_id`, `category_id`, `assigned_by_user_public_id`, `created_at`
+)
+SELECT
+    legacy_workspaces.`post_id`, canonical_category.`id`,
+    '00000000-0000-4000-8000-000000000001',
+    legacy_workspaces.`created_at`
+FROM (
+    SELECT legacy_item.`post_id`, MIN(legacy_item.`created_at`) AS `created_at`
+    FROM {{table:category_assignment_workspace_items}} legacy_item
+    JOIN {{table:category_locales}} legacy_locale
+        ON legacy_locale.`category_id` = legacy_item.`category_id`
+    WHERE legacy_locale.`slug` = 'dummy'
+    GROUP BY legacy_item.`post_id`
+) legacy_workspaces
+JOIN {{table:categories}} canonical_category
+    ON canonical_category.`public_id` =
+        '00000000-0000-4000-8000-000000000017'
+WHERE NOT EXISTS (
+    SELECT 1 FROM {{table:category_assignment_workspace_items}}
+        canonical_item
+    WHERE canonical_item.`post_id` = legacy_workspaces.`post_id`
+    AND canonical_item.`category_id` = canonical_category.`id`
+)
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteDummyCategoryNormalizationStatements(): array
+    {
+        return [
+            <<<'SQL'
+INSERT INTO {{table:post_categories}} (
+    "public_id", "post_id", "category_id", "assigned_by_user_public_id"
+)
+SELECT
+    substr(
+        '89abcdef01234567',
+        instr(
+            '0123456789abcdef',
+            substr(lower(canonical_post."public_id"), 1, 1)
+        ),
+        1
+    ) || substr(lower(canonical_post."public_id"), 2),
+    legacy_posts."post_id", canonical_category."id",
+    '00000000-0000-4000-8000-000000000001'
+FROM (
+    SELECT DISTINCT legacy_relation."post_id"
+    FROM {{table:post_categories}} legacy_relation
+    JOIN {{table:category_locales}} legacy_locale
+        ON legacy_locale."category_id" = legacy_relation."category_id"
+    WHERE legacy_locale."slug" = 'dummy'
+) legacy_posts
+JOIN {{table:posts}} canonical_post
+    ON canonical_post."id" = legacy_posts."post_id"
+JOIN {{table:categories}} canonical_category
+    ON canonical_category."public_id" =
+        '00000000-0000-4000-8000-000000000017'
+WHERE NOT EXISTS (
+    SELECT 1 FROM {{table:post_categories}} canonical_relation
+    WHERE canonical_relation."post_id" = legacy_posts."post_id"
+    AND canonical_relation."category_id" = canonical_category."id"
+)
+ON CONFLICT("post_id", "category_id") DO NOTHING
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:category_assignment_workspace_items}} (
+    "post_id", "category_id", "assigned_by_user_public_id", "created_at"
+)
+SELECT
+    legacy_workspaces."post_id", canonical_category."id",
+    '00000000-0000-4000-8000-000000000001',
+    legacy_workspaces."created_at"
+FROM (
+    SELECT legacy_item."post_id", MIN(legacy_item."created_at") AS "created_at"
+    FROM {{table:category_assignment_workspace_items}} legacy_item
+    JOIN {{table:category_locales}} legacy_locale
+        ON legacy_locale."category_id" = legacy_item."category_id"
+    WHERE legacy_locale."slug" = 'dummy'
+    GROUP BY legacy_item."post_id"
+) legacy_workspaces
+JOIN {{table:categories}} canonical_category
+    ON canonical_category."public_id" =
+        '00000000-0000-4000-8000-000000000017'
+WHERE NOT EXISTS (
+    SELECT 1 FROM {{table:category_assignment_workspace_items}}
+        canonical_item
+    WHERE canonical_item."post_id" = legacy_workspaces."post_id"
+    AND canonical_item."category_id" = canonical_category."id"
+)
+ON CONFLICT("post_id", "category_id") DO NOTHING
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlDummyCategoryStatements(): array
+    {
+        return [
+            <<<'SQL'
+INSERT IGNORE INTO {{table:categories}}
+    (`public_id`, `created_by_user_public_id`)
+VALUES (
+    '00000000-0000-4000-8000-000000000017',
+    '00000000-0000-4000-8000-000000000001'
+)
+SQL,
+            <<<'SQL'
+INSERT IGNORE INTO {{table:category_locales}} (
+    `public_id`, `category_id`, `locale`, `slug`, `name`,
+    `created_by_user_public_id`, `updated_by_user_public_id`
+)
+SELECT
+    '00000000-0000-4000-8000-000000000117', c.`id`, 'und', 'dummy',
+    'Dummy (interno)',
+    '00000000-0000-4000-8000-000000000001',
+    '00000000-0000-4000-8000-000000000001'
+FROM {{table:categories}} c
+WHERE c.`public_id` = '00000000-0000-4000-8000-000000000017'
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteDummyCategoryStatements(): array
+    {
+        return [
+            <<<'SQL'
+INSERT INTO {{table:categories}}
+    ("public_id", "created_by_user_public_id")
+SELECT
+    '00000000-0000-4000-8000-000000000017',
+    '00000000-0000-4000-8000-000000000001'
+WHERE NOT EXISTS (
+    SELECT 1 FROM {{table:categories}}
+    WHERE "public_id" = '00000000-0000-4000-8000-000000000017'
+)
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:category_locales}} (
+    "public_id", "category_id", "locale", "slug", "name",
+    "created_by_user_public_id", "updated_by_user_public_id"
+)
+SELECT
+    '00000000-0000-4000-8000-000000000117', c."id", 'und', 'dummy',
+    'Dummy (interno)',
+    '00000000-0000-4000-8000-000000000001',
+    '00000000-0000-4000-8000-000000000001'
+FROM {{table:categories}} c
+WHERE c."public_id" = '00000000-0000-4000-8000-000000000017'
+AND NOT EXISTS (
+    SELECT 1 FROM {{table:category_locales}}
+    WHERE "public_id" = '00000000-0000-4000-8000-000000000117'
+)
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlUrlHistoryStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:url_history}} (
+    `localization_id` BIGINT UNSIGNED NOT NULL,
+    `locale` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `slug` VARCHAR(190) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `state` VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `replacement_localization_id` BIGINT UNSIGNED NULL,
+    `created_at` DATETIME(6) NOT NULL,
+    `updated_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`locale`, `slug`),
+    KEY {{table:ix_uh_owner}} (`localization_id`, `state`),
+    KEY {{table:ix_uh_target}} (`replacement_localization_id`),
+    CONSTRAINT {{table:f_uh_owner}} FOREIGN KEY (`localization_id`)
+        REFERENCES {{table:post_localizations}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:f_uh_target}} FOREIGN KEY (`replacement_localization_id`)
+        REFERENCES {{table:post_localizations}} (`id`) ON DELETE RESTRICT,
+    CONSTRAINT {{table:c_uh_locale}} CHECK (
+        CHAR_LENGTH(`locale`) BETWEEN 2 AND 16
+        AND `locale` = LOWER(`locale`) AND `locale` = TRIM(`locale`)
+    ),
+    CONSTRAINT {{table:c_uh_slug}} CHECK (
+        CHAR_LENGTH(TRIM(`slug`)) > 0 AND `slug` = LOWER(`slug`)
+        AND `slug` = TRIM(`slug`)
+    ),
+    CONSTRAINT {{table:c_uh_state}} CHECK (`state` IN (
+        'active', 'temporary_not_found', 'gone', 'redirect'
+    )),
+    CONSTRAINT {{table:c_uh_target_state}} CHECK (
+        (`state` = 'redirect' AND `replacement_localization_id` IS NOT NULL)
+        OR (`state` <> 'redirect' AND `replacement_localization_id` IS NULL)
+    ),
+    CONSTRAINT {{table:c_uh_time}} CHECK (`updated_at` >= `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+            <<<'SQL'
+INSERT IGNORE INTO {{table:url_history}}
+    (`localization_id`, `locale`, `slug`, `state`,
+     `replacement_localization_id`, `created_at`, `updated_at`)
+SELECT `id`, `locale`, `slug`, 'active', NULL, `updated_at`, `updated_at`
+FROM {{table:post_localizations}}
+WHERE `status` = 'published' AND `slug` IS NOT NULL
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteUrlHistoryStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:url_history}} (
+    "localization_id" INTEGER NOT NULL
+        REFERENCES {{table:post_localizations}} ("id") ON DELETE CASCADE,
+    "locale" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("locale") BETWEEN 2 AND 16
+        AND "locale" = lower("locale") AND "locale" = trim("locale")
+    ),
+    "slug" TEXT COLLATE BINARY NOT NULL CHECK (
+        length(trim("slug")) > 0 AND "slug" = lower("slug")
+        AND "slug" = trim("slug")
+    ),
+    "state" TEXT COLLATE BINARY NOT NULL CHECK ("state" IN (
+        'active', 'temporary_not_found', 'gone', 'redirect'
+    )),
+    "replacement_localization_id" INTEGER NULL
+        REFERENCES {{table:post_localizations}} ("id") ON DELETE RESTRICT,
+    "created_at" TEXT NOT NULL,
+    "updated_at" TEXT NOT NULL,
+    PRIMARY KEY ("locale", "slug"),
+    CHECK (
+        ("state" = 'redirect' AND "replacement_localization_id" IS NOT NULL)
+        OR ("state" <> 'redirect' AND "replacement_localization_id" IS NULL)
+    ),
+    CHECK ("updated_at" >= "created_at")
+) WITHOUT ROWID
+SQL,
+            'CREATE INDEX IF NOT EXISTS {{table:ix_uh_owner}} '
+                . 'ON {{table:url_history}} ("localization_id", "state")',
+            'CREATE INDEX IF NOT EXISTS {{table:ix_uh_target}} '
+                . 'ON {{table:url_history}} ("replacement_localization_id")',
+            <<<'SQL'
+INSERT INTO {{table:url_history}}
+    ("localization_id", "locale", "slug", "state",
+     "replacement_localization_id", "created_at", "updated_at")
+SELECT "id", "locale", "slug", 'active', NULL, "updated_at", "updated_at"
+FROM {{table:post_localizations}}
+WHERE "status" = 'published' AND "slug" IS NOT NULL
+ON CONFLICT("locale", "slug") DO NOTHING
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlRobotsPreferencesStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:robots_settings}} (
+    `localization_id` BIGINT UNSIGNED NOT NULL,
+    `allow_index` TINYINT UNSIGNED NOT NULL,
+    `allow_follow` TINYINT UNSIGNED NOT NULL,
+    `settings_sha256` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    PRIMARY KEY (`localization_id`),
+    CONSTRAINT {{table:f_rs_localization}} FOREIGN KEY (`localization_id`)
+        REFERENCES {{table:post_localizations}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:c_rs_index}} CHECK (`allow_index` IN (0, 1)),
+    CONSTRAINT {{table:c_rs_follow}} CHECK (`allow_follow` IN (0, 1)),
+    CONSTRAINT {{table:c_rs_hash}} CHECK (
+        `settings_sha256` REGEXP '^[0-9a-f]{64}$'
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:revision_robots}} (
+    `revision_id` BIGINT UNSIGNED NOT NULL,
+    `allow_index` TINYINT UNSIGNED NOT NULL,
+    `allow_follow` TINYINT UNSIGNED NOT NULL,
+    `settings_sha256` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    PRIMARY KEY (`revision_id`),
+    CONSTRAINT {{table:f_rr_revision}} FOREIGN KEY (`revision_id`)
+        REFERENCES {{table:content_revisions}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:c_rr_index}} CHECK (`allow_index` IN (0, 1)),
+    CONSTRAINT {{table:c_rr_follow}} CHECK (`allow_follow` IN (0, 1)),
+    CONSTRAINT {{table:c_rr_hash}} CHECK (
+        `settings_sha256` REGEXP '^[0-9a-f]{64}$'
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteRobotsPreferencesStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:robots_settings}} (
+    "localization_id" INTEGER NOT NULL PRIMARY KEY
+        REFERENCES {{table:post_localizations}} ("id") ON DELETE CASCADE,
+    "allow_index" INTEGER NOT NULL CHECK ("allow_index" IN (0, 1)),
+    "allow_follow" INTEGER NOT NULL CHECK ("allow_follow" IN (0, 1)),
+    "settings_sha256" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("settings_sha256") = 64
+        AND "settings_sha256" NOT GLOB '*[^0-9a-f]*'
+    )
+) WITHOUT ROWID
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:revision_robots}} (
+    "revision_id" INTEGER NOT NULL PRIMARY KEY
+        REFERENCES {{table:content_revisions}} ("id") ON DELETE CASCADE,
+    "allow_index" INTEGER NOT NULL CHECK ("allow_index" IN (0, 1)),
+    "allow_follow" INTEGER NOT NULL CHECK ("allow_follow" IN (0, 1)),
+    "settings_sha256" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("settings_sha256") = 64
+        AND "settings_sha256" NOT GLOB '*[^0-9a-f]*'
+    )
+) WITHOUT ROWID
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlPrivateDraftPublicationStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:editorial_workspaces}} (
+    `localization_id` BIGINT UNSIGNED NOT NULL,
+    `draft_revision_id` BIGINT UNSIGNED NULL,
+    `base_publication_version` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    `created_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `updated_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `created_at` DATETIME(6) NOT NULL,
+    `updated_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`localization_id`),
+    UNIQUE KEY {{table:ux_ew_revision}} (`draft_revision_id`),
+    CONSTRAINT {{table:f_ew_localization}} FOREIGN KEY (`localization_id`)
+        REFERENCES {{table:post_localizations}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:f_ew_revision}} FOREIGN KEY (`draft_revision_id`)
+        REFERENCES {{table:content_revisions}} (`id`) ON DELETE RESTRICT,
+    CONSTRAINT {{table:c_ew_created_actor}} CHECK (
+        `created_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    ),
+    CONSTRAINT {{table:c_ew_updated_actor}} CHECK (
+        `updated_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    ),
+    CONSTRAINT {{table:c_ew_time}} CHECK (`updated_at` >= `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:category_assignment_heads}} (
+    `post_id` BIGINT UNSIGNED NOT NULL,
+    `assignment_version` BIGINT UNSIGNED NOT NULL,
+    `updated_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `updated_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`post_id`),
+    CONSTRAINT {{table:f_cah_post}} FOREIGN KEY (`post_id`)
+        REFERENCES {{table:posts}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:c_cah_version}} CHECK (`assignment_version` > 0),
+    CONSTRAINT {{table:c_cah_actor}} CHECK (
+        `updated_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:category_assignment_workspaces}} (
+    `post_id` BIGINT UNSIGNED NOT NULL,
+    `base_assignment_version` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    `workspace_version` BIGINT UNSIGNED NOT NULL,
+    `created_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `updated_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `created_at` DATETIME(6) NOT NULL,
+    `updated_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`post_id`),
+    CONSTRAINT {{table:f_caw_post}} FOREIGN KEY (`post_id`)
+        REFERENCES {{table:posts}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:c_caw_version}} CHECK (`workspace_version` > 0),
+    CONSTRAINT {{table:c_caw_created_actor}} CHECK (
+        `created_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    ),
+    CONSTRAINT {{table:c_caw_updated_actor}} CHECK (
+        `updated_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    ),
+    CONSTRAINT {{table:c_caw_time}} CHECK (`updated_at` >= `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:category_assignment_workspace_items}} (
+    `post_id` BIGINT UNSIGNED NOT NULL,
+    `category_id` BIGINT UNSIGNED NOT NULL,
+    `assigned_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `created_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`post_id`, `category_id`),
+    KEY {{table:ix_cawi_category}} (`category_id`),
+    CONSTRAINT {{table:f_cawi_workspace}} FOREIGN KEY (`post_id`)
+        REFERENCES {{table:category_assignment_workspaces}} (`post_id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:f_cawi_category}} FOREIGN KEY (`category_id`)
+        REFERENCES {{table:categories}} (`id`) ON DELETE RESTRICT,
+    CONSTRAINT {{table:c_cawi_actor}} CHECK (
+        `assigned_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:publication_heads}} (
+    `localization_id` BIGINT UNSIGNED NOT NULL,
+    `revision_id` BIGINT UNSIGNED NOT NULL,
+    `publication_version` BIGINT UNSIGNED NOT NULL,
+    `published_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `published_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`localization_id`),
+    UNIQUE KEY {{table:ux_ph_revision}} (`revision_id`),
+    CONSTRAINT {{table:f_ph_localization}} FOREIGN KEY (`localization_id`)
+        REFERENCES {{table:post_localizations}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:f_ph_revision}} FOREIGN KEY (`revision_id`)
+        REFERENCES {{table:content_revisions}} (`id`) ON DELETE RESTRICT,
+    CONSTRAINT {{table:c_ph_version}} CHECK (`publication_version` > 0),
+    CONSTRAINT {{table:c_ph_actor}} CHECK (
+        `published_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqlitePrivateDraftPublicationStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:editorial_workspaces}} (
+    "localization_id" INTEGER NOT NULL PRIMARY KEY
+        REFERENCES {{table:post_localizations}} ("id") ON DELETE CASCADE,
+    "draft_revision_id" INTEGER NULL UNIQUE
+        REFERENCES {{table:content_revisions}} ("id") ON DELETE RESTRICT,
+    "base_publication_version" INTEGER NOT NULL DEFAULT 0
+        CHECK ("base_publication_version" >= 0),
+    "created_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("created_by_user_public_id") = 36
+        AND "created_by_user_public_id" = lower("created_by_user_public_id")
+    ),
+    "updated_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("updated_by_user_public_id") = 36
+        AND "updated_by_user_public_id" = lower("updated_by_user_public_id")
+    ),
+    "created_at" TEXT NOT NULL,
+    "updated_at" TEXT NOT NULL CHECK ("updated_at" >= "created_at")
+) WITHOUT ROWID
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:category_assignment_heads}} (
+    "post_id" INTEGER NOT NULL PRIMARY KEY
+        REFERENCES {{table:posts}} ("id") ON DELETE CASCADE,
+    "assignment_version" INTEGER NOT NULL
+        CHECK ("assignment_version" > 0),
+    "updated_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("updated_by_user_public_id") = 36
+        AND "updated_by_user_public_id" = lower("updated_by_user_public_id")
+    ),
+    "updated_at" TEXT NOT NULL
+) WITHOUT ROWID
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:category_assignment_workspaces}} (
+    "post_id" INTEGER NOT NULL PRIMARY KEY
+        REFERENCES {{table:posts}} ("id") ON DELETE CASCADE,
+    "base_assignment_version" INTEGER NOT NULL DEFAULT 0
+        CHECK ("base_assignment_version" >= 0),
+    "workspace_version" INTEGER NOT NULL
+        CHECK ("workspace_version" > 0),
+    "created_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("created_by_user_public_id") = 36
+        AND "created_by_user_public_id" = lower("created_by_user_public_id")
+    ),
+    "updated_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("updated_by_user_public_id") = 36
+        AND "updated_by_user_public_id" = lower("updated_by_user_public_id")
+    ),
+    "created_at" TEXT NOT NULL,
+    "updated_at" TEXT NOT NULL CHECK ("updated_at" >= "created_at")
+) WITHOUT ROWID
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:category_assignment_workspace_items}} (
+    "post_id" INTEGER NOT NULL
+        REFERENCES {{table:category_assignment_workspaces}} ("post_id") ON DELETE CASCADE,
+    "category_id" INTEGER NOT NULL
+        REFERENCES {{table:categories}} ("id") ON DELETE RESTRICT,
+    "assigned_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("assigned_by_user_public_id") = 36
+        AND "assigned_by_user_public_id" = lower("assigned_by_user_public_id")
+    ),
+    "created_at" TEXT NOT NULL,
+    PRIMARY KEY ("post_id", "category_id")
+) WITHOUT ROWID
+SQL,
+            'CREATE INDEX IF NOT EXISTS {{table:ix_cawi_category}} ON '
+                . '{{table:category_assignment_workspace_items}} ("category_id")',
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:publication_heads}} (
+    "localization_id" INTEGER NOT NULL PRIMARY KEY
+        REFERENCES {{table:post_localizations}} ("id") ON DELETE CASCADE,
+    "revision_id" INTEGER NOT NULL UNIQUE
+        REFERENCES {{table:content_revisions}} ("id") ON DELETE RESTRICT,
+    "publication_version" INTEGER NOT NULL
+        CHECK ("publication_version" > 0),
+    "published_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("published_by_user_public_id") = 36
+        AND "published_by_user_public_id" = lower("published_by_user_public_id")
+    ),
+    "published_at" TEXT NOT NULL
+) WITHOUT ROWID
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlEditorPreferencesStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:editor_preferences}} (
+    `scope_key` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `schema_version` SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+    `preferences_json` LONGTEXT NOT NULL,
+    `preferences_bytes` SMALLINT UNSIGNED NOT NULL,
+    `preferences_sha256` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `lock_version` BIGINT UNSIGNED NOT NULL DEFAULT 1,
+    `updated_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `created_at` DATETIME(6) NOT NULL,
+    `updated_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`scope_key`),
+    CONSTRAINT {{table:c_ep_scope}} CHECK (`scope_key` = 'global'),
+    CONSTRAINT {{table:c_ep_schema}} CHECK (`schema_version` = 1),
+    CONSTRAINT {{table:c_ep_bytes}} CHECK (`preferences_bytes` BETWEEN 1 AND 4096),
+    CONSTRAINT {{table:c_ep_hash}} CHECK (`preferences_sha256` REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT {{table:c_ep_lock}} CHECK (`lock_version` > 0),
+    CONSTRAINT {{table:c_ep_actor}} CHECK (
+        `updated_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    ),
+    CONSTRAINT {{table:c_ep_time}} CHECK (`updated_at` >= `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteEditorPreferencesStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:editor_preferences}} (
+    "scope_key" TEXT COLLATE BINARY NOT NULL PRIMARY KEY
+        CHECK ("scope_key" = 'global'),
+    "schema_version" INTEGER NOT NULL DEFAULT 1
+        CHECK ("schema_version" = 1),
+    "preferences_json" TEXT NOT NULL,
+    "preferences_bytes" INTEGER NOT NULL
+        CHECK ("preferences_bytes" BETWEEN 1 AND 4096),
+    "preferences_sha256" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("preferences_sha256") = 64
+        AND "preferences_sha256" NOT GLOB '*[^0-9a-f]*'
+    ),
+    "lock_version" INTEGER NOT NULL DEFAULT 1
+        CHECK ("lock_version" > 0),
+    "updated_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("updated_by_user_public_id") = 36
+        AND "updated_by_user_public_id" = lower("updated_by_user_public_id")
+    ),
+    "created_at" TEXT NOT NULL,
+    "updated_at" TEXT NOT NULL CHECK ("updated_at" >= "created_at")
+) WITHOUT ROWID
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlSettingsCapabilityStatements(): array
+    {
+        $code = BlogSettingsCapabilities::MANAGE;
+        $label = BlogSettingsCapabilities::MANAGE_LABEL;
+
+        return [
+            "INSERT IGNORE INTO {{table:capabilities}} "
+                . "(`module_id`, `code`, `label_key`, `is_delegable`) "
+                . "VALUES ('blog', '{$code}', '{$label}', 0)",
+            "INSERT INTO {{table:role_capabilities}} "
+                . "(`role_id`, `capability_id`) SELECT `r`.`id`, `c`.`id` "
+                . "FROM {{table:roles}} AS `r` CROSS JOIN "
+                . "{{table:capabilities}} AS `c` WHERE `r`.`code` IN "
+                . "('site_admin', 'system_superadmin') AND "
+                . "`r`.`is_protected` = 1 AND `r`.`is_delegable` = 0 "
+                . "AND `c`.`module_id` = 'blog' AND `c`.`code` = '{$code}' "
+                . "AND `c`.`label_key` = '{$label}' "
+                . "AND `c`.`is_delegable` = 0 ON DUPLICATE KEY UPDATE "
+                . "`role_id` = VALUES(`role_id`)",
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteSettingsCapabilityStatements(): array
+    {
+        $code = BlogSettingsCapabilities::MANAGE;
+        $label = BlogSettingsCapabilities::MANAGE_LABEL;
+
+        return [
+            "INSERT INTO {{table:capabilities}} "
+                . "(\"module_id\", \"code\", \"label_key\", \"is_delegable\") "
+                . "VALUES ('blog', '{$code}', '{$label}', 0) "
+                . 'ON CONFLICT("code") DO NOTHING',
+            "INSERT INTO {{table:role_capabilities}} "
+                . "(\"role_id\", \"capability_id\") SELECT \"r\".\"id\", "
+                . "\"c\".\"id\" FROM {{table:roles}} AS \"r\" CROSS JOIN "
+                . "{{table:capabilities}} AS \"c\" WHERE \"r\".\"code\" IN "
+                . "('site_admin', 'system_superadmin') AND "
+                . "\"r\".\"is_protected\" = 1 AND \"r\".\"is_delegable\" = 0 "
+                . "AND \"c\".\"module_id\" = 'blog' AND \"c\".\"code\" = "
+                . "'{$code}' AND \"c\".\"label_key\" = '{$label}' AND "
+                . "\"c\".\"is_delegable\" = 0 "
+                . 'ON CONFLICT("role_id", "capability_id") DO NOTHING',
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlLayoutEditorStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:content_layout_docs}} (
+    `document_id` BIGINT UNSIGNED NOT NULL,
+    `schema_version` SMALLINT UNSIGNED NOT NULL DEFAULT 2,
+    `template_key` VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `document_json` LONGTEXT NOT NULL,
+    `document_bytes` INT UNSIGNED NOT NULL,
+    `document_sha256` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `snapshot_sha256` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    PRIMARY KEY (`document_id`),
+    CONSTRAINT {{table:f_cld_document}} FOREIGN KEY (`document_id`)
+        REFERENCES {{table:content_docs}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:c_cld_schema}} CHECK (`schema_version` = 2),
+    CONSTRAINT {{table:c_cld_template}} CHECK (
+        CHAR_LENGTH(`template_key`) BETWEEN 1 AND 64
+        AND `template_key` = LOWER(`template_key`)
+        AND `template_key` = TRIM(`template_key`)
+        AND `template_key` REGEXP '^[a-z][a-z0-9_-]{0,63}$'
+    ),
+    CONSTRAINT {{table:c_cld_bytes}} CHECK (
+        `document_bytes` BETWEEN 1 AND 300000
+    ),
+    CONSTRAINT {{table:c_cld_doc_hash}} CHECK (
+        `document_sha256` REGEXP '^[0-9a-f]{64}$'
+    ),
+    CONSTRAINT {{table:c_cld_snap_hash}} CHECK (
+        `snapshot_sha256` REGEXP '^[0-9a-f]{64}$'
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:content_layout_revisions}} (
+    `revision_id` BIGINT UNSIGNED NOT NULL,
+    `schema_version` SMALLINT UNSIGNED NOT NULL DEFAULT 2,
+    `template_key` VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `document_json` LONGTEXT NOT NULL,
+    `document_bytes` INT UNSIGNED NOT NULL,
+    `document_sha256` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `snapshot_sha256` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    PRIMARY KEY (`revision_id`),
+    CONSTRAINT {{table:f_clr_revision}} FOREIGN KEY (`revision_id`)
+        REFERENCES {{table:content_revisions}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:c_clr_schema}} CHECK (`schema_version` = 2),
+    CONSTRAINT {{table:c_clr_template}} CHECK (
+        CHAR_LENGTH(`template_key`) BETWEEN 1 AND 64
+        AND `template_key` = LOWER(`template_key`)
+        AND `template_key` = TRIM(`template_key`)
+        AND `template_key` REGEXP '^[a-z][a-z0-9_-]{0,63}$'
+    ),
+    CONSTRAINT {{table:c_clr_bytes}} CHECK (
+        `document_bytes` BETWEEN 1 AND 300000
+    ),
+    CONSTRAINT {{table:c_clr_doc_hash}} CHECK (
+        `document_sha256` REGEXP '^[0-9a-f]{64}$'
+    ),
+    CONSTRAINT {{table:c_clr_snap_hash}} CHECK (
+        `snapshot_sha256` REGEXP '^[0-9a-f]{64}$'
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL,
+        ];
+    }
+
+    /** @return list<string> */
+    private static function sqliteLayoutEditorStatements(): array
+    {
+        return [
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:content_layout_docs}} (
+    "document_id" INTEGER NOT NULL PRIMARY KEY
+        REFERENCES {{table:content_docs}} ("id") ON DELETE CASCADE,
+    "schema_version" INTEGER NOT NULL DEFAULT 2
+        CHECK ("schema_version" = 2),
+    "template_key" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("template_key") BETWEEN 1 AND 64
+        AND "template_key" = lower("template_key")
+        AND "template_key" = trim("template_key")
+        AND substr("template_key", 1, 1) GLOB '[a-z]'
+        AND "template_key" NOT GLOB '*[^a-z0-9_-]*'
+    ),
+    "document_json" TEXT NOT NULL,
+    "document_bytes" INTEGER NOT NULL
+        CHECK ("document_bytes" BETWEEN 1 AND 300000),
+    "document_sha256" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("document_sha256") = 64
+        AND "document_sha256" NOT GLOB '*[^0-9a-f]*'
+    ),
+    "snapshot_sha256" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("snapshot_sha256") = 64
+        AND "snapshot_sha256" NOT GLOB '*[^0-9a-f]*'
+    )
+) WITHOUT ROWID
+SQL,
+            <<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:content_layout_revisions}} (
+    "revision_id" INTEGER NOT NULL PRIMARY KEY
+        REFERENCES {{table:content_revisions}} ("id") ON DELETE CASCADE,
+    "schema_version" INTEGER NOT NULL DEFAULT 2
+        CHECK ("schema_version" = 2),
+    "template_key" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("template_key") BETWEEN 1 AND 64
+        AND "template_key" = lower("template_key")
+        AND "template_key" = trim("template_key")
+        AND substr("template_key", 1, 1) GLOB '[a-z]'
+        AND "template_key" NOT GLOB '*[^a-z0-9_-]*'
+    ),
+    "document_json" TEXT NOT NULL,
+    "document_bytes" INTEGER NOT NULL
+        CHECK ("document_bytes" BETWEEN 1 AND 300000),
+    "document_sha256" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("document_sha256") = 64
+        AND "document_sha256" NOT GLOB '*[^0-9a-f]*'
+    ),
+    "snapshot_sha256" TEXT COLLATE BINARY NOT NULL CHECK (
+        length("snapshot_sha256") = 64
+        AND "snapshot_sha256" NOT GLOB '*[^0-9a-f]*'
+    )
+) WITHOUT ROWID
+SQL,
+        ];
     }
 
     /** @return list<string> */

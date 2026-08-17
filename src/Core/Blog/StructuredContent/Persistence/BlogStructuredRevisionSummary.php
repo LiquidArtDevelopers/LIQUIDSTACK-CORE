@@ -32,7 +32,11 @@ final class BlogStructuredRevisionSummary
         try {
             if (
                 $revisionNumber < 1
-                || $schemaVersion !== BlogDocument::VERSION
+                || !in_array(
+                    $schemaVersion,
+                    [BlogDocument::VERSION, BlogDocument::LAYOUT_VERSION],
+                    true
+                )
                 || $documentBytes < 1
                 || $documentBytes > BlogDocument::MAX_JSON_BYTES
                 || $mediaCount < 0

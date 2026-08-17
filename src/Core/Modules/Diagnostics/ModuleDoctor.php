@@ -822,6 +822,19 @@ final class ModuleDoctor
                 'La configuracion Blog no cumple el contrato.'
             );
 
+        $domExtensionReady = (
+            $payload['runtime']['dom_extension']['ready'] ?? false
+        ) === true;
+        $checks[] = $domExtensionReady
+            ? DiagnosticCheck::ok(
+                'blog.runtime.dom_extension',
+                'La extension DOM requerida por Blog esta disponible.'
+            )
+            : DiagnosticCheck::error(
+                'blog.runtime.dom_extension',
+                'Blog requiere la extension DOM para sanear HTML estructurado.'
+            );
+
         $routingReady = ($payload['routing']['ready'] ?? false) === true;
         $checks[] = $routingReady
             ? DiagnosticCheck::ok(

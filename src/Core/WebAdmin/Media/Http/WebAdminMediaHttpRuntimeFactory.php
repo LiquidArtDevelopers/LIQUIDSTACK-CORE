@@ -7,7 +7,9 @@ namespace App\Core\WebAdmin\Media\Http;
 use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Modules\ConfiguredModuleDatabaseConnectionResolver;
+use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationScope;
+use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\Modules\WebAdmin\WebAdminMediaHttpSchemaGate;
@@ -22,6 +24,7 @@ use App\Core\WebAdmin\Media\MediaService;
 use App\Core\WebAdmin\Media\MediaStorageInterface;
 use App\Core\WebAdmin\Media\PdoMediaRepository;
 use App\Core\WebAdmin\Media\PrivateMediaStorage;
+use App\Core\WebAdmin\Media\Usage\MediaUsageProviderRegistryFactory;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalogFactory;
 use App\Core\WebAdmin\Security\ExceptionTraceGuard;
@@ -40,13 +43,17 @@ final class WebAdminMediaHttpRuntimeFactory implements
     private readonly Closure $connectionFactoryResolver;
     /** @var Closure(string, array<string, mixed>): MediaStorageInterface */
     private readonly Closure $storageResolver;
+    private readonly ConfiguredMigrationScopeFactory $scopeFactory;
+    private readonly MediaUsageProviderRegistryFactory $usageRegistryFactory;
 
     public function __construct(
         private readonly ?string $coreRoot = null,
         ?callable $connectionFactoryResolver = null,
         ?ConfiguredModuleDatabaseConnectionResolver $databaseConnectionResolver = null,
         ?callable $storageResolver = null,
-        private readonly ?MediaImageProcessorInterface $processor = null
+        private readonly ?MediaImageProcessorInterface $processor = null,
+        ?ConfiguredMigrationScopeFactory $scopeFactory = null,
+        ?MediaUsageProviderRegistryFactory $usageRegistryFactory = null
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
             ? static fn (array $environment, string $connection): PdoConnectionFactoryInterface =>
@@ -61,6 +68,10 @@ final class WebAdminMediaHttpRuntimeFactory implements
             ? static fn (string $root, array $environment): MediaStorageInterface =>
                 PrivateMediaStorage::forProject($root, $environment)
             : Closure::fromCallable($storageResolver);
+        $this->scopeFactory = $scopeFactory
+            ?? new ConfiguredMigrationScopeFactory();
+        $this->usageRegistryFactory = $usageRegistryFactory
+            ?? new MediaUsageProviderRegistryFactory();
     }
 
     private readonly ConfiguredModuleDatabaseConnectionResolver
@@ -123,7 +134,8 @@ final class WebAdminMediaHttpRuntimeFactory implements
                 'webadmin',
                 $config->tablePrefix()
             );
-            if (!(new WebAdminMediaHttpSchemaGate())->isReady(
+            $schemaGate = new WebAdminMediaHttpSchemaGate();
+            if (!$schemaGate->isReady(
                 $pdo,
                 $registry,
                 $scope
@@ -132,6 +144,17 @@ final class WebAdminMediaHttpRuntimeFactory implements
                     'webadmin.media.schema_not_ready'
                 );
             }
+            $acceptAvifSource = $schemaGate->acceptsAvifSource(
+                $pdo,
+                $registry,
+                $scope
+            );
+            $supportsQuarantineDeletion =
+                $schemaGate->supportsQuarantineDeletion(
+                    $pdo,
+                    $registry,
+                    $scope
+                );
             $storage = ($this->storageResolver)(
                 $context->projectRoot(),
                 $environment
@@ -148,6 +171,23 @@ final class WebAdminMediaHttpRuntimeFactory implements
                 );
             }
             $tables = WebAdminTableNames::fromPdo($pdo, $config->tablePrefix());
+            try {
+                $usageScopes = $this->scopeFactory->create(
+                    $registry,
+                    $context->projectRoot()
+                );
+            } catch (Throwable) {
+                // Media remains available while an optional module awaits a
+                // valid config/schema, but its unused status must fail closed.
+                $usageScopes = MigrationScopeCollection::fromTablePrefixes([
+                    'webadmin' => $config->tablePrefix(),
+                ]);
+            }
+            $usageProviders = $this->usageRegistryFactory->create(
+                $pdo,
+                $registry,
+                $usageScopes
+            );
             $clock = new SystemClock();
             $uuid = new RandomUuidV4Generator();
             $hasher = PasswordHasher::productive();
@@ -174,13 +214,20 @@ final class WebAdminMediaHttpRuntimeFactory implements
                 passwordHasher: $hasher
             );
             $media = new MediaService(
-                new PdoMediaRepository($pdo, $tables),
+                new PdoMediaRepository(
+                    $pdo,
+                    $tables,
+                    $supportsQuarantineDeletion
+                ),
                 $storage,
-                $this->processor ?? new ImagickAvifImageProcessor(),
+                $this->processor ?? new ImagickAvifImageProcessor(
+                    $acceptAvifSource
+                ),
                 $mutationGate,
                 $securityKey,
                 $clock,
-                $uuid
+                $uuid,
+                usageProviders: $usageProviders
             );
 
             return new WebAdminMediaHttpRuntime(
@@ -188,7 +235,9 @@ final class WebAdminMediaHttpRuntimeFactory implements
                 $authentication,
                 $authorization,
                 $media,
-                WebAdminNavigationCatalogFactory::fromRegistry($registry)
+                WebAdminNavigationCatalogFactory::fromRegistry($registry),
+                $acceptAvifSource,
+                $supportsQuarantineDeletion
             );
         } catch (WebAdminMediaHttpRuntimeException $exception) {
             throw $exception;

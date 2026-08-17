@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Core\Modules\Migrations\MigrationApplyOptions;
 use App\Core\Modules\Migrations\MigrationCatalog;
 use App\Core\Modules\Migrations\MigrationDatabasePlanner;
 use App\Core\Modules\Migrations\MigrationException;
@@ -124,11 +125,25 @@ final class WebAdminMigrationPreconditionTest extends TestCase
 
         $pdo = $this->sqlite();
         $runner = new MigrationRunner();
+        $options = new MigrationApplyOptions(
+            allowDestructive: true,
+            backupConfirmed: true
+        );
         self::assertTrue(
-            $runner->apply($pdo, $this->catalog(), $this->scopes())->changed()
+            $runner->apply(
+                $pdo,
+                $this->catalog(),
+                $this->scopes(),
+                $options
+            )->changed()
         );
         self::assertFalse(
-            $runner->apply($pdo, $this->catalog(), $this->scopes())->changed()
+            $runner->apply(
+                $pdo,
+                $this->catalog(),
+                $this->scopes(),
+                $options
+            )->changed()
         );
     }
 

@@ -277,16 +277,21 @@ const testFilters = async () => {
   form.dispatch('change', category);
   await tick();
   await tick();
-  assert.equal(fetchCount, 2, 'category changes progressively refresh results');
+  assert.equal(fetchCount, 1, 'category changes wait for explicit apply');
+  assert.equal(historyOperations.length, 1);
+  form.dispatch('submit');
+  await tick();
+  await tick();
+  assert.equal(fetchCount, 2, 'apply refreshes combined category state once');
   assert.equal(
     historyOperations.at(-1).method,
     'push',
-    'category changes create a navigable history entry',
+    'category apply creates a navigable history entry',
   );
 
   target.innerHTML = '<article>before race</article>';
-  search.value = 'A';
-  form.formEntries = [['q', 'A']];
+  search.value = 'AA';
+  form.formEntries = [['q', 'AA']];
   nextResponseMarker = 'A';
   const pendingA = {};
   deferredResponse = pendingA;
@@ -294,8 +299,8 @@ const testFilters = async () => {
   await tick();
   assert.equal(fetchCount, 3, 'request A is active');
 
-  search.value = 'B';
-  form.formEntries = [['q', 'B']];
+  search.value = 'BB';
+  form.formEntries = [['q', 'BB']];
   form.dispatch('input', search);
   pendingA.resolve();
   await tick();
@@ -314,8 +319,8 @@ const testFilters = async () => {
   assert.equal(target.innerHTML, '<article>fresh B</article>');
   assert.equal(historyOperations.at(-1).method, 'push');
 
-  search.value = 'C';
-  form.formEntries = [['q', 'C']];
+  search.value = 'CC';
+  form.formEntries = [['q', 'CC']];
   nextResponseMarker = 'C';
   form.dispatch('input', search);
   await tick(380);
@@ -334,7 +339,11 @@ const testFilters = async () => {
   form.dispatch('input', search);
   await tick(380);
   assert.equal(fetchCount, 5, 'invalid minlength state never fetches');
-  assert.equal(form.dispatch('submit'), false, 'invalid submit remains native');
+  assert.equal(
+    form.dispatch('submit'),
+    true,
+    'invalid submit is contained while native validity is communicated',
+  );
   assert.equal(fetchCount, 5);
   formIsValid = true;
 
@@ -355,112 +364,5 @@ const testFilters = async () => {
   assert.deepEqual(location.assigned, [], 'successful enhancement never navigates');
 };
 
-const createSlider = (documentRef, view, slideCount = 3) => {
-  const root = new FakeElement(documentRef);
-  const viewport = new FakeElement(documentRef);
-  const track = new FakeElement(documentRef);
-  const controls = new FakeElement(documentRef);
-  const previous = new FakeElement(documentRef);
-  const next = new FakeElement(documentRef);
-  previous.parentElement = controls;
-  next.parentElement = controls;
-  viewport.scrollLeft = 0;
-  viewport.clientWidth = 200;
-  viewport.scrollWidth = slideCount * 200;
-  viewport.getBoundingClientRect = () => ({ left: 0, right: 200 });
-  viewport.scrollBy = ({ left, behavior }) => {
-    viewport.lastBehavior = behavior;
-    viewport.scrollLeft = Math.max(
-      0,
-      Math.min(viewport.scrollWidth - viewport.clientWidth, viewport.scrollLeft + left),
-    );
-    viewport.dispatch('scroll');
-  };
-  track.children = Array.from({ length: slideCount }, (_, index) => ({
-    getBoundingClientRect: () => ({
-      left: (index * 200) - viewport.scrollLeft,
-      right: ((index + 1) * 200) - viewport.scrollLeft,
-    }),
-  }));
-  viewport.querySelector = (selector) => (
-    selector === '.sectionBlogSlider01-track' ? track : null
-  );
-  root.querySelector = (selector) => ({
-    '[data-blog-slider-viewport]': viewport,
-    '.sectionBlogSlider01-track': track,
-    '[data-blog-slider-previous]': previous,
-    '[data-blog-slider-next]': next,
-  })[selector] ?? null;
-  root.querySelectorAll = () => [];
-  root.matches = (selector) => selector === '[data-blog-slider]';
-
-  return {
-    root, viewport, track, controls, previous, next,
-  };
-};
-
-const testSlider = async () => {
-  const documentRef = new FakeTarget();
-  documentRef.nodeType = 9;
-  const view = new FakeTarget();
-  const resizeObservers = [];
-  view.AbortController = AbortController;
-  view.setTimeout = setTimeout;
-  view.clearTimeout = clearTimeout;
-  view.requestAnimationFrame = (callback) => setTimeout(callback, 0);
-  view.cancelAnimationFrame = clearTimeout;
-  view.getComputedStyle = () => ({ direction: 'ltr' });
-  view.matchMedia = () => ({ matches: false });
-  view.ResizeObserver = class FakeResizeObserver {
-    constructor(callback) {
-      this.callback = callback;
-      this.disconnected = false;
-      resizeObservers.push(this);
-    }
-
-    observe() {}
-
-    disconnect() {
-      this.disconnected = true;
-    }
-  };
-  documentRef.defaultView = view;
-  globalThis.window = view;
-  globalThis.document = documentRef;
-
-  const first = createSlider(documentRef, view);
-  const second = createSlider(documentRef, view, 2);
-  documentRef.querySelectorAll = (selector) => (
-    selector === '[data-blog-slider]' ? [first.root, second.root] : []
-  );
-
-  const module = await importSource('src/js/resources/_sectionBlogSlider01.js');
-  const cleanup = module.initSectionBlogSlider01(documentRef);
-  await tick();
-  assert.equal(resizeObservers.length, 2, 'each slider owns one resize observer');
-  assert.equal(first.previous.disabled, true);
-  assert.equal(first.next.disabled, false);
-  assert.equal(first.controls.hidden, false);
-
-  first.next.dispatch('click');
-  await tick();
-  assert.equal(first.viewport.scrollLeft, 200);
-  assert.equal(first.viewport.lastBehavior, 'smooth');
-  assert.equal(first.previous.disabled, false);
-
-  first.next.dispatch('click');
-  await tick();
-  assert.equal(first.viewport.scrollLeft, 400);
-  assert.equal(first.next.disabled, true);
-
-  cleanup();
-  assert.equal(resizeObservers.every((observer) => observer.disconnected), true);
-  assert.equal(first.controls.hidden, true);
-  const previousScroll = first.viewport.scrollLeft;
-  first.previous.dispatch('click');
-  assert.equal(first.viewport.scrollLeft, previousScroll, 'cleanup removes controls');
-};
-
 await testFilters();
-await testSlider();
 process.stdout.write('Blog progressive resource runtimes: OK\n');

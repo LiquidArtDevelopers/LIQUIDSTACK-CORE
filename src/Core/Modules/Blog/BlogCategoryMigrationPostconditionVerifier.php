@@ -44,7 +44,10 @@ final class BlogCategoryMigrationPostconditionVerifier implements
         bool $expectStructuredContentExtension = false,
         bool $expectSitemapStateExtension = false,
         bool $expectPostTombstoneExtension = false,
-        bool $expectAnalyticsExtension = false
+        bool $expectAnalyticsExtension = false,
+        bool $expectLayoutEditorExtension = false,
+        bool $expectEditorPreferencesExtension = false,
+        bool $expectPrivateDraftPublicationExtension = false
     ) {
         $this->baseVerifier = $baseVerifier
             ?? new BlogMigrationPostconditionVerifier(
@@ -53,7 +56,12 @@ final class BlogCategoryMigrationPostconditionVerifier implements
                     $expectStructuredContentExtension,
                 expectSitemapStateExtension: $expectSitemapStateExtension,
                 expectPostTombstoneExtension: $expectPostTombstoneExtension,
-                expectAnalyticsExtension: $expectAnalyticsExtension
+                expectAnalyticsExtension: $expectAnalyticsExtension,
+                expectLayoutEditorExtension: $expectLayoutEditorExtension,
+                expectEditorPreferencesExtension:
+                    $expectEditorPreferencesExtension,
+                expectPrivateDraftPublicationExtension:
+                    $expectPrivateDraftPublicationExtension
             );
     }
 

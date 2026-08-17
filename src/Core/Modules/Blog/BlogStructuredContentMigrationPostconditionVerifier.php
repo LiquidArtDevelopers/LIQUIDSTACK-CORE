@@ -55,14 +55,22 @@ final class BlogStructuredContentMigrationPostconditionVerifier implements
             new MySqlColumnDefaultNormalizer(),
         bool $expectSitemapStateExtension = false,
         bool $expectPostTombstoneExtension = false,
-        bool $expectAnalyticsExtension = false
+        bool $expectAnalyticsExtension = false,
+        bool $expectLayoutEditorExtension = false,
+        bool $expectEditorPreferencesExtension = false,
+        bool $expectPrivateDraftPublicationExtension = false
     ) {
         $this->categoryVerifier = $categoryVerifier
             ?? new BlogCategoryMigrationPostconditionVerifier(
                 expectStructuredContentExtension: true,
                 expectSitemapStateExtension: $expectSitemapStateExtension,
                 expectPostTombstoneExtension: $expectPostTombstoneExtension,
-                expectAnalyticsExtension: $expectAnalyticsExtension
+                expectAnalyticsExtension: $expectAnalyticsExtension,
+                expectLayoutEditorExtension: $expectLayoutEditorExtension,
+                expectEditorPreferencesExtension:
+                    $expectEditorPreferencesExtension,
+                expectPrivateDraftPublicationExtension:
+                    $expectPrivateDraftPublicationExtension
             );
     }
 

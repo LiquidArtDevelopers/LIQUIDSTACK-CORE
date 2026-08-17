@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Core\Database\PdoConnectionFactoryInterface;
+use App\Core\Http\Request;
 use App\Core\Modules\Migrations\MigrationApplyOptions;
 use App\Core\Modules\Migrations\MigrationCatalog;
 use App\Core\Modules\Migrations\MigrationDatabasePlanner;
@@ -11,6 +12,7 @@ use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
+use App\Core\WebAdmin\Http\WebAdminHttpController;
 use App\Core\WebAdmin\Http\WebAdminHttpRuntime;
 use App\Core\WebAdmin\Http\WebAdminHttpRuntimeException;
 use App\Core\WebAdmin\Http\WebAdminHttpRuntimeFactory;
@@ -135,6 +137,33 @@ final class WebAdminHttpRuntimeFactoryTest extends TestCase
         self::assertNull(
             $runtime->userManagement()->listEditors('invalid-session-token')
         );
+    }
+
+    public function testProfilePrgMarkerReachesAuthenticationBoundary(): void
+    {
+        $this->applyMigrations();
+        $controller = new WebAdminHttpController(
+            $this->factory()->create(
+                new ModuleRuntimeContext(
+                    $this->projectRoot,
+                    $this->environment()
+                ),
+                WebAdminConfig::defaults()
+            )
+        );
+
+        $accepted = $controller->profile(Request::fromInput([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin/profile?updated=1',
+        ], ['updated' => '1']));
+        self::assertSame(303, $accepted->status());
+        self::assertSame('/admin/login', $accepted->headers()['Location']);
+
+        $rejected = $controller->profile(Request::fromInput([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin/profile?updated=0',
+        ], ['updated' => '0']));
+        self::assertSame(400, $rejected->status());
     }
 
     public function testUserManagementReceivesEveryModuleEnabledByRegistry(): void
@@ -615,7 +644,11 @@ final class WebAdminHttpRuntimeFactoryTest extends TestCase
             $this->pdo,
             $catalog,
             $scopes,
-            new MigrationApplyOptions(expectedPlanHash: $preview->hash())
+            new MigrationApplyOptions(
+                expectedPlanHash: $preview->hash(),
+                allowDestructive: true,
+                backupConfirmed: true
+            )
         );
     }
 

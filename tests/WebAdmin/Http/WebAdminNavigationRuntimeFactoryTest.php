@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationApplyOptions;
+use App\Core\Modules\Migrations\MigrationDatabasePlanner;
 use App\Core\Modules\Migrations\MigrationRunner;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
@@ -214,12 +216,24 @@ final class WebAdminNavigationRuntimeFactoryTest extends TestCase
             $this->projectRoot,
             $this->coreRoot
         );
+        $catalog = MigrationCatalog::fromRegistry($registry);
+        $scopes = MigrationScopeCollection::fromTablePrefixes([
+            'webadmin' => WebAdminConfig::DEFAULT_TABLE_PREFIX,
+        ]);
+        $preview = (new MigrationDatabasePlanner())->plan(
+            $this->pdo,
+            $catalog,
+            $scopes
+        );
         (new MigrationRunner())->apply(
             $this->pdo,
-            MigrationCatalog::fromRegistry($registry),
-            MigrationScopeCollection::fromTablePrefixes([
-                'webadmin' => WebAdminConfig::DEFAULT_TABLE_PREFIX,
-            ])
+            $catalog,
+            $scopes,
+            new MigrationApplyOptions(
+                expectedPlanHash: $preview->hash(),
+                allowDestructive: true,
+                backupConfirmed: true
+            )
         );
     }
 

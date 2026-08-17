@@ -90,6 +90,7 @@ final class BlogCategoryRouteProvider implements ModuleRouteProviderInterface
                 ['POST', $prefix . '/create', 'create'],
                 ['GET', $prefix . '/edit', 'edit'],
                 ['POST', $prefix . '/save', 'save'],
+                ['POST', $prefix . '/delete', 'delete'],
                 ['GET', $prefix . '/assign', 'assignment'],
                 ['POST', $prefix . '/assign', 'saveAssignment'],
                 ['GET', $prefix . '/updated', 'updated'],
@@ -134,6 +135,11 @@ final class BlogCategoryRouteProvider implements ModuleRouteProviderInterface
     public function save(Request $request): Response
     {
         return $this->handle('save', $request);
+    }
+
+    public function delete(Request $request): Response
+    {
+        return $this->handle('delete', $request);
     }
 
     public function assignment(Request $request): Response

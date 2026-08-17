@@ -19,6 +19,7 @@ final class WebAdminHttpController
     private readonly WebAdminAuthenticationHttpCoordinator $authentication;
     private readonly WebAdminCredentialActionHttpCoordinator $credentials;
     private readonly WebAdminUserManagementHttpCoordinator $users;
+    private readonly WebAdminProfileHttpCoordinator $profiles;
 
     public function __construct(
         WebAdminHttpRuntime $runtime,
@@ -48,6 +49,13 @@ final class WebAdminHttpController
             $responses
         );
         $this->users = new WebAdminUserManagementHttpCoordinator(
+            $runtime,
+            $requestPolicy,
+            $renderer,
+            $responses,
+            $shells
+        );
+        $this->profiles = new WebAdminProfileHttpCoordinator(
             $runtime,
             $requestPolicy,
             $renderer,
@@ -174,5 +182,15 @@ final class WebAdminHttpController
     public function passwordResetCompleted(Request $request): Response
     {
         return $this->authentication->passwordResetCompleted($request);
+    }
+
+    public function profile(Request $request): Response
+    {
+        return $this->profiles->profile($request);
+    }
+
+    public function saveProfile(Request $request): Response
+    {
+        return $this->profiles->saveProfile($request);
     }
 }

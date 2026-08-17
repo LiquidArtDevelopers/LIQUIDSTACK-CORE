@@ -6,15 +6,25 @@ namespace App\Core\Blog\StructuredContent\Rendering;
 
 use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogPostVariant;
+use App\Core\Blog\Http\BlogLocalePresentation;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentCodec;
+use App\Core\Blog\StructuredContent\Document\BlogHeadingLevelPolicy;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTextProjector;
+use App\Core\Blog\StructuredContent\Editing\BlogStructuredDraft;
+use App\Core\Blog\StructuredContent\Editing\BlogEditorTechnicalLimitCatalog;
+use App\Core\Blog\StructuredContent\Presentation\BlogHeadingPresetCatalog;
+use App\Core\Blog\StructuredContent\Presentation\BlogH1ModuleCatalog;
+use App\Core\Blog\StructuredContent\Presentation\BlogHeaderSelection;
+use App\Core\Blog\StructuredContent\Presentation\BlogHeroCatalog;
 use App\Core\Blog\Seo\BlogSeoAnalysis;
 use App\Core\WebAdmin\Http\WebAdminPageAssets;
 use App\Core\WebAdmin\Http\WebAdminShellContext;
 use App\Core\WebAdmin\Http\WebAdminShellContextFactory;
 use App\Core\WebAdmin\Http\WebAdminShellRenderer;
+use App\Core\WebAdmin\Media\MediaPickerReference;
+use App\Core\WebAdmin\Media\Http\WebAdminMediaPickerHtmlRenderer;
 use InvalidArgumentException;
 
 /** Private, dependency-free presentation for the structured Blog editor. */
@@ -27,31 +37,56 @@ final class BlogStructuredEditorHtmlRenderer
     public const MAX_REVISION_SUMMARIES = 100;
 
     private const BLOCK_LABELS = [
-        'paragraph' => 'P&aacute;rrafo',
+        'paragraph' => 'Texto',
         'heading' => 'Encabezado',
         'list' => 'Lista',
         'callout' => 'Destacado',
         'link' => 'Enlace independiente',
         'image' => 'Imagen',
         'video' => 'V&iacute;deo de YouTube',
-        'cta' => 'Llamada a la acci&oacute;n',
+        'embed' => 'HTML',
+        'cta' => 'Bot&oacute;n',
     ];
 
     private readonly WebAdminShellRenderer $shellRenderer;
+    private readonly BlogHeadingPresetCatalog $headingPresetCatalog;
+    private readonly BlogEditorTechnicalLimitCatalog $technicalLimits;
+    private readonly BlogHeadingLevelPolicy $headingLevelPolicy;
+    private readonly BlogHeroCatalog $heroCatalog;
+    private readonly BlogH1ModuleCatalog $h1ModuleCatalog;
+    private readonly WebAdminMediaPickerHtmlRenderer $mediaPicker;
 
     public function __construct(
         private readonly BlogDocumentCodec $codec = new BlogDocumentCodec(),
         private readonly BlogDocumentTextProjector $projector =
             new BlogDocumentTextProjector(),
-        ?WebAdminShellRenderer $shellRenderer = null
+        ?WebAdminShellRenderer $shellRenderer = null,
+        ?BlogHeadingPresetCatalog $headingPresetCatalog = null,
+        ?BlogEditorTechnicalLimitCatalog $technicalLimits = null,
+        ?BlogHeroCatalog $heroCatalog = null,
+        ?BlogH1ModuleCatalog $h1ModuleCatalog = null,
+        ?WebAdminMediaPickerHtmlRenderer $mediaPicker = null,
+        ?BlogHeadingLevelPolicy $headingLevelPolicy = null
     ) {
         $this->shellRenderer = $shellRenderer ?? new WebAdminShellRenderer();
+        $this->headingPresetCatalog = $headingPresetCatalog
+            ?? BlogHeadingPresetCatalog::defaults();
+        $this->technicalLimits = $technicalLimits
+            ?? new BlogEditorTechnicalLimitCatalog();
+        $this->heroCatalog = $heroCatalog ?? new BlogHeroCatalog();
+        $this->h1ModuleCatalog = $h1ModuleCatalog
+            ?? new BlogH1ModuleCatalog();
+        $this->mediaPicker = $mediaPicker
+            ?? new WebAdminMediaPickerHtmlRenderer();
+        $this->headingLevelPolicy = $headingLevelPolicy
+            ?? new BlogHeadingLevelPolicy();
     }
 
     /**
      * @param list<BlogEditorMediaOption> $mediaOptions
      * @param list<BlogEditorRevisionSummary> $revisionSummaries
      * @param list<BlogEditorCategoryOption> $categoryOptions
+     * @param list<string> $editorStylesheets
      */
     public function render(
         string $basePath,
@@ -68,47 +103,52 @@ final class BlogStructuredEditorHtmlRenderer
         ?string $publicPath = null,
         ?WebAdminShellContextFactory $shellFactory = null,
         #[\SensitiveParameter] ?string $sessionToken = null,
-        array $categoryOptions = []
+        array $categoryOptions = [],
+        bool $layoutEditorReady = false,
+        array $headingDefaults = [],
+        ?BlogStructuredDraft $workingSnapshot = null,
+        bool $privateDraftPublicationReady = false,
+        int $categoryWorkspaceVersion = 0,
+        bool $dummyCategoryAssigned = false,
+        bool $canUploadMedia = false,
+        ?BlogEditorPreviewSandboxPolicy $previewSandbox = null,
+        array $editorStylesheets = []
     ): string {
         $basePath = $this->basePath($basePath);
         $this->assertCsrfPresentation($csrf);
         $this->assertDocumentPresentation(
             $variant,
             $document,
-            $canonicalJson
+            $canonicalJson,
+            $workingSnapshot?->compatibilityDraft()
         );
         $this->assertOptions(
             $mediaOptions,
             $revisionSummaries,
             $categoryOptions
         );
+        $headingDefaults = $this->headingDefaults($headingDefaults);
+        if ($categoryWorkspaceVersion < 0) {
+            throw new InvalidArgumentException(
+                'Invalid Blog editor category workspace version.'
+            );
+        }
 
-        $readOnly = $variant->status() !== BlogPostVariant::DRAFT;
+        $presentationDraft = $workingSnapshot?->compatibilityDraft()
+            ?? $variant->draft();
+        $readOnly = $variant->status() !== BlogPostVariant::DRAFT
+            && !$privateDraftPublicationReady;
         $identity = $this->identityFields($variant);
         $previewUrl = $this->query($basePath . '/editor/preview', [
             'post' => $variant->postPublicId(),
             'locale' => $variant->locale(),
         ]);
-        $revisionsUrl = $this->query($basePath . '/editor/revisions', [
-            'post' => $variant->postPublicId(),
-            'locale' => $variant->locale(),
-        ]);
-
         $formId = 'blog-editor-form';
         $body = '<article class="blogEditor" '
             . 'aria-labelledby="blog-editor-title">'
-            . '<header class="blogEditor__pageHeader"><div>'
-            . '<p class="blogEditor__eyebrow">Edici&oacute;n visual</p>'
-            . '<h1 id="blog-editor-title">Construir art&iacute;culo</h1>'
-            . '<p>Trabaja de arriba abajo. La vista central conserva la '
-            . 'jerarqu&iacute;a que se publicar&aacute; por SSR.</p></div>'
-            . $this->editorNavigation(
-                $basePath,
-                $variant,
-                $previewUrl,
-                $revisionsUrl,
-                $canAssignCategories
-            ) . '</header>'
+            . '<h1 id="blog-editor-title" '
+            . 'class="webadminShell-visuallyHidden">Editor visual del Blog'
+            . '</h1>'
             . ($readOnly
                 ? '<p role="status">Retira la variante antes de modificarla '
                     . 'o restaurar una revisi&oacute;n.</p>'
@@ -122,7 +162,41 @@ final class BlogStructuredEditorHtmlRenderer
             . 'method="post" action="'
             . $this->path($basePath . '/editor/save')
             . '" data-blog-editor data-blog-editor-readonly="'
-            . ($readOnly ? 'true' : 'false') . '">'
+            . ($readOnly ? 'true' : 'false')
+            . '" data-blog-layout-editor-ready="'
+            . ($layoutEditorReady ? 'true' : 'false')
+            . '" data-blog-heading-presets="'
+            . $this->jsonAttribute(
+                $this->headingPresetCatalog->toSafeArray()
+            )
+            . '" data-blog-heading-defaults="'
+            . $this->jsonAttribute($headingDefaults)
+            . '" data-blog-heading-policy="'
+            . $this->jsonAttribute($this->headingLevelPolicy->toSafeArray())
+            . '" data-blog-hero-catalog="'
+            . $this->jsonAttribute($this->heroCatalog->toSafeArray())
+            . '" data-blog-h1-module-catalog="'
+            . $this->jsonAttribute($this->h1ModuleCatalog->toSafeArray())
+            . '" data-blog-header-selection="'
+            . $this->jsonAttribute(
+                BlogHeaderSelection::forDocument(
+                    $document,
+                    $this->heroCatalog,
+                    $this->h1ModuleCatalog
+                )->toArray()
+            )
+            . '" data-blog-header-label="HERO'
+            . '" data-blog-technical-limits="'
+            . $this->jsonAttribute($this->technicalLimits->toSafeArray())
+            . ($previewSandbox === null
+                ? ''
+                : '" data-blog-advanced-preview-style-nonce="'
+                    . $this->escape($previewSandbox->styleNonce())
+                    . '" data-blog-advanced-preview-csp="'
+                    . $this->escape(
+                        $previewSandbox->contentSecurityPolicy()
+                    ))
+            . '">'
             . $this->hidden('csrf', $csrf)
             . $identity
             . $this->hidden('document_json', $canonicalJson)
@@ -131,19 +205,27 @@ final class BlogStructuredEditorHtmlRenderer
                 $mediaOptions,
                 $readOnly
             )
-            . '<div class="blogEditor__save"><button type="submit"'
-            . ($readOnly ? ' disabled' : '')
-            . '>Guardar documento</button><p data-blog-editor-status '
-            . 'role="status" aria-live="polite"></p></div></form>'
-            . $this->revisionHistory(
+            . '</form>'
+            . $this->mediaDialog(
+                $basePath,
+                $csrf,
+                $formId,
+                $mediaOptions,
+                $readOnly,
+                $canUploadMedia
+            )
+            . $this->editorActionBar(
                 $basePath,
                 $csrf,
                 $variant,
-                $revisionSummaries,
-                $readOnly
+                $previewUrl,
+                $formId,
+                $readOnly,
+                $canPublish,
+                $privateDraftPublicationReady,
+                $categoryWorkspaceVersion
             )
-            . '<p><a href="' . $this->path($basePath)
-            . '">Volver al Blog</a></p></article>';
+            . '</article>';
 
         $inspector = $this->inspector(
             $basePath,
@@ -156,11 +238,21 @@ final class BlogStructuredEditorHtmlRenderer
             $seoAnalysis,
             $formId,
             $publicPath,
-            $categoryOptions
+            $categoryOptions,
+            $presentationDraft,
+            $privateDraftPublicationReady,
+            $categoryWorkspaceVersion,
+            $dummyCategoryAssigned
         );
         $assets = new WebAdminPageAssets(
-            [self::STYLESHEET_PATH],
-            [self::SCRIPT_PATH]
+            array_merge([
+                self::STYLESHEET_PATH,
+                WebAdminMediaPickerHtmlRenderer::STYLESHEET_PATH,
+            ], $editorStylesheets),
+            [
+                self::SCRIPT_PATH,
+                WebAdminMediaPickerHtmlRenderer::SCRIPT_PATH,
+            ]
         );
         if ($shellFactory !== null && $sessionToken !== null) {
             $shell = $shellFactory->create(
@@ -188,30 +280,61 @@ final class BlogStructuredEditorHtmlRenderer
         );
     }
 
-    private function editorNavigation(
+    private function editorActionBar(
         string $basePath,
+        string $csrf,
         BlogPostVariant $variant,
         string $previewUrl,
-        string $revisionsUrl,
-        bool $canAssignCategories
+        string $formId,
+        bool $readOnly,
+        bool $canPublish,
+        bool $privateDraftPublicationReady,
+        int $categoryWorkspaceVersion
     ): string {
-        return '<nav class="blogEditor__navigation" '
-            . 'aria-label="Acciones del art&iacute;culo"><ul><li><a href="'
-            . $previewUrl . '" target="_blank" rel="noopener noreferrer">'
-            . 'Vista previa guardada</a></li><li><a href="'
-            . $revisionsUrl . '">Revisiones</a></li><li><a href="'
-            . $this->query(
-                $basePath . '/posts/new',
-                ['post' => $variant->postPublicId()]
-            ) . '">Otro idioma</a></li>'
-            . ($canAssignCategories ? '<li><a href="' . $this->query(
-                $basePath . '/categories/assign',
-                [
-                    'post' => $variant->postPublicId(),
-                    'locale' => $variant->locale(),
-                ]
-            ) . '">Categor&iacute;as</a></li>' : '')
-            . '</ul></nav>';
+        $html = '<div class="blogEditor__save blogEditor__actionBar '
+            . 'webadminActionGroup" '
+            . 'role="group" aria-label="Acciones del art&iacute;culo">'
+            . '<a class="webadminAction webadminAction--secondary" '
+            . 'data-blog-editor-preview href="' . $previewUrl
+            . '">Vista previa</a><a class="webadminAction '
+            . 'webadminAction--secondary" href="'
+            . $this->query($basePath . '/editor/revisions', [
+                'post' => $variant->postPublicId(),
+                'locale' => $variant->locale(),
+            ])
+            . '">Revisiones</a><button class="webadminAction '
+            . 'webadminAction--secondary" type="submit" form="' . $formId
+            . '" data-blog-editor-save'
+            . ($readOnly ? ' disabled' : '') . '>'
+            . ($privateDraftPublicationReady
+                ? 'Guardar borrador' : 'Guardar documento')
+            . '</button>';
+
+        if ($canPublish && !$readOnly) {
+            $published = $variant->status() === BlogPostVariant::PUBLISHED;
+            $publishPath = $privateDraftPublicationReady
+                ? '/editor/publish'
+                : '/posts/publish';
+            if ($privateDraftPublicationReady || !$published) {
+                $html .= '<form id="blog-editor-publish-form" method="post" '
+                    . 'data-blog-editor-publish-form action="'
+                    . $this->path($basePath . $publishPath) . '">'
+                    . $this->hidden('csrf', $csrf)
+                    . $this->identityFields($variant)
+                    . ($privateDraftPublicationReady
+                        ? $this->hidden(
+                            'category_workspace_version',
+                            (string) $categoryWorkspaceVersion
+                        )
+                        : '')
+                    . '<button class="webadminAction '
+                    . 'webadminAction--primary" type="submit">'
+                    . 'Publicar</button></form>';
+            }
+        }
+
+        return $html . '<p data-blog-editor-status data-blog-editor-form="'
+            . $formId . '" role="status" aria-live="polite"></p></div>';
     }
 
     private function inspector(
@@ -225,7 +348,11 @@ final class BlogStructuredEditorHtmlRenderer
         ?BlogSeoAnalysis $seoAnalysis,
         string $formId,
         ?string $publicPath,
-        array $categoryOptions
+        array $categoryOptions,
+        BlogDraft $presentationDraft,
+        bool $privateDraftPublicationReady,
+        int $categoryWorkspaceVersion,
+        bool $dummyCategoryAssigned
     ): string {
         return '<div class="blogEditor__inspector" data-blog-inspector '
             . 'data-blog-editor-form="' . $formId . '">'
@@ -245,22 +372,34 @@ final class BlogStructuredEditorHtmlRenderer
             . 'data-blog-inspector-panel="entry" '
             . 'aria-labelledby="blog-editor-tab-entry">'
             . '<h2 id="blog-editor-entry-title">Configurar entrada</h2>'
-            . $this->entryIdentity($variant, $publicPath)
+            . $this->entryIdentity(
+                $variant,
+                $presentationDraft,
+                $publicPath
+            )
             . ($canAssignCategories
                 ? $this->categoryAssignment(
                     $basePath,
                     $csrf,
                     $variant,
-                    $categoryOptions
+                    $categoryOptions,
+                    $privateDraftPublicationReady,
+                    $categoryWorkspaceVersion
                 )
                 : '')
-            . $this->metadata($variant, $readOnly, $formId)
+            . $this->metadata(
+                $presentationDraft,
+                $readOnly,
+                $formId,
+                $dummyCategoryAssigned
+            )
             . $this->templateControl($document, $readOnly, $formId)
             . $this->publicationControl(
                 $basePath,
                 $csrf,
                 $variant,
-                $canPublish
+                $canPublish,
+                $privateDraftPublicationReady
             ) . '</section>'
             . '<section id="blog-editor-panel-block" role="tabpanel" '
             . 'class="blogEditor__inspectorPanel" hidden '
@@ -268,8 +407,8 @@ final class BlogStructuredEditorHtmlRenderer
             . 'aria-labelledby="blog-editor-tab-block">'
             . '<h2 id="blog-editor-block-panel-title">Editar bloque</h2>'
             . '<div data-blog-block-inspector><p '
-            . 'class="blogEditor__inspectorEmpty">Selecciona Editar en '
-            . 'la vista central.</p></div></section>'
+            . 'class="blogEditor__inspectorEmpty">Selecciona una caja del '
+            . 'lienzo para configurarla.</p></div></section>'
             . '<section id="blog-editor-panel-seo" role="tabpanel" '
             . 'class="blogEditor__inspectorPanel" hidden '
             . 'data-blog-inspector-panel="seo" '
@@ -280,10 +419,11 @@ final class BlogStructuredEditorHtmlRenderer
 
     private function entryIdentity(
         BlogPostVariant $variant,
+        BlogDraft $draft,
         ?string $publicPath
     ): string {
         $path = $publicPath === null ? '' : rtrim($publicPath, '/');
-        $slug = $variant->draft()->slug();
+        $slug = $draft->slug();
         $url = $path === ''
             ? 'Se completará al guardar un slug.'
             : $path . ($slug === null ? '/…' : '/' . $slug);
@@ -291,7 +431,7 @@ final class BlogStructuredEditorHtmlRenderer
         return '<dl class="blogEditor__entryIdentity" data-blog-entry-identity '
             . 'data-blog-public-base="' . $this->escape($path) . '">'
             . '<div><dt>Idioma</dt>'
-            . '<dd>' . $this->escape(strtoupper($variant->locale()))
+            . '<dd>' . $this->entryLocale($variant->locale())
             . '</dd></div><div><dt>Estado</dt><dd>'
             . ($variant->status() === BlogPostVariant::DRAFT
                 ? 'Borrador'
@@ -301,12 +441,27 @@ final class BlogStructuredEditorHtmlRenderer
             . '</code></dd></div></dl>';
     }
 
+    private function entryLocale(string $locale): string
+    {
+        $asset = BlogLocalePresentation::flagAsset($locale);
+        $visual = $asset === null
+            ? '<span class="blogEditor__entryLocaleFallback" '
+                . 'aria-hidden="true">&#9673;</span>'
+            : '<img src="' . $this->escape($asset)
+                . '" alt="" aria-hidden="true" width="24" height="18">';
+
+        return '<span class="blogEditor__entryLocale">' . $visual . '<span>'
+            . $this->escape(strtoupper($locale)) . '</span></span>';
+    }
+
     /** @param list<BlogEditorCategoryOption> $categoryOptions */
     private function categoryAssignment(
         string $basePath,
         string $csrf,
         BlogPostVariant $variant,
-        array $categoryOptions
+        array $categoryOptions,
+        bool $privateDraftPublicationReady,
+        int $categoryWorkspaceVersion
     ): string {
         $locale = $variant->locale();
         $choices = '';
@@ -319,11 +474,17 @@ final class BlogStructuredEditorHtmlRenderer
                 . $this->escape($option->name()) . '</label>';
         }
         if ($choices === '') {
-            $choices = '<p>No hay categor&iacute;as disponibles en este idioma.</p>';
+            $choices = '<p data-blog-category-empty>No hay categor&iacute;as '
+                . 'disponibles en este idioma.</p>';
         }
 
+        $categoryBasePath = $this->path($basePath . '/categories');
+
         return '<div class="blogEditor__categories" '
-            . 'aria-labelledby="blog-editor-categories-title">'
+            . 'aria-labelledby="blog-editor-categories-title" '
+            . 'data-blog-category-tools data-blog-category-endpoint="'
+            . $categoryBasePath . '" data-blog-category-locale="'
+            . $this->escape($locale) . '">'
             . '<h3 id="blog-editor-categories-title">Categor&iacute;as</h3>'
             . '<p>Se muestran las categor&iacute;as de <strong>'
             . $this->escape(strtoupper($locale))
@@ -334,20 +495,63 @@ final class BlogStructuredEditorHtmlRenderer
             . 'data-blog-category-locale="' . $this->escape($locale) . '">'
             . $this->hidden('csrf', $csrf)
             . $this->hidden('post', $variant->postPublicId())
+            . ($privateDraftPublicationReady
+                ? $this->hidden('locale', $variant->locale())
+                    . $this->hidden(
+                        'lock_version',
+                        (string) $variant->lockVersion()
+                    )
+                    . $this->hidden(
+                        'category_workspace_version',
+                        (string) $categoryWorkspaceVersion
+                    )
+                : '')
             . '<fieldset><legend>Asignaci&oacute;n del art&iacute;culo</legend>'
             . '<div class="blogEditor__categoryChoices">' . $choices
             . '</div></fieldset><button type="submit">Guardar categor&iacute;as'
             . '</button><p data-blog-category-assignment-status role="status" '
-            . 'aria-live="polite"></p></form><div '
-            . 'class="blogEditor__entryActions"><a href="'
-            . $this->path($basePath . '/categories/new')
-            . '" target="_blank" rel="noopener noreferrer">Crear categor&iacute;a '
-            . '(se abre aparte)</a><a href="'
-            . $this->query($basePath . '/categories/assign', [
-                'post' => $variant->postPublicId(),
-                'locale' => $locale,
-            ]) . '" target="_blank" rel="noopener noreferrer">Abrir gesti&oacute;n '
-            . 'completa</a></div></div>';
+            . 'aria-live="polite"></p></form>'
+            . '<form method="post" action="' . $categoryBasePath
+            . '/create" class="blogEditor__categoryQuick" '
+            . 'data-blog-category-quick-form>'
+            . $this->hidden('csrf', $csrf)
+            . $this->hidden('category', '')
+            . $this->hidden('locale', $locale)
+            . '<label for="blog-editor-category-quick-name">A&ntilde;adir '
+            . 'nueva categor&iacute;a</label><div><input '
+            . 'id="blog-editor-category-quick-name" name="name" '
+            . 'type="text" autocomplete="off" required><button '
+            . 'type="submit">A&ntilde;adir</button></div><p '
+            . 'data-blog-category-quick-status role="status" '
+            . 'aria-live="polite"></p></form>'
+            . '<button type="button" class="blogEditor__categoryManagerOpen" '
+            . 'data-blog-category-manager-open>Gestionar categor&iacute;as</button>'
+            . '<dialog class="blogEditor__categoryDialog" '
+            . 'data-blog-category-manager aria-labelledby="'
+            . 'blog-editor-category-manager-title"><div '
+            . 'class="blogEditor__categoryDialogShell"><header><div><p '
+            . 'class="blogEditor__categoryDialogEyebrow">Idioma '
+            . $this->escape(strtoupper($locale)) . '</p><h3 id="'
+            . 'blog-editor-category-manager-title">Gestionar categor&iacute;as'
+            . '</h3></div><button type="button" '
+            . 'data-blog-category-manager-close aria-label="Cerrar gestor">'
+            . '&times;</button></header><form method="post" action="'
+            . $categoryBasePath . '/create" '
+            . 'data-blog-category-manager-create>'
+            . $this->hidden('csrf', $csrf)
+            . $this->hidden('category', '')
+            . $this->hidden('locale', $locale)
+            . '<div class="blogEditor__categoryManagerFields"><label>Nombre'
+            . '<input name="name" type="text" autocomplete="off" required>'
+            . '</label><label>Slug <span>(opcional)</span><input name="slug" '
+            . 'type="text" inputmode="url" autocomplete="off" '
+            . 'pattern="[a-z0-9]+(?:-[a-z0-9]+)*"></label><button '
+            . 'type="submit">Crear categor&iacute;a</button></div></form><div '
+            . 'data-blog-category-manager-list aria-live="polite"></div><p '
+            . 'data-blog-category-manager-status role="status" '
+            . 'aria-live="polite"></p></div></dialog><noscript><p><a href="'
+            . $this->query($basePath . '/categories', ['locale' => $locale])
+            . '">Gestionar categor&iacute;as</a></p></noscript></div>';
     }
 
     private function templateControl(
@@ -358,21 +562,27 @@ final class BlogStructuredEditorHtmlRenderer
         $options = '';
         foreach ([
             BlogDocumentTemplateRegistry::ARTICLE_BASIC =>
-                'Art&iacute;culo b&aacute;sico',
+                'Sin imagen destacada (compatible)',
+            BlogDocumentTemplateRegistry::ARTICLE_HERO00 =>
+                'Hero 00 &middot; tarjeta transl&uacute;cida',
+            BlogDocumentTemplateRegistry::ARTICLE_HERO06 =>
+                'Hero 06 &middot; inmersivo centrado',
             BlogDocumentTemplateRegistry::ARTICLE_COVER =>
-                'Art&iacute;culo con portada',
+                'Hero 07 &middot; compacto',
         ] as $key => $label) {
             $options .= '<option value="' . $key . '"'
                 . ($document->template() === $key ? ' selected' : '')
                 . '>' . $label . '</option>';
         }
 
-        return '<div class="blogEditor__template"><label '
-            . 'for="blog-editor-template">Plantilla visual</label><select '
+        return '<div class="blogEditor__template" '
+            . 'data-blog-header-settings><label '
+            . 'class="blogEditor__templateFallbackLabel" '
+            . 'for="blog-editor-template">Cabecera del art&iacute;culo</label><select '
             . 'id="blog-editor-template" form="' . $formId . '" '
             . 'data-blog-template-select'
             . ($readOnly ? ' disabled' : '') . '>' . $options
-            . '</select></div>';
+            . '</select><div data-blog-header-controls></div></div>';
     }
 
     private function seoPanel(
@@ -488,36 +698,50 @@ final class BlogStructuredEditorHtmlRenderer
         string $basePath,
         string $csrf,
         BlogPostVariant $variant,
-        bool $canPublish
+        bool $canPublish,
+        bool $privateDraftPublicationReady
     ): string {
         if (!$canPublish) {
             return '';
         }
 
         $published = $variant->status() === BlogPostVariant::PUBLISHED;
+        if (!$published) {
+            return '';
+        }
 
         return '<section class="blogEditor__publication" '
             . 'aria-labelledby="blog-editor-publication-title">'
             . '<h2 id="blog-editor-publication-title">Publicaci&oacute;n</h2>'
-            . '<form method="post" action="' . $this->path(
-                $basePath . ($published
-                    ? '/posts/unpublish'
-                    : '/posts/publish')
-            ) . '">' . $this->hidden('csrf', $csrf)
+            . ($privateDraftPublicationReady
+                ? '<p>La versi&oacute;n p&uacute;blica permanece intacta '
+                    . 'hasta pulsar Publicar en la barra inferior.</p>'
+                : '')
+            . '<form method="post" action="'
+            . $this->path($basePath . '/posts/unpublish')
+            . '">' . $this->hidden('csrf', $csrf)
             . $this->identityFields($variant)
-            . '<button type="submit">'
-            . ($published ? 'Retirar' : 'Publicar')
-            . '</button></form></section>';
+            . '<button type="submit">Retirar publicaci&oacute;n</button>'
+            . '</form></section>';
     }
 
     private function metadata(
-        BlogPostVariant $variant,
+        BlogDraft $draft,
         bool $readOnly,
-        string $formId
+        string $formId,
+        bool $dummyCategoryAssigned
     ): string {
-        $draft = $variant->draft();
         $readonly = $readOnly ? ' readonly' : '';
         $form = ' form="' . $formId . '"';
+
+        $h1Feedback = 'blog-editor-h1-feedback';
+        $slugFeedback = 'blog-editor-slug-feedback';
+        $titleFeedback = 'blog-editor-seo-title-feedback';
+        $descriptionFeedback = 'blog-editor-description-feedback';
+        $excerptFeedback = 'blog-editor-excerpt-feedback';
+        $robots = $draft->robotsPreferences();
+        $robotsDisabled = $readOnly || $dummyCategoryAssigned;
+        $robotsHelp = 'blog-editor-robots-help';
 
         return '<div class="blogEditor__metadata" '
             . 'aria-labelledby="blog-editor-metadata-title">'
@@ -527,39 +751,108 @@ final class BlogStructuredEditorHtmlRenderer
             . 'class="blogEditor__metadataGrid">'
             . '<div><label for="blog-editor-h1">H1</label><input '
             . 'id="blog-editor-h1" name="h1" type="text"' . $form
-            . ' maxlength="'
-            . BlogDraft::MAX_H1_BYTES . '" value="'
+            . ' data-blog-limit-scope="entry" data-blog-limit-field="h1"'
+            . ' value="'
             . $this->escape($draft->h1())
-            . '" aria-describedby="blog-editor-h1-help" required'
-            . $readonly . '></div>'
+            . '" aria-describedby="blog-editor-h1-help ' . $h1Feedback
+            . '" aria-invalid="false" required' . $readonly . '>'
+            . $this->metadataFeedback(
+                $h1Feedback,
+                'h1',
+                BlogDraft::MAX_H1_BYTES,
+                'Recomendaci&oacute;n SEO orientativa: 20&ndash;80 caracteres.'
+            ) . '</div>'
             . '<div><label for="blog-editor-slug">Slug</label><input '
             . 'id="blog-editor-slug" name="slug" type="text"' . $form
-            . ' maxlength="'
-            . BlogDraft::MAX_SLUG_BYTES
-            . '" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" value="'
+            . ' data-blog-limit-scope="entry" data-blog-limit-field="slug"'
+            . ' pattern="[a-z0-9]+(?:-[a-z0-9]+)*" value="'
             . $this->escape($draft->slug() ?? '')
-            . '" autocapitalize="none" spellcheck="false"'
-            . $readonly . '></div>'
+            . '" autocapitalize="none" spellcheck="false" aria-describedby="'
+            . $slugFeedback . '" aria-invalid="false"' . $readonly . '>'
+            . $this->metadataFeedback(
+                $slugFeedback,
+                'slug',
+                BlogDraft::MAX_SLUG_BYTES,
+                'Recomendaci&oacute;n SEO orientativa: hasta 75 caracteres.'
+            ) . '</div>'
             . '<div><label for="blog-editor-seo-title">Title SEO</label>'
             . '<input id="blog-editor-seo-title" name="seo_title" '
-            . 'type="text"' . $form . ' maxlength="'
-            . BlogDraft::MAX_SEO_TITLE_BYTES
-            . '" value="' . $this->escape($draft->seoTitle() ?? '') . '"'
-            . $readonly . '></div>'
+            . 'type="text"' . $form
+            . ' data-blog-limit-scope="entry" data-blog-limit-field="seo_title"'
+            . ' value="' . $this->escape($draft->seoTitle() ?? '') . '"'
+            . ' aria-describedby="' . $titleFeedback
+            . '" aria-invalid="false"' . $readonly . '>'
+            . $this->metadataFeedback(
+                $titleFeedback,
+                'seo_title',
+                BlogDraft::MAX_SEO_TITLE_BYTES,
+                'Recomendaci&oacute;n SEO orientativa: 30&ndash;65 caracteres.'
+            ) . '</div>'
             . '<div><label for="blog-editor-description">Meta description</label>'
             . '<textarea id="blog-editor-description" '
-            . 'name="meta_description"' . $form . ' maxlength="'
-            . BlogDraft::MAX_META_DESCRIPTION_BYTES . '"'
+            . 'name="meta_description"' . $form
+            . ' data-blog-limit-scope="entry" data-blog-limit-field="meta_description"'
+            . ' aria-describedby="' . $descriptionFeedback
+            . '" aria-invalid="false"'
             . $readonly . '>'
             . $this->escape($draft->metaDescription() ?? '')
-            . '</textarea></div>'
+            . '</textarea>' . $this->metadataFeedback(
+                $descriptionFeedback,
+                'meta_description',
+                BlogDraft::MAX_META_DESCRIPTION_BYTES,
+                'Recomendaci&oacute;n SEO orientativa: 120&ndash;160 caracteres.'
+            ) . '</div>'
             . '<div class="blogEditor__metadataWide"><label '
             . 'for="blog-editor-excerpt">Extracto</label><textarea '
             . 'id="blog-editor-excerpt" name="excerpt"' . $form
-            . ' maxlength="'
-            . BlogDraft::MAX_EXCERPT_BYTES . '"' . $readonly . '>'
+            . ' data-blog-limit-scope="entry" data-blog-limit-field="excerpt"'
+            . ' aria-describedby="' . $excerptFeedback
+            . '" aria-invalid="false"' . $readonly . '>'
             . $this->escape($draft->excerpt() ?? '')
-            . '</textarea></div></div></div>';
+            . '</textarea>' . $this->metadataFeedback(
+                $excerptFeedback,
+                'excerpt',
+                BlogDraft::MAX_EXCERPT_BYTES
+            ) . '</div></div>'
+            . '<fieldset class="blogEditor__robots" '
+            . 'data-blog-robots-controls data-blog-dummy-category="'
+            . ($dummyCategoryAssigned ? 'true' : 'false') . '">'
+            . '<legend>Visibilidad en buscadores</legend>'
+            . '<input type="hidden" name="robots_index" value="0"'
+            . $form . '><label for="blog-editor-robots-index">'
+            . '<input id="blog-editor-robots-index" name="robots_index" '
+            . 'type="checkbox" value="1"' . $form
+            . ($robots->index() && !$dummyCategoryAssigned ? ' checked' : '')
+            . ($robotsDisabled ? ' disabled' : '')
+            . ' aria-describedby="' . $robotsHelp . '"> Index</label>'
+            . '<input type="hidden" name="robots_follow" value="0"'
+            . $form . '><label for="blog-editor-robots-follow">'
+            . '<input id="blog-editor-robots-follow" name="robots_follow" '
+            . 'type="checkbox" value="1"' . $form
+            . ($robots->follow() && !$dummyCategoryAssigned ? ' checked' : '')
+            . ($robotsDisabled ? ' disabled' : '')
+            . ' aria-describedby="' . $robotsHelp . '"> Follow</label>'
+            . '<p id="' . $robotsHelp . '" role="note">'
+            . ($dummyCategoryAssigned
+                ? 'La categor&iacute;a interna de pruebas fuerza '
+                    . '<strong>noindex,nofollow</strong>. Estos controles '
+                    . 'permanecen bloqueados mientras est&eacute; asignada.'
+                : 'Index permite mostrar la entrada en buscadores; Follow '
+                    . 'permite seguir sus enlaces.')
+            . '</p></fieldset></div>';
+    }
+
+    private function metadataFeedback(
+        string $id,
+        string $field,
+        int $limit,
+        string $advice = ''
+    ): string {
+        return '<p id="' . $id . '" class="blogEditor__fieldFeedback" '
+            . 'data-blog-field-feedback="' . $field . '" '
+            . 'data-blog-technical-limit="' . $limit . '" '
+            . 'aria-live="polite">L&iacute;mite t&eacute;cnico: ' . $limit
+            . ' bytes.' . ($advice === '' ? '' : ' ' . $advice) . '</p>';
     }
 
     /** @param list<BlogEditorMediaOption> $mediaOptions */
@@ -581,59 +874,53 @@ final class BlogStructuredEditorHtmlRenderer
         }
 
         $summary = '';
-        foreach ($document->blocks() as $position => $block) {
-            $label = self::BLOCK_LABELS[$block['type']] ?? null;
-            if ($label === null) {
-                throw new InvalidArgumentException(
-                    'Invalid Blog editor document presentation.'
-                );
+        if ($document->version() === BlogDocument::LAYOUT_VERSION) {
+            $summary = '<p data-blog-empty-state>Preparando el lienzo visual&hellip;</p>';
+        } else {
+            foreach ($document->blocks() as $position => $block) {
+                $label = $position === 0
+                    && ($block['type'] ?? null) === 'image'
+                    && ($block['display'] ?? null) === 'cover'
+                        ? 'HERO'
+                        : (self::BLOCK_LABELS[$block['type']] ?? null);
+                if ($label === null) {
+                    throw new InvalidArgumentException(
+                        'Invalid Blog editor document presentation.'
+                    );
+                }
+                $summary .= '<div data-blog-static-block data-block-id="'
+                    . $this->escape($block['id']) . '">Bloque '
+                    . ($position + 1) . ': ' . $label . '</div>';
             }
-            $summary .= '<div data-blog-static-block data-block-id="'
-                . $this->escape($block['id']) . '">Bloque '
-                . ($position + 1) . ': ' . $label . '</div>';
         }
         if ($summary === '') {
             $summary = '<p data-blog-empty-state>El documento todav&iacute;a no '
                 . 'contiene bloques.</p>';
         }
 
-        $buttons = '<button type="button" data-blog-add-block="heading" '
-            . 'data-blog-heading-level="2"'
-            . ($readOnly ? ' disabled' : '')
-            . '>A&ntilde;adir secci&oacute;n H2</button>'
-            . '<button type="button" data-blog-add-block="heading" '
-            . 'data-blog-heading-level="3"'
-            . ($readOnly ? ' disabled' : '')
-            . '>A&ntilde;adir art&iacute;culo H3</button>'
-            . '<button type="button" data-blog-add-block="heading" '
-            . 'data-blog-heading-level="4"'
-            . ($readOnly ? ' disabled' : '')
-            . '>A&ntilde;adir subapartado H4</button>'
-            . '<button type="button" data-blog-add-block="heading" '
-            . 'data-blog-heading-level="5"'
-            . ($readOnly ? ' disabled' : '')
-            . '>A&ntilde;adir subapartado H5</button>'
-            . '<button type="button" data-blog-add-block="heading" '
-            . 'data-blog-heading-level="6"'
-            . ($readOnly ? ' disabled' : '')
-            . '>A&ntilde;adir subapartado H6</button>';
+        $buttons = '';
         foreach (self::BLOCK_LABELS as $type => $label) {
-            if ($type === 'heading') {
+            if (in_array(
+                $type,
+                ['heading', 'list', 'callout', 'link'],
+                true
+            )) {
                 continue;
             }
             $disabled = $readOnly
                 || ($type === 'image' && $mediaOptions === []);
+            $addLabel = $type === 'embed' ? $label : lcfirst($label);
             $buttons .= '<button type="button" data-blog-add-block="'
                 . $type . '"' . ($disabled ? ' disabled' : '')
-                . '>A&ntilde;adir ' . lcfirst($label) . '</button>';
+                . '>A&ntilde;adir ' . $addLabel . '</button>';
         }
 
         return '<section class="blogEditor__document" '
             . 'aria-labelledby="blog-editor-document-title">'
             . '<h2 id="blog-editor-document-title">Vista del art&iacute;culo</h2>'
-            . '<p class="blogEditor__canvasHelp">Cada H2 abre una '
-            . '<code>section</code>; cada H3 abre un <code>article</code> '
-            . 'dentro de ella. Edita desde las acciones de cada bloque.</p>'
+            . '<p class="blogEditor__canvasHelp">Texto re&uacute;ne '
+            . 'p&aacute;rrafos, encabezados H2-H6, listas, citas y destacados. '
+            . 'El H1 permanece en los datos de la entrada.</p>'
             . '<select id="blog-editor-media-catalog" '
             . 'data-blog-media-catalog hidden aria-hidden="true" '
             . 'tabindex="-1">' . $mediaCatalog . '</select>'
@@ -648,48 +935,36 @@ final class BlogStructuredEditorHtmlRenderer
             . 'editables.</p></noscript></section>';
     }
 
-    /** @param list<BlogEditorRevisionSummary> $summaries */
-    private function revisionHistory(
+    /** @param list<BlogEditorMediaOption> $mediaOptions */
+    private function mediaDialog(
         string $basePath,
-        string $csrf,
-        BlogPostVariant $variant,
-        array $summaries,
-        bool $readOnly
+        #[\SensitiveParameter] string $csrf,
+        string $formId,
+        array $mediaOptions,
+        bool $readOnly,
+        bool $canUploadMedia
     ): string {
-        $items = '';
-        foreach ($summaries as $summary) {
-            $detail = $this->query($basePath . '/editor/revisions', [
-                'post' => $variant->postPublicId(),
-                'locale' => $variant->locale(),
-                'revision' => $summary->revisionPublicId(),
-            ]);
-            $items .= '<li><div class="blogEditor__revision"><p><a href="'
-                . $detail . '">Revisi&oacute;n '
-                . $summary->revisionNumber() . '</a> '
-                . '<span>(versi&oacute;n editorial '
-                . $summary->variantLockVersion() . ')</span></p><time datetime="'
-                . $this->escape($summary->createdAt()->format(DATE_ATOM))
-                . '">'
-                . $this->escape($summary->createdAt()->format('Y-m-d H:i'))
-                . ' UTC</time><form method="post" action="'
-                . $this->path($basePath . '/editor/restore') . '">'
-                . $this->hidden('csrf', $csrf)
-                . $this->identityFields($variant)
-                . $this->hidden(
-                    'revision',
-                    $summary->revisionPublicId()
-                )
-                . '<button type="submit"' . ($readOnly ? ' disabled' : '')
-                . '>Restaurar esta revisi&oacute;n</button></form></div></li>';
-        }
-        if ($items === '') {
-            $items = '<li>No hay revisiones guardadas.</li>';
+        if ($readOnly) {
+            return '';
         }
 
-        return '<section class="blogEditor__revisions" '
-            . 'aria-labelledby="blog-editor-revisions-title"><h2 '
-            . 'id="blog-editor-revisions-title">Revisiones recientes</h2>'
-            . '<ol>' . $items . '</ol></section>';
+        $references = [];
+        foreach ($mediaOptions as $option) {
+            $references[] = new MediaPickerReference(
+                $option->publicId(),
+                $option->label(),
+                $option->thumbnailUrl()
+            );
+        }
+        $adminBase = substr($basePath, 0, -strlen('/blog')) ?: '/admin';
+
+        return $this->mediaPicker->dialog(
+            $adminBase,
+            $csrf,
+            $formId,
+            $references,
+            $canUploadMedia
+        );
     }
 
     private function identityFields(BlogPostVariant $variant): string
@@ -708,11 +983,12 @@ final class BlogStructuredEditorHtmlRenderer
     private function assertDocumentPresentation(
         BlogPostVariant $variant,
         BlogDocument $document,
-        string $canonicalJson
+        string $canonicalJson,
+        ?BlogDraft $presentationDraft = null
     ): void {
         $expected = $this->codec->encode($document);
         $projected = $this->projector->project($document);
-        $storedBody = $variant->draft()->bodyText();
+        $storedBody = ($presentationDraft ?? $variant->draft())->bodyText();
         if (
             !hash_equals($expected, $canonicalJson)
             || (
@@ -898,6 +1174,102 @@ final class BlogStructuredEditorHtmlRenderer
     private function path(string $path): string
     {
         return $this->escape($path);
+    }
+
+    /**
+     * @param array<string, mixed> $values
+     * @return array<string, array<string, string>>
+     */
+    private function headingDefaults(array $values): array
+    {
+        $fallback = [
+            'preset' => $this->headingPresetCatalog->defaultKey(),
+            'font_size' => 'default',
+            'font_weight' => 'default',
+            'text_color' => 'default',
+            'text_align' => 'start',
+        ];
+        if ($values === []) {
+            return array_fill_keys(
+                ['h2', 'h3', 'h4', 'h5', 'h6'],
+                $fallback
+            );
+        }
+        $keys = array_keys($values);
+        sort($keys, SORT_STRING);
+        if ($keys !== ['h2', 'h3', 'h4', 'h5', 'h6']) {
+            throw new InvalidArgumentException(
+                'Invalid Blog heading defaults presentation.'
+            );
+        }
+        foreach ($values as $level => $preference) {
+            if (!is_array($preference)) {
+                throw new InvalidArgumentException(
+                    'Invalid Blog heading defaults presentation.'
+                );
+            }
+            $preferenceKeys = array_keys($preference);
+            sort($preferenceKeys, SORT_STRING);
+            if (
+                $preferenceKeys !== [
+                    'font_size',
+                    'font_weight',
+                    'preset',
+                    'text_align',
+                    'text_color',
+                ]
+                || !is_string($preference['preset'] ?? null)
+                || !$this->headingPresetCatalog->isAllowed(
+                    $preference['preset']
+                )
+                || !in_array(
+                    $preference['font_size'] ?? null,
+                    ['default', 'small', 'large', 'xlarge'],
+                    true
+                )
+                || !in_array(
+                    $preference['font_weight'] ?? null,
+                    ['default', 'regular', 'medium', 'semibold', 'bold'],
+                    true
+                )
+                || !in_array(
+                    $preference['text_color'] ?? null,
+                    [
+                        'default',
+                        'color00',
+                        'color01',
+                        'color02',
+                        'color03',
+                        'color04',
+                        'color05',
+                    ],
+                    true
+                )
+                || !in_array(
+                    $preference['text_align'] ?? null,
+                    ['start', 'center', 'end', 'justify'],
+                    true
+                )
+            ) {
+                throw new InvalidArgumentException(
+                    'Invalid Blog heading defaults presentation.'
+                );
+            }
+        }
+
+        /** @var array<string, array<string, string>> $values */
+        return $values;
+    }
+
+    /** @param array<mixed> $value */
+    private function jsonAttribute(array $value): string
+    {
+        return $this->escape((string) json_encode(
+            $value,
+            JSON_THROW_ON_ERROR
+                | JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+        ));
     }
 
     private function escape(string $value): string

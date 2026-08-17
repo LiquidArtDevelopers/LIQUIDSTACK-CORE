@@ -69,7 +69,8 @@ final class WebAdminAuthenticationHttpCoordinator
                 $token,
                 $csrf->csrfToken(),
                 ''
-            )
+            ),
+            showProfileLink: $this->runtime->profilesReady()
         ));
     }
 

@@ -18,7 +18,7 @@ final class WebAdminMediaHttpResponseFactory
     public function html(int $status, string $body): Response
     {
         return new Response($status, $body, $this->headers(
-            "default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+            "default-src 'none'; connect-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
         ) + [
             'Content-Type' => 'text/html; charset=utf-8',
             'Content-Language' => 'es',
@@ -30,6 +30,21 @@ final class WebAdminMediaHttpResponseFactory
         return new Response($status, $body, $this->headers(
             "default-src 'none'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'"
         ) + ['Content-Type' => 'text/plain; charset=utf-8']);
+    }
+
+    /** @param array<string, mixed> $payload */
+    public function json(int $status, array $payload): Response
+    {
+        $json = json_encode(
+            $payload,
+            JSON_THROW_ON_ERROR
+                | JSON_UNESCAPED_SLASHES
+                | JSON_UNESCAPED_UNICODE
+        );
+
+        return new Response($status, $json, $this->headers(
+            "default-src 'none'; form-action 'none'; frame-ancestors 'none'; base-uri 'none'"
+        ) + ['Content-Type' => 'application/json; charset=utf-8']);
     }
 
     public function avif(MediaFilePayload $file): Response

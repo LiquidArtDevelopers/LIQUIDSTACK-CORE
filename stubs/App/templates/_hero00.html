@@ -1,12 +1,27 @@
 <header class="hero00" {editor-attributes}>
+    <picture class="hero00-picture">
+        <source
+            type="image/avif"
+            srcset="{img-srcset}"
+            sizes="{img-sizes}">
+        <img
+            class="hero00-media bg"
+            data-lang="{img-dl}"
+            data-bg-mobile="{img-mobile-src}"
+            data-bg-tablet="{img-tablet-src}"
+            data-bg-desktop="{img-desktop-src}"
+            data-bg-fallback="{img-fallback-src}"
+            data-blog-image-object-position-y="{img-object-position-y}"
+            src="{img-src}"
+            alt="{img-alt}"
+            title="{img-title}"
+            width="{img-width}"
+            height="{img-height}"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async">
+    </picture>
     <div class="hero00-content">
         {hero00-content}
     </div>
-    <span class="bg"
-          data-bg-mobile="{bg-mobile-src}"
-          data-bg-tablet="{bg-tablet-src}"
-          data-bg-desktop="{bg-desktop-src}"
-          data-bg-fallback="{bg-fallback-src}"
-          style="{bg-fallback-style}">
-    </span>
 </header>

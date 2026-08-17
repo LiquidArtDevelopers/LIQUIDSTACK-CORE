@@ -213,6 +213,11 @@ final class InstallerResourceSyncTest extends TestCase
             $this->projectRoot . '/src/js/resources/_inlineEditor.js'
         );
         self::assertFileEquals(
+            $coreRoot . '/resources/js/_inlineResponsivePicture.js',
+            $this->projectRoot
+                . '/src/js/resources/_inlineResponsivePicture.js'
+        );
+        self::assertFileEquals(
             $coreRoot . '/resources/js/_traducciones.js',
             $this->projectRoot . '/src/js/resources/_traducciones.js'
         );

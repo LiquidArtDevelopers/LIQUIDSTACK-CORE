@@ -8,12 +8,20 @@
     "resources": [
         "artBlogArticle01",
         "moduleBlogArchive01",
+        "moduleBlogCategoryBar01",
         "moduleBlogFilters01",
+        "moduleBlogGrid02",
+        "moduleBlogPagination01",
+        "moduleBlogResults01",
+        "moduleBlogSearch01",
+        "sectionBlogCatalog01",
         "sectionBlogFeatured01",
         "sectionBlogGrid01",
         "sectionBlogList01",
         "sectionBlogRelated01",
-        "sectionBlogSlider01"
+        "sectionBlogSlider01",
+        "sectionBlogSlider02",
+        "sectionBlogStack01"
     ],
     "providers": {
         "routes": [
@@ -23,10 +31,13 @@
             "App\\Core\\Modules\\Blog\\BlogPublicRouteProvider"
         ],
         "middleware": [],
-        "services": [],
+        "services": [
+            "App\\Core\\Modules\\Blog\\BlogMediaUsageModuleProvider"
+        ],
         "navigation": [
             "App\\Core\\Modules\\Blog\\BlogWebAdminNavigationProvider",
-            "App\\Core\\Modules\\Blog\\BlogCategoryWebAdminNavigationProvider"
+            "App\\Core\\Modules\\Blog\\BlogCategoryWebAdminNavigationProvider",
+            "App\\Core\\Modules\\Blog\\BlogEditorPreferencesWebAdminNavigationProvider"
         ],
         "capabilities": [],
         "migrations": [
@@ -47,6 +58,34 @@
             "type": "file",
             "policy": "managed_hash",
             "group": "resource-support"
+        },
+        {
+            "source": "resources/project/src/js/modules/blog/blogCollectionLoader.js",
+            "target": "src/js/modules/blog/blogCollectionLoader.js",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-support"
+        },
+        {
+            "source": "resources/project/App/app/_moduleBlogPublicArticle.php",
+            "target": "App/app/_moduleBlogPublicArticle.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "public-article-support"
+        },
+        {
+            "source": "resources/project/App/app/_moduleBlogPublicCollections.php",
+            "target": "App/app/_moduleBlogPublicCollections.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "public-collections-support"
+        },
+        {
+            "source": "resources/project/App/app/_moduleBlogPublicIndex.php",
+            "target": "App/app/_moduleBlogPublicIndex.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "public-index-support"
         },
         {
             "source": "resources/project/App/controllers/artBlogArticle01.php",
@@ -91,11 +130,102 @@
             "group": "resource-moduleBlogArchive01"
         },
         {
+            "source": "resources/project/App/controllers/moduleBlogCategoryBar01.php",
+            "target": "App/controllers/moduleBlogCategoryBar01.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogCategoryBar01"
+        },
+        {
+            "source": "resources/project/App/templates/_moduleBlogCategoryBar01.html",
+            "target": "App/templates/_moduleBlogCategoryBar01.html",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogCategoryBar01"
+        },
+        {
+            "source": "resources/project/src/scss/resources/_moduleBlogCategoryBar01.scss",
+            "target": "src/scss/resources/_moduleBlogCategoryBar01.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogCategoryBar01"
+        },
+        {
             "source": "resources/project/App/controllers/moduleBlogFilters01.php",
             "target": "App/controllers/moduleBlogFilters01.php",
             "type": "file",
             "policy": "managed_hash",
             "group": "resource-moduleBlogFilters01"
+        },
+        {
+            "source": "resources/project/App/controllers/moduleBlogPagination01.php",
+            "target": "App/controllers/moduleBlogPagination01.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogPagination01"
+        },
+        {
+            "source": "resources/project/App/templates/_moduleBlogPagination01.html",
+            "target": "App/templates/_moduleBlogPagination01.html",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogPagination01"
+        },
+        {
+            "source": "resources/project/src/scss/resources/_moduleBlogPagination01.scss",
+            "target": "src/scss/resources/_moduleBlogPagination01.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogPagination01"
+        },
+        {
+            "source": "resources/project/src/js/resources/_moduleBlogPagination01.js",
+            "target": "src/js/resources/_moduleBlogPagination01.js",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogPagination01"
+        },
+        {
+            "source": "resources/project/App/controllers/moduleBlogResults01.php",
+            "target": "App/controllers/moduleBlogResults01.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogResults01"
+        },
+        {
+            "source": "resources/project/App/templates/_moduleBlogResults01.html",
+            "target": "App/templates/_moduleBlogResults01.html",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogResults01"
+        },
+        {
+            "source": "resources/project/src/scss/resources/_moduleBlogResults01.scss",
+            "target": "src/scss/resources/_moduleBlogResults01.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogResults01"
+        },
+        {
+            "source": "resources/project/App/controllers/moduleBlogSearch01.php",
+            "target": "App/controllers/moduleBlogSearch01.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogSearch01"
+        },
+        {
+            "source": "resources/project/App/templates/_moduleBlogSearch01.html",
+            "target": "App/templates/_moduleBlogSearch01.html",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogSearch01"
+        },
+        {
+            "source": "resources/project/src/scss/resources/_moduleBlogSearch01.scss",
+            "target": "src/scss/resources/_moduleBlogSearch01.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogSearch01"
         },
         {
             "source": "resources/project/App/templates/_moduleBlogFilters01.html",
@@ -117,6 +247,27 @@
             "type": "file",
             "policy": "managed_hash",
             "group": "resource-moduleBlogFilters01"
+        },
+        {
+            "source": "resources/project/App/controllers/sectionBlogCatalog01.php",
+            "target": "App/controllers/sectionBlogCatalog01.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogCatalog01"
+        },
+        {
+            "source": "resources/project/App/templates/_sectionBlogCatalog01.html",
+            "target": "App/templates/_sectionBlogCatalog01.html",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogCatalog01"
+        },
+        {
+            "source": "resources/project/src/scss/resources/_sectionBlogCatalog01.scss",
+            "target": "src/scss/resources/_sectionBlogCatalog01.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogCatalog01"
         },
         {
             "source": "resources/project/App/controllers/sectionBlogFeatured01.php",
@@ -159,6 +310,34 @@
             "type": "file",
             "policy": "managed_hash",
             "group": "resource-sectionBlogGrid01"
+        },
+        {
+            "source": "resources/project/App/controllers/moduleBlogGrid02.php",
+            "target": "App/controllers/moduleBlogGrid02.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogGrid02"
+        },
+        {
+            "source": "resources/project/App/templates/_moduleBlogGrid02.html",
+            "target": "App/templates/_moduleBlogGrid02.html",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogGrid02"
+        },
+        {
+            "source": "resources/project/src/scss/resources/_moduleBlogGrid02.scss",
+            "target": "src/scss/resources/_moduleBlogGrid02.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogGrid02"
+        },
+        {
+            "source": "resources/project/src/js/resources/_moduleBlogGrid02.js",
+            "target": "src/js/resources/_moduleBlogGrid02.js",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-moduleBlogGrid02"
         },
         {
             "source": "resources/project/App/controllers/sectionBlogList01.php",
@@ -229,6 +408,62 @@
             "type": "file",
             "policy": "managed_hash",
             "group": "resource-sectionBlogSlider01"
+        },
+        {
+            "source": "resources/project/App/controllers/sectionBlogSlider02.php",
+            "target": "App/controllers/sectionBlogSlider02.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogSlider02"
+        },
+        {
+            "source": "resources/project/App/templates/_sectionBlogSlider02.html",
+            "target": "App/templates/_sectionBlogSlider02.html",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogSlider02"
+        },
+        {
+            "source": "resources/project/src/scss/resources/_sectionBlogSlider02.scss",
+            "target": "src/scss/resources/_sectionBlogSlider02.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogSlider02"
+        },
+        {
+            "source": "resources/project/src/js/resources/_sectionBlogSlider02.js",
+            "target": "src/js/resources/_sectionBlogSlider02.js",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogSlider02"
+        },
+        {
+            "source": "resources/project/App/controllers/sectionBlogStack01.php",
+            "target": "App/controllers/sectionBlogStack01.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogStack01"
+        },
+        {
+            "source": "resources/project/App/templates/_sectionBlogStack01.html",
+            "target": "App/templates/_sectionBlogStack01.html",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogStack01"
+        },
+        {
+            "source": "resources/project/src/scss/resources/_sectionBlogStack01.scss",
+            "target": "src/scss/resources/_sectionBlogStack01.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogStack01"
+        },
+        {
+            "source": "resources/project/src/js/resources/_sectionBlogStack01.js",
+            "target": "src/js/resources/_sectionBlogStack01.js",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogStack01"
         },
         {
             "source": "resources/project/App/views/showroom/_blog.php",

@@ -13,9 +13,12 @@ use App\Core\Blog\BlogService;
 use App\Core\Blog\Categories\BlogCategoryDraft;
 use App\Core\Blog\Categories\BlogCategoryService;
 use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
+use App\Core\Blog\EditorialWorkflow\Persistence\PdoBlogEditorialWorkspaceRepository;
 use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
+use App\Core\Blog\StructuredContent\Document\BlogDocumentV2Projector;
+use App\Core\Blog\StructuredContent\Document\BlogDocumentWalker;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredDraft;
 use App\Core\Blog\StructuredContent\Media\BlogMediaAvailabilityPortInterface;
 use App\Core\Blog\StructuredContent\Persistence\PdoBlogStructuredContentRepository;
@@ -26,6 +29,7 @@ use App\Core\WebAdmin\Support\UuidGeneratorInterface;
 use DateTimeImmutable;
 use DateTimeZone;
 use PDO;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -127,6 +131,7 @@ final class BlogEditorialActionsPersistenceTest extends TestCase
             '0005_blog_structured_content',
             '0006_blog_sitemap_publication_state',
             '0007_blog_post_tombstones',
+            '0019_blog_copy_operation_idempotency',
         ]);
         $this->repository = new PdoBlogRepository(
             $this->pdo,
@@ -141,7 +146,7 @@ final class BlogEditorialActionsPersistenceTest extends TestCase
         $this->media = new EditorialActionMediaAvailability($this->pdo);
     }
 
-    public function testDuplicateClonesCurrentDocumentMediaAndCategoriesAsDraft(): void
+    public function testCopyFlowsCloneOnlyCurrentPrivateStateAsDraft(): void
     {
         $sourceH1 = str_repeat('é', 127) . 'a';
         $structured = $this->structuredDraft($sourceH1);
@@ -237,11 +242,21 @@ final class BlogEditorialActionsPersistenceTest extends TestCase
             $structured->canonicalJson(),
             $copyDocument->snapshot()->canonicalJson()
         );
-        self::assertCount(1, $this->content->listRevisions(
+        $duplicateRevisions = $this->content->listRevisions(
             $duplicate->localizationPublicId(),
             10,
             0
-        ));
+        );
+        self::assertCount(1, $duplicateRevisions);
+        self::assertSame(1, $duplicateRevisions[0]->revisionNumber());
+        self::assertSame(1, $duplicateRevisions[0]->variantLockVersion());
+        self::assertSame(1, $duplicateRevisions[0]->mediaCount());
+        self::assertSame(
+            $structured->canonicalJson(),
+            $this->content->revision(
+                $duplicateRevisions[0]->revisionPublicId()
+            )?->snapshot()->canonicalJson()
+        );
         self::assertSame([[self::MEDIA]], $this->media->checks);
         self::assertSame(2, $this->rowCount('content_media'));
         self::assertSame(2, $this->rowCount('revision_media'));
@@ -262,6 +277,546 @@ final class BlogEditorialActionsPersistenceTest extends TestCase
             $source->postPublicId(),
             'es'
         )?->draft()->slug());
+
+        $publishedSource = $this->service([])->publish(
+            $this->gate(),
+            $source->postPublicId(),
+            'es',
+            1
+        );
+        self::assertSame(BlogPostVariant::PUBLISHED, $publishedSource->status());
+
+        $localeAudit = new EditorialActionAudit();
+        $localeCopy = $this->service([
+            $this->id(35),
+            $this->id(36),
+            $this->id(37),
+        ], $localeAudit)->addLocalizationCopy(
+            $this->gate(),
+            $source->postPublicId(),
+            'es',
+            'eu',
+            2
+        );
+
+        self::assertSame($source->postPublicId(), $localeCopy->postPublicId());
+        self::assertSame('eu', $localeCopy->locale());
+        self::assertSame(BlogPostVariant::DRAFT, $localeCopy->status());
+        self::assertSame(1, $localeCopy->lockVersion());
+        self::assertNull($localeCopy->draft()->slug());
+        self::assertSame($sourceH1, $localeCopy->draft()->h1());
+        self::assertSame(
+            $structured->canonicalJson(),
+            $this->content->current(
+                $localeCopy->localizationPublicId()
+            )?->snapshot()->canonicalJson()
+        );
+        $localeRevisions = $this->content->listRevisions(
+            $localeCopy->localizationPublicId(),
+            10,
+            0
+        );
+        self::assertCount(1, $localeRevisions);
+        self::assertSame(1, $localeRevisions[0]->revisionNumber());
+        self::assertSame(1, $localeRevisions[0]->variantLockVersion());
+        self::assertSame(1, $localeRevisions[0]->mediaCount());
+        self::assertSame(
+            $structured->canonicalJson(),
+            $this->content->revision(
+                $localeRevisions[0]->revisionPublicId()
+            )?->snapshot()->canonicalJson()
+        );
+        self::assertSame(
+            [[self::MEDIA], [self::MEDIA]],
+            $this->media->checks
+        );
+        self::assertSame(3, $this->rowCount('content_media'));
+        self::assertSame(3, $this->rowCount('revision_media'));
+        self::assertSame(2, $this->rowCount('post_categories'));
+        self::assertSame(
+            [$category->categoryPublicId()],
+            $this->categoryIds($localeCopy->postPublicId())
+        );
+        self::assertCount(1, $localeAudit->events);
+        self::assertSame(
+            BlogMutationAuditEvent::ADD_LOCALE,
+            $localeAudit->events[0]->operation()
+        );
+        self::assertSame(
+            $source->postPublicId(),
+            $localeAudit->events[0]->postPublicId()
+        );
+        self::assertSame(BlogPostVariant::PUBLISHED, $this->repository->variant(
+            $source->postPublicId(),
+            'es'
+        )?->status());
+        self::assertSame('matrix-source', $this->service([])->resolvePublished(
+            'es',
+            'matrix-source'
+        )?->draft()->slug());
+        self::assertSame(
+            $structured->canonicalJson(),
+            $this->content->current(
+                $source->localizationPublicId()
+            )?->snapshot()->canonicalJson()
+        );
+        $sourceRevisions = $this->content->listRevisions(
+            $source->localizationPublicId(),
+            10,
+            0
+        );
+        self::assertCount(1, $sourceRevisions);
+        self::assertSame(1, $sourceRevisions[0]->revisionNumber());
+        self::assertSame(1, $sourceRevisions[0]->variantLockVersion());
+        $this->expectIssue(BlogException::LOCALE_CONFLICT, fn () =>
+            $this->service([$this->id(38)])->addLocalizationCopy(
+                $this->gate(),
+                $source->postPublicId(),
+                'es',
+                'eu',
+                2
+            )
+        );
+        self::assertSame(3, $this->rowCount('post_localizations'));
+    }
+
+    public function testCopyOperationIsExactlyIdempotentAndRejectsKeyDrift(): void
+    {
+        $source = $this->service([
+            $this->id(201),
+            $this->id(202),
+        ])->createPost(
+            $this->gate(),
+            'es',
+            $this->completeDraft('idempotent-source')
+        );
+        $audit = new EditorialActionAudit();
+        $service = $this->service([
+            $this->id(203), $this->id(204),
+            $this->id(205), $this->id(206),
+            $this->id(207),
+            $this->id(208), $this->id(209),
+        ], $audit);
+        $operation = $this->id(250);
+
+        $created = $service->duplicatePost(
+            $this->gate(),
+            $source->postPublicId(),
+            'es',
+            1,
+            $operation
+        );
+        $replayed = $service->duplicatePost(
+            $this->gate(),
+            $source->postPublicId(),
+            'es',
+            1,
+            $operation
+        );
+
+        self::assertSame($created->postPublicId(), $replayed->postPublicId());
+        self::assertSame(
+            $created->localizationPublicId(),
+            $replayed->localizationPublicId()
+        );
+        self::assertSame(2, $this->rowCount('posts'));
+        self::assertSame(2, $this->rowCount('post_localizations'));
+        self::assertSame(1, $this->rowCount('copy_operations'));
+        self::assertCount(1, $audit->events);
+
+        $this->expectIssue(BlogException::IDEMPOTENCY_CONFLICT, fn () =>
+            $service->addLocalizationCopy(
+                $this->gate(),
+                $source->postPublicId(),
+                'es',
+                'en',
+                1,
+                $operation
+            )
+        );
+        $otherActor = static fn (PDO $pdo): string =>
+            'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+        $this->expectIssue(BlogException::IDEMPOTENCY_CONFLICT, fn () =>
+            $service->duplicatePost(
+                $otherActor,
+                $source->postPublicId(),
+                'es',
+                1,
+                $operation
+            )
+        );
+        self::assertSame(2, $this->rowCount('posts'));
+        self::assertSame(2, $this->rowCount('post_localizations'));
+        self::assertSame(1, $this->rowCount('copy_operations'));
+    }
+
+    public function testCopyReplayReportsItsRecoverableTrashedDestination(): void
+    {
+        $source = $this->service([
+            $this->id(251),
+            $this->id(252),
+        ])->createPost(
+            $this->gate(),
+            'es',
+            $this->completeDraft('replay-trash-source')
+        );
+        $audit = new EditorialActionAudit();
+        $service = $this->service([
+            $this->id(253), $this->id(254),
+            $this->id(255), $this->id(256),
+            $this->id(257), $this->id(258),
+            $this->id(259),
+        ], $audit);
+        $operation = $this->id(260);
+
+        $created = $service->duplicatePost(
+            $this->gate(),
+            $source->postPublicId(),
+            'es',
+            1,
+            $operation
+        );
+        $trashed = $service->trashPost(
+            $this->gate(),
+            $created->postPublicId(),
+            'es',
+            1
+        );
+        self::assertSame(2, $trashed->lockVersion());
+
+        $this->expectIssue(BlogException::COPY_RESULT_TRASHED, fn () =>
+            $service->duplicatePost(
+                $this->gate(),
+                $source->postPublicId(),
+                'es',
+                1,
+                $operation
+            )
+        );
+        self::assertSame(2, $this->rowCount('posts'));
+        self::assertSame(2, $this->rowCount('post_localizations'));
+        self::assertSame(1, $this->rowCount('post_tombstones'));
+        self::assertSame(1, $this->rowCount('copy_operations'));
+        self::assertSame([
+            BlogMutationAuditEvent::DUPLICATE,
+            BlogMutationAuditEvent::TRASH,
+        ], array_map(
+            static fn (BlogMutationAuditEvent $event): string =>
+                $event->operation(),
+            $audit->events
+        ));
+    }
+
+    public function testDuplicateDoesNotReintroduceStandaloneWrittenModules(): void
+    {
+        $this->applyMigrations([
+            '0011_blog_layout_editor_v2',
+            '0014_blog_private_draft_publication',
+        ]);
+        $layoutContent = new PdoBlogStructuredContentRepository(
+            $this->pdo,
+            $this->scope,
+            layoutReady: true
+        );
+        $workflow = new PdoBlogEditorialWorkspaceRepository(
+            $this->pdo,
+            $this->scope
+        );
+        $sourceSnapshot = new BlogStructuredDraft(
+            'Texto unificado',
+            BlogDocument::fromArray([
+                'schema' => BlogDocument::SCHEMA,
+                'version' => BlogDocument::LAYOUT_VERSION,
+                'template' => BlogDocumentTemplateRegistry::ARTICLE_BASIC,
+                'blocks' => [[
+                    'id' => $this->id(80),
+                    'type' => 'section',
+                    'children' => [[
+                        'id' => $this->id(81),
+                        'type' => 'heading',
+                        'level' => 2,
+                        'content' => [[
+                            'type' => 'text',
+                            'text' => 'Titulo heredado',
+                            'marks' => [],
+                        ]],
+                        'preset' => 'accent-line',
+                        'presentation' => [
+                            'width' => 'full',
+                            'align' => 'start',
+                            'text_align' => 'start',
+                            'size' => 'm',
+                            'font_weight' => 'default',
+                            'text_color' => 'default',
+                            'spacing_before' => 'none',
+                            'spacing_after' => 'none',
+                        ],
+                    ], [
+                        'id' => $this->id(82),
+                        'type' => 'list',
+                        'ordered' => false,
+                        'items' => [[
+                            'id' => $this->id(83),
+                            'content' => [[
+                                'type' => 'text',
+                                'text' => 'Punto heredado',
+                                'marks' => [],
+                            ]],
+                        ]],
+                        'marker' => 'square',
+                        'presentation' => [
+                            'width' => '80',
+                            'align' => 'center',
+                            'text_align' => 'start',
+                            'size' => 'm',
+                            'text_color' => 'color02',
+                            'spacing_before' => 's',
+                            'spacing_after' => 'm',
+                        ],
+                    ]],
+                ]],
+            ]),
+            'texto-unificado',
+            'SEO texto unificado',
+            'Descripcion de texto unificado.',
+            'Extracto de texto unificado.'
+        );
+        $source = $this->service([
+            $this->id(84),
+            $this->id(85),
+        ])->createPost(
+            $this->gate(),
+            'es',
+            $sourceSnapshot->compatibilityDraft()
+        );
+        $categoryRepository = new PdoBlogCategoryRepository(
+            $this->pdo,
+            $this->scope,
+            true
+        );
+        $liveCategories = new BlogCategoryService(
+            $categoryRepository,
+            new EditorialActionUuidSequence([
+                $this->id(100),
+                $this->id(101),
+                $this->id(102),
+                $this->id(103),
+                $this->id(104),
+            ]),
+            $this->clock
+        );
+        $liveCategory = $liveCategories->create(
+            $this->gate(),
+            'es',
+            new BlogCategoryDraft('Categoria publica', 'categoria-publica')
+        );
+        $privateCategory = $liveCategories->create(
+            $this->gate(),
+            'es',
+            new BlogCategoryDraft('Categoria privada', 'categoria-privada')
+        );
+        $liveCategories->assignToPost(
+            $this->gate(),
+            $source->postPublicId(),
+            [$liveCategory->categoryPublicId()]
+        );
+        $this->repository->transactional(function () use (
+            $layoutContent,
+            $source,
+            $sourceSnapshot
+        ): void {
+            $layoutContent->upsertCurrent(
+                $source->localizationPublicId(),
+                $this->id(86),
+                $sourceSnapshot,
+                self::ACTOR,
+                $this->clock->now()
+            );
+            $layoutContent->replaceCurrentMedia(
+                $source->localizationPublicId(),
+                [],
+                $this->clock->now()
+            );
+        });
+        $published = $this->service([])->publish(
+            $this->gate(),
+            $source->postPublicId(),
+            'es',
+            1
+        );
+        self::assertSame(BlogPostVariant::PUBLISHED, $published->status());
+        $privateCategories = new BlogCategoryService(
+            $categoryRepository,
+            new EditorialActionUuidSequence([$this->id(105)]),
+            $this->clock,
+            workflowRepository: $workflow
+        );
+        self::assertSame(1, $privateCategories->assignToVariant(
+            $this->gate(),
+            $source->postPublicId(),
+            'es',
+            $published->lockVersion(),
+            0,
+            [$privateCategory->categoryPublicId()]
+        ));
+        self::assertSame(
+            [$liveCategory->categoryPublicId()],
+            $this->categoryIds($source->postPublicId())
+        );
+        self::assertSame(
+            [$privateCategory->categoryPublicId()],
+            $workflow->workspaceCategoryPublicIds($source->postPublicId())
+        );
+        $privateSnapshot = new BlogStructuredDraft(
+            'Texto privado',
+            (new BlogDocumentV2Projector(
+                new EditorialActionUuidSequence([])
+            ))->project($sourceSnapshot->document()),
+            'texto-privado',
+            'SEO privado',
+            'Descripcion privada.',
+            'Extracto privado.'
+        );
+        $privateRevisionPublicId = $this->id(90);
+        $this->repository->transactional(function () use (
+            $layoutContent,
+            $workflow,
+            $source,
+            $privateSnapshot,
+            $privateRevisionPublicId
+        ): void {
+            $layoutContent->appendPrivateRevision(
+                $source->localizationPublicId(),
+                $privateRevisionPublicId,
+                2,
+                $privateSnapshot,
+                self::ACTOR,
+                $this->clock->now()
+            );
+            $layoutContent->appendRevisionMedia(
+                $privateRevisionPublicId,
+                [],
+                $this->clock->now()
+            );
+            $workflow->storeDraftRevision(
+                $source->localizationPublicId(),
+                $privateRevisionPublicId,
+                0,
+                self::ACTOR,
+                $this->clock->now()
+            );
+            self::assertTrue($workflow->advancePrivateLock(
+                $source->localizationPublicId(),
+                2,
+                self::ACTOR
+            ));
+        });
+        $copy = (new BlogService(
+            $this->repository,
+            new EditorialActionUuidSequence([
+                $this->id(91),
+                $this->id(92),
+                $this->id(93),
+                $this->id(94),
+                $this->id(95),
+            ]),
+            $this->clock,
+            structuredContentRepository: $layoutContent,
+            mediaAvailability: $this->media,
+            editorialWorkflowRepository: $workflow,
+            layoutProjector: new BlogDocumentV2Projector(
+                new EditorialActionUuidSequence([])
+            )
+        ))->duplicatePost(
+            $this->gate(),
+            $source->postPublicId(),
+            'es',
+            3
+        );
+
+        self::assertStringStartsWith('Copia de Texto privado', $copy->draft()->h1());
+        self::assertSame('SEO privado', $copy->draft()->seoTitle());
+        self::assertSame(
+            [$privateCategory->categoryPublicId()],
+            $this->categoryIds($copy->postPublicId())
+        );
+        $copySnapshot = $layoutContent->current(
+            $copy->localizationPublicId()
+        )?->snapshot();
+        self::assertNotNull($copySnapshot);
+        $modules = (new BlogDocumentWalker())->modules(
+            $copySnapshot->document()
+        );
+        self::assertSame(['paragraph', 'paragraph'], array_column(
+            $modules,
+            'type'
+        ));
+        self::assertSame(
+            [$this->id(81), $this->id(82)],
+            array_column($modules, 'id')
+        );
+        self::assertSame('accent-line', $modules[0]['content'][0]['preset']);
+        self::assertSame('square', $modules[1]['content'][0]['marker']);
+        self::assertSame(
+            [$this->id(83)],
+            array_column($modules[1]['content'][0]['items'], 'id')
+        );
+        $copyRevisions = $layoutContent->listRevisions(
+            $copy->localizationPublicId(),
+            10,
+            0
+        );
+        self::assertCount(1, $copyRevisions);
+        self::assertSame(1, $copyRevisions[0]->revisionNumber());
+        self::assertSame(1, $copyRevisions[0]->variantLockVersion());
+        self::assertSame(0, $copyRevisions[0]->mediaCount());
+        self::assertSame(
+            $copySnapshot->canonicalJson(),
+            $layoutContent->revision(
+                $copyRevisions[0]->revisionPublicId()
+            )?->snapshot()->canonicalJson()
+        );
+        self::assertSame(
+            $sourceSnapshot->canonicalJson(),
+            $layoutContent->current(
+                $source->localizationPublicId()
+            )?->snapshot()->canonicalJson()
+        );
+        self::assertSame(
+            $privateRevisionPublicId,
+            $workflow->workspace(
+                $source->localizationPublicId()
+            )?->draftRevisionPublicId()
+        );
+        self::assertSame(
+            $privateSnapshot->canonicalJson(),
+            $layoutContent->revision(
+                $privateRevisionPublicId
+            )?->snapshot()->canonicalJson()
+        );
+        $sourceRevisions = $layoutContent->listRevisions(
+            $source->localizationPublicId(),
+            10,
+            0
+        );
+        self::assertCount(1, $sourceRevisions);
+        self::assertSame(1, $sourceRevisions[0]->revisionNumber());
+        self::assertSame(3, $sourceRevisions[0]->variantLockVersion());
+        self::assertSame(
+            [$liveCategory->categoryPublicId()],
+            $this->categoryIds($source->postPublicId())
+        );
+        self::assertSame(
+            [$privateCategory->categoryPublicId()],
+            $workflow->workspaceCategoryPublicIds($source->postPublicId())
+        );
+        self::assertNull($workflow->publicationHead(
+            $source->localizationPublicId()
+        ));
+        self::assertSame(3, $this->repository->variant(
+            $source->postPublicId(),
+            'es'
+        )?->lockVersion());
     }
 
     public function testTrashRestoreAndPublishedUnpublishBoundaryUseLockVersions(): void
@@ -353,20 +908,53 @@ final class BlogEditorialActionsPersistenceTest extends TestCase
         ));
     }
 
-    public function testDuplicateRollsBackEveryCloneWriteWhenAuditFails(): void
+    public function testDuplicateRollsBackEveryStructuredCloneWriteWhenAuditFails(): void
     {
+        $structured = $this->structuredDraft('Audit source');
         $source = $this->service([
             $this->id(50),
             $this->id(51),
         ])->createPost(
             $this->gate(),
             'es',
-            $this->completeDraft('audit-source')
+            $structured->compatibilityDraft()
         );
+        $this->repository->transactional(function () use (
+            $source,
+            $structured
+        ): void {
+            $this->content->upsertCurrent(
+                $source->localizationPublicId(),
+                $this->id(56),
+                $structured,
+                self::ACTOR,
+                $this->clock->now()
+            );
+            $this->content->replaceCurrentMedia(
+                $source->localizationPublicId(),
+                $structured->mediaReferences(),
+                $this->clock->now()
+            );
+            self::assertSame(1, $this->content->appendRevision(
+                $source->localizationPublicId(),
+                $this->id(57),
+                1,
+                $structured,
+                self::ACTOR,
+                $this->clock->now()
+            ));
+            $this->content->appendRevisionMedia(
+                $this->id(57),
+                $structured->mediaReferences(),
+                $this->clock->now()
+            );
+        });
         $audit = new EditorialActionAudit(BlogMutationAuditEvent::DUPLICATE);
         $service = $this->service([
             $this->id(52),
             $this->id(53),
+            $this->id(54),
+            $this->id(55),
         ], $audit);
 
         $this->expectIssue(BlogException::STORAGE_UNAVAILABLE, fn () =>
@@ -380,8 +968,290 @@ final class BlogEditorialActionsPersistenceTest extends TestCase
 
         self::assertSame(1, $this->rowCount('posts'));
         self::assertSame(1, $this->rowCount('post_localizations'));
+        self::assertSame(1, $this->rowCount('content_docs'));
+        self::assertSame(1, $this->rowCount('content_revisions'));
+        self::assertSame(1, $this->rowCount('content_media'));
+        self::assertSame(1, $this->rowCount('revision_media'));
         self::assertSame([], $audit->events);
+        self::assertSame([[self::MEDIA]], $this->media->checks);
+    }
+
+    public function testAddLocaleRollsBackEveryStructuredCopyWriteWhenAuditFails(): void
+    {
+        $structured = $this->structuredDraft('Locale audit source');
+        $source = $this->service([
+            $this->id(110),
+            $this->id(111),
+        ])->createPost(
+            $this->gate(),
+            'es',
+            $structured->compatibilityDraft()
+        );
+        $this->repository->transactional(function () use (
+            $source,
+            $structured
+        ): void {
+            $this->content->upsertCurrent(
+                $source->localizationPublicId(),
+                $this->id(112),
+                $structured,
+                self::ACTOR,
+                $this->clock->now()
+            );
+            $this->content->replaceCurrentMedia(
+                $source->localizationPublicId(),
+                $structured->mediaReferences(),
+                $this->clock->now()
+            );
+            self::assertSame(1, $this->content->appendRevision(
+                $source->localizationPublicId(),
+                $this->id(113),
+                1,
+                $structured,
+                self::ACTOR,
+                $this->clock->now()
+            ));
+            $this->content->appendRevisionMedia(
+                $this->id(113),
+                $structured->mediaReferences(),
+                $this->clock->now()
+            );
+        });
+        $audit = new EditorialActionAudit(BlogMutationAuditEvent::ADD_LOCALE);
+        $service = $this->service([
+            $this->id(114),
+            $this->id(115),
+            $this->id(116),
+        ], $audit);
+
+        $this->expectIssue(BlogException::STORAGE_UNAVAILABLE, fn () =>
+            $service->addLocalizationCopy(
+                $this->gate(),
+                $source->postPublicId(),
+                'es',
+                'en',
+                1
+            )
+        );
+
+        self::assertSame(1, $this->rowCount('posts'));
+        self::assertSame(1, $this->rowCount('post_localizations'));
+        self::assertSame(1, $this->rowCount('content_docs'));
+        self::assertSame(1, $this->rowCount('content_revisions'));
+        self::assertSame(1, $this->rowCount('content_media'));
+        self::assertSame(1, $this->rowCount('revision_media'));
+        self::assertNull($this->repository->variant(
+            $source->postPublicId(),
+            'en'
+        ));
+        self::assertSame(
+            $structured->canonicalJson(),
+            $this->content->current(
+                $source->localizationPublicId()
+            )?->snapshot()->canonicalJson()
+        );
+        self::assertSame(
+            $structured->canonicalJson(),
+            $this->content->revision(
+                $this->id(113)
+            )?->snapshot()->canonicalJson()
+        );
+        self::assertSame(
+            'matrix-source',
+            $this->repository->variant(
+                $source->postPublicId(),
+                'es'
+            )?->draft()->slug()
+        );
+        self::assertSame(1, $this->repository->variant(
+            $source->postPublicId(),
+            'es'
+        )?->lockVersion());
+        self::assertSame([], $audit->events);
+        self::assertSame([[self::MEDIA]], $this->media->checks);
+    }
+
+    #[DataProvider('invalidPrivateWorkspaceCases')]
+    public function testCopyFailsClosedForInvalidPrivateWorkspace(
+        bool $publishedSource
+    ): void {
+        $this->applyMigrations([
+            '0011_blog_layout_editor_v2',
+            '0014_blog_private_draft_publication',
+        ]);
+        $layoutContent = new PdoBlogStructuredContentRepository(
+            $this->pdo,
+            $this->scope,
+            layoutReady: true
+        );
+        $workflow = new PdoBlogEditorialWorkspaceRepository(
+            $this->pdo,
+            $this->scope
+        );
+        $publicSnapshot = $this->structuredDraft('Workspace source');
+        $source = $this->service([
+            $this->id(120),
+            $this->id(121),
+        ])->createPost(
+            $this->gate(),
+            'es',
+            $publicSnapshot->compatibilityDraft()
+        );
+        $this->repository->transactional(function () use (
+            $layoutContent,
+            $source,
+            $publicSnapshot
+        ): void {
+            $layoutContent->upsertCurrent(
+                $source->localizationPublicId(),
+                $this->id(122),
+                $publicSnapshot,
+                self::ACTOR,
+                $this->clock->now()
+            );
+            $layoutContent->replaceCurrentMedia(
+                $source->localizationPublicId(),
+                $publicSnapshot->mediaReferences(),
+                $this->clock->now()
+            );
+            self::assertSame(1, $layoutContent->appendRevision(
+                $source->localizationPublicId(),
+                $this->id(123),
+                1,
+                $publicSnapshot,
+                self::ACTOR,
+                $this->clock->now()
+            ));
+            $layoutContent->appendRevisionMedia(
+                $this->id(123),
+                $publicSnapshot->mediaReferences(),
+                $this->clock->now()
+            );
+        });
+        if ($publishedSource) {
+            $source = $this->service([])->publish(
+                $this->gate(),
+                $source->postPublicId(),
+                'es',
+                1
+            );
+        }
+        $workspaceBaseLock = $source->lockVersion();
+        $privateSnapshot = $this->structuredDraft('Private workspace');
+        $this->repository->transactional(function () use (
+            $layoutContent,
+            $workflow,
+            $source,
+            $privateSnapshot,
+            $publishedSource,
+            $workspaceBaseLock
+        ): void {
+            if ($publishedSource) {
+                self::assertSame(1, $workflow->promotePublicationHead(
+                    $source->localizationPublicId(),
+                    $this->id(123),
+                    0,
+                    self::ACTOR,
+                    $this->clock->now()
+                ));
+            }
+            self::assertSame(2, $layoutContent->appendPrivateRevision(
+                $source->localizationPublicId(),
+                $this->id(124),
+                $workspaceBaseLock,
+                $privateSnapshot,
+                self::ACTOR,
+                $this->clock->now()
+            ));
+            $layoutContent->appendRevisionMedia(
+                $this->id(124),
+                $privateSnapshot->mediaReferences(),
+                $this->clock->now()
+            );
+            $workflow->storeDraftRevision(
+                $source->localizationPublicId(),
+                $this->id(124),
+                0,
+                self::ACTOR,
+                $this->clock->now()
+            );
+            if ($publishedSource) {
+                self::assertTrue($workflow->advancePrivateLock(
+                    $source->localizationPublicId(),
+                    $workspaceBaseLock,
+                    self::ACTOR
+                ));
+            }
+        });
+        $copyExpectedLock = $workspaceBaseLock + ($publishedSource ? 1 : 0);
+        $service = new BlogService(
+            $this->repository,
+            new EditorialActionUuidSequence([
+                $this->id(125),
+                $this->id(126),
+            ]),
+            $this->clock,
+            structuredContentRepository: $layoutContent,
+            mediaAvailability: $this->media,
+            editorialWorkflowRepository: $workflow
+        );
+
+        $this->expectIssue(BlogException::STORAGE_UNAVAILABLE, fn () =>
+            $service->duplicatePost(
+                $this->gate(),
+                $source->postPublicId(),
+                'es',
+                $copyExpectedLock
+            )
+        );
+
+        self::assertSame(1, $this->rowCount('posts'));
+        self::assertSame(1, $this->rowCount('post_localizations'));
+        self::assertSame(1, $this->rowCount('content_docs'));
+        self::assertSame(2, $this->rowCount('content_revisions'));
+        self::assertSame(1, $this->rowCount('content_media'));
+        self::assertSame(2, $this->rowCount('revision_media'));
+        self::assertSame(
+            $publicSnapshot->canonicalJson(),
+            $layoutContent->current(
+                $source->localizationPublicId()
+            )?->snapshot()->canonicalJson()
+        );
+        self::assertSame(
+            $privateSnapshot->canonicalJson(),
+            $layoutContent->revision(
+                $this->id(124)
+            )?->snapshot()->canonicalJson()
+        );
+        self::assertSame(
+            $this->id(124),
+            $workflow->workspace(
+                $source->localizationPublicId()
+            )?->draftRevisionPublicId()
+        );
+        self::assertSame(
+            $publishedSource
+                ? BlogPostVariant::PUBLISHED
+                : BlogPostVariant::DRAFT,
+            $this->repository->variant(
+                $source->postPublicId(),
+                'es'
+            )?->status()
+        );
+        self::assertSame($copyExpectedLock, $this->repository->variant(
+            $source->postPublicId(),
+            'es'
+        )?->lockVersion());
         self::assertSame([], $this->media->checks);
+    }
+
+    /** @return array<string, array{0: bool}> */
+    public static function invalidPrivateWorkspaceCases(): array
+    {
+        return [
+            'stale publication base' => [true],
+            'workspace attached to draft source' => [false],
+        ];
     }
 
     public function testDuplicateRemainsAvailableBeforeTombstoneMigration(): void

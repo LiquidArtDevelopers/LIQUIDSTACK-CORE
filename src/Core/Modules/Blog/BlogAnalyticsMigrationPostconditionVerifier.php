@@ -30,12 +30,24 @@ final class BlogAnalyticsMigrationPostconditionVerifier implements
         ],
     ];
 
+    private readonly BlogPostTombstoneMigrationPostconditionVerifier
+        $baseVerifier;
+
     public function __construct(
-        private readonly BlogPostTombstoneMigrationPostconditionVerifier
-            $baseVerifier = new BlogPostTombstoneMigrationPostconditionVerifier(
-                expectAnalyticsExtension: true
-            )
+        ?BlogPostTombstoneMigrationPostconditionVerifier $baseVerifier = null,
+        bool $expectLayoutEditorExtension = false,
+        bool $expectEditorPreferencesExtension = false,
+        bool $expectPrivateDraftPublicationExtension = false
     ) {
+        $this->baseVerifier = $baseVerifier
+            ?? new BlogPostTombstoneMigrationPostconditionVerifier(
+                expectAnalyticsExtension: true,
+                expectLayoutEditorExtension: $expectLayoutEditorExtension,
+                expectEditorPreferencesExtension:
+                    $expectEditorPreferencesExtension,
+                expectPrivateDraftPublicationExtension:
+                    $expectPrivateDraftPublicationExtension
+            );
     }
 
     public function contractVersion(): string
@@ -360,9 +372,10 @@ final class BlogAnalyticsMigrationPostconditionVerifier implements
                 );
             } else {
                 $query = $pdo->prepare(
-                    'SELECT COLUMN_NAME AS `from`, REFERENCED_TABLE_NAME AS '
-                        . '`table`, REFERENCED_COLUMN_NAME AS `to`, '
-                        . 'DELETE_RULE AS on_delete FROM '
+                    'SELECT k.COLUMN_NAME AS `from`, '
+                        . 'k.REFERENCED_TABLE_NAME AS `table`, '
+                        . 'k.REFERENCED_COLUMN_NAME AS `to`, '
+                        . 'r.DELETE_RULE AS on_delete FROM '
                         . 'information_schema.KEY_COLUMN_USAGE k JOIN '
                         . 'information_schema.REFERENTIAL_CONSTRAINTS r ON '
                         . 'r.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA AND '

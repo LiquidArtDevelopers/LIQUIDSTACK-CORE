@@ -14,6 +14,8 @@ use App\Core\Http\Request;
 use App\Core\Modules\Blog\BlogPublicRouteProvider;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationApplyOptions;
+use App\Core\Modules\Migrations\MigrationDatabasePlanner;
 use App\Core\Modules\Migrations\MigrationRunner;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
@@ -93,10 +95,25 @@ final class BlogSitemapDeliveryFactoryTest extends TestCase
             $this->coreRoot
         );
         $this->scopeFactory = new ConfiguredMigrationScopeFactory();
+        $catalog = MigrationCatalog::fromRegistry($this->registry);
+        $scopes = $this->scopeFactory->create(
+            $this->registry,
+            $this->root
+        );
+        $preview = (new MigrationDatabasePlanner())->plan(
+            $this->pdo,
+            $catalog,
+            $scopes
+        );
         (new MigrationRunner())->apply(
             $this->pdo,
-            MigrationCatalog::fromRegistry($this->registry),
-            $this->scopeFactory->create($this->registry, $this->root)
+            $catalog,
+            $scopes,
+            new MigrationApplyOptions(
+                expectedPlanHash: $preview->hash(),
+                allowDestructive: true,
+                backupConfirmed: true
+            )
         );
         $this->connection = new SwitchableBlogSitemapPdoFactoryFixture(
             $this->pdo

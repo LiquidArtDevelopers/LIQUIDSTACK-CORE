@@ -152,7 +152,8 @@ final class BlogPublicStructuredDeliveryTest extends TestCase
         self::assertNotNull($structured);
         self::assertSame(200, $structured->status());
         self::assertStringContainsString(
-            'class="blogDocument blogDocument--cover"',
+            'class="blogDocument blogDocument--cover '
+                . 'blogDocument--background-white"',
             $structured->body()
         );
         self::assertStringContainsString(

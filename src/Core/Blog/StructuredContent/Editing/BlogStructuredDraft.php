@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Core\Blog\StructuredContent\Editing;
 
 use App\Core\Blog\BlogDraft;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
-use App\Core\Blog\StructuredContent\Document\BlogDocumentCanonicalizer;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentCodec;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTextProjector;
+use App\Core\Blog\StructuredContent\Document\BlogDocumentV1CompatibilityProjector;
+use App\Core\Blog\StructuredContent\Document\BlogDocumentWalker;
 
 /**
  * Validated editorial payload joining metadata with one canonical document.
@@ -20,6 +22,10 @@ final class BlogStructuredDraft
     private readonly BlogDraft $compatibilityDraft;
     private readonly string $canonicalJson;
     private readonly string $documentSha256;
+    private readonly BlogDocument $compatibilityDocument;
+    private readonly string $compatibilityCanonicalJson;
+    private readonly string $compatibilityDocumentSha256;
+    private readonly string $compatibilitySnapshotSha256;
     private readonly string $bodyTextSha256;
     private readonly string $snapshotSha256;
 
@@ -35,27 +41,54 @@ final class BlogStructuredDraft
         #[\SensitiveParameter] ?string $excerpt = null,
         ?BlogDocumentCodec $codec = null,
         ?BlogDocumentTextProjector $projector = null,
-        ?BlogStructuredSnapshotHasher $snapshotHasher = null
+        ?BlogStructuredSnapshotHasher $snapshotHasher = null,
+        ?BlogDocumentV1CompatibilityProjector $compatibilityProjector = null,
+        ?BlogRobotsPreferences $robotsPreferences = null
     ) {
         $codec ??= new BlogDocumentCodec();
         $projector ??= new BlogDocumentTextProjector();
         $snapshotHasher ??= new BlogStructuredSnapshotHasher();
+        $compatibilityProjector ??= new BlogDocumentV1CompatibilityProjector();
 
         $this->canonicalJson = $codec->encode($document);
+        $this->compatibilityDocument = $document->version()
+            === BlogDocument::LAYOUT_VERSION
+                ? $compatibilityProjector->project($document)
+                : $document;
+        $this->compatibilityCanonicalJson = $codec->encode(
+            $this->compatibilityDocument
+        );
         $bodyText = $projector->project($document);
+        if (!hash_equals(
+            $bodyText,
+            $projector->project($this->compatibilityDocument)
+        )) {
+            throw new \LogicException(
+                'The compatibility projection changed the visible text.'
+            );
+        }
         $this->compatibilityDraft = new BlogDraft(
             $h1,
             $bodyText,
             $slug,
             $seoTitle,
             $metaDescription,
-            $excerpt
+            $excerpt,
+            $robotsPreferences
         );
         $this->documentSha256 = hash('sha256', $this->canonicalJson);
+        $this->compatibilityDocumentSha256 = hash(
+            'sha256',
+            $this->compatibilityCanonicalJson
+        );
         $this->bodyTextSha256 = hash('sha256', $bodyText);
         $this->snapshotSha256 = $snapshotHasher->hash(
             $this->compatibilityDraft,
             $this->documentSha256
+        );
+        $this->compatibilitySnapshotSha256 = $snapshotHasher->hash(
+            $this->compatibilityDraft,
+            $this->compatibilityDocumentSha256
         );
         $this->mediaReferences = $this->extractMediaReferences($document);
     }
@@ -68,6 +101,46 @@ final class BlogStructuredDraft
     public function compatibilityDraft(): BlogDraft
     {
         return $this->compatibilityDraft;
+    }
+
+    public function robotsPreferences(): BlogRobotsPreferences
+    {
+        return $this->compatibilityDraft->robotsPreferences();
+    }
+
+    public function compatibilityDocument(): BlogDocument
+    {
+        return $this->compatibilityDocument;
+    }
+
+    public function compatibilityCanonicalJson(): string
+    {
+        return $this->compatibilityCanonicalJson;
+    }
+
+    public function compatibilitySchemaVersion(): int
+    {
+        return $this->compatibilityDocument->version();
+    }
+
+    public function compatibilityTemplateKey(): string
+    {
+        return $this->compatibilityDocument->template();
+    }
+
+    public function compatibilityDocumentBytes(): int
+    {
+        return strlen($this->compatibilityCanonicalJson);
+    }
+
+    public function compatibilityDocumentSha256(): string
+    {
+        return $this->compatibilityDocumentSha256;
+    }
+
+    public function compatibilitySnapshotSha256(): string
+    {
+        return $this->compatibilitySnapshotSha256;
     }
 
     public function canonicalJson(): string
@@ -141,7 +214,7 @@ final class BlogStructuredDraft
     private function extractMediaReferences(BlogDocument $document): array
     {
         $references = [];
-        foreach ($document->blocks() as $block) {
+        foreach ((new BlogDocumentWalker())->modules($document) as $block) {
             if (($block['type'] ?? null) !== 'image') {
                 continue;
             }

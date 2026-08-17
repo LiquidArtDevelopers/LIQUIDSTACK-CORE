@@ -217,7 +217,11 @@ final class WebAdminConfigLoader
 
     private function validateTtls(mixed $idle, mixed $absolute): void
     {
-        if (!is_int($idle) || $idle < 300 || $idle > 86400) {
+        if (
+            !is_int($idle)
+            || $idle < 300
+            || $idle > WebAdminConfig::MAX_SESSION_TTL_SECONDS
+        ) {
             throw new WebAdminConfigException(
                 'config.invalid_ttl',
                 'session.idle_ttl_seconds'
@@ -226,7 +230,7 @@ final class WebAdminConfigLoader
         if (
             !is_int($absolute)
             || $absolute < $idle
-            || $absolute > 604800
+            || $absolute > WebAdminConfig::MAX_SESSION_TTL_SECONDS
         ) {
             throw new WebAdminConfigException(
                 'config.invalid_ttl',

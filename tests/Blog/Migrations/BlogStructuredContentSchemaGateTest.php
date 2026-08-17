@@ -6,6 +6,8 @@ namespace Tests\Blog\Migrations;
 
 use App\Core\Modules\Blog\BlogMigrationProvider;
 use App\Core\Modules\Blog\BlogStructuredContentSchemaGate;
+use App\Core\Modules\Blog\BlogRobotsPreferencesSchemaGate;
+use App\Core\Modules\Blog\BlogUrlHistoryMigrationPostconditionVerifier;
 use App\Core\Modules\Migrations\MigrationCatalog;
 use App\Core\Modules\Migrations\MigrationRegistry;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
@@ -43,7 +45,7 @@ final class BlogStructuredContentSchemaGateTest extends TestCase
         }
     }
 
-    public function testGateRequiresRecordedUntamperedMigrationAndExactSchema(): void
+    public function testGateRequiresRecordedMigrationAndRepositoryTableShape(): void
     {
         $pdo = new PDO('sqlite::memory:');
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -59,8 +61,10 @@ final class BlogStructuredContentSchemaGateTest extends TestCase
         $migrationRegistry = new MigrationRegistry();
         $migrationRegistry->ensureExists($pdo);
         $gate = new BlogStructuredContentSchemaGate();
+        $robotsGate = new BlogRobotsPreferencesSchemaGate();
 
         self::assertFalse($gate->isReady($pdo, $registry, $scopes));
+        self::assertFalse($robotsGate->isReady($pdo, $registry, $scopes));
 
         $adminScope = $scopes->get('webadmin');
         $blogScope = $scopes->get('blog');
@@ -95,7 +99,32 @@ final class BlogStructuredContentSchemaGateTest extends TestCase
         }
 
         self::assertTrue($gate->isReady($pdo, $registry, $scopes));
+        self::assertTrue($robotsGate->isReady($pdo, $registry, $scopes));
+        $pdo->exec('DROP TABLE "gate_blog_revision_robots"');
+        self::assertFalse($robotsGate->isReady($pdo, $registry, $scopes));
+        foreach (BlogMigrationProvider::migrations() as $migration) {
+            if ($migration->id() !== '0015_blog_robots_preferences') {
+                continue;
+            }
+            foreach ($migration->statementsFor('sqlite', $blogScope) as $sql) {
+                $pdo->exec($sql);
+            }
+        }
+        self::assertTrue($robotsGate->isReady($pdo, $registry, $scopes));
         $pdo->exec('DROP INDEX "gate_blog_ix_cd_updated"');
+        self::assertTrue(
+            $gate->isReady($pdo, $registry, $scopes),
+            'HTTP must not repeat the exhaustive migration postcondition.'
+        );
+        self::assertFalse(
+            (new BlogUrlHistoryMigrationPostconditionVerifier())->verify(
+                $pdo,
+                $blogScope
+            ),
+            'The exact migrate/doctor postcondition must retain index audits.'
+        );
+
+        $pdo->exec('DROP TABLE "gate_blog_revision_media"');
         self::assertFalse($gate->isReady($pdo, $registry, $scopes));
     }
 }

@@ -108,9 +108,11 @@ final class BlogCategoryRouteProviderTest extends TestCase
         self::assertSame(404, $this->routes->dispatch(
             $this->get('/admin/blog/categories/')
         )?->status());
-        self::assertSame(404, $this->routes->dispatch(
+        $deleteGet = $this->routes->dispatch(
             $this->get('/admin/blog/categories/delete')
-        )?->status());
+        );
+        self::assertSame(405, $deleteGet?->status());
+        self::assertSame('POST', $deleteGet?->headers()['Allow'] ?? null);
         self::assertSame(0, $this->factory->calls);
     }
 

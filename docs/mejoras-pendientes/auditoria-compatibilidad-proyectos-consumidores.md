@@ -25,7 +25,7 @@ Localizar todos los `composer.json` que requieran `liquidstack/core` y registrar
 - rutas y funcionalidades críticas;
 - entorno local disponible y forma de recuperación.
 
-AIWA y ARRO serán los primeros consumidores de referencia. BASE se valida
+Dos proyectos serán los primeros consumidores de referencia. BASE se valida
 como instalación nueva y no como actualización destructiva mientras tenga
 cambios locales pendientes.
 
@@ -61,7 +61,7 @@ cambios locales pendientes.
 
 La actualización no se considera segura para el resto de proyectos hasta que:
 
-- AIWA y ARRO hayan pasado el protocolo;
+- los dos consumidores de referencia hayan pasado el protocolo;
 - un starter limpio creado desde BASE funcione;
 - no haya pérdidas de copy ni sobreescrituras de personalizaciones;
 - una segunda sincronización produzca cero cambios inesperados;

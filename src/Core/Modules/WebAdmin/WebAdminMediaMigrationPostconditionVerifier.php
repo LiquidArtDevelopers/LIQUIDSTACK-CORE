@@ -13,7 +13,7 @@ use App\Core\Modules\Migrations\MigrationScope;
 use PDO;
 use Throwable;
 
-/** Exact, read-only postcondition for WebAdmin media migration 0002. */
+/** Exact, read-only postcondition for WebAdmin media schema v1/v2. */
 final class WebAdminMediaMigrationPostconditionVerifier implements
     MigrationPostconditionVerifierInterface
 {
@@ -43,13 +43,16 @@ final class WebAdminMediaMigrationPostconditionVerifier implements
 
     public function __construct(
         private readonly WebAdminMigrationPostconditionVerifier $baseVerifier =
-            new WebAdminMigrationPostconditionVerifier()
+            new WebAdminMigrationPostconditionVerifier(),
+        private readonly bool $acceptAvifSource = false
     ) {
     }
 
     public function contractVersion(): string
     {
-        return 'webadmin-media-schema-v1';
+        return $this->acceptAvifSource
+            ? 'webadmin-media-schema-v2-avif-source'
+            : 'webadmin-media-schema-v1';
     }
 
     public function verify(PDO $pdo, MigrationScope $scope): bool
@@ -434,7 +437,7 @@ final class WebAdminMediaMigrationPostconditionVerifier implements
             'media_assets' => [
                 'length(public_id) = 36',
                 'length(label) BETWEEN 1 AND 120',
-                "source_mime IN ('image/jpeg', 'image/png', 'image/webp')",
+                $this->sourceMimeCheckExpression(),
                 'source_width BETWEEN 1 AND 12000',
                 'source_height BETWEEN 1 AND 12000',
                 'source_bytes BETWEEN 1 AND 12582912',
@@ -767,7 +770,7 @@ final class WebAdminMediaMigrationPostconditionVerifier implements
                 'char_length(label) BETWEEN 1 AND 120',
             ],
             $scope->tableName('c_ma_mime') => [
-                "source_mime IN ('image/jpeg', 'image/png', 'image/webp')",
+                $this->sourceMimeCheckExpression(),
             ],
             $scope->tableName('c_ma_dims') => [
                 'source_width BETWEEN 1 AND 12000 '
@@ -1018,7 +1021,7 @@ final class WebAdminMediaMigrationPostconditionVerifier implements
         $labelLength = $driver === 'mysql' ? 'CHAR_LENGTH' : 'LENGTH';
         $invalidAssets = $pdo->query(
             'SELECT 1 FROM ' . $assets . ' WHERE '
-            . "source_mime NOT IN ('image/jpeg','image/png','image/webp') "
+            . 'source_mime NOT IN (' . $this->sourceMimeSqlList() . ') '
             . 'OR source_width NOT BETWEEN 1 AND 12000 '
             . 'OR source_height NOT BETWEEN 1 AND 12000 '
             . 'OR (source_width * source_height) > 40000000 '
@@ -1077,5 +1080,21 @@ final class WebAdminMediaMigrationPostconditionVerifier implements
             && $invalidVariants === false
             && $invalidAssetIdentifiers === false
             && $invalidVariantIdentifiers === false;
+    }
+
+    private function sourceMimeCheckExpression(): string
+    {
+        return 'source_mime IN (' . str_replace(
+            ',',
+            ', ',
+            $this->sourceMimeSqlList()
+        ) . ')';
+    }
+
+    private function sourceMimeSqlList(): string
+    {
+        return $this->acceptAvifSource
+            ? "'image/jpeg','image/png','image/webp','image/avif'"
+            : "'image/jpeg','image/png','image/webp'";
     }
 }

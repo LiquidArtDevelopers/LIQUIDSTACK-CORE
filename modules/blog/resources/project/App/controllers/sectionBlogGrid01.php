@@ -1,4 +1,9 @@
 <?php
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/_moduleBlogResources.php';
+
 /**
  * Directrices de copy para sectionBlogGrid01:
  * - Encabezado principal: 4-8 palabras; incluir el identificador en showroom.
@@ -227,6 +232,11 @@ function controller_sectionBlogGrid01(
                 'link_title' => $title,
                 'excerpt' => $excerpt,
                 'date' => $date,
+                'media' => liquidstack_blog_resource_preferred_media(
+                    'sectionBlogGrid01',
+                    $valueFromItem($item, 'thumbnail'),
+                    $valueFromItem($item, 'media')
+                ),
                 'language_keys' => null,
             ];
         }
@@ -260,6 +270,7 @@ function controller_sectionBlogGrid01(
                 'link_title' => trim($readField($linkEntry, 'title')),
                 'excerpt' => trim($readField($readEntry($excerptKey), 'text')),
                 'date' => $date,
+                'media' => null,
                 'language_keys' => [
                     'link' => $linkKey,
                     'excerpt' => $excerptKey,
@@ -282,9 +293,14 @@ function controller_sectionBlogGrid01(
         $dateLanguageAttribute = is_array($keys)
             ? ' data-lang="' . $escapeAttribute($keys['published_at']) . '"'
             : '';
+        $media = liquidstack_blog_resource_media_markup(
+            'sectionBlogGrid01',
+            is_array($item['media'] ?? null) ? $item['media'] : null
+        );
 
         $itemsHtml .= '<article class="sectionBlogGrid01-item" aria-labelledby="'
             . $escapeAttribute($itemHeadingId) . '">'
+            . $media
             . '<' . $itemTag . ' id="' . $escapeAttribute($itemHeadingId) . '">'
             . '<a' . $linkLanguageAttribute
             . ' href="' . $escapeAttribute($item['url']) . '"'

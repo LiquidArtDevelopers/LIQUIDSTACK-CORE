@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\WebAdmin\Http;
 
 use App\Core\WebAdmin\Navigation\WebAdminNavigationItem;
+use App\Core\WebAdmin\Profile\WebAdminPublicProfile;
 use InvalidArgumentException;
 
 final class WebAdminHtmlRenderer
@@ -48,7 +49,8 @@ final class WebAdminHtmlRenderer
         string $csrf,
         bool $showUsersLink = false,
         array $moduleNavigation = [],
-        ?WebAdminShellContext $shell = null
+        ?WebAdminShellContext $shell = null,
+        bool $showProfileLink = false
     ): string {
         if (!array_is_list($moduleNavigation)) {
             throw new InvalidArgumentException(
@@ -78,7 +80,61 @@ final class WebAdminHtmlRenderer
             . '<h1 id="webadmin-title">Gesti&oacute;n web</h1>'
             . '<p id="webadmin-dashboard-description">La sesi&oacute;n segura '
             . 'est&aacute; activa.</p>'
+            . ($showProfileLink
+                ? '<p><a href="' . $this->path($basePath, '/profile')
+                    . '">Mi perfil</a></p>'
+                : '')
             . '</article>',
+            $shell
+        );
+    }
+
+    public function profile(
+        string $basePath,
+        string $csrf,
+        WebAdminPublicProfile $profile,
+        bool $updated = false,
+        ?WebAdminShellContext $shell = null
+    ): string {
+        $shell ??= new WebAdminShellContext(
+            basePath: $basePath,
+            logoutCsrf: $csrf,
+            activePath: '/profile'
+        );
+        $notice = $updated
+            ? '<p role="status">Perfil actualizado.</p>' : '';
+        return $this->shellRenderer->render(
+            'Mi perfil',
+            '<article aria-labelledby="webadmin-profile-title">'
+            . '<h1 id="webadmin-profile-title">Mi perfil</h1>'
+            . '<p>El nombre y el rol se leen en vivo en las firmas editoriales. '
+            . 'La zona horaria debe ser un identificador IANA, por ejemplo '
+            . '<code>Europe/Madrid</code>. Si queda vac&iacute;a se usa UTC y se '
+            . 'indica expresamente.</p>' . $notice
+            . '<form method="post" action="'
+            . $this->path($basePath, '/profile') . '">'
+            . $this->csrfInput($csrf)
+            . '<input type="hidden" name="lock_version" value="'
+            . $profile->lockVersion() . '">'
+            . '<div><label for="webadmin-profile-name">Nombre visible</label>'
+            . '<input id="webadmin-profile-name" name="display_name" '
+            . 'type="text" maxlength="120" value="'
+            . $this->escape($profile->displayName() ?? '') . '"></div>'
+            . '<div><label for="webadmin-profile-zone">Zona horaria IANA</label>'
+            . '<input id="webadmin-profile-zone" name="time_zone" type="text" '
+            . 'maxlength="64" autocapitalize="none" spellcheck="false" '
+            . 'aria-describedby="webadmin-profile-zone-help" '
+            . 'data-webadmin-profile-time-zone value="'
+            . ($profile->timeZoneConfigured()
+                ? $this->escape($profile->timeZone()->value()) : '')
+            . '"><small id="webadmin-profile-zone-help">Comprueba la zona '
+            . 'antes de guardar. La detecci&oacute;n del navegador es solo una '
+            . 'propuesta.</small><span role="status" aria-live="polite" hidden '
+            . 'data-webadmin-profile-time-zone-status></span></div><p>Rol actual: '
+            . $this->escape($profile->roleLabel()) . '</p>'
+            . '<button class="webadminAction webadminAction--primary" '
+            . 'type="submit">Guardar perfil</button></form>'
+            . $this->backToDashboard($basePath) . '</article>',
             $shell
         );
     }
@@ -124,7 +180,8 @@ final class WebAdminHtmlRenderer
         }
 
         $inviteLink = $canInvite
-            ? '<p><a href="' . $this->path($basePath, '/users/invite')
+            ? '<p><a class="webadminAction webadminAction--primary" href="'
+                . $this->path($basePath, '/users/invite')
                 . '">Invitar editor</a></p>'
             : '';
         $nextLink = $nextAfter !== null && $nextAfter !== ''
@@ -203,7 +260,8 @@ final class WebAdminHtmlRenderer
             . '<input id="webadmin-user-display-name" name="display_name" '
             . 'type="text" autocomplete="off" maxlength="120"></div>'
             . $this->capabilityFieldset($capabilities, 'invite')
-            . '<button type="submit">Enviar invitaci&oacute;n</button>'
+            . '<button class="webadminAction webadminAction--primary" '
+            . 'type="submit">Enviar invitaci&oacute;n</button>'
             . '</form>'
             . $this->backToUsers($basePath)
             . '</article>',
@@ -247,7 +305,8 @@ final class WebAdminHtmlRenderer
                 . $this->path($basePath, '/users/capabilities') . '">'
                 . $this->csrfInput($csrf) . $target
                 . $this->capabilityFieldset($capabilities, 'replace')
-                . '<button type="submit">Guardar capacidades</button>'
+                . '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Guardar capacidades</button>'
                 . '</form></section>';
         }
 
@@ -257,7 +316,8 @@ final class WebAdminHtmlRenderer
                 $csrf,
                 $target,
                 '/users/resume',
-                'Reactivar editor'
+                'Reactivar editor',
+                'webadminAction--primary'
             );
         } elseif ($canSuspend && in_array(
             $editor['status'],
@@ -269,7 +329,8 @@ final class WebAdminHtmlRenderer
                 $csrf,
                 $target,
                 '/users/suspend',
-                'Suspender editor'
+                'Suspender editor',
+                'webadminAction--danger'
             );
         }
 
@@ -279,7 +340,8 @@ final class WebAdminHtmlRenderer
                 $csrf,
                 $target,
                 '/users/invite/resend',
-                'Reenviar invitaci&oacute;n'
+                'Reenviar invitaci&oacute;n',
+                'webadminAction--secondary'
             );
         }
 
@@ -493,12 +555,24 @@ final class WebAdminHtmlRenderer
         string $csrf,
         string $targetInput,
         string $action,
-        string $button
+        string $button,
+        string $variant
     ): string {
+        if (!in_array($variant, [
+            'webadminAction--primary',
+            'webadminAction--secondary',
+            'webadminAction--danger',
+        ], true)) {
+            throw new InvalidArgumentException(
+                'Invalid WebAdmin action presentation.'
+            );
+        }
+
         return '<form method="post" action="'
             . $this->path($basePath, $action) . '">'
             . $this->csrfInput($csrf) . $targetInput
-            . '<button type="submit">' . $button . '</button></form>';
+            . '<button class="webadminAction ' . $variant
+            . '" type="submit">' . $button . '</button></form>';
     }
 
     private function targetInput(string $publicId): string

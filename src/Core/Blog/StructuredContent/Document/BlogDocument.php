@@ -8,7 +8,9 @@ namespace App\Core\Blog\StructuredContent\Document;
 final class BlogDocument
 {
     public const SCHEMA = 'liquidstack.blog.document';
+    /** Historical flat document contract. */
     public const VERSION = 1;
+    public const LAYOUT_VERSION = 2;
     public const MAX_JSON_BYTES = 300_000;
     public const MAX_BODY_TEXT_BYTES = 300_000;
     public const MAX_BLOCKS = 200;
@@ -19,6 +21,7 @@ final class BlogDocument
      *   schema: string,
      *   version: int,
      *   template: string,
+     *   header?: array{hero: ?string, h1_module: string},
      *   blocks: list<array<string, mixed>>
      * } $data
      */
@@ -51,6 +54,12 @@ final class BlogDocument
         return $this->data['template'];
     }
 
+    /** @return array{hero: ?string, h1_module: string}|null */
+    public function headerSelectionData(): ?array
+    {
+        return $this->data['header'] ?? null;
+    }
+
     /** @return list<array<string, mixed>> */
     public function blocks(): array
     {
@@ -59,7 +68,11 @@ final class BlogDocument
 
     public function blockCount(): int
     {
-        return count($this->data['blocks']);
+        if ($this->version() === self::VERSION) {
+            return count($this->data['blocks']);
+        }
+
+        return (new BlogDocumentWalker())->nodeCount($this);
     }
 
     /**
@@ -67,6 +80,7 @@ final class BlogDocument
      *   schema: string,
      *   version: int,
      *   template: string,
+     *   header?: array{hero: ?string, h1_module: string},
      *   blocks: list<array<string, mixed>>
      * }
      */

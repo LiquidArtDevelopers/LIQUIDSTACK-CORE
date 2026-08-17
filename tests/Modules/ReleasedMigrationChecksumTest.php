@@ -45,13 +45,8 @@ final class ReleasedMigrationChecksumTest extends TestCase
             self::assertNotSame([], $migrations);
             self::assertSame(
                 array_keys($migrations),
-                array_slice(
-                    array_keys($actual[$module]),
-                    0,
-                    count($migrations)
-                ),
-                "Las migraciones nuevas de {$module} deben añadirse después "
-                    . 'del prefijo ya publicado.'
+                array_keys($actual[$module]),
+                "El manifiesto debe congelar el catálogo completo de {$module}."
             );
             foreach ($migrations as $id => $checksum) {
                 self::assertMatchesRegularExpression(

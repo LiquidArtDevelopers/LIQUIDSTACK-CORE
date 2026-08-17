@@ -9,6 +9,8 @@ use App\Core\Blog\PublicFeed\BlogCategoryPublicFeedFactory;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationApplyOptions;
+use App\Core\Modules\Migrations\MigrationDatabasePlanner;
 use App\Core\Modules\Migrations\MigrationRunner;
 use App\Core\Modules\ModuleRegistry;
 use PDO;
@@ -71,10 +73,21 @@ final class BlogCategoryPublicFeedFactoryTest extends TestCase
             $registry,
             $this->projectRoot
         );
+        $catalog = MigrationCatalog::fromRegistry($registry);
+        $preview = (new MigrationDatabasePlanner())->plan(
+            $this->pdo,
+            $catalog,
+            $scopes
+        );
         (new MigrationRunner())->apply(
             $this->pdo,
-            MigrationCatalog::fromRegistry($registry),
-            $scopes
+            $catalog,
+            $scopes,
+            new MigrationApplyOptions(
+                expectedPlanHash: $preview->hash(),
+                allowDestructive: true,
+                backupConfirmed: true
+            )
         );
         $connection = new CategoryPublicFeedPdoFactory($this->pdo);
         $this->factory = new BlogCategoryPublicFeedFactory(
@@ -102,7 +115,7 @@ final class BlogCategoryPublicFeedFactoryTest extends TestCase
         self::assertSame([], get_object_vars($feed));
     }
 
-    public function testPublicFeedNeedsCategorySchemaButNotAdminCapabilities(): void
+    public function testPublicFeedRequiresTheCompleteNormalizationFrontier(): void
     {
         $delete = $this->pdo->prepare(
             "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
@@ -116,12 +129,25 @@ final class BlogCategoryPublicFeedFactoryTest extends TestCase
             . "'0007_blog_post_tombstones', "
             . "'0008_blog_article_delete_capability', "
             . "'0009_blog_analytics', "
-            . "'0010_blog_analytics_view_capability')"
+            . "'0010_blog_analytics_view_capability', "
+            . "'0011_blog_layout_editor_v2', "
+            . "'0012_blog_editor_preferences', "
+            . "'0013_blog_settings_manage_capability', "
+            . "'0014_blog_private_draft_publication', "
+            . "'0015_blog_robots_preferences', "
+            . "'0016_blog_url_history', "
+            . "'0017_blog_dummy_category', "
+            . "'0018_blog_dummy_category_normalization')"
         );
-        self::assertSame([], $this->factory->create(
-            $this->projectRoot,
-            []
-        )->filtersForLocale('es'));
+        try {
+            $this->factory->create($this->projectRoot, []);
+            self::fail('The public feed must require 0018.');
+        } catch (BlogPublicHttpRuntimeException $exception) {
+            self::assertSame(
+                'blog.categories.schema_not_ready',
+                $exception->issueCode()
+            );
+        }
 
         $delete->execute(['migration_id' => '0003_blog_categories']);
         try {

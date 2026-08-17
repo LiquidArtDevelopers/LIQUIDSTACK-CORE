@@ -13,6 +13,8 @@ final class BlogConfigLoader
         'public_paths',
         'sitemap_path',
         'public_article_view',
+        'preview_asset_adapter',
+        'public_index',
         'database',
         'sitemap_cache',
         'analytics',
@@ -25,6 +27,7 @@ final class BlogConfigLoader
         'session_timeout_seconds',
         'collect_in_dev',
     ];
+    private const PUBLIC_INDEX_KEYS = ['page_size', 'pagination_paths'];
 
     public function databaseConnection(string $projectRoot): string
     {
@@ -52,6 +55,12 @@ final class BlogConfigLoader
                 $raw['public_article_view']
             );
         }
+        if (array_key_exists('preview_asset_adapter', $raw)) {
+            BlogPreviewAssetAdapterPath::fromProject(
+                $root,
+                $raw['preview_asset_adapter']
+            );
+        }
         $database = $raw['database'] ?? [];
         if (
             !is_array($database)
@@ -65,6 +74,7 @@ final class BlogConfigLoader
         $this->assertOnlyKeys($database, self::DATABASE_KEYS, 'database');
         $this->validateSitemapCache($raw['sitemap_cache'] ?? []);
         $this->validateAnalytics($raw['analytics'] ?? []);
+        $this->validatePublicIndexShape($raw['public_index'] ?? []);
         $connection = $database['connection']
             ?? DatabaseConnectionProfile::SHARED;
         if (!DatabaseConnectionProfile::isSupported($connection)) {
@@ -121,6 +131,15 @@ final class BlogConfigLoader
                 $raw['public_article_view']
             )
             : null;
+        $previewAssetAdapter = array_key_exists(
+            'preview_asset_adapter',
+            $raw
+        )
+            ? BlogPreviewAssetAdapterPath::fromProject(
+                $root,
+                $raw['preview_asset_adapter']
+            )
+            : null;
 
         if (
             !is_array($publicPaths)
@@ -158,6 +177,10 @@ final class BlogConfigLoader
             $publicPaths,
             $languages
         );
+        $publicIndex = $this->validatePublicIndex(
+            $raw['public_index'] ?? [],
+            $normalizedPaths
+        );
         $this->validatePath($sitemapPath, 'sitemap_path');
         if (in_array($sitemapPath, $normalizedPaths, true)) {
             throw new BlogConfigException(
@@ -184,8 +207,113 @@ final class BlogConfigLoader
             $languages[0],
             $publicArticleView,
             $sitemapCache,
-            $analytics
+            $analytics,
+            $previewAssetAdapter,
+            $publicIndex
         );
+    }
+
+    /**
+     * @param array<string, string> $publicPaths
+     */
+    private function validatePublicIndex(
+        mixed $value,
+        array $publicPaths
+    ): BlogPublicIndexConfig {
+        $this->validatePublicIndexShape($value);
+        /** @var array<string, mixed> $value */
+        $pageSize = $value['page_size']
+            ?? BlogPublicIndexConfig::DEFAULT_PAGE_SIZE;
+        $paginationPaths = $value['pagination_paths']
+            ?? BlogPublicIndexConfig::defaults($publicPaths)
+                ->paginationPaths();
+        if (!is_int($pageSize)) {
+            throw new BlogConfigException(
+                'config.public_index_page_size_invalid',
+                'public_index.page_size'
+            );
+        }
+        if (
+            !is_array($paginationPaths)
+            || $paginationPaths === []
+            || array_is_list($paginationPaths)
+        ) {
+            throw new BlogConfigException(
+                'config.expected_object',
+                'public_index.pagination_paths'
+            );
+        }
+        foreach ($publicPaths as $locale => $basePath) {
+            $template = $paginationPaths[$locale] ?? null;
+            if (
+                !is_string($template)
+                || !str_starts_with($template, $basePath . '/')
+            ) {
+                throw new BlogConfigException(
+                    'config.public_index_pagination_path_invalid',
+                    'public_index.pagination_paths.' . $locale
+                );
+            }
+        }
+        foreach (array_keys($paginationPaths) as $locale) {
+            if (!is_string($locale) || !isset($publicPaths[$locale])) {
+                throw new BlogConfigException(
+                    'config.unknown_language',
+                    'public_index.pagination_paths'
+                );
+            }
+        }
+
+        return new BlogPublicIndexConfig($paginationPaths, $pageSize);
+    }
+
+    private function validatePublicIndexShape(mixed $value): void
+    {
+        if (!is_array($value) || ($value !== [] && array_is_list($value))) {
+            throw new BlogConfigException(
+                'config.expected_object',
+                'public_index'
+            );
+        }
+        $this->assertOnlyKeys(
+            $value,
+            self::PUBLIC_INDEX_KEYS,
+            'public_index'
+        );
+        if (
+            array_key_exists('page_size', $value)
+            && (
+                !is_int($value['page_size'])
+                || $value['page_size'] < 1
+                || $value['page_size']
+                    > BlogPublicIndexConfig::MAX_PAGE_SIZE
+            )
+        ) {
+            throw new BlogConfigException(
+                'config.public_index_page_size_invalid',
+                'public_index.page_size'
+            );
+        }
+        if (
+            array_key_exists('pagination_paths', $value)
+            && (
+                !is_array($value['pagination_paths'])
+                || $value['pagination_paths'] === []
+                || array_is_list($value['pagination_paths'])
+            )
+        ) {
+            throw new BlogConfigException(
+                'config.expected_object',
+                'public_index.pagination_paths'
+            );
+        }
+        if (array_key_exists('pagination_paths', $value)) {
+            new BlogPublicIndexConfig(
+                $value['pagination_paths'],
+                $value['page_size']
+                    ?? BlogPublicIndexConfig::DEFAULT_PAGE_SIZE
+            );
+        }
     }
 
     private function validateAnalytics(mixed $value): BlogAnalyticsConfig

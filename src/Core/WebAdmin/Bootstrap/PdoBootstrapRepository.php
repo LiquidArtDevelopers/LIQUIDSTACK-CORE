@@ -179,6 +179,18 @@ final class PdoBootstrapRepository
         return true;
     }
 
+    public function capabilityIsPresent(string $code): bool
+    {
+        $statement = $this->prepare(
+            'SELECT COUNT(*) FROM '
+            . $this->tables->table('capabilities')
+            . ' WHERE code = :code'
+        );
+        $this->execute($statement, ['code' => $code]);
+
+        return (int) $statement->fetchColumn() === 1;
+    }
+
     /** @return array<string, mixed>|null */
     public function roleByCode(string $code): ?array
     {

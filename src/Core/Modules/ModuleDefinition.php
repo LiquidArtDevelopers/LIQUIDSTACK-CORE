@@ -549,6 +549,15 @@ final class ModuleDefinition
                 explode('-', $id)
             ));
             $moduleHooks = [
+                'App/app/_module'
+                    . $moduleClassId
+                    . 'PublicArticle.php',
+                'App/app/_module'
+                    . $moduleClassId
+                    . 'PublicCollections.php',
+                'App/app/_module'
+                    . $moduleClassId
+                    . 'PublicIndex.php',
                 'App/controllers/_module'
                     . $moduleClassId
                     . 'Resources.php',

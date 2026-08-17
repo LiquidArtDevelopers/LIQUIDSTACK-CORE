@@ -1064,7 +1064,11 @@ final class WebAdminBootstrapCommandTest extends TestCase
             $pdo,
             $catalog,
             $scopes,
-            new MigrationApplyOptions(expectedPlanHash: $preview->hash())
+            new MigrationApplyOptions(
+                expectedPlanHash: $preview->hash(),
+                allowDestructive: true,
+                backupConfirmed: true
+            )
         );
 
         $tester = $this->tester($factory, $project, $coreRoot);
@@ -1076,7 +1080,7 @@ final class WebAdminBootstrapCommandTest extends TestCase
         $firstDisplay = $tester->getDisplay();
         $first = json_decode($firstDisplay, true, 512, JSON_THROW_ON_ERROR);
 
-        self::assertSame(Command::SUCCESS, $firstStatus);
+        self::assertSame(Command::SUCCESS, $firstStatus, $firstDisplay);
         self::assertSame('completed', $first['result']['status']);
         self::assertSame(2, (int) $pdo->query(
             'SELECT COUNT(*) FROM cli_webadmin_users'

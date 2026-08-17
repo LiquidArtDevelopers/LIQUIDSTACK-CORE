@@ -8,6 +8,8 @@ require_once __DIR__ . '/_moduleBlogResources.php';
  * moduleBlogArchive01: navegación por periodos de archivo ya proyectados.
  * Encabezado: 2-5 palabras. Etiqueta de periodo: 1-4 palabras.
  * Cada periodo admite `active: true`; solo el primero se expone como actual.
+ * Su raíz es siempre neutra: el módulo mantiene un H3 contextual por defecto,
+ * pero no crea un landmark de navegación adicional.
  * Recibe solo arrays de presentación; sin periodos válidos no renderiza nada.
  */
 function controller_moduleBlogArchive01(
@@ -18,7 +20,7 @@ function controller_moduleBlogArchive01(
         'moduleBlogArchive01',
         $i,
         $params,
-        2,
+        3,
         0
     );
     $rawPeriods = is_array($params['periods_data'] ?? null)
@@ -101,10 +103,7 @@ function controller_moduleBlogArchive01(
     }
 
     return render('App/templates/_moduleBlogArchive01.html', [
-        '{nav-id}' => liquidstack_blog_resource_escape($context['id']),
-        '{heading-id}' => liquidstack_blog_resource_escape(
-            $context['heading_id']
-        ),
+        '{root-id}' => liquidstack_blog_resource_escape($context['id']),
         '{classVar}' => liquidstack_blog_resource_escape(
             $context['class_var']
         ),

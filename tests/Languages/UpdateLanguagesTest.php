@@ -513,17 +513,17 @@ PHP
     public static function routeAwareViewProvider(): array
     {
         return [
-            'AIWA: nombre completo de showroom' => [
+            'consumidor: nombre completo de showroom' => [
                 'templates',
                 '_showroom.php',
                 'templates',
             ],
-            'AIWA: alias bare de showroom' => [
+            'consumidor: alias bare de showroom' => [
                 'templates',
                 'showroom',
                 'templates',
             ],
-            'AIWA: nombre completo de templates' => [
+            'consumidor: nombre completo de templates' => [
                 'templates',
                 '_templates.php',
                 'templates',

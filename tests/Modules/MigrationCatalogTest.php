@@ -284,6 +284,33 @@ final class MigrationCatalogTest extends TestCase
             'DROP TABLE IF EXISTS {{table:users}}; DROP TABLE IF EXISTS {{table:roles}}',
             true,
         ];
+        yield 'unversioned alter table' => [
+            'ALTER TABLE {{table:users}} DROP CONSTRAINT {{table:c_users}}',
+            true,
+        ];
+    }
+
+    public function testSqlDefinitionAcceptsPortableCheckConstraintReplacement(): void
+    {
+        $definition = MigrationDefinition::sql(
+            id: '0005_replace_check',
+            description: 'Amplia una restriccion CHECK portable.',
+            statementsByDriver: [
+                'mysql' => [
+                    "ALTER TABLE {{table:users}}\n"
+                    . "/*!80016 DROP CHECK {{table:c_users}}, */\n"
+                    . "/*M! DROP CONSTRAINT {{table:c_users}}, */\n"
+                    . 'ADD CONSTRAINT {{table:c_users}} CHECK (id > 0)',
+                ],
+                'sqlite' => ['SELECT 1'],
+            ],
+            destructive: true,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true
+        );
+
+        self::assertTrue($definition->isRetrySafe());
+        self::assertTrue($definition->isDestructive());
     }
 
     /** @dataProvider retrySafeMysqlContractProvider */

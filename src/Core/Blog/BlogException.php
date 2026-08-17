@@ -17,6 +17,8 @@ final class BlogException extends RuntimeException implements
     public const LOCALE_CONFLICT = 'blog.locale_conflict';
     public const SLUG_CONFLICT = 'blog.slug_conflict';
     public const LOCK_CONFLICT = 'blog.lock_conflict';
+    public const IDEMPOTENCY_CONFLICT = 'blog.idempotency_conflict';
+    public const COPY_RESULT_TRASHED = 'blog.copy_result_trashed';
     public const INVALID_STATE = 'blog.invalid_state';
     public const PUBLISH_INCOMPLETE = 'blog.publish_incomplete';
     public const SITEMAP_OVERFLOW = 'blog.sitemap_overflow';
@@ -30,6 +32,10 @@ final class BlogException extends RuntimeException implements
         self::LOCALE_CONFLICT => 'Blog locale already exists.',
         self::SLUG_CONFLICT => 'Blog slug is unavailable.',
         self::LOCK_CONFLICT => 'Blog post variant has changed.',
+        self::IDEMPOTENCY_CONFLICT =>
+            'Blog operation identifier was reused with different input.',
+        self::COPY_RESULT_TRASHED =>
+            'Blog copy operation result is in the trash.',
         self::INVALID_STATE => 'Blog state transition is not allowed.',
         self::PUBLISH_INCOMPLETE => 'Blog post variant is incomplete.',
         self::SITEMAP_OVERFLOW => 'Blog sitemap entry limit was exceeded.',

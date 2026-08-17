@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Core\Blog\BlogException;
 use App\Core\Blog\Persistence\BlogPersistenceException;
 use App\Core\Blog\Persistence\PdoBlogRepository;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Blog\StructuredContent\BlogStructuredContentException;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
@@ -135,6 +136,75 @@ final class PdoBlogStructuredContentRepositoryTest extends TestCase
             10,
             0
         ));
+    }
+
+    public function testRobotsPreferencesRoundTripWithCurrentAndRevision(): void
+    {
+        $this->applyBlogMigrations(
+            $this->pdo,
+            $this->scope,
+            ['0015_blog_robots_preferences']
+        );
+        $this->repository = new PdoBlogStructuredContentRepository(
+            $this->pdo,
+            $this->scope,
+            robotsSettingsReady: true
+        );
+        $this->blogRepository = new PdoBlogRepository(
+            $this->pdo,
+            $this->scope,
+            false,
+            true
+        );
+        $draft = $this->draft(
+            'Wake up, Neo.',
+            false,
+            BlogRobotsPreferences::noIndexNoFollow()
+        );
+
+        $this->blogRepository->transactional(function () use ($draft): void {
+            $this->blogRepository->insertPost(
+                self::POST,
+                self::ACTOR_ONE,
+                $this->now(0)
+            );
+            $this->blogRepository->insertLocalization(
+                self::LOCALIZATION,
+                self::POST,
+                'en',
+                $draft->compatibilityDraft(),
+                self::ACTOR_ONE,
+                $this->now(0)
+            );
+            $this->repository->upsertCurrent(
+                self::LOCALIZATION,
+                self::DOCUMENT,
+                $draft,
+                self::ACTOR_ONE,
+                $this->now(0)
+            );
+            $this->repository->appendRevision(
+                self::LOCALIZATION,
+                self::REVISION_ONE,
+                1,
+                $draft,
+                self::ACTOR_ONE,
+                $this->now(0)
+            );
+        });
+
+        self::assertSame(
+            'noindex,nofollow',
+            $this->repository->current(self::LOCALIZATION)
+                ?->snapshot()->robotsPreferences()->directive()
+        );
+        self::assertSame(
+            'noindex,nofollow',
+            $this->repository->revision(self::REVISION_ONE)
+                ?->snapshot()->robotsPreferences()->directive()
+        );
+        self::assertSame(1, $this->countRows('robots_settings'));
+        self::assertSame(1, $this->countRows('revision_robots'));
     }
 
     public function testUpsertPreservesIdentityAndCreationFields(): void
@@ -658,7 +728,11 @@ final class PdoBlogStructuredContentRepositoryTest extends TestCase
         ]));
     }
 
-    private function draft(string $body, bool $withImage = false): BlogStructuredDraft
+    private function draft(
+        string $body,
+        bool $withImage = false,
+        ?BlogRobotsPreferences $robotsPreferences = null
+    ): BlogStructuredDraft
     {
         $blocks = [];
         $template = BlogDocumentTemplateRegistry::ARTICLE_BASIC;
@@ -696,7 +770,8 @@ final class PdoBlogStructuredContentRepositoryTest extends TestCase
             'matrix-article',
             'Matrix article SEO',
             'Matrix description.',
-            'Matrix excerpt.'
+            'Matrix excerpt.',
+            robotsPreferences: $robotsPreferences
         );
     }
 

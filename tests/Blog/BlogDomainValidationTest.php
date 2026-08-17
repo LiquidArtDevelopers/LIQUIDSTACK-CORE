@@ -110,8 +110,40 @@ final class BlogDomainValidationTest extends TestCase
         self::assertTrue($draft->isPublishable());
     }
 
+    public function testDraftPreservesLiteralMarkupComparisonsAndSqlCopy(): void
+    {
+        $draft = new BlogDraft(
+            h1: 'Tiempo de respuesta medio (ideal <24 h)',
+            bodyText: '<strong>Texto literal</strong> SELECT * FROM posts; '
+                . 'DROP TABLE posts; --',
+            slug: 'texto-literal-seguro',
+            seoTitle: '<strong>Title literal</strong>',
+            metaDescription: 'Una comparación literal: tiempo <24 h.',
+            excerpt: '<em>Extracto literal</em>'
+        );
+
+        self::assertSame(
+            'Tiempo de respuesta medio (ideal <24 h)',
+            $draft->h1()
+        );
+        self::assertSame(
+            '<strong>Texto literal</strong> SELECT * FROM posts; '
+                . 'DROP TABLE posts; --',
+            $draft->bodyText()
+        );
+        self::assertSame(
+            '<strong>Title literal</strong>',
+            $draft->seoTitle()
+        );
+        self::assertSame(
+            'Una comparación literal: tiempo <24 h.',
+            $draft->metaDescription()
+        );
+        self::assertSame('<em>Extracto literal</em>', $draft->excerpt());
+    }
+
     /** @dataProvider invalidDraftProvider */
-    public function testDraftRejectsInvalidUtf8HtmlControlsAndByteOverflow(
+    public function testDraftRejectsInvalidUtf8ControlsAndByteOverflow(
         string $h1,
         string $body,
         ?string $seoTitle,
@@ -140,13 +172,9 @@ final class BlogDomainValidationTest extends TestCase
     {
         yield 'blank h1' => ['   ', 'Body', null, null, null];
         yield 'invalid utf8' => ["Bad \xC3\x28", 'Body', null, null, null];
-        yield 'h1 html' => ['<strong>H1</strong>', 'Body', null, null, null];
-        yield 'body html' => ['H1', '<script>alert(1)</script>', null, null, null];
         yield 'body nul' => ['H1', "Body\0hidden", null, null, null];
         yield 'body control' => ['H1', "Body\x07", null, null, null];
-        yield 'title html' => ['H1', 'Body', '<b>SEO</b>', null, null];
         yield 'description newline' => ['H1', 'Body', null, "Meta\nline", null];
-        yield 'excerpt html' => ['H1', 'Body', null, null, '<em>Excerpt</em>'];
         yield 'h1 byte overflow' => [
             str_repeat('é', intdiv(BlogDraft::MAX_H1_BYTES, 2) + 1),
             'Body',
@@ -186,8 +214,8 @@ final class BlogDomainValidationTest extends TestCase
         $secret = 'private-client-content';
 
         try {
-            new BlogDraft('<b>' . $secret . '</b>', 'Body');
-            self::fail('HTML must be rejected.');
+            new BlogDraft("Invalid\x07" . $secret, 'Body');
+            self::fail('Control characters must be rejected.');
         } catch (BlogException $exception) {
             self::assertStringNotContainsString(
                 $secret,

@@ -47,6 +47,11 @@ final class BlogDiagnosticServiceTest extends TestCase
         self::assertTrue($report->isReady());
         self::assertTrue($data['readiness']['blog_ready']);
         self::assertSame([], $data['readiness']['blockers']);
+        self::assertSame([
+            'extension' => 'dom',
+            'ready' => true,
+            'status' => 'ready',
+        ], $data['runtime']['dom_extension']);
         self::assertSame('applied', $data['database']['status']);
         self::assertSame(
             BlogPublicOrigin::SOURCE_LEGACY,
@@ -55,6 +60,33 @@ final class BlogDiagnosticServiceTest extends TestCase
         $encoded = json_encode($data, JSON_THROW_ON_ERROR);
         self::assertStringNotContainsString('https://example.test', $encoded);
         self::assertStringNotContainsString('ls_blog_', $encoded);
+    }
+
+    public function testMissingDomExtensionBlocksBlogWithStableCode(): void
+    {
+        $report = (new BlogDiagnosticService(
+            domExtensionAvailable: false
+        ))->inspect(
+            $this->root,
+            ['es', 'en'],
+            [BlogPublicOrigin::ENV => 'https://example.test'],
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        );
+        $data = $report->toArray();
+
+        self::assertFalse($report->isReady());
+        self::assertSame([
+            'extension' => 'dom',
+            'ready' => false,
+            'status' => 'missing',
+        ], $data['runtime']['dom_extension']);
+        self::assertSame(
+            ['runtime.dom_extension_missing'],
+            $data['readiness']['blockers']
+        );
     }
 
     public function testEffectiveConfigurationReportsProjectOwnedArticleView(): void
@@ -89,35 +121,7 @@ final class BlogDiagnosticServiceTest extends TestCase
             $this->root . '/App/config/modules/blog.php',
             "<?php\nreturn ['sitemap_cache' => ['enabled' => true]];\n"
         );
-        $plan = new MigrationDatabasePlan(
-            'sqlite',
-            true,
-            [
-                $this->entry('0001_blog_posts', 'applied', null),
-                $this->entry(
-                    '0002_blog_capabilities',
-                    'applied',
-                    'webadmin'
-                ),
-                $this->entry('0003_blog_categories', 'applied', null),
-                $this->entry(
-                    '0004_blog_category_capabilities',
-                    'applied',
-                    'webadmin'
-                ),
-                $this->entry(
-                    '0005_blog_structured_content',
-                    'applied',
-                    null
-                ),
-                $this->entry(
-                    '0006_blog_sitemap_publication_state',
-                    'applied',
-                    null
-                ),
-            ],
-            []
-        );
+        $plan = $this->appliedPlan();
 
         $data = $this->inspect($plan)->toArray();
 
@@ -379,7 +383,7 @@ SQL);
             'database.migrations_not_ready',
             $data['readiness']['blockers']
         );
-        self::assertTrue($data['database']['public_content']['ready']);
+        self::assertFalse($data['database']['public_content']['ready']);
         self::assertFalse($data['database']['administration']['ready']);
     }
 
@@ -389,13 +393,8 @@ SQL);
             'sqlite',
             true,
             [
-                $this->entry('0001_blog_posts', 'applied', null),
-                $this->entry(
-                    '0002_blog_capabilities',
-                    'applied',
-                    'webadmin'
-                ),
-                $this->entry('0003_future_feature', 'pending', null),
+                ...$this->runtimeEntries('applied', 'applied'),
+                $this->entry('0020_future_feature', 'pending', null),
             ],
             []
         );
@@ -407,7 +406,7 @@ SQL);
         self::assertTrue($data['database']['administration']['ready']);
         self::assertFalse($data['database']['features']['ready']);
         self::assertSame(
-            ['0003_future_feature'],
+            ['0020_future_feature'],
             $data['database']['features']['pending']
         );
     }
@@ -526,35 +525,7 @@ SQL);
 
     private function sitemapPlan(): MigrationDatabasePlan
     {
-        return new MigrationDatabasePlan(
-            'sqlite',
-            true,
-            [
-                $this->entry('0001_blog_posts', 'applied', null),
-                $this->entry(
-                    '0002_blog_capabilities',
-                    'applied',
-                    'webadmin'
-                ),
-                $this->entry('0003_blog_categories', 'applied', null),
-                $this->entry(
-                    '0004_blog_category_capabilities',
-                    'applied',
-                    'webadmin'
-                ),
-                $this->entry(
-                    '0005_blog_structured_content',
-                    'applied',
-                    null
-                ),
-                $this->entry(
-                    '0006_blog_sitemap_publication_state',
-                    'applied',
-                    null
-                ),
-            ],
-            []
-        );
+        return $this->appliedPlan();
     }
 
     private function plan(
@@ -564,16 +535,47 @@ SQL);
         return new MigrationDatabasePlan(
             'sqlite',
             true,
-            [
-                $this->entry('0001_blog_posts', $schemaStatus, null),
-                $this->entry(
-                    '0002_blog_capabilities',
-                    $capabilityStatus,
-                    'webadmin'
-                ),
-            ],
+            $this->runtimeEntries($schemaStatus, $capabilityStatus),
             []
         );
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function runtimeEntries(
+        string $schemaStatus,
+        string $capabilityStatus
+    ): array {
+        $targets = [
+            '0001_blog_posts' => null,
+            '0002_blog_capabilities' => 'webadmin',
+            '0003_blog_categories' => null,
+            '0004_blog_category_capabilities' => 'webadmin',
+            '0005_blog_structured_content' => null,
+            '0006_blog_sitemap_publication_state' => null,
+            '0007_blog_post_tombstones' => null,
+            '0008_blog_article_delete_capability' => 'webadmin',
+            '0009_blog_analytics' => null,
+            '0010_blog_analytics_view_capability' => 'webadmin',
+            '0011_blog_layout_editor_v2' => null,
+            '0012_blog_editor_preferences' => null,
+            '0013_blog_settings_manage_capability' => 'webadmin',
+            '0014_blog_private_draft_publication' => null,
+            '0015_blog_robots_preferences' => null,
+            '0016_blog_url_history' => null,
+            '0017_blog_dummy_category' => null,
+            '0018_blog_dummy_category_normalization' => null,
+            '0019_blog_copy_operation_idempotency' => null,
+        ];
+        $entries = [];
+        foreach ($targets as $id => $target) {
+            $status = $id === '0001_blog_posts'
+                ? $schemaStatus
+                : ($id === '0002_blog_capabilities'
+                    ? $capabilityStatus : 'applied');
+            $entries[] = $this->entry($id, $status, $target);
+        }
+
+        return $entries;
     }
 
     /** @return array<string, mixed> */

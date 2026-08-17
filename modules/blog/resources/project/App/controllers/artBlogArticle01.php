@@ -39,6 +39,8 @@ function controller_artBlogArticle01(
     $modifier = match ($template) {
         BlogDocumentTemplateRegistry::ARTICLE_BASIC => 'basic',
         BlogDocumentTemplateRegistry::ARTICLE_COVER => 'cover',
+        BlogDocumentTemplateRegistry::ARTICLE_HERO00,
+        BlogDocumentTemplateRegistry::ARTICLE_HERO06 => 'cover',
         default => throw new InvalidArgumentException(
             'Unsupported Blog article template.'
         ),
@@ -83,7 +85,7 @@ function controller_artBlogArticle01(
         : '';
     if (
         $headerMediaHtml !== ''
-        && $template !== BlogDocumentTemplateRegistry::ARTICLE_COVER
+        && !BlogDocumentTemplateRegistry::hasCover($template)
     ) {
         throw new InvalidArgumentException(
             'Header media requires the Blog cover template.'

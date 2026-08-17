@@ -1,6 +1,13 @@
 const FORM_SELECTOR = '[data-blog-filter-form]';
 const RESULTS_UPDATED_EVENT = 'liquidstack:blog-results-updated';
 const QUERY_DEBOUNCE_MS = 350;
+const REQUEST_TIMEOUT_MS = 12_000;
+const PRESERVED_STATE_NAMES = new Set([
+  'q',
+  'order',
+  'category[]',
+  'category_mode',
+]);
 
 let disposeActiveFilters = () => {};
 
@@ -43,6 +50,18 @@ const setBusy = (form, target, busy) => {
     } else {
       element.removeAttribute('aria-busy');
     }
+  }
+};
+
+const setResultsStale = (target, stale) => {
+  if (!target || typeof target.setAttribute !== 'function') {
+    return;
+  }
+
+  if (stale) {
+    target.setAttribute('data-blog-results-stale', 'true');
+  } else {
+    target.removeAttribute('data-blog-results-stale');
   }
 };
 
@@ -144,6 +163,203 @@ const syncFormControls = (form, sourceForm) => {
   }
 };
 
+const syncPreservedHiddenState = (form, sourceForm) => {
+  if (!form || !sourceForm) {
+    return;
+  }
+
+  const isPreservedHidden = (control) => (
+    control?.type === 'hidden'
+    && PRESERVED_STATE_NAMES.has(control.name ?? '')
+  );
+  const sourceControls = queryAllSafely(
+    sourceForm,
+    'input[type="hidden"][name]',
+  ).filter(isPreservedHidden);
+
+  for (const control of queryAllSafely(
+    form,
+    'input[type="hidden"][name]',
+  ).filter(isPreservedHidden)) {
+    control.remove?.();
+  }
+
+  const documentRef = form.ownerDocument;
+  const anchor = form.firstChild ?? null;
+  for (const source of sourceControls) {
+    const clone = typeof documentRef?.importNode === 'function'
+      ? documentRef.importNode(source, true)
+      : source.cloneNode?.(true);
+    if (!clone) {
+      continue;
+    }
+
+    if (typeof form.insertBefore === 'function') {
+      form.insertBefore(clone, anchor);
+    } else if (typeof form.prepend === 'function') {
+      form.prepend(clone);
+    }
+  }
+};
+
+const syncFilterReset = (form, sourceForm) => {
+  const reset = querySafely(form, '[data-blog-filter-reset]');
+  const incomingReset = querySafely(
+    sourceForm,
+    '[data-blog-filter-reset]',
+  );
+  if (!reset || !incomingReset) {
+    return;
+  }
+
+  const href = incomingReset.getAttribute?.('href');
+  if (href === null || href === undefined) {
+    reset.removeAttribute?.('href');
+  } else {
+    reset.setAttribute?.('href', href);
+  }
+  reset.hidden = Boolean(incomingReset.hidden);
+};
+
+const controlsNamed = (form, name) => Array.from(form?.elements ?? [])
+  .filter((control) => control?.name === name);
+
+const visibleControlsNamed = (form, name) => controlsNamed(form, name)
+  .filter((control) => control.type !== 'hidden');
+
+const replacePreservedHiddenValues = (form, entries) => {
+  const documentRef = form?.ownerDocument;
+  if (typeof documentRef?.createElement !== 'function') {
+    return;
+  }
+
+  for (const control of queryAllSafely(
+    form,
+    'input[type="hidden"][name]',
+  )) {
+    if (PRESERVED_STATE_NAMES.has(control?.name ?? '')) {
+      control.remove?.();
+    }
+  }
+
+  const anchor = form.firstChild ?? null;
+  for (const [name, value] of entries) {
+    const hidden = documentRef.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = name;
+    hidden.value = value;
+    form.insertBefore?.(hidden, anchor);
+  }
+};
+
+const readSharedFormState = (forms) => {
+  const capabilities = new Set();
+  for (const form of forms) {
+    for (const control of Array.from(form?.elements ?? [])) {
+      if (PRESERVED_STATE_NAMES.has(control?.name ?? '')) {
+        capabilities.add(control.name);
+      }
+    }
+  }
+
+  const firstVisible = (name) => forms
+    .flatMap((form) => visibleControlsNamed(form, name))[0] ?? null;
+  const firstControl = (name) => forms
+    .flatMap((form) => controlsNamed(form, name))[0] ?? null;
+  const categorySource = forms.find(
+    (form) => visibleControlsNamed(form, 'category[]').length > 0,
+  );
+  const categoryControls = categorySource
+    ? visibleControlsNamed(categorySource, 'category[]')
+    : forms.flatMap((form) => controlsNamed(form, 'category[]'));
+
+  return {
+    capabilities,
+    query: String((firstVisible('q') ?? firstControl('q'))?.value ?? ''),
+    order: String(
+      (firstVisible('order') ?? firstControl('order'))?.value ?? 'newest',
+    ),
+    categories: categoryControls
+      .filter((control) => control.type === 'hidden' || control.checked)
+      .map((control) => String(control.value ?? ''))
+      .filter((value, index, values) => value && values.indexOf(value) === index),
+    categoryMode: String(
+      (firstVisible('category_mode') ?? firstControl('category_mode'))?.value
+        ?? 'any',
+    ) === 'all' ? 'all' : 'any',
+  };
+};
+
+const synchronizeSharedFormState = (forms) => {
+  const state = readSharedFormState(forms);
+  for (const form of forms) {
+    const visibleQuery = visibleControlsNamed(form, 'q');
+    const visibleOrder = visibleControlsNamed(form, 'order');
+    const visibleCategories = visibleControlsNamed(form, 'category[]');
+    const visibleMode = visibleControlsNamed(form, 'category_mode');
+
+    for (const control of visibleQuery) {
+      control.value = state.query;
+    }
+    for (const control of visibleOrder) {
+      control.value = state.order;
+    }
+    for (const control of visibleCategories) {
+      control.checked = state.categories.includes(String(control.value ?? ''));
+    }
+    for (const control of visibleMode) {
+      control.value = state.categoryMode;
+    }
+
+    const hiddenEntries = [];
+    if (state.capabilities.has('q') && visibleQuery.length === 0
+        && state.query !== '') {
+      hiddenEntries.push(['q', state.query]);
+    }
+    if (state.capabilities.has('order') && visibleOrder.length === 0) {
+      hiddenEntries.push(['order', state.order]);
+    }
+    if (state.capabilities.has('category[]') && visibleCategories.length === 0) {
+      for (const category of state.categories) {
+        hiddenEntries.push(['category[]', category]);
+      }
+      if (state.categories.length > 0 && visibleMode.length === 0) {
+        hiddenEntries.push(['category_mode', state.categoryMode]);
+      }
+    }
+    replacePreservedHiddenValues(form, hiddenEntries);
+  }
+
+  return state;
+};
+
+const syncFilterForms = (
+  responseDocument,
+  forms,
+  activeForm,
+) => {
+  const incomingForms = queryAllSafely(responseDocument, FORM_SELECTOR);
+  const incomingById = new Map(
+    incomingForms
+      .filter((form) => form?.id)
+      .map((form) => [form.id, form]),
+  );
+
+  for (const form of forms) {
+    let sourceForm = form?.id ? incomingById.get(form.id) : null;
+    if (!sourceForm && form === activeForm && forms.length === 1) {
+      sourceForm = incomingForms[0] ?? null;
+    }
+    if (!sourceForm) {
+      continue;
+    }
+
+    syncPreservedHiddenState(form, sourceForm);
+    syncFormControls(form, sourceForm);
+    syncFilterReset(form, sourceForm);
+  }
+};
+
 const emitResultsUpdated = (target, view, url) => {
   const documentRef = target?.ownerDocument;
   const CustomEventConstructor = view.CustomEvent ?? globalThis.CustomEvent;
@@ -161,16 +377,18 @@ const emitResultsUpdated = (target, view, url) => {
   ));
 };
 
-const installForm = (form) => {
-  const documentRef = form.ownerDocument ?? globalThis.document;
-  const view = getView(form);
-  const targetSelector = form.dataset?.blogResultsTarget ?? '';
+const installFormGroup = (forms) => {
+  const firstForm = forms[0];
+  if (!firstForm) {
+    return () => {};
+  }
+
+  const documentRef = firstForm.ownerDocument ?? globalThis.document;
+  const view = getView(firstForm);
+  const targetSelector = firstForm.dataset?.blogResultsTarget ?? '';
   const initialTarget = querySafely(documentRef, targetSelector);
-  const method = String(form.getAttribute?.('method') ?? form.method ?? 'get')
-    .toLowerCase();
-  const canEnhance = Boolean(
+  const canEnhanceTarget = Boolean(
     initialTarget
-    && method === 'get'
     && typeof view.fetch === 'function'
     && typeof (view.DOMParser ?? globalThis.DOMParser) === 'function'
     && typeof (view.AbortController ?? globalThis.AbortController) === 'function'
@@ -178,39 +396,124 @@ const installForm = (form) => {
     && typeof view.history.pushState === 'function'
     && typeof view.history.replaceState === 'function',
   );
+  const enhancedForms = canEnhanceTarget
+    ? forms.filter((form) => {
+      const method = String(
+        form.getAttribute?.('method') ?? form.method ?? 'get',
+      ).toLowerCase();
 
-  // Sin un destino SSR real, el formulario conserva su navegación GET nativa.
-  if (!canEnhance) {
+      return method === 'get';
+    })
+    : [];
+
+  if (enhancedForms.length === 0) {
     return () => {};
   }
 
   const listenerController = new (view.AbortController
     ?? globalThis.AbortController)();
-  const status = querySafely(form, '[data-blog-filter-status]');
+  const statuses = new Map(enhancedForms.map((form) => [
+    form,
+    querySafely(form, '[data-blog-filter-status]'),
+  ]));
   let requestController = null;
+  let requestTimer = null;
   let requestGeneration = 0;
   let queryTimer = null;
   let liveSearchHasHistoryEntry = false;
   let disposed = false;
 
   const currentTarget = () => querySafely(documentRef, targetSelector);
+  const setFilterStatus = (status, state, message = '') => {
+    if (!status) {
+      return;
+    }
+    if (status.dataset) {
+      status.dataset.state = state;
+    } else {
+      status.setAttribute?.('data-state', state);
+    }
+    status.textContent = message;
+  };
+  const resetGroupStatuses = (state = 'idle') => {
+    for (const status of statuses.values()) {
+      setFilterStatus(status, state);
+    }
+  };
+  const communicateRequestError = (activeForm, target) => {
+    setResultsStale(target, false);
+    resetGroupStatuses();
+    const status = statuses.get(activeForm);
+    setFilterStatus(status, 'error', status?.dataset?.errorMessage ?? '');
+  };
+  const communicateValidity = (activeForm = enhancedForms[0]) => {
+    let valid = true;
+    let message = '';
+    let invalidForm = null;
+    for (const form of enhancedForms) {
+      let formIsValid = typeof form.checkValidity !== 'function'
+        || form.checkValidity();
+      for (const control of visibleControlsNamed(form, 'q')) {
+        const queryLength = Array.from(
+          String(control.value ?? '').trim(),
+        ).length;
+        const queryIsValid = queryLength === 0 || queryLength >= 2;
+        const controlIsValid = queryIsValid && (
+          typeof control.checkValidity !== 'function'
+          || control.checkValidity()
+        );
+        formIsValid = formIsValid && controlIsValid;
+        if (controlIsValid) {
+          control.removeAttribute?.('aria-invalid');
+        } else {
+          control.setAttribute?.('aria-invalid', 'true');
+          message ||= queryIsValid
+            ? String(control.validationMessage ?? '')
+            : String(control.dataset?.minlengthMessage ?? '');
+        }
+      }
+      valid = valid && formIsValid;
+      if (!formIsValid) {
+        invalidForm ??= form;
+      }
+    }
+    if (!valid) {
+      setResultsStale(currentTarget(), true);
+      const status = statuses.get(invalidForm ?? activeForm);
+      setFilterStatus(status, 'invalid', message);
+    }
+
+    return valid;
+  };
+  const setGroupBusy = (busy) => {
+    for (const form of enhancedForms) {
+      setBusy(form, null, busy);
+    }
+    setBusy(null, currentTarget(), busy);
+  };
   const navigate = (url) => {
     if (!disposed && typeof view.location?.assign === 'function') {
       view.location.assign(url.href);
     }
   };
-
+  const clearRequestTimer = () => {
+    if (requestTimer === null) {
+      return;
+    }
+    const clearTimer = view.clearTimeout ?? globalThis.clearTimeout;
+    clearTimer?.(requestTimer);
+    requestTimer = null;
+  };
   const invalidateActiveRequest = () => {
     requestGeneration += 1;
+    clearRequestTimer();
     requestController?.abort();
     requestController = null;
-    setBusy(form, currentTarget(), false);
+    setGroupBusy(false);
   };
-
   const resetLiveSearchSequence = () => {
     liveSearchHasHistoryEntry = false;
   };
-
   const clearQueryTimer = () => {
     if (queryTimer !== null) {
       view.clearTimeout(queryTimer);
@@ -218,22 +521,45 @@ const installForm = (form) => {
     }
   };
 
-  const request = async (url, historyMode = 'push') => {
+  const request = async (
+    url,
+    activeForm = enhancedForms[0],
+    historyMode = 'push',
+  ) => {
     const target = currentTarget();
     if (!target) {
       navigate(url);
       return;
     }
 
+    clearRequestTimer();
     requestController?.abort();
     const ownGeneration = ++requestGeneration;
     requestController = new (view.AbortController
       ?? globalThis.AbortController)();
     const ownController = requestController;
-    setBusy(form, target, true);
-    if (status) {
-      status.textContent = '';
-    }
+    setResultsStale(target, true);
+    setGroupBusy(true);
+    resetGroupStatuses('loading');
+    const setTimer = view.setTimeout ?? globalThis.setTimeout;
+    requestTimer = setTimer?.(() => {
+      if (
+        disposed
+        || ownGeneration !== requestGeneration
+        || requestController !== ownController
+      ) {
+        return;
+      }
+
+      // El timeout invalida su propia generacion: incluso un fetch que ignore
+      // abort() no puede aplicar tarde una respuesta ni sustituir el SSR visible.
+      requestGeneration += 1;
+      requestController = null;
+      requestTimer = null;
+      ownController.abort();
+      setGroupBusy(false);
+      communicateRequestError(activeForm, target);
+    }, REQUEST_TIMEOUT_MS) ?? null;
 
     try {
       const response = await view.fetch(url.href, {
@@ -264,16 +590,18 @@ const installForm = (form) => {
 
       const incomingTarget = querySafely(responseDocument, targetSelector);
       if (!incomingTarget) {
-        navigate(url);
-        return;
+        throw new Error('Invalid Blog results fragment.');
       }
 
       target.innerHTML = incomingTarget.innerHTML;
-      const incomingForm = form.id && typeof responseDocument.getElementById === 'function'
-        ? responseDocument.getElementById(form.id)
-        : querySafely(responseDocument, FORM_SELECTOR);
-      syncFormControls(form, incomingForm);
+      syncFilterForms(
+        responseDocument,
+        enhancedForms,
+        activeForm,
+      );
+      synchronizeSharedFormState(enhancedForms);
       syncDocumentMetadata(documentRef, responseDocument);
+      setResultsStale(target, false);
 
       if (url.href !== view.location.href) {
         if (historyMode === 'live-search') {
@@ -294,9 +622,13 @@ const installForm = (form) => {
           );
         }
       }
-      if (status) {
-        status.textContent = status.dataset?.message ?? '';
-      }
+      const status = statuses.get(activeForm);
+      resetGroupStatuses();
+      setFilterStatus(
+        status,
+        'success',
+        status?.dataset?.message ?? '',
+      );
       emitResultsUpdated(target, view, url);
     } catch (error) {
       if (
@@ -305,21 +637,23 @@ const installForm = (form) => {
         && !disposed
         && !isAbortError(error)
       ) {
-        navigate(url);
+        communicateRequestError(activeForm, currentTarget() ?? target);
       }
     } finally {
       if (
         ownGeneration === requestGeneration
         && ownController === requestController
       ) {
-        setBusy(form, currentTarget() ?? target, false);
+        clearRequestTimer();
+        setGroupBusy(false);
         requestController = null;
       }
     }
   };
 
-  const requestFromForm = (historyMode = 'push') => {
-    if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+  const requestFromForm = (form, historyMode = 'push') => {
+    synchronizeSharedFormState(enhancedForms);
+    if (!communicateValidity(form)) {
       return false;
     }
 
@@ -329,52 +663,73 @@ const installForm = (form) => {
     } catch {
       return false;
     }
-
     if (url.origin !== view.location.origin) {
       navigate(url);
       return false;
     }
-    void request(url, historyMode);
+    void request(url, form, historyMode);
 
     return true;
   };
 
-  const onSubmit = (event) => {
-    if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
-      return;
-    }
+  for (const form of enhancedForms) {
+    const onSubmit = (event) => {
+      synchronizeSharedFormState(enhancedForms);
+      if (!communicateValidity(form)) {
+        event.preventDefault();
+        return;
+      }
+      event.preventDefault();
+      clearQueryTimer();
+      resetLiveSearchSequence();
+      requestFromForm(form, 'push');
+    };
+    const onInput = (event) => {
+      if (event.target?.name !== 'q') {
+        return;
+      }
+      synchronizeSharedFormState(enhancedForms);
+      invalidateActiveRequest();
+      setResultsStale(currentTarget(), true);
+      const status = statuses.get(form);
+      setFilterStatus(status, 'idle');
+      clearQueryTimer();
+      if (!communicateValidity(form)) {
+        return;
+      }
+      setBusy(null, currentTarget(), true);
+      queryTimer = view.setTimeout(() => {
+        queryTimer = null;
+        requestFromForm(form, 'live-search');
+      }, QUERY_DEBOUNCE_MS);
+    };
+    const onChange = (event) => {
+      const control = event.target;
+      if (PRESERVED_STATE_NAMES.has(control?.name ?? '')) {
+        synchronizeSharedFormState(enhancedForms);
+      }
+      if (control?.name !== 'category[]' && control?.name !== 'category_mode') {
+        return;
+      }
+      clearQueryTimer();
+      resetLiveSearchSequence();
+      invalidateActiveRequest();
+      setResultsStale(currentTarget(), true);
+      const status = statuses.get(form);
+      setFilterStatus(status, 'idle');
+    };
 
-    event.preventDefault();
-    clearQueryTimer();
-    resetLiveSearchSequence();
-    requestFromForm('push');
-  };
-  const onInput = (event) => {
-    if (event.target?.name !== 'q') {
-      return;
-    }
+    form.addEventListener('submit', onSubmit, {
+      signal: listenerController.signal,
+    });
+    form.addEventListener('input', onInput, {
+      signal: listenerController.signal,
+    });
+    form.addEventListener('change', onChange, {
+      signal: listenerController.signal,
+    });
+  }
 
-    // Invalida ya, antes de la pausa: una respuesta vieja nunca pisa el input.
-    invalidateActiveRequest();
-    if (status) {
-      status.textContent = '';
-    }
-    clearQueryTimer();
-    queryTimer = view.setTimeout(() => {
-      queryTimer = null;
-      requestFromForm('live-search');
-    }, QUERY_DEBOUNCE_MS);
-  };
-  const onChange = (event) => {
-    const control = event.target;
-    if (control?.name !== 'category[]' && control?.name !== 'category_mode') {
-      return;
-    }
-
-    clearQueryTimer();
-    resetLiveSearchSequence();
-    requestFromForm('push');
-  };
   const onPopState = () => {
     clearQueryTimer();
     resetLiveSearchSequence();
@@ -384,21 +739,22 @@ const installForm = (form) => {
     } catch {
       return;
     }
-
-    void request(url, 'none');
+    void request(url, enhancedForms[0], 'none');
   };
+  view.addEventListener('popstate', onPopState, {
+    signal: listenerController.signal,
+  });
 
-  form.addEventListener('submit', onSubmit, { signal: listenerController.signal });
-  form.addEventListener('input', onInput, { signal: listenerController.signal });
-  form.addEventListener('change', onChange, { signal: listenerController.signal });
-  view.addEventListener('popstate', onPopState, { signal: listenerController.signal });
+  synchronizeSharedFormState(enhancedForms);
+  communicateValidity();
 
   return () => {
     disposed = true;
     listenerController.abort();
     invalidateActiveRequest();
     clearQueryTimer();
-    setBusy(form, currentTarget(), false);
+    setGroupBusy(false);
+    setResultsStale(currentTarget(), false);
   };
 };
 
@@ -409,7 +765,21 @@ export const cleanupModuleBlogFilters01 = () => {
 
 export const initModuleBlogFilters01 = (scope = globalThis.document) => {
   cleanupModuleBlogFilters01();
-  const cleanups = queryAllSafely(scope, FORM_SELECTOR).map(installForm);
+  const groups = [];
+  for (const form of queryAllSafely(scope, FORM_SELECTOR)) {
+    const documentRef = form.ownerDocument ?? globalThis.document;
+    const targetSelector = form.dataset?.blogResultsTarget ?? '';
+    let group = groups.find((candidate) => (
+      candidate.documentRef === documentRef
+      && candidate.targetSelector === targetSelector
+    ));
+    if (!group) {
+      group = { documentRef, targetSelector, forms: [] };
+      groups.push(group);
+    }
+    group.forms.push(form);
+  }
+  const cleanups = groups.map((group) => installFormGroup(group.forms));
   let cleaned = false;
 
   disposeActiveFilters = () => {

@@ -5,66 +5,45 @@ declare(strict_types=1);
 namespace App\Core\Modules\Blog;
 
 use App\Core\Modules\Migrations\MigrationFeatureGate;
+use App\Core\Modules\Migrations\MigrationRuntimeTableShapeProbe;
+use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
 use PDO;
 use Throwable;
 
-/** Category-only readiness gate; it never disables Blog 0001 administration. */
+/** Category-only readiness gate; it never repeats migration DDL audits. */
 final class BlogCategoryHttpSchemaGate
 {
-    private readonly BlogCategoryMigrationPostconditionVerifier
-        $extendedSchemaVerifier;
-    private readonly BlogCategoryMigrationPostconditionVerifier
-        $sitemapExtendedSchemaVerifier;
-    private readonly BlogCategoryMigrationPostconditionVerifier
-        $tombstoneExtendedSchemaVerifier;
-    private readonly BlogCategoryMigrationPostconditionVerifier
-        $analyticsExtendedSchemaVerifier;
+    /** @var array<string, list<string>> */
+    private const RUNTIME_TABLES = [
+        'categories' => [
+            'id', 'public_id', 'created_by_user_public_id', 'created_at',
+            'updated_at',
+        ],
+        'category_locales' => [
+            'id', 'public_id', 'category_id', 'locale', 'slug', 'name',
+            'lock_version', 'created_by_user_public_id',
+            'updated_by_user_public_id', 'created_at', 'updated_at',
+        ],
+        'post_categories' => [
+            'id', 'public_id', 'post_id', 'category_id',
+            'assigned_by_user_public_id', 'created_at', 'updated_at',
+        ],
+    ];
 
     public function __construct(
         private readonly MigrationFeatureGate $migrationGate =
             new MigrationFeatureGate(),
-        private readonly BlogCategoryMigrationPostconditionVerifier
-            $schemaVerifier =
-                new BlogCategoryMigrationPostconditionVerifier(),
         private readonly BlogCategoryCapabilitySeedPostcondition
             $capabilityVerifier =
                 new BlogCategoryCapabilitySeedPostcondition(),
-        ?BlogCategoryMigrationPostconditionVerifier
-            $extendedSchemaVerifier = null,
-        ?BlogCategoryMigrationPostconditionVerifier
-            $sitemapExtendedSchemaVerifier = null,
-        ?BlogCategoryMigrationPostconditionVerifier
-            $tombstoneExtendedSchemaVerifier = null,
-        ?BlogCategoryMigrationPostconditionVerifier
-            $analyticsExtendedSchemaVerifier = null
+        private readonly BlogDummyCategoryRuntimeReadiness
+            $dummyRuntimeReadiness =
+                new BlogDummyCategoryRuntimeReadiness(),
+        private readonly MigrationRuntimeTableShapeProbe $shapeProbe =
+            new MigrationRuntimeTableShapeProbe()
     ) {
-        $this->extendedSchemaVerifier = $extendedSchemaVerifier
-            ?? new BlogCategoryMigrationPostconditionVerifier(
-                expectStructuredContentExtension: true
-            );
-        $this->sitemapExtendedSchemaVerifier =
-            $sitemapExtendedSchemaVerifier
-            ?? new BlogCategoryMigrationPostconditionVerifier(
-                expectStructuredContentExtension: true,
-                expectSitemapStateExtension: true
-            );
-        $this->tombstoneExtendedSchemaVerifier =
-            $tombstoneExtendedSchemaVerifier
-            ?? new BlogCategoryMigrationPostconditionVerifier(
-                expectStructuredContentExtension: true,
-                expectSitemapStateExtension: true,
-                expectPostTombstoneExtension: true
-            );
-        $this->analyticsExtendedSchemaVerifier =
-            $analyticsExtendedSchemaVerifier
-            ?? new BlogCategoryMigrationPostconditionVerifier(
-                expectStructuredContentExtension: true,
-                expectSitemapStateExtension: true,
-                expectPostTombstoneExtension: true,
-                expectAnalyticsExtension: true
-            );
     }
 
     public function isReady(
@@ -82,34 +61,14 @@ final class BlogCategoryHttpSchemaGate
     ): bool {
         try {
             $blogScope = $scopes->get('blog');
-            if ($blogScope === null) {
-                return false;
-            }
-            if (!$this->migrationGate->isReady(
-                $pdo,
-                $registry,
-                $scopes,
-                BlogMigrationRequirements::categoriesPublic()
-            )) {
-                return false;
-            }
-
-            // Both namespaces are closed contracts. Accept the exact 0003
-            // boundary before 0005 or its exact structured-content extension.
-            return $this->schemaVerifier->verify($pdo, $blogScope)
-                || $this->extendedSchemaVerifier->verify($pdo, $blogScope)
-                || $this->sitemapExtendedSchemaVerifier->verify(
+            return $blogScope !== null
+                && $this->migrationGate->isReady(
                     $pdo,
-                    $blogScope
+                    $registry,
+                    $scopes,
+                    BlogMigrationRequirements::categoriesPublic()
                 )
-                || $this->tombstoneExtendedSchemaVerifier->verify(
-                    $pdo,
-                    $blogScope
-                )
-                || $this->analyticsExtendedSchemaVerifier->verify(
-                    $pdo,
-                    $blogScope
-                );
+                && $this->runtimeStateIsReady($pdo, $blogScope);
         } catch (Throwable) {
             return false;
         }
@@ -121,23 +80,34 @@ final class BlogCategoryHttpSchemaGate
         MigrationScopeCollection $scopes
     ): bool {
         try {
+            $blogScope = $scopes->get('blog');
             $webAdminScope = $scopes->get('webadmin');
-            if (
-                $webAdminScope === null
-                || !$this->isPublicReady($pdo, $registry, $scopes)
-                || !$this->migrationGate->isReady(
+            return $blogScope !== null
+                && $webAdminScope !== null
+                && $this->migrationGate->isReady(
                     $pdo,
                     $registry,
                     $scopes,
                     BlogMigrationRequirements::categoriesAdministration()
                 )
-            ) {
-                return false;
-            }
-
-            return $this->capabilityVerifier->verify($pdo, $webAdminScope);
+                && $this->runtimeStateIsReady($pdo, $blogScope)
+                && $this->capabilityVerifier->verify(
+                    $pdo,
+                    $webAdminScope
+                );
         } catch (Throwable) {
             return false;
         }
+    }
+
+    private function runtimeStateIsReady(
+        PDO $pdo,
+        MigrationScope $scope
+    ): bool {
+        return $this->shapeProbe->hasColumns(
+            $pdo,
+            $scope,
+            self::RUNTIME_TABLES
+        ) && $this->dummyRuntimeReadiness->isReady($pdo, $scope);
     }
 }

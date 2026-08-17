@@ -6,6 +6,7 @@ namespace Tests\WebAdmin\Media;
 
 use App\Core\Http\UploadedFile;
 use App\Core\WebAdmin\Media\ImagickAvifImageProcessor;
+use App\Core\WebAdmin\Media\MediaException;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
@@ -82,6 +83,72 @@ final class ImagickAvifImageProcessorIntegrationTest extends TestCase
             self::assertLessThanOrEqual(1200, $probe->getImageWidth());
             $probe->clear();
             $probe->destroy();
+        }
+    }
+
+    public function testNativeAvifSourceIsAcceptedAndReprocessed(): void
+    {
+        $source = $this->sandbox . '/source.avif';
+        $image = new \Imagick();
+        $image->newImage(640, 360, new \ImagickPixel('rgb(10,80,160)'));
+        $image->setImageFormat('AVIF');
+        $image->setImageCompressionQuality(90);
+        self::assertTrue($image->writeImage($source));
+        $image->clear();
+        $image->destroy();
+
+        $upload = UploadedFile::fromTestInput([
+            'name' => 'native-source.avif',
+            'type' => 'application/octet-stream',
+            'tmp_name' => $source,
+            'error' => UPLOAD_ERR_OK,
+            'size' => filesize($source),
+        ]);
+        self::assertInstanceOf(UploadedFile::class, $upload);
+
+        $processed = (new ImagickAvifImageProcessor())->process(
+            $upload,
+            $this->sandbox . '/staging'
+        );
+
+        self::assertSame('image/avif', $processed->sourceMime());
+        self::assertSame(640, $processed->sourceWidth());
+        self::assertSame(360, $processed->sourceHeight());
+        self::assertSame([480, 640], array_map(
+            static fn ($variant): int => $variant->width(),
+            $processed->variants()
+        ));
+    }
+
+    public function testNativeAvifSourceIsRejectedWhileSchemaUpgradeIsPending(): void
+    {
+        $source = $this->sandbox . '/pending-source.avif';
+        $image = new \Imagick();
+        $image->newImage(64, 64, new \ImagickPixel('white'));
+        $image->setImageFormat('AVIF');
+        self::assertTrue($image->writeImage($source));
+        $image->clear();
+        $image->destroy();
+        $upload = UploadedFile::fromTestInput([
+            'name' => 'pending-source.avif',
+            'type' => 'image/avif',
+            'tmp_name' => $source,
+            'error' => UPLOAD_ERR_OK,
+            'size' => filesize($source),
+        ]);
+        self::assertInstanceOf(UploadedFile::class, $upload);
+
+        try {
+            (new ImagickAvifImageProcessor(false))->process(
+                $upload,
+                $this->sandbox . '/staging'
+            );
+            self::fail('AVIF must remain gated until migration 0003 is ready.');
+        } catch (MediaException $exception) {
+            self::assertSame(
+                'webadmin.media.avif_source_schema_pending',
+                $exception->issueCode()
+            );
         }
     }
 }

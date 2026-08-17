@@ -1,8 +1,15 @@
 @use '../resources/artBlogArticle01';
 @use '../resources/moduleBlogArchive01';
+@use '../resources/moduleBlogCategoryBar01';
+@use '../resources/moduleBlogPagination01';
+@use '../resources/moduleBlogResults01';
+@use '../resources/moduleBlogSearch01';
+@use '../resources/sectionBlogCatalog01';
 @use '../resources/sectionBlogGrid01';
+@use '../resources/moduleBlogGrid02';
 @use '../resources/sectionBlogList01';
 @use '../resources/sectionBlogFeatured01';
 @use '../resources/sectionBlogSlider01';
+@use '../resources/sectionBlogSlider02';
+@use '../resources/sectionBlogStack01';
 @use '../resources/sectionBlogRelated01';
-@use '../resources/moduleBlogFilters01';

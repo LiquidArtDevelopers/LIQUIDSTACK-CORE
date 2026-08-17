@@ -33,6 +33,9 @@ Un recurso reutilizable completo suele incluir:
 - una llamada `controller('<recurso>', $index, $params)` en la vista
 - `src/scss/resources/_<recurso>.scss`
 - `src/js/resources/_<recurso>.js` solo si necesita comportamiento
+- soporte backend propio solo si necesita datos o acciones; debe vivir en un
+  fichero dedicado y exponer un view model o contrato tipado, nunca quedar
+  incrustado en la vista
 - imports SCSS/JS en la entrada de la vista
 - ejemplo e hidratación en el partial de categoría
   `App/views/showroom/_<categoria>.php`; `_showroom.php` es el shell canónico
@@ -40,6 +43,9 @@ Un recurso reutilizable completo suele incluir:
 - valores de referencia en `App/config/languages/templates/{es,eu,en}.json`, según los idiomas presentes
 
 Seguir siempre el patrón real del repositorio si una ruta difiere.
+Cuando se promueva a CORE, tratar controlador, template, SCSS, JS, backend
+opcional, ejemplo showroom y pruebas como la mochila completa del recurso; no
+promover una pieza que dependa de código oculto en la vista consumidora.
 
 ## Contrato del recurso
 
@@ -57,6 +63,18 @@ Determinar la familia semántica antes de escribir el template. Las etiquetas no
 - Usar otra región semántica únicamente cuando el contenido cumpla realmente su función HTML y el patrón de la familia lo contemple.
 - Inspeccionar un recurso hermano y fijar antes de implementar: raíz, nivel base, etiqueta de item y nivel hijo.
 - Inyectar otro nivel de encabezado no cambia la raíz ni las etiquetas de los items; solo escala los encabezados interiores de forma relativa.
+- En una vista pública, componer el H1 dentro de un recurso `hero*` cuya raíz
+  sea `<header>` y situarlo antes de `<main>`. No envolver un módulo H1
+  autónomo en una `<section>` anónima para simular la cabecera de página.
+- Dentro de `<main>`, agrupar cada contexto editorial en un recurso raíz
+  `section` con H2. Si buscadores, filtros y resultados forman un único
+  contexto, usar un compositor `section*` exterior con esos recursos en slots
+  hermanos; mantener cualquier target sustituible como hijo independiente y
+  construir sus hijos como recursos `module*` de raíz neutra. La semántica
+  `section` y su H2 pertenecen al compositor; las unidades de contenido del
+  módulo pueden ser `article` con H3. No resolver esta composición mediante un
+  modo standalone/embedded, ni crear secciones meramente visuales, landmarks
+  anidados o encabezados duplicados.
 
 ### Template HTML
 
@@ -82,6 +100,48 @@ controller('nombre', $index, [
 - `$params` reúne reemplazos de placeholders y opciones del controlador.
 - `items` controla los elementos repetibles y debe viajar dentro de `$params`, no como cuarto argumento.
 - `header_level` fija el nivel principal cuando no puede inferirse del placeholder inyectado.
+- Tratar la vista como una composición limpia. Antes del `DOCTYPE` solo puede
+  requerir el soporte backend que prepare un view model; parsing del request,
+  HTTP/SEO, PDO, queries, buffering y HTML precompuesto pertenecen a ese
+  backend, no a la vista. Anotar junto al primer sniper funcional qué soporte
+  debe requerir la vista para poder copiar la composición sin conocimiento
+  implícito.
+- En superficies públicas Blog, usar un único hook gestionado por vista:
+  `_moduleBlogPublicIndex.php` para el índice,
+  `_moduleBlogPublicArticle.php` para el detalle o
+  `_moduleBlogPublicCollections.php` para una colección reutilizable. No
+  instanciar feeds, factories ni queries en la vista. La seguridad común se
+  configura en `App/config/modules/blog-public.php` y la aplica la respuesta
+  HTTP del módulo; nunca crear un include local que emita cabeceras o nonce.
+- Invocar cada controlador de forma incondicional. El propio recurso debe
+  validar sus datos y devolver `''` cuando su estado `0` o vacío no tenga una
+  representación útil; no envolver el sniper en un `if` project-owned para
+  decidir si existe paginación, archivo, filtros, cards u otro estado del
+  componente.
+- Mantener `body`, `main`, `section` y los contenedores de composición
+  semánticamente neutros. Usar la estructura y el espaciado globales, y dejar
+  que la raíz de cada recurso traiga sus clases y estilos. Se permiten IDs y
+  `data-*` estrictamente funcionales, pero no clases de página para corregir
+  desde fuera el ancho, margen, color, contraste o estado de un recurso.
+- Si varios recursos necesitan una raíz común para su layout o para un target
+  reactivo, convertir esa raíz en un recurso compositor de showroom. La vista
+  prepara los controladores hijos en variables y los inyecta en slots
+  explícitos del compositor; su controlador, template y SCSS poseen la raíz,
+  la clase y los hooks funcionales. Añadir JS a esa mochila solo cuando el
+  compositor tenga comportamiento propio. No dejar un `div` project-owned
+  como sustituto informal de ese recurso.
+- En el índice Blog, `moduleBlogResults01` es el propietario singleton de
+  `#blog-results[data-blog-results]` y recibe por slots opcionales colección,
+  paginación y archivo ya renderizados. Cambiar ese ID o admitir varias
+  instancias exige coordinar formularios, runtime, historial, URLs SSR y
+  pruebas; no exponer parámetros que finjan esa capacidad. Sus hijos canónicos
+  `moduleBlogGrid02`, `moduleBlogPagination01` y `moduleBlogArchive01` usan
+  siempre raíces neutras: no publican parámetros de tag o modo semántico. El
+  compositor de resultados exige una raíz `div` sin `role`, y tanto él como el
+  catálogo fallan cerrados si un slot reintroduce un `section` o `nav`.
+- Incluir nav, footer y demás piezas globales sin condiciones propias de un
+  recurso. Las variantes parciales, HEAD, redirects o respuestas tempranas se
+  resuelven antes de maquetar, en el soporte backend correspondiente.
 - Registrar una instancia completa y funcional en el partial adecuado de
   `App/views/showroom/`: `heroes`, `particles`, `gsap-specials`, `common`,
   `cards-grids`, `media`, `forms-interactive` o `modules-sections`. Comprobar
@@ -114,6 +174,10 @@ controller('nombre', $index, [
 - Combinar `$pad` (instancia `00`, `01`, etc.) y `$letter` para items variables.
 - Generar claves únicas y estables; por ejemplo, `recurso_00_a_img`.
 - Sustituir todos los placeholders y devolver el HTML renderizado.
+- Resolver dentro del controlador los estados vacíos o no aplicables y
+  devolver `''` antes de cargar el template. Probar al menos `0`, `1` y `N`
+  cuando la visibilidad dependa de una colección; la vista consumidora no debe
+  replicar esa condición.
 - Separar los placeholders controlados por el recurso de los reemplazos
   públicos. No permitir que un `array_replace()` genérico reintroduzca desde
   `$params` HTML confiable, IDs, template, modificadores o clases ya saneados;
@@ -187,6 +251,11 @@ controller('nombre', $index, [
 
 - Cargar configuración con `@use '../config' as c;` o la ruta equivalente.
 - Escribir estilos nuevos mobile-first.
+- Priorizar aire visual en paneles, formularios y compositores: reservar mediante
+  `clamp()` un padding generoso entre borde y contenido y un gap claro entre
+  grupos funcionales. Reducirlo progresivamente en viewports estrechos solo
+  para preservar el ancho útil de controles; no compactar una composición
+  simplemente porque sus elementos todavía quepan en una fila.
 - Usar nesting dentro del selector del recurso, incluidos los `@media`.
 - Usar `@media (min-width: c.$tablet)` y `@media (min-width: c.$desktop)`; evitar `max-width` salvo motivo concreto.
 - Usar variables de configuración para colores, tipografías, medidas y breakpoints siempre que existan.
@@ -208,6 +277,10 @@ controller('nombre', $index, [
   fila incompleta. Centrarla o redistribuirla cuando dejar una tarjeta huérfana
   alineada al inicio rompa la composición.
 - Evitar selectores globales y dependencias de una vista concreta.
+- No exigir un selector ancestro, hermano o modificador del `body/main/section`
+  consumidor para que el recurso tenga su ancho, separación, contraste o
+  comportamiento correctos. Un recurso destinado a CORE debe conservar su
+  presentación al copiar su sniper desde showroom a cualquier vista.
 
 ### JavaScript
 

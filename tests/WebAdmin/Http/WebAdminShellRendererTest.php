@@ -77,6 +77,19 @@ final class WebAdminShellRendererTest extends TestCase
             $html
         );
         self::assertStringContainsString(
+            'aria-label="Cerrar men&uacute;" data-webadmin-shell-toggle',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-webadmin-inspector-toggle><span '
+                . 'class="webadminShell-toggleIcon"',
+            $html
+        );
+        self::assertSame(2, substr_count(
+            $html,
+            'data-webadmin-toggle-label'
+        ));
+        self::assertStringContainsString(
             'action="/admin/logout"',
             $html
         );
@@ -182,9 +195,13 @@ final class WebAdminShellRendererTest extends TestCase
                 ['https://example.test/blog.css'],
                 [],
             ],
-            'project-owned stylesheet' => [
-                ['/assets/css/app.css'],
+            'nested project stylesheet' => [
+                ['/assets/css/nested/app.css'],
                 [],
+            ],
+            'project script outside a module' => [
+                [],
+                ['/assets/js/app.js'],
             ],
             'traversal' => [
                 ['/assets/modules/blog/../blog.css'],

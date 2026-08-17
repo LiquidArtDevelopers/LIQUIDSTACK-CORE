@@ -15,7 +15,15 @@ final class BlogCategoryAdminRequestPolicy
 
     public function acceptsIndex(Request $request): bool
     {
-        return $this->safeGet($request) && $request->queryParams() === [];
+        if (!$this->safeGet($request)) {
+            return false;
+        }
+        $query = $request->queryParams();
+
+        return $query === [] || (
+            array_keys($query) === ['locale']
+            && $this->locale($query['locale'] ?? null)
+        );
     }
 
     public function acceptsNew(Request $request): bool
@@ -57,13 +65,20 @@ final class BlogCategoryAdminRequestPolicy
 
     public function acceptsCreate(Request $request): bool
     {
-        return $this->scalarPost($request, [
+        $withExplicitSlug = $this->scalarPost($request, [
             'csrf', 'category', 'locale', 'name', 'slug',
-        ])
+        ]);
+        $quickCreate = $this->scalarPost($request, [
+            'csrf', 'category', 'locale', 'name',
+        ]);
+
+        return ($withExplicitSlug || $quickCreate)
             && ($request->form('category') === ''
                 || $this->uuid($request->form('category')))
             && $this->locale($request->form('locale'))
-            && $this->draftFields($request);
+            && ($withExplicitSlug
+                ? $this->draftFields($request)
+                : $this->quickName($request));
     }
 
     public function acceptsSave(Request $request): bool
@@ -77,6 +92,16 @@ final class BlogCategoryAdminRequestPolicy
             && $this->draftFields($request);
     }
 
+    public function acceptsDelete(Request $request): bool
+    {
+        return $this->scalarPost($request, [
+            'csrf', 'category', 'locale', 'lock_version',
+        ])
+            && $this->uuid($request->form('category'))
+            && $this->locale($request->form('locale'))
+            && $this->lockVersion($request->form('lock_version'));
+    }
+
     public function acceptsAssignmentSave(Request $request): bool
     {
         if (!$this->formPost($request)) {
@@ -85,12 +110,29 @@ final class BlogCategoryAdminRequestPolicy
         $form = $request->formParams();
         $keys = array_keys($form);
         $expected = ['csrf', 'post'];
+        $variantAware = array_key_exists('locale', $form)
+            || array_key_exists('lock_version', $form)
+            || array_key_exists('category_workspace_version', $form);
+        if ($variantAware) {
+            $expected[] = 'locale';
+            $expected[] = 'lock_version';
+            $expected[] = 'category_workspace_version';
+        }
         if (array_key_exists('categories', $form)) {
             $expected[] = 'categories';
         }
         sort($keys, SORT_STRING);
         sort($expected, SORT_STRING);
-        if ($keys !== $expected || !$this->uuid($form['post'] ?? null)) {
+        if (
+            $keys !== $expected
+            || !$this->uuid($form['post'] ?? null)
+            || ($variantAware && !$this->locale($form['locale'] ?? null))
+            || ($variantAware
+                && !$this->lockVersion($form['lock_version'] ?? null))
+            || ($variantAware && !$this->nonNegativeVersion(
+                $form['category_workspace_version'] ?? null
+            ))
+        ) {
             return false;
         }
         if (!is_string($form['csrf'] ?? null)) {
@@ -167,6 +209,17 @@ final class BlogCategoryAdminRequestPolicy
             && preg_match('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/', $slug) === 1;
     }
 
+    private function quickName(Request $request): bool
+    {
+        $name = $request->form('name');
+
+        return is_string($name)
+            && trim($name) !== ''
+            && strlen($name) <= BlogCategoryDraft::MAX_NAME_BYTES
+            && preg_match('//u', $name) === 1
+            && preg_match('/[\x00-\x1F\x7F]/', $name) !== 1;
+    }
+
     private function safeGet(Request $request): bool
     {
         return $request->isValid()
@@ -200,6 +253,13 @@ final class BlogCategoryAdminRequestPolicy
     {
         return is_string($value)
             && preg_match('/\A[1-9][0-9]{0,18}\z/', $value) === 1
+            && (string) (int) $value === $value;
+    }
+
+    private function nonNegativeVersion(mixed $value): bool
+    {
+        return is_string($value)
+            && preg_match('/\A(?:0|[1-9][0-9]{0,18})\z/', $value) === 1
             && (string) (int) $value === $value;
     }
 }

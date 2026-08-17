@@ -10,6 +10,9 @@ use App\Core\Blog\Http\BlogAdminHttpRuntimeFactory;
 use App\Core\Blog\Http\BlogAdminHttpRuntimeFactoryInterface;
 use App\Core\Blog\Http\BlogAdminRequestPolicy;
 use App\Core\Blog\Http\BlogAdminHttpRuntimeInterface;
+use App\Core\Blog\Http\BlogEditorPreferencesHttpRuntimeInterface;
+use App\Core\Blog\EditorPreferences\Http\BlogEditorPreferencesHttpController;
+use App\Core\Blog\EditorPreferences\Http\BlogEditorPreferencesRequestPolicy;
 use App\Core\Blog\Http\BlogAdminRuntimeIssueReporterInterface;
 use App\Core\Blog\Http\PhpErrorLogBlogAdminRuntimeIssueReporter;
 use App\Core\Blog\Http\BlogStructuredEditorHttpController;
@@ -35,6 +38,8 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
     private readonly BlogAdminRequestPolicy $requestPolicy;
     private readonly BlogStructuredEditorRequestPolicy
         $structuredRequestPolicy;
+    private readonly BlogEditorPreferencesRequestPolicy
+        $editorPreferencesRequestPolicy;
     private readonly BlogAdminRuntimeIssueReporterInterface $issueReporter;
     private readonly WebAdminConfigLoader $webAdminConfigLoader;
     private readonly WebAdminRoutePolicy $webAdminRoutePolicy;
@@ -43,6 +48,8 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
     private ?WebAdminConfig $webAdminConfig = null;
     private ?BlogAdminHttpController $controller = null;
     private ?BlogStructuredEditorHttpController $structuredController = null;
+    private ?BlogEditorPreferencesHttpController
+        $editorPreferencesController = null;
     private ?BlogAdminHttpRuntimeInterface $adminRuntime = null;
     private ?string $startupIssueCode = null;
     private bool $startupBlocked = false;
@@ -54,7 +61,9 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
         ?WebAdminConfigLoader $webAdminConfigLoader = null,
         ?WebAdminRoutePolicy $webAdminRoutePolicy = null,
         ?PrivateRouteTransportPolicy $transportPolicy = null,
-        ?BlogStructuredEditorRequestPolicy $structuredRequestPolicy = null
+        ?BlogStructuredEditorRequestPolicy $structuredRequestPolicy = null,
+        ?BlogEditorPreferencesRequestPolicy $editorPreferencesRequestPolicy =
+            null
     ) {
         $this->runtimeFactory = $runtimeFactory
             ?? new BlogAdminHttpRuntimeFactory();
@@ -70,6 +79,9 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
             ?? new PrivateRouteTransportPolicy();
         $this->structuredRequestPolicy = $structuredRequestPolicy
             ?? new BlogStructuredEditorRequestPolicy();
+        $this->editorPreferencesRequestPolicy =
+            $editorPreferencesRequestPolicy
+            ?? new BlogEditorPreferencesRequestPolicy();
     }
 
     public static function moduleId(): string
@@ -147,20 +159,33 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
             ['GET', $prefix . '/posts/new', 'newPost'],
             ['POST', $prefix . '/posts/create', 'create'],
             ['GET', $prefix . '/posts/edit', 'edit'],
+            ['GET', $prefix . '/posts/url', 'urlManager'],
             ['GET', $prefix . '/posts/preview', 'preview'],
             ['POST', $prefix . '/posts/save', 'save'],
             ['POST', $prefix . '/posts/publish', 'publish'],
             ['POST', $prefix . '/posts/unpublish', 'unpublish'],
+            ['POST', $prefix . '/posts/url-resolution', 'finalizeUrl'],
             ['POST', $prefix . '/posts/duplicate', 'duplicate'],
             ['POST', $prefix . '/posts/trash', 'trashPost'],
             ['POST', $prefix . '/posts/restore', 'restoreFromTrash'],
             ['GET', $prefix . '/posts/updated', 'updated'],
             ['GET', $prefix . '/editor', 'editor'],
             ['POST', $prefix . '/editor/save', 'editorSave'],
+            ['POST', $prefix . '/editor/publish', 'editorPublish'],
             ['POST', $prefix . '/editor/seo-analysis', 'editorSeoAnalysis'],
             ['GET', $prefix . '/editor/preview', 'editorPreview'],
             ['GET', $prefix . '/editor/revisions', 'editorRevisions'],
             ['POST', $prefix . '/editor/restore', 'editorRestore'],
+            [
+                'GET',
+                $prefix . '/settings/presentation',
+                'editorPreferences',
+            ],
+            [
+                'POST',
+                $prefix . '/settings/presentation',
+                'editorPreferencesSave',
+            ],
         ];
         foreach ($definitions as [$method, $path, $handler]) {
             $routes->add(
@@ -205,6 +230,11 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
         return $this->handle('preview', $request);
     }
 
+    public function urlManager(Request $request): Response
+    {
+        return $this->handle('urlManager', $request);
+    }
+
     public function save(Request $request): Response
     {
         return $this->handle('save', $request);
@@ -218,6 +248,11 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
     public function unpublish(Request $request): Response
     {
         return $this->handle('unpublish', $request);
+    }
+
+    public function finalizeUrl(Request $request): Response
+    {
+        return $this->handle('finalizeUrl', $request);
     }
 
     public function duplicate(Request $request): Response
@@ -250,6 +285,11 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
         return $this->handleStructured('save', $request);
     }
 
+    public function editorPublish(Request $request): Response
+    {
+        return $this->handleStructured('publish', $request);
+    }
+
     public function editorSeoAnalysis(Request $request): Response
     {
         return $this->handleStructured('seoAnalysis', $request);
@@ -268,6 +308,16 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
     public function editorRestore(Request $request): Response
     {
         return $this->handleStructured('restore', $request);
+    }
+
+    public function editorPreferences(Request $request): Response
+    {
+        return $this->handleEditorPreferences('index', $request);
+    }
+
+    public function editorPreferencesSave(Request $request): Response
+    {
+        return $this->handleEditorPreferences('save', $request);
     }
 
     private function handle(string $operation, Request $request): Response
@@ -387,6 +437,75 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
         }
     }
 
+    private function handleEditorPreferences(
+        string $operation,
+        Request $request
+    ): Response {
+        if (
+            $this->runtimeContext === null
+            || $this->webAdminConfig === null
+        ) {
+            $this->reportStartupIssue();
+
+            return $this->unavailable();
+        }
+        $accepted = $operation === 'index'
+            ? $this->editorPreferencesRequestPolicy->acceptsIndex($request)
+            : ($operation === 'save'
+                && $this->editorPreferencesRequestPolicy->acceptsSave($request));
+        if (!$accepted) {
+            return $this->response(400, 'Bad request');
+        }
+        if (!$this->transportPolicy->accepts(
+            $request,
+            $this->runtimeContext->environment()
+        )) {
+            return $this->response(400, 'Bad request');
+        }
+        if ($request->cookie($this->webAdminConfig->cookieName()) === null) {
+            return $this->response(303, '', [
+                'Location' => $this->webAdminConfig->basePath() . '/login',
+            ]);
+        }
+        if (
+            !$this->runtimeContext->environmentIsUsable()
+            || $this->startupBlocked
+        ) {
+            $this->reportStartupIssue();
+
+            return $this->unavailable();
+        }
+
+        try {
+            $runtime = $this->runtime();
+            if (
+                !$runtime instanceof BlogEditorPreferencesHttpRuntimeInterface
+                || !$runtime->editorPreferencesReady()
+            ) {
+                throw new BlogAdminHttpRuntimeException(
+                    'blog.editor_preferences_runtime_unavailable'
+                );
+            }
+            $this->editorPreferencesController ??=
+                new BlogEditorPreferencesHttpController(
+                    $runtime,
+                    $this->editorPreferencesRequestPolicy,
+                    transportPolicy: $this->transportPolicy,
+                    environment: $this->runtimeContext->environment()
+                );
+
+            return $this->editorPreferencesController->{$operation}($request);
+        } catch (Throwable $exception) {
+            $this->issueReporter->report(
+                $exception instanceof BlogAdminHttpRuntimeException
+                    ? $exception->issueCode()
+                    : 'blog.editor_preferences_runtime_unavailable'
+            );
+
+            return $this->unavailable();
+        }
+    }
+
     private function runtime(): BlogAdminHttpRuntimeInterface
     {
         if (
@@ -415,10 +534,13 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
             'newPost' => $this->requestPolicy->acceptsNew($request),
             'create' => $this->requestPolicy->acceptsCreate($request),
             'edit' => $this->requestPolicy->acceptsEdit($request),
+            'urlManager' => $this->requestPolicy->acceptsUrlManager($request),
             'preview' => $this->requestPolicy->acceptsPreview($request),
             'save' => $this->requestPolicy->acceptsSave($request),
             'publish', 'unpublish' =>
                 $this->requestPolicy->acceptsTransition($request),
+            'finalizeUrl' =>
+                $this->requestPolicy->acceptsUrlResolution($request),
             'duplicate' => $this->requestPolicy->acceptsDuplicate($request),
             'trashPost' => $this->requestPolicy->acceptsTrash($request),
             'restoreFromTrash' =>
@@ -434,6 +556,8 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
         return match ($operation) {
             'edit' => $this->structuredRequestPolicy->acceptsEditor($request),
             'save' => $this->structuredRequestPolicy->acceptsSave($request),
+            'publish' =>
+                $this->structuredRequestPolicy->acceptsPublish($request),
             'seoAnalysis' =>
                 $this->structuredRequestPolicy->acceptsSeoAnalysis($request),
             'preview' =>

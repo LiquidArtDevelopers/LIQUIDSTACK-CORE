@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Core\Blog\Persistence;
 
+use App\Core\Blog\Admin\BlogAdminCatalogQuery;
 use App\Core\Blog\BlogDraft;
+use App\Core\Blog\BlogInput;
 use App\Core\Blog\BlogPostSummary;
 use App\Core\Blog\BlogPostVariant;
+use App\Core\Blog\Categories\BlogReservedCategoryPolicy;
 use App\Core\Blog\BlogSitemapEntry;
 use App\Core\Blog\BlogTransactionalExceptionInterface;
 use App\Core\Blog\PublishedPostCard;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Modules\Migrations\MigrationScope;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -21,25 +25,41 @@ use Throwable;
 /** Portable PDO implementation for the Blog posts aggregate. */
 final class PdoBlogRepository implements
     BlogRepositoryInterface,
+    BlogAdminCatalogRepositoryInterface,
+    BlogCopyOperationRepositoryInterface,
     BlogEditorialActionRepositoryInterface,
+    BlogPostLocaleBatchCatalogRepositoryInterface,
     BlogPostLocaleCatalogRepositoryInterface,
     BlogPublishedSitemapRepositoryInterface
 {
     private const UTC_FORMAT = 'Y-m-d H:i:s.u';
     private const SUPPORTED_DRIVERS = ['mysql', 'sqlite'];
+    private const SQLITE_ADMIN_CASEFOLD_FUNCTION =
+        'liquidstack_blog_admin_unicode_casefold';
+
+    /** @var null|\WeakMap<PDO, bool> */
+    private static ?\WeakMap $adminCasefoldRegisteredConnections = null;
 
     private readonly string $driver;
     private readonly string $posts;
     private readonly string $localizations;
     private readonly string $tombstones;
     private readonly string $categories;
+    private readonly string $categoryLocales;
     private readonly string $postCategories;
+    private readonly string $robotsSettings;
+    private readonly string $copyOperations;
+    private readonly ?string $adminUsers;
     private bool $transactionActive = false;
 
     public function __construct(
         private readonly PDO $pdo,
         MigrationScope $scope,
-        private readonly bool $postTombstonesEnabled = false
+        private readonly bool $postTombstonesEnabled = false,
+        private readonly bool $robotsSettingsEnabled = false,
+        ?MigrationScope $adminUserScope = null,
+        private readonly bool $adminCategoryProjectionEnabled = false,
+        private readonly bool $reservedCategoryPolicyEnabled = false
     ) {
         try {
             $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
@@ -68,6 +88,7 @@ final class PdoBlogRepository implements
                 ) {
                     throw new BlogPersistenceException();
                 }
+                $this->registerSqliteAdminCasefold();
             }
 
             $this->driver = $driver;
@@ -81,8 +102,30 @@ final class PdoBlogRepository implements
                 $driver
             );
             $this->categories = $scope->quotedTable('categories', $driver);
+            $this->categoryLocales = $scope->quotedTable(
+                'category_locales',
+                $driver
+            );
             $this->postCategories = $scope->quotedTable(
                 'post_categories',
+                $driver
+            );
+            $this->robotsSettings = $scope->quotedTable(
+                'robots_settings',
+                $driver
+            );
+            $this->copyOperations = $scope->quotedTable(
+                'copy_operations',
+                $driver
+            );
+            if (
+                $adminUserScope !== null
+                && $adminUserScope->moduleId() !== 'webadmin'
+            ) {
+                throw new BlogPersistenceException();
+            }
+            $this->adminUsers = $adminUserScope?->quotedTable(
+                'users',
                 $driver
             );
         } catch (BlogPersistenceException $exception) {
@@ -95,6 +138,150 @@ final class PdoBlogRepository implements
     public function postTombstonesEnabled(): bool
     {
         return $this->postTombstonesEnabled;
+    }
+
+    public function reserveCopyOperation(
+        string $requestPublicId,
+        string $payloadSha256,
+        string $actorPublicId,
+        string $operation,
+        string $sourcePostPublicId,
+        string $sourceLocale,
+        string $destinationLocale,
+        int $expectedLockVersion,
+        DateTimeImmutable $now
+    ): ?BlogCopyOperationResult {
+        $this->assertTransaction();
+        if (
+            preg_match(
+                '/\A[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/D',
+                $requestPublicId
+            ) !== 1
+            || preg_match('/\A[0-9a-f]{64}\z/D', $payloadSha256) !== 1
+            || !in_array($operation, ['duplicate_post', 'add_locale'], true)
+            || $expectedLockVersion < 1
+        ) {
+            throw new BlogPersistenceException();
+        }
+
+        try {
+            $insert = 'INSERT INTO ' . $this->copyOperations
+                . ' (request_public_id, payload_sha256, actor_public_id, '
+                . 'operation, source_post_public_id, source_locale, '
+                . 'destination_locale, expected_lock_version, created_at) '
+                . 'VALUES (:request_public_id, :payload_sha256, '
+                . ':actor_public_id, :operation, :source_post_public_id, '
+                . ':source_locale, :destination_locale, '
+                . ':expected_lock_version, :created_at)';
+            $insert .= $this->driver === 'mysql'
+                ? ' ON DUPLICATE KEY UPDATE request_public_id = VALUES(request_public_id)'
+                : ' ON CONFLICT(request_public_id) DO NOTHING';
+            $statement = $this->prepare($insert);
+            $this->execute($statement, [
+                'request_public_id' => $requestPublicId,
+                'payload_sha256' => $payloadSha256,
+                'actor_public_id' => $actorPublicId,
+                'operation' => $operation,
+                'source_post_public_id' => $sourcePostPublicId,
+                'source_locale' => $sourceLocale,
+                'destination_locale' => $destinationLocale,
+                'expected_lock_version' => $expectedLockVersion,
+                'created_at' => self::format($now),
+            ]);
+
+            $select = 'SELECT payload_sha256, actor_public_id, operation, '
+                . 'source_post_public_id, source_locale, destination_locale, '
+                . 'expected_lock_version, result_post_public_id, '
+                . 'result_locale, completed_at FROM ' . $this->copyOperations
+                . ' WHERE request_public_id = :request_public_id LIMIT 1';
+            if ($this->driver === 'mysql') {
+                $select .= ' FOR UPDATE';
+            }
+            $query = $this->prepare($select);
+            $this->execute($query, ['request_public_id' => $requestPublicId]);
+            $rows = $query->fetchAll(PDO::FETCH_ASSOC);
+            if (count($rows) !== 1) {
+                throw new BlogPersistenceException();
+            }
+            $row = $rows[0];
+            if (
+                !is_string($row['payload_sha256'] ?? null)
+                || !hash_equals($payloadSha256, $row['payload_sha256'])
+                || ($row['actor_public_id'] ?? null) !== $actorPublicId
+                || ($row['operation'] ?? null) !== $operation
+                || ($row['source_post_public_id'] ?? null)
+                    !== $sourcePostPublicId
+                || ($row['source_locale'] ?? null) !== $sourceLocale
+                || ($row['destination_locale'] ?? null)
+                    !== $destinationLocale
+                || (int) ($row['expected_lock_version'] ?? 0)
+                    !== $expectedLockVersion
+            ) {
+                throw new BlogPersistenceConflict(
+                    BlogPersistenceConflict::IDEMPOTENCY
+                );
+            }
+
+            $resultPost = $row['result_post_public_id'] ?? null;
+            $resultLocale = $row['result_locale'] ?? null;
+            $completedAt = $row['completed_at'] ?? null;
+            if ($resultPost === null && $resultLocale === null
+                && $completedAt === null) {
+                return null;
+            }
+            if (
+                !is_string($resultPost)
+                || !is_string($resultLocale)
+                || !is_string($completedAt)
+                || $resultLocale !== $destinationLocale
+            ) {
+                throw new BlogPersistenceException();
+            }
+
+            return new BlogCopyOperationResult(
+                BlogInput::publicId($resultPost),
+                BlogInput::locale($resultLocale)
+            );
+        } catch (BlogPersistenceConflict|BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+    }
+
+    public function completeCopyOperation(
+        string $requestPublicId,
+        string $payloadSha256,
+        string $resultPostPublicId,
+        string $resultLocale,
+        DateTimeImmutable $now
+    ): void {
+        $this->assertTransaction();
+        try {
+            $statement = $this->prepare(
+                'UPDATE ' . $this->copyOperations
+                . ' SET result_post_public_id = :result_post_public_id, '
+                . 'result_locale = :result_locale, completed_at = :completed_at '
+                . 'WHERE request_public_id = :request_public_id '
+                . 'AND payload_sha256 = :payload_sha256 '
+                . 'AND result_post_public_id IS NULL '
+                . 'AND result_locale IS NULL AND completed_at IS NULL'
+            );
+            $this->execute($statement, [
+                'result_post_public_id' => $resultPostPublicId,
+                'result_locale' => $resultLocale,
+                'completed_at' => self::format($now),
+                'request_public_id' => $requestPublicId,
+                'payload_sha256' => $payloadSha256,
+            ]);
+            if ($statement->rowCount() !== 1) {
+                throw new BlogPersistenceException();
+            }
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
     }
 
     public function transactional(callable $operation): mixed
@@ -249,6 +436,10 @@ final class PdoBlogRepository implements
         if ($statement->rowCount() !== 1) {
             throw new BlogPersistenceException();
         }
+        $this->upsertRobotsSettings(
+            $localizationPublicId,
+            $draft->robotsPreferences()
+        );
     }
 
     public function lockVariant(
@@ -328,7 +519,15 @@ final class PdoBlogRepository implements
             'expected_status' => BlogPostVariant::DRAFT,
         ], BlogPersistenceConflict::SLUG);
 
-        return $statement->rowCount() === 1;
+        $updated = $statement->rowCount() === 1;
+        if ($updated) {
+            $this->upsertRobotsSettings(
+                $localizationPublicId,
+                $draft->robotsPreferences()
+            );
+        }
+
+        return $updated;
     }
 
     public function updateStatus(
@@ -455,11 +654,7 @@ final class PdoBlogRepository implements
     public function listSummaries(int $limit, int $offset): array
     {
         $statement = $this->prepare(
-            'SELECT p.public_id AS post_public_id, '
-            . 'l.public_id AS localization_public_id, l.locale, l.slug, '
-            . 'l.h1, l.status, l.published_at, l.lock_version, l.updated_at '
-            . 'FROM ' . $this->posts . ' p JOIN ' . $this->localizations
-            . ' l ON l.post_id = p.id WHERE 1 = 1'
+            $this->adminSummarySelect() . ' WHERE 1 = 1'
             . $this->activeVariantPredicate('l') . ' '
             . 'ORDER BY l.updated_at DESC, p.public_id ASC, l.locale ASC, '
             . 'l.public_id ASC LIMIT :list_limit OFFSET :list_offset'
@@ -482,9 +677,97 @@ final class PdoBlogRepository implements
             throw new BlogPersistenceException();
         }
 
+        $rows = $this->enrichAdminSummaryRows(
+            $this->rows($statement->fetchAll(PDO::FETCH_ASSOC))
+        );
+
         return array_map(
             fn (array $row): BlogPostSummary => $this->summaryFromRow($row),
+            $rows
+        );
+    }
+
+    public function searchSummaries(BlogAdminCatalogQuery $query): array
+    {
+        $sql = $this->adminSummarySelect() . ' WHERE 1 = 1'
+            . $this->activeVariantPredicate('l');
+        /** @var array<string, array{0: string, 1: int}> $parameters */
+        $parameters = [];
+
+        if ($query->search() !== null) {
+            $pattern = '%' . self::escapeLike($query->search()) . '%';
+            $sql .= ' AND (' . $this->adminCasefoldExpression('l.h1')
+                . ' LIKE ' . $this->adminCasefoldExpression(':search_h1')
+                . " ESCAPE '!' OR "
+                . $this->adminCasefoldExpression("COALESCE(l.slug, '')")
+                . ' LIKE ' . $this->adminCasefoldExpression(':search_slug')
+                . " ESCAPE '!')";
+            $parameters['search_h1'] = [$pattern, PDO::PARAM_STR];
+            $parameters['search_slug'] = [$pattern, PDO::PARAM_STR];
+        }
+        if ($query->status() !== null) {
+            $sql .= ' AND l.status = :catalog_status';
+            $parameters['catalog_status'] = [
+                $query->status(),
+                PDO::PARAM_STR,
+            ];
+        }
+        if ($query->locale() !== null) {
+            $sql .= ' AND l.locale = :catalog_locale';
+            $parameters['catalog_locale'] = [
+                $query->locale(),
+                PDO::PARAM_STR,
+            ];
+        }
+        if (!$this->reservedCategoryPolicyEnabled) {
+            // The private management catalog must never fall back to exposing
+            // deterministic QA fixtures when the reserved-category schema is
+            // unavailable. Keep this fail-closed at the persistence boundary.
+            throw new BlogPersistenceException();
+        }
+        $sql .= $this->dummyExclusionPredicate('l');
+        $parameters['reserved_dummy_public_id'] = [
+            BlogReservedCategoryPolicy::DUMMY_CATEGORY_PUBLIC_ID,
+            PDO::PARAM_STR,
+        ];
+        $sql .= $this->adminSummaryOrderBy($query)
+            . ' LIMIT :list_limit OFFSET :list_offset';
+
+        $statement = $this->prepare($sql);
+        try {
+            foreach ($parameters as $name => [$value, $type]) {
+                if (!$statement->bindValue(':' . $name, $value, $type)) {
+                    throw new BlogPersistenceException();
+                }
+            }
+            if (
+                !$statement->bindValue(
+                    ':list_limit',
+                    $query->limit(),
+                    PDO::PARAM_INT
+                )
+                || !$statement->bindValue(
+                    ':list_offset',
+                    $query->offset(),
+                    PDO::PARAM_INT
+                )
+                || !$statement->execute()
+            ) {
+                throw new BlogPersistenceException();
+            }
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+
+        $rows = $this->enrichAdminSummaryRows(
             $this->rows($statement->fetchAll(PDO::FETCH_ASSOC))
+        );
+
+        return array_map(
+            fn (array $row): BlogPostSummary => $this->summaryFromRow($row),
+            $rows
         );
     }
 
@@ -586,6 +869,101 @@ final class PdoBlogRepository implements
         return $locales;
     }
 
+    public function localesForPosts(
+        array $postPublicIds,
+        int $limitPerPost
+    ): array {
+        if (
+            !array_is_list($postPublicIds)
+            || count($postPublicIds) > BlogAdminCatalogQuery::PAGE_SIZE
+            || $limitPerPost < 1
+            || $limitPerPost
+                > BlogSitemapEntry::ALTERNATES_OVERFLOW_QUERY_LIMIT
+        ) {
+            throw new BlogPersistenceException();
+        }
+        $ids = [];
+        foreach ($postPublicIds as $postPublicId) {
+            if (!is_string($postPublicId)) {
+                throw new BlogPersistenceException();
+            }
+            try {
+                $postPublicId = BlogInput::publicId($postPublicId);
+            } catch (Throwable) {
+                throw new BlogPersistenceException();
+            }
+            if (isset($ids[$postPublicId])) {
+                throw new BlogPersistenceException();
+            }
+            $ids[$postPublicId] = true;
+        }
+        if ($ids === []) {
+            return [];
+        }
+
+        $parameters = [];
+        $placeholders = [];
+        foreach (array_keys($ids) as $position => $postPublicId) {
+            $name = 'batch_post_' . $position;
+            $placeholders[] = ':' . $name;
+            $parameters[$name] = $postPublicId;
+        }
+        $maximumRows = count($ids) * $limitPerPost + 1;
+        $statement = $this->prepare(
+            'SELECT p.public_id AS post_public_id, l.locale FROM '
+                . $this->posts . ' p JOIN ' . $this->localizations
+                . ' l ON l.post_id = p.id WHERE p.public_id IN ('
+                . implode(', ', $placeholders) . ') '
+                . 'ORDER BY p.public_id ASC, l.locale ASC '
+                . 'LIMIT :batch_locale_limit'
+        );
+        try {
+            foreach ($parameters as $name => $value) {
+                if (!$statement->bindValue(
+                    ':' . $name,
+                    $value,
+                    PDO::PARAM_STR
+                )) {
+                    throw new BlogPersistenceException();
+                }
+            }
+            if (
+                !$statement->bindValue(
+                    ':batch_locale_limit',
+                    $maximumRows,
+                    PDO::PARAM_INT
+                )
+                || !$statement->execute()
+            ) {
+                throw new BlogPersistenceException();
+            }
+            $result = array_fill_keys(array_keys($ids), []);
+            $seenPosts = [];
+            foreach ($this->rows($statement->fetchAll(PDO::FETCH_ASSOC)) as $row) {
+                $postPublicId = $this->requiredString($row, 'post_public_id');
+                if (!isset($ids[$postPublicId])) {
+                    throw new BlogPersistenceException();
+                }
+                $seenPosts[$postPublicId] = true;
+                if (count($result[$postPublicId]) >= $limitPerPost) {
+                    throw new BlogPersistenceException();
+                }
+                $result[$postPublicId][] = BlogInput::locale(
+                    $this->requiredString($row, 'locale')
+                );
+            }
+            if (count($seenPosts) !== count($ids)) {
+                throw new BlogPersistenceException();
+            }
+
+            return $result;
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+    }
+
     public function variant(
         string $postPublicId,
         string $locale
@@ -597,16 +975,22 @@ final class PdoBlogRepository implements
         string $locale,
         string $slug
     ): ?BlogPostVariant {
+        $parameters = [
+            'locale' => $locale,
+            'slug' => $slug,
+            'status' => BlogPostVariant::PUBLISHED,
+        ];
+        if ($this->reservedCategoryPolicyEnabled) {
+            $parameters['reserved_dummy_public_id'] =
+                BlogReservedCategoryPolicy::DUMMY_CATEGORY_PUBLIC_ID;
+        }
         $row = $this->one(
             $this->variantSelect()
                 . ' WHERE l.locale = :locale AND l.slug = :slug '
                 . 'AND l.status = :status AND l.published_at IS NOT NULL'
+                . $this->dummyExclusionPredicate('l')
                 . $this->activeVariantPredicate('l'),
-            [
-                'locale' => $locale,
-                'slug' => $slug,
-                'status' => BlogPostVariant::PUBLISHED,
-            ]
+            $parameters
         );
 
         return $row === null ? null : $this->variantFromRow($row);
@@ -623,6 +1007,7 @@ final class PdoBlogRepository implements
             . ' l WHERE l.locale = :locale '
             . 'AND l.status = :status AND l.slug IS NOT NULL '
             . 'AND l.excerpt IS NOT NULL AND l.published_at IS NOT NULL'
+            . $this->dummyExclusionPredicate('l')
             . $this->activeVariantPredicate('l') . ' '
             . 'ORDER BY l.published_at DESC, l.public_id ASC '
             . 'LIMIT :list_limit OFFSET :list_offset'
@@ -635,6 +1020,7 @@ final class PdoBlogRepository implements
                     BlogPostVariant::PUBLISHED,
                     PDO::PARAM_STR
                 )
+                || !$this->bindReservedDummyCategory($statement)
                 || !$statement->bindValue(
                     ':list_limit',
                     $limit,
@@ -676,6 +1062,7 @@ final class PdoBlogRepository implements
             . 'JOIN ' . $this->localizations . ' l ON l.post_id = p.id '
             . 'WHERE l.status = :status AND l.slug IS NOT NULL '
             . 'AND l.published_at IS NOT NULL'
+            . $this->dummyExclusionPredicate('l')
             . $this->activeVariantPredicate('l') . ' '
             . 'ORDER BY l.locale ASC, l.slug ASC, l.public_id ASC '
             . 'LIMIT :sitemap_limit'
@@ -687,6 +1074,7 @@ final class PdoBlogRepository implements
                     BlogPostVariant::PUBLISHED,
                     PDO::PARAM_STR
                 )
+                || !$this->bindReservedDummyCategory($statement)
                 || !$statement->bindValue(
                     ':sitemap_limit',
                     $limit,
@@ -726,6 +1114,7 @@ final class PdoBlogRepository implements
             . 'WHERE p.public_id = :post_public_id '
             . 'AND l.status = :status AND l.slug IS NOT NULL '
             . 'AND l.published_at IS NOT NULL'
+            . $this->dummyExclusionPredicate('l')
             . $this->activeVariantPredicate('l') . ' '
             . 'ORDER BY l.locale ASC, l.slug ASC, l.public_id ASC '
             . 'LIMIT :alternate_limit'
@@ -742,6 +1131,7 @@ final class PdoBlogRepository implements
                     BlogPostVariant::PUBLISHED,
                     PDO::PARAM_STR
                 )
+                || !$this->bindReservedDummyCategory($statement)
                 || !$statement->bindValue(
                     ':alternate_limit',
                     $limit,
@@ -876,15 +1266,163 @@ final class PdoBlogRepository implements
         return $row === null ? null : $this->variantFromRow($row);
     }
 
+    private function adminSummarySelect(): string
+    {
+        $robotsProjection = $this->robotsSettingsEnabled
+            ? ', rs.allow_index AS robots_index, '
+                . 'rs.allow_follow AS robots_follow, '
+                . 'rs.settings_sha256 AS robots_sha256'
+            : ', NULL AS robots_index, NULL AS robots_follow, '
+                . 'NULL AS robots_sha256';
+        $robotsJoin = $this->robotsSettingsEnabled
+            ? ' LEFT JOIN ' . $this->robotsSettings
+                . ' rs ON rs.localization_id = l.id'
+            : '';
+        $authorProjection = $this->adminUsers === null
+            ? ', NULL AS author_display_name'
+            : ', au.display_name AS author_display_name';
+        $authorJoin = $this->adminUsers === null
+            ? ''
+            : ' LEFT JOIN ' . $this->adminUsers
+                . ' au ON au.public_id = p.created_by_user_public_id';
+
+        return 'SELECT p.public_id AS post_public_id, '
+            . 'l.public_id AS localization_public_id, l.locale, l.slug, '
+            . 'l.h1, l.status, l.published_at, l.lock_version, l.updated_at'
+            . $robotsProjection . $authorProjection
+            . ' FROM ' . $this->posts . ' p JOIN ' . $this->localizations
+            . ' l ON l.post_id = p.id' . $robotsJoin . $authorJoin;
+    }
+
+    private function adminSummaryOrderBy(
+        BlogAdminCatalogQuery $query
+    ): string {
+        $direction = match ($query->direction()) {
+            BlogAdminCatalogQuery::DIRECTION_ASC => 'ASC',
+            BlogAdminCatalogQuery::DIRECTION_DESC => 'DESC',
+            default => throw new BlogPersistenceException(),
+        };
+        $author = $this->adminUsers === null
+            ? "''"
+            : "COALESCE(au.display_name, '')";
+        $robotsIndex = $this->robotsSettingsEnabled
+            ? 'COALESCE(rs.allow_index, 1)'
+            : '1';
+        $robotsFollow = $this->robotsSettingsEnabled
+            ? 'COALESCE(rs.allow_follow, 1)'
+            : '1';
+        $primary = match ($query->sort()) {
+            BlogAdminCatalogQuery::SORT_TITLE =>
+                $this->adminCasefoldExpression('l.h1') . ' ' . $direction,
+            BlogAdminCatalogQuery::SORT_LOCALE =>
+                'l.locale ' . $direction,
+            BlogAdminCatalogQuery::SORT_STATUS =>
+                "CASE l.status WHEN 'draft' THEN 0 "
+                    . "WHEN 'published' THEN 1 ELSE 2 END " . $direction,
+            BlogAdminCatalogQuery::SORT_AUTHOR =>
+                'CASE WHEN ' . $author . " = '' THEN 1 ELSE 0 END ASC, "
+                    . $this->adminCasefoldExpression($author)
+                    . ' ' . $direction,
+            BlogAdminCatalogQuery::SORT_ROBOTS =>
+                $robotsIndex . ' ' . $direction . ', '
+                    . $robotsFollow . ' ' . $direction,
+            BlogAdminCatalogQuery::SORT_UPDATED =>
+                'l.updated_at ' . $direction,
+            default => throw new BlogPersistenceException(),
+        };
+
+        // Public identifiers make offset pagination deterministic when the
+        // selected business value is shared by several variants.
+        return ' ORDER BY ' . $primary
+            . ', p.public_id ASC, l.locale ASC, l.public_id ASC';
+    }
+
+    /**
+     * Adds the localized category labels in one bounded query. Author and
+     * robots data are already projected by the base statement. No internal
+     * identifiers cross the repository boundary.
+     *
+     * @param list<array<string, mixed>> $rows
+     * @return list<array<string, mixed>>
+     */
+    private function enrichAdminSummaryRows(array $rows): array
+    {
+        foreach ($rows as &$row) {
+            $row['category_names'] = [];
+        }
+        unset($row);
+        if (!$this->adminCategoryProjectionEnabled || $rows === []) {
+            return $rows;
+        }
+
+        $predicates = [];
+        $parameters = [];
+        $rowKeys = [];
+        foreach ($rows as $index => $row) {
+            $postPublicId = $this->requiredString($row, 'post_public_id');
+            $locale = $this->requiredString($row, 'locale');
+            $key = $postPublicId . "\0" . $locale;
+            $rowKeys[$index] = $key;
+            $predicates[] = '(p.public_id = :admin_post_' . $index
+                . ' AND cl.locale = :admin_locale_' . $index . ')';
+            $parameters['admin_post_' . $index] = $postPublicId;
+            $parameters['admin_locale_' . $index] = $locale;
+        }
+
+        $statement = $this->prepare(
+            'SELECT p.public_id AS post_public_id, cl.locale, cl.name, '
+                . 'c.public_id AS category_public_id FROM ' . $this->posts
+                . ' p JOIN ' . $this->postCategories
+                . ' pc ON pc.post_id = p.id JOIN ' . $this->categories
+                . ' c ON c.id = pc.category_id JOIN '
+                . $this->categoryLocales
+                . ' cl ON cl.category_id = c.id WHERE '
+                . implode(' OR ', $predicates)
+                . ' ORDER BY p.public_id ASC, cl.locale ASC, cl.name ASC, '
+                . 'c.public_id ASC'
+        );
+        $this->execute($statement, $parameters);
+        $categoriesByRow = [];
+        foreach ($this->rows($statement->fetchAll(PDO::FETCH_ASSOC)) as $row) {
+            $key = $this->requiredString($row, 'post_public_id') . "\0"
+                . $this->requiredString($row, 'locale');
+            $categoriesByRow[$key] ??= [];
+            if (count($categoriesByRow[$key]) >= 100) {
+                throw new BlogPersistenceException();
+            }
+            $categoriesByRow[$key][] = $this->requiredString($row, 'name');
+        }
+
+        foreach ($rows as $index => &$row) {
+            $row['category_names'] = $categoriesByRow[$rowKeys[$index]] ?? [];
+        }
+        unset($row);
+
+        return $rows;
+    }
+
     private function variantSelect(): string
     {
+        $robotsProjection = $this->robotsSettingsEnabled
+            ? ', rs.allow_index AS robots_index, '
+                . 'rs.allow_follow AS robots_follow, '
+                . 'rs.settings_sha256 AS robots_sha256 '
+            : ', NULL AS robots_index, NULL AS robots_follow, '
+                . 'NULL AS robots_sha256 ';
+        $robotsJoin = $this->robotsSettingsEnabled
+            ? ' LEFT JOIN ' . $this->robotsSettings
+                . ' rs ON rs.localization_id = l.id'
+            : '';
+
         return 'SELECT p.public_id AS post_public_id, '
             . 'l.public_id AS localization_public_id, l.locale, l.slug, '
             . 'l.h1, l.seo_title, l.meta_description, l.excerpt, '
             . 'l.body_text, l.status, l.published_at, l.lock_version, '
             . 'l.created_by_user_public_id, l.updated_by_user_public_id, '
-            . 'l.created_at, l.updated_at FROM ' . $this->posts . ' p JOIN '
-            . $this->localizations . ' l ON l.post_id = p.id';
+            . 'l.created_at, l.updated_at' . $robotsProjection
+            . 'FROM ' . $this->posts . ' p JOIN '
+            . $this->localizations . ' l ON l.post_id = p.id'
+            . $robotsJoin;
     }
 
     private function variantFromRow(array $row): BlogPostVariant
@@ -900,7 +1438,8 @@ final class PdoBlogRepository implements
                     $this->nullableString($row, 'slug'),
                     $this->nullableString($row, 'seo_title'),
                     $this->nullableString($row, 'meta_description'),
-                    $this->nullableString($row, 'excerpt')
+                    $this->nullableString($row, 'excerpt'),
+                    $this->robotsPreferencesFromRow($row)
                 ),
                 $this->requiredString($row, 'status'),
                 $this->nullableTimestamp($row['published_at'] ?? null),
@@ -915,6 +1454,84 @@ final class PdoBlogRepository implements
         }
     }
 
+    private function upsertRobotsSettings(
+        string $localizationPublicId,
+        BlogRobotsPreferences $preferences
+    ): void {
+        if (!$this->robotsSettingsEnabled) {
+            return;
+        }
+        $sql = 'INSERT INTO ' . $this->robotsSettings
+            . ' (localization_id, allow_index, allow_follow, settings_sha256) '
+            . 'SELECT l.id, :allow_index, :allow_follow, :settings_sha256 '
+            . 'FROM ' . $this->localizations
+            . ' l WHERE l.public_id = :localization_public_id ';
+        $sql .= $this->driver === 'mysql'
+            ? 'ON DUPLICATE KEY UPDATE allow_index = VALUES(allow_index), '
+                . 'allow_follow = VALUES(allow_follow), '
+                . 'settings_sha256 = VALUES(settings_sha256)'
+            : 'ON CONFLICT(localization_id) DO UPDATE SET '
+                . 'allow_index = excluded.allow_index, '
+                . 'allow_follow = excluded.allow_follow, '
+                . 'settings_sha256 = excluded.settings_sha256';
+        $statement = $this->prepare($sql);
+        $this->execute($statement, [
+            'allow_index' => $preferences->index() ? 1 : 0,
+            'allow_follow' => $preferences->follow() ? 1 : 0,
+            'settings_sha256' => $preferences->integrityHash(),
+            'localization_public_id' => $localizationPublicId,
+        ]);
+        $stored = $this->one(
+            'SELECT r.allow_index, r.allow_follow, r.settings_sha256 FROM '
+                . $this->robotsSettings . ' r JOIN ' . $this->localizations
+                . ' l ON l.id = r.localization_id '
+                . 'WHERE l.public_id = :localization_public_id',
+            ['localization_public_id' => $localizationPublicId]
+        );
+        if (
+            $stored === null
+            || (int) ($stored['allow_index'] ?? -1)
+                !== ($preferences->index() ? 1 : 0)
+            || (int) ($stored['allow_follow'] ?? -1)
+                !== ($preferences->follow() ? 1 : 0)
+            || !is_string($stored['settings_sha256'] ?? null)
+            || !hash_equals(
+                $preferences->integrityHash(),
+                (string) $stored['settings_sha256']
+            )
+        ) {
+            throw new BlogPersistenceException();
+        }
+    }
+
+    /** @param array<string, mixed> $row */
+    private function robotsPreferencesFromRow(
+        array $row
+    ): BlogRobotsPreferences {
+        $index = $row['robots_index'] ?? null;
+        $follow = $row['robots_follow'] ?? null;
+        $hash = $row['robots_sha256'] ?? null;
+        if ($index === null && $follow === null && $hash === null) {
+            return BlogRobotsPreferences::defaults();
+        }
+        if (
+            !in_array($index, [0, 1, '0', '1'], true)
+            || !in_array($follow, [0, 1, '0', '1'], true)
+            || !is_string($hash)
+        ) {
+            throw new BlogPersistenceException();
+        }
+        $preferences = new BlogRobotsPreferences(
+            (int) $index === 1,
+            (int) $follow === 1
+        );
+        if (!hash_equals($preferences->integrityHash(), $hash)) {
+            throw new BlogPersistenceException();
+        }
+
+        return $preferences;
+    }
+
     private function summaryFromRow(array $row): BlogPostSummary
     {
         try {
@@ -927,7 +1544,10 @@ final class PdoBlogRepository implements
                 $this->requiredString($row, 'status'),
                 $this->nullableTimestamp($row['published_at'] ?? null),
                 $this->positiveInteger($row['lock_version'] ?? null),
-                $this->timestamp($row['updated_at'] ?? null)
+                $this->timestamp($row['updated_at'] ?? null),
+                $this->nullableString($row, 'author_display_name'),
+                $row['category_names'] ?? [],
+                $this->robotsPreferencesFromRow($row)
             );
         } catch (Throwable) {
             throw new BlogPersistenceException();
@@ -1122,6 +1742,58 @@ final class PdoBlogRepository implements
             ->format(self::UTC_FORMAT);
     }
 
+    private static function escapeLike(string $value): string
+    {
+        return str_replace(
+            ['!', '%', '_'],
+            ['!!', '!%', '!_'],
+            $value
+        );
+    }
+
+    private function registerSqliteAdminCasefold(): void
+    {
+        self::$adminCasefoldRegisteredConnections ??= new \WeakMap();
+        if (isset(self::$adminCasefoldRegisteredConnections[$this->pdo])) {
+            return;
+        }
+        if (
+            !method_exists($this->pdo, 'sqliteCreateFunction')
+            || !function_exists('mb_convert_case')
+            || !defined('MB_CASE_FOLD')
+        ) {
+            throw new BlogPersistenceException();
+        }
+        $registered = $this->pdo->sqliteCreateFunction(
+            self::SQLITE_ADMIN_CASEFOLD_FUNCTION,
+            static function (mixed $value): string {
+                if (
+                    !is_string($value)
+                    || preg_match('//u', $value) !== 1
+                ) {
+                    throw new \RuntimeException(
+                        'Invalid text supplied to Blog admin casefold.'
+                    );
+                }
+
+                return mb_convert_case($value, MB_CASE_FOLD, 'UTF-8');
+            },
+            1,
+            PDO::SQLITE_DETERMINISTIC
+        );
+        if (!$registered) {
+            throw new BlogPersistenceException();
+        }
+        self::$adminCasefoldRegisteredConnections[$this->pdo] = true;
+    }
+
+    private function adminCasefoldExpression(string $expression): string
+    {
+        return $this->driver === 'sqlite'
+            ? self::SQLITE_ADMIN_CASEFOLD_FUNCTION . '(' . $expression . ')'
+            : 'LOWER(' . $expression . ')';
+    }
+
     private function forUpdate(): string
     {
         return $this->driver === 'mysql' ? ' FOR UPDATE' : '';
@@ -1136,6 +1808,33 @@ final class PdoBlogRepository implements
         return ' AND NOT EXISTS (SELECT 1 FROM ' . $this->tombstones
             . ' tombstone WHERE tombstone.post_localization_id = '
             . $alias . '.id)';
+    }
+
+    private function dummyExclusionPredicate(string $localizationAlias): string
+    {
+        if (!$this->reservedCategoryPolicyEnabled) {
+            return '';
+        }
+        if (preg_match('/\A[a-z_]+\z/', $localizationAlias) !== 1) {
+            throw new BlogPersistenceException();
+        }
+
+        return ' AND NOT EXISTS (SELECT 1 FROM ' . $this->postCategories
+            . ' reserved_pc JOIN ' . $this->categories
+            . ' reserved_category ON reserved_category.id = '
+            . 'reserved_pc.category_id WHERE reserved_pc.post_id = '
+            . $localizationAlias . '.post_id AND reserved_category.public_id = '
+            . ':reserved_dummy_public_id)';
+    }
+
+    private function bindReservedDummyCategory(PDOStatement $statement): bool
+    {
+        return !$this->reservedCategoryPolicyEnabled
+            || $statement->bindValue(
+                ':reserved_dummy_public_id',
+                BlogReservedCategoryPolicy::DUMMY_CATEGORY_PUBLIC_ID,
+                PDO::PARAM_STR
+            );
     }
 
     private function trashedVariantPredicate(string $alias): string

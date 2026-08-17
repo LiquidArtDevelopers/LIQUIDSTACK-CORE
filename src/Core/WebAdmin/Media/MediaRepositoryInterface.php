@@ -19,6 +19,33 @@ interface MediaRepositoryInterface
 
     public function lockQuota(): void;
 
+    public function lockDeletionCandidate(
+        string $publicId
+    ): ?MediaDeletionCandidate;
+
+    public function quarantinedPublicIdForRequest(
+        WebAdminAuthorizedActor $actor,
+        string $requestId,
+        string $publicId,
+        string $assetVersion
+    ): ?string;
+
+    public function recordQuarantine(
+        WebAdminAuthorizedActor $actor,
+        string $requestId,
+        MediaDeletionCandidate $candidate,
+        MediaQuarantineManifest $manifest,
+        ?string $ipHash,
+        DateTimeImmutable $occurredAt
+    ): void;
+
+    public function createdPublicIdForRequest(
+        WebAdminAuthorizedActor $actor,
+        string $requestId,
+        string $label,
+        string $sourceSha256
+    ): ?string;
+
     public function consumeRateLimit(
         string $action,
         string $subjectHash,

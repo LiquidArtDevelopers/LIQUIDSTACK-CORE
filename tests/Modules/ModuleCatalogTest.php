@@ -131,6 +131,10 @@ final class ModuleCatalogTest extends TestCase
         $manifest['resources'] = ['sectionBlogGrid01'];
         $manifest['project_files'] = [
             [
+                'source' => 'published/_moduleBlogPublicIndex.php',
+                'target' => 'App/app/_moduleBlogPublicIndex.php',
+            ],
+            [
                 'source' => 'published/_moduleBlogResources.php',
                 'target' => 'App/controllers/_moduleBlogResources.php',
             ],
@@ -158,7 +162,22 @@ final class ModuleCatalogTest extends TestCase
         )->get('blog');
 
         self::assertSame(['sectionBlogGrid01'], $definition->resources());
-        self::assertCount(5, $definition->projectFiles());
+        self::assertCount(6, $definition->projectFiles());
+    }
+
+    public function testManifestCannotPublishAnArbitraryApplicationBackend(): void
+    {
+        $manifest = $this->manifest('blog', 'liquidstack/blog');
+        $manifest['project_files'] = [[
+            'source' => 'published/foreign.php',
+            'target' => 'App/app/foreign.php',
+            'type' => 'file',
+        ]];
+        $this->writeManifest('blog', $manifest);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('no pertenece al espacio');
+        ModuleCatalog::fromModulesRoot($this->fixtureRoot);
     }
 
     public function testManifestRejectsUndeclaredResourceAndForeignShowroomHook(): void

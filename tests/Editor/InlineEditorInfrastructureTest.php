@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Core\Composer\ManagedFileRegistry;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -287,10 +288,6 @@ final class InlineEditorInfrastructureTest extends TestCase
             'data-inline-background-desktop-key="',
             $art16Controller
         );
-        self::assertStringContainsString(
-            'data-inline-background-fallback-key="hero00_bg_fallback"',
-            $hero00Controller
-        );
         foreach ([
             'hero00_bg_mobile',
             'hero00_bg_tablet',
@@ -302,6 +299,32 @@ final class InlineEditorInfrastructureTest extends TestCase
                 $hero00Controller
             );
         }
+        foreach ([
+            'mobile' => '480w',
+            'tablet' => '900w',
+            'desktop' => '1800w',
+        ] as $variant => $descriptor) {
+            self::assertStringContainsString(
+                "data-inline-background-{$variant}-key=\"hero00_bg_{$variant}\"",
+                $hero00Controller
+            );
+            self::assertStringContainsString(
+                "data-inline-background-{$variant}-descriptor=\"{$descriptor}\"",
+                $hero00Controller
+            );
+        }
+        self::assertStringContainsString(
+            'data-inline-background-fallback-key="hero00_bg_fallback"',
+            $hero00Controller
+        );
+        self::assertStringContainsString(
+            'data-inline-background-picture-source=".hero00-picture source"',
+            $hero00Controller
+        );
+        self::assertStringNotContainsString(
+            'data-inline-background-image-key=',
+            $hero00Controller
+        );
         self::assertStringNotContainsString(
             '$GLOBALS[$key]',
             $hero00Controller
@@ -361,6 +384,91 @@ final class InlineEditorInfrastructureTest extends TestCase
                 $coreRoot . '/stubs/App/templates/_artZipper.html'
             )
         );
+    }
+
+    public function testResponsivePictureEditorRefreshesEveryCandidate(): void
+    {
+        $coreRoot = dirname(__DIR__, 2);
+        $inlineEditor = (string) file_get_contents(
+            $coreRoot . '/resources/js/_inlineEditor.js'
+        );
+
+        self::assertStringContainsString(
+            'import { applyInlineResponsivePicture }',
+            $inlineEditor
+        );
+        self::assertStringContainsString(
+            'applyResponsiveBackground(target, container)',
+            $inlineEditor
+        );
+        self::assertStringContainsString(
+            'payloadEntries.length !== 4',
+            $inlineEditor
+        );
+        self::assertSame(
+            'runtime:inline-editor',
+            ManagedFileRegistry::groupForSource(
+                'resources/js/_inlineResponsivePicture.js'
+            )
+        );
+
+        $script = $coreRoot
+            . '/tests/Editor/fixtures/inline-responsive-picture-harness.mjs';
+        $command = sprintf(
+            'node %s %s 2>&1',
+            escapeshellarg($script),
+            escapeshellarg($coreRoot)
+        );
+        exec($command, $output, $exitCode);
+
+        self::assertSame(0, $exitCode, implode("\n", $output));
+        $result = json_decode(
+            implode("\n", $output),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertTrue($result['refreshed']);
+        self::assertTrue($result['invalidDescriptorRejected']);
+        self::assertTrue($result['missingContractRejected']);
+    }
+
+    public function testResponsivePicturePersistsItsFourSourcesTogether(): void
+    {
+        $sources = [
+            'hero00_bg_mobile' => 'assets/img/hero-mobile.avif',
+            'hero00_bg_tablet' => 'assets/img/hero-tablet.avif',
+            'hero00_bg_desktop' => 'assets/img/hero-desktop.avif',
+            'hero00_bg_fallback' => 'assets/img/hero-fallback.avif',
+        ];
+        $updates = [];
+        foreach ($sources as $key => $source) {
+            $updates[] = [
+                'key' => $key,
+                'values' => ['src' => $source],
+            ];
+        }
+
+        $response = $this->runEndpoint([
+            'lang' => 'es',
+            'scope' => 'templates',
+            'updates' => $updates,
+        ]);
+
+        self::assertSame('ok', $response['status']);
+        self::assertCount(4, $response['updates']);
+        $catalog = json_decode(
+            (string) file_get_contents(
+                $this->fixtureRoot
+                    . '/App/config/languages/templates/es.json'
+            ),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        foreach ($sources as $key => $source) {
+            self::assertSame($source, $catalog[$key]['src'] ?? null);
+        }
     }
 
     /**

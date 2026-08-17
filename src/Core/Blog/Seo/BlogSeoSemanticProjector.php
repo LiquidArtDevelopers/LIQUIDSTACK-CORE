@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Core\Blog\Seo;
 
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
+use App\Core\Blog\StructuredContent\Document\BlogCustomTextHtmlSanitizer;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTextProjector;
+use App\Core\Blog\StructuredContent\Document\BlogDocumentWalker;
 
 /** Extracts SEO semantics from the validated structured document. */
 final class BlogSeoSemanticProjector
@@ -14,7 +16,9 @@ final class BlogSeoSemanticProjector
         private readonly BlogSeoTextNormalizer $normalizer =
             new BlogSeoTextNormalizer(),
         private readonly BlogDocumentTextProjector $textProjector =
-            new BlogDocumentTextProjector()
+            new BlogDocumentTextProjector(),
+        private readonly BlogCustomTextHtmlSanitizer $customTextHtml =
+            new BlogCustomTextHtmlSanitizer()
     ) {
     }
 
@@ -22,12 +26,15 @@ final class BlogSeoSemanticProjector
     {
         $headings = [];
         $images = [];
-        foreach ($document->blocks() as $block) {
+        foreach ((new BlogDocumentWalker())->modules($document) as $block) {
             if ($block['type'] === 'heading') {
                 $headings[] = [
                     'level' => (int) $block['level'],
                     'text' => $this->inline($block['content']),
                 ];
+            }
+            if ($block['type'] === 'paragraph') {
+                array_push($headings, ...$this->textHeadings($block));
             }
             if ($block['type'] === 'image') {
                 $images[] = [
@@ -46,6 +53,39 @@ final class BlogSeoSemanticProjector
             $headings,
             $images
         );
+    }
+
+    /**
+     * @param array<string, mixed> $block
+     * @return list<array{level: int, text: string}>
+     */
+    private function textHeadings(array $block): array
+    {
+        if (array_key_exists('html', $block)) {
+            $html = $block['html'] ?? null;
+
+            return is_string($html) ? $this->customTextHtml->headings($html) : [];
+        }
+        $content = $block['content'] ?? null;
+        if (!is_array($content)) {
+            return [];
+        }
+        $headings = [];
+        foreach ($content as $flowNode) {
+            if (
+                !is_array($flowNode)
+                || ($flowNode['type'] ?? null) !== 'heading'
+                || !is_array($flowNode['content'] ?? null)
+            ) {
+                continue;
+            }
+            $headings[] = [
+                'level' => (int) ($flowNode['level'] ?? 0),
+                'text' => $this->inline($flowNode['content']),
+            ];
+        }
+
+        return $headings;
     }
 
     /** @param list<array<string, mixed>> $nodes */

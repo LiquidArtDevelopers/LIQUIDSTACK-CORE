@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Blog\PublicFeed;
 
 use App\Core\Blog\BlogPostVariant;
+use App\Core\Blog\Categories\BlogReservedCategoryPolicy;
 use App\Core\Blog\Persistence\BlogPersistenceException;
 use App\Core\Blog\PublishedPostCard;
 use App\Core\Modules\Migrations\MigrationScope;
@@ -17,7 +18,8 @@ use Throwable;
 /** Portable, fail-closed PDO read model for public Blog cards. */
 final class PdoBlogPublicCatalogRepository implements
     BlogPublicCatalogRepositoryInterface,
-    BlogPublicDiscoveryRepositoryInterface
+    BlogPublicDiscoveryRepositoryInterface,
+    BlogPublicCardCategoryRepositoryInterface
 {
     private const UTC_FORMAT = 'Y-m-d H:i:s.u';
     private const SUPPORTED_DRIVERS = ['mysql', 'sqlite'];
@@ -102,6 +104,10 @@ final class PdoBlogPublicCatalogRepository implements
                 'locale' => [$query->locale(), PDO::PARAM_STR],
                 'status' => [BlogPostVariant::PUBLISHED, PDO::PARAM_STR],
             ];
+            [$reservedSql, $reservedParameters] =
+                $this->reservedCategoryPredicate('p', 'catalog_reserved');
+            $sql .= $reservedSql;
+            $parameters = array_replace($parameters, $reservedParameters);
 
             if ($query->search() !== null) {
                 $pattern = '%' . self::escapeLike($query->search()) . '%';
@@ -129,6 +135,16 @@ final class PdoBlogPublicCatalogRepository implements
                 );
             }
 
+            if ($query->excludedCategorySlugs() !== []) {
+                [$excludedCategorySql, $excludedCategoryParameters] =
+                    $this->excludedCategoryPredicate($query);
+                $sql .= $excludedCategorySql;
+                $parameters = array_replace(
+                    $parameters,
+                    $excludedCategoryParameters
+                );
+            }
+
             if ($query->excludeSlug() !== null) {
                 $sql .= ' AND l.slug <> :exclude_slug';
                 $parameters['exclude_slug'] = [
@@ -137,7 +153,7 @@ final class PdoBlogPublicCatalogRepository implements
                 ];
             }
 
-            $sql .= ' ORDER BY l.published_at DESC, l.public_id ASC '
+            $sql .= ' ORDER BY ' . $this->catalogOrder($query) . ' '
                 . 'LIMIT :catalog_limit OFFSET :catalog_offset';
             $parameters['catalog_limit'] = [$query->limit(), PDO::PARAM_INT];
             $parameters['catalog_offset'] = [
@@ -157,6 +173,84 @@ final class PdoBlogPublicCatalogRepository implements
                     $this->cardFromRow($row),
                 array_values($rows)
             );
+        } catch (BlogPersistenceException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new BlogPersistenceException();
+        }
+    }
+
+    public function categoriesForCards(
+        BlogPublicCardCategoryQuery $query
+    ): array {
+        $cardSlugs = $query->cardSlugs();
+        $categories = array_fill_keys($cardSlugs, []);
+        if ($cardSlugs === []) {
+            return $categories;
+        }
+
+        try {
+            $placeholders = [];
+            $parameters = [
+                'card_locale' => [$query->locale(), PDO::PARAM_STR],
+                'card_status' => [
+                    BlogPostVariant::PUBLISHED,
+                    PDO::PARAM_STR,
+                ],
+                'category_locale' => [$query->locale(), PDO::PARAM_STR],
+                'category_reserved_slug' => [
+                    BlogReservedCategoryPolicy::DUMMY_SLUG,
+                    PDO::PARAM_STR,
+                ],
+            ];
+            foreach ($cardSlugs as $position => $slug) {
+                $key = 'card_slug_' . $position;
+                $placeholders[] = ':' . $key;
+                $parameters[$key] = [$slug, PDO::PARAM_STR];
+            }
+            [$reservedSql, $reservedParameters] =
+                $this->reservedCategoryPredicate(
+                    'p',
+                    'card_category_reserved'
+                );
+            $parameters = array_replace($parameters, $reservedParameters);
+
+            $sql = 'SELECT l.slug AS card_slug, cl.locale, cl.slug, cl.name '
+                . 'FROM ' . $this->posts . ' p JOIN '
+                . $this->localizations . ' l ON l.post_id = p.id JOIN '
+                . $this->relations . ' pc ON pc.post_id = p.id JOIN '
+                . $this->categoryLocalizations
+                . ' cl ON cl.category_id = pc.category_id '
+                . 'WHERE l.locale = :card_locale '
+                . 'AND l.status = :card_status '
+                . 'AND l.slug IN (' . implode(', ', $placeholders) . ') '
+                . 'AND l.published_at IS NOT NULL '
+                . 'AND cl.locale = :category_locale '
+                . 'AND cl.slug <> :category_reserved_slug '
+                . $reservedSql
+                . 'ORDER BY l.slug ASC, cl.name ASC, cl.public_id ASC';
+            $statement = $this->prepare($sql);
+            $this->execute($statement, $parameters);
+            $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+            if (!is_array($rows)) {
+                throw new BlogPersistenceException();
+            }
+            foreach ($rows as $row) {
+                if (!is_array($row)) {
+                    throw new BlogPersistenceException();
+                }
+                $cardSlug = $this->requiredString($row, 'card_slug');
+                if (!array_key_exists($cardSlug, $categories)) {
+                    throw new BlogPersistenceException();
+                }
+                $categories[$cardSlug][] = new BlogPublicCardCategory(
+                    $this->requiredString($row, 'locale'),
+                    $this->requiredString($row, 'slug'),
+                    $this->requiredString($row, 'name')
+                );
+            }
+
+            return $categories;
         } catch (BlogPersistenceException $exception) {
             throw $exception;
         } catch (Throwable) {
@@ -194,6 +288,10 @@ final class PdoBlogPublicCatalogRepository implements
                 . 'AND candidate.slug IS NOT NULL '
                 . 'AND candidate.excerpt IS NOT NULL '
                 . 'AND candidate.published_at IS NOT NULL '
+                . $this->reservedCategoryPredicate(
+                    'candidate_post',
+                    'related_reserved'
+                )[0]
                 . 'GROUP BY candidate.locale, candidate.slug, '
                 . 'candidate.h1, candidate.excerpt, '
                 . 'candidate.published_at, candidate.updated_at, '
@@ -216,6 +314,10 @@ final class PdoBlogPublicCatalogRepository implements
                     PDO::PARAM_STR,
                 ],
                 'related_limit' => [$query->limit(), PDO::PARAM_INT],
+                'related_reserved_slug' => [
+                    BlogReservedCategoryPolicy::DUMMY_SLUG,
+                    PDO::PARAM_STR,
+                ],
             ]);
 
             return $this->cardsFromStatement($statement);
@@ -236,6 +338,10 @@ final class PdoBlogPublicCatalogRepository implements
                 . ' l ON l.post_id = p.id WHERE l.locale = :locale '
                 . 'AND l.status = :status AND l.slug IS NOT NULL '
                 . 'AND l.excerpt IS NOT NULL '
+                . $this->reservedCategoryPredicate(
+                    'p',
+                    'archive_reserved'
+                )[0]
                 . 'AND l.published_at >= :archive_start '
                 . 'AND l.published_at '
                 . ($endExclusive === null ? '<= ' : '< ')
@@ -257,6 +363,10 @@ final class PdoBlogPublicCatalogRepository implements
                 ],
                 'archive_limit' => [$query->limit(), PDO::PARAM_INT],
                 'archive_offset' => [$query->offset(), PDO::PARAM_INT],
+                'archive_reserved_slug' => [
+                    BlogReservedCategoryPolicy::DUMMY_SLUG,
+                    PDO::PARAM_STR,
+                ],
             ]);
 
             return $this->cardsFromStatement($statement);
@@ -275,10 +385,15 @@ final class PdoBlogPublicCatalogRepository implements
             $month = $this->archiveDatePartExpression('month');
             $sql = 'SELECT l.locale, ' . $year . ' AS archive_year, '
                 . $month . ' AS archive_month, COUNT(*) AS post_count '
-                . 'FROM ' . $this->localizations . ' l '
+                . 'FROM ' . $this->localizations . ' l JOIN '
+                . $this->posts . ' p ON p.id = l.post_id '
                 . 'WHERE l.locale = :locale AND l.status = :status '
                 . 'AND l.slug IS NOT NULL AND l.excerpt IS NOT NULL '
                 . 'AND l.published_at IS NOT NULL '
+                . $this->reservedCategoryPredicate(
+                    'p',
+                    'period_reserved'
+                )[0]
                 . 'GROUP BY l.locale, ' . $year . ', ' . $month . ' '
                 . 'ORDER BY archive_year DESC, archive_month DESC '
                 . 'LIMIT :period_limit OFFSET :period_offset';
@@ -288,6 +403,10 @@ final class PdoBlogPublicCatalogRepository implements
                 'status' => [BlogPostVariant::PUBLISHED, PDO::PARAM_STR],
                 'period_limit' => [$query->limit(), PDO::PARAM_INT],
                 'period_offset' => [$query->offset(), PDO::PARAM_INT],
+                'period_reserved_slug' => [
+                    BlogReservedCategoryPolicy::DUMMY_SLUG,
+                    PDO::PARAM_STR,
+                ],
             ]);
             $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
             if (!is_array($rows)) {
@@ -355,6 +474,63 @@ final class PdoBlogPublicCatalogRepository implements
         return [$sql, $parameters];
     }
 
+    /**
+     * @return array{string, array<string, array{mixed, int}>}
+     */
+    private function excludedCategoryPredicate(
+        BlogPublicCatalogQuery $query
+    ): array {
+        $placeholders = [];
+        $parameters = [
+            'category_excluded_locale' => [
+                $query->locale(),
+                PDO::PARAM_STR,
+            ],
+        ];
+        foreach ($query->excludedCategorySlugs() as $position => $slug) {
+            $key = 'category_excluded_' . $position;
+            $placeholders[] = ':' . $key;
+            $parameters[$key] = [$slug, PDO::PARAM_STR];
+        }
+
+        return [
+            ' AND NOT EXISTS (SELECT 1 FROM ' . $this->relations
+                . ' excluded_pc JOIN ' . $this->categoryLocalizations
+                . ' excluded_cl ON excluded_cl.category_id = '
+                . 'excluded_pc.category_id WHERE excluded_pc.post_id = p.id '
+                . 'AND excluded_cl.locale = :category_excluded_locale '
+                . 'AND excluded_cl.slug IN ('
+                . implode(', ', $placeholders) . '))',
+            $parameters,
+        ];
+    }
+
+    /** @return array{string, array<string, array{mixed, int}>} */
+    private function reservedCategoryPredicate(
+        string $postAlias,
+        string $parameterPrefix
+    ): array {
+        if (preg_match('/\A[a-z_]+\z/', $postAlias) !== 1
+            || preg_match('/\A[a-z_]+\z/', $parameterPrefix) !== 1) {
+            throw new BlogPersistenceException();
+        }
+        $key = $parameterPrefix . '_slug';
+
+        return [
+            ' AND NOT EXISTS (SELECT 1 FROM ' . $this->relations
+                . ' reserved_pc JOIN ' . $this->categoryLocalizations
+                . ' reserved_cl ON reserved_cl.category_id = '
+                . 'reserved_pc.category_id WHERE reserved_pc.post_id = '
+                . $postAlias . '.id AND reserved_cl.slug = :' . $key . ') ',
+            [
+                $key => [
+                    BlogReservedCategoryPolicy::DUMMY_SLUG,
+                    PDO::PARAM_STR,
+                ],
+            ],
+        ];
+    }
+
     private static function escapeLike(string $value): string
     {
         return str_replace(
@@ -419,6 +595,18 @@ final class PdoBlogPublicCatalogRepository implements
         return "CAST(strftime('"
             . ($part === 'year' ? '%Y' : '%m')
             . "', l.published_at) AS INTEGER)";
+    }
+
+    private function catalogOrder(BlogPublicCatalogQuery $query): string
+    {
+        return match ($query->order()) {
+            BlogPublicCatalogQuery::ORDER_NEWEST =>
+                'l.published_at DESC, l.public_id ASC',
+            BlogPublicCatalogQuery::ORDER_OLDEST =>
+                'l.published_at ASC, l.public_id ASC',
+            BlogPublicCatalogQuery::ORDER_UPDATED =>
+                'l.updated_at DESC, l.public_id ASC',
+        };
     }
 
     private function prepare(string $sql): PDOStatement

@@ -19,7 +19,9 @@ final class WebAdminMediaHttpRuntime
         private readonly WebAdminAuthenticationService $authentication,
         private readonly WebAdminAuthorizationService $authorization,
         private readonly MediaService $media,
-        ?WebAdminNavigationCatalog $navigation = null
+        ?WebAdminNavigationCatalog $navigation = null,
+        private readonly bool $acceptAvifSource = true,
+        private readonly bool $supportsQuarantineDeletion = false
     ) {
         $this->navigation = $navigation ?? new WebAdminNavigationCatalog();
     }
@@ -34,6 +36,11 @@ final class WebAdminMediaHttpRuntime
         return $this->authorization;
     }
     public function media(): MediaService { return $this->media; }
+    public function acceptsAvifSource(): bool { return $this->acceptAvifSource; }
+    public function supportsQuarantineDeletion(): bool
+    {
+        return $this->supportsQuarantineDeletion;
+    }
     public function navigation(): WebAdminNavigationCatalog
     {
         return $this->navigation;

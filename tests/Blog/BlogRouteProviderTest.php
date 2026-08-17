@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Core\Blog\Http\BlogAdminHttpRuntimeFactoryInterface;
 use App\Core\Blog\Http\BlogAdminHttpRuntimeInterface;
 use App\Core\Blog\Http\BlogAdminRuntimeIssueReporterInterface;
+use App\Core\Blog\Http\BlogEditorPreferencesHttpRuntimeInterface;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\Modules\Blog\BlogRouteProvider;
@@ -78,15 +79,18 @@ final class BlogRouteProviderTest extends TestCase
             '/admin/blog/trash',
             '/admin/blog/posts/new',
             '/admin/blog/posts/edit',
+            '/admin/blog/posts/url',
             '/admin/blog/posts/preview',
             '/admin/blog/posts/updated',
             '/admin/blog/editor',
             '/admin/blog/editor/preview',
             '/admin/blog/editor/revisions',
+            '/admin/blog/settings/presentation',
         ];
         foreach ($gets as $path) {
             $query = in_array($path, [
                 '/admin/blog/posts/edit',
+                '/admin/blog/posts/url',
                 '/admin/blog/posts/preview',
                 '/admin/blog/editor',
                 '/admin/blog/editor/preview',
@@ -191,7 +195,7 @@ final class BlogRouteProviderTest extends TestCase
             'REQUEST_METHOD' => 'HEAD',
             'REQUEST_URI' => '/admin/blog',
             'HTTPS' => 'on',
-        ], query: ['offset' => '50']));
+        ], query: ['offset' => '40']));
         self::assertNotNull($head);
         self::assertSame(303, $head->status());
         self::assertSame('', $head->body());
@@ -362,6 +366,54 @@ final class BlogRouteProviderTest extends TestCase
             'blog.admin_runtime_unavailable',
             'blog.admin_runtime_unavailable',
         ], $this->reporter->issues);
+    }
+
+    public function testOptionalEditorPreferencesRouteDegradesTo503(): void
+    {
+        $runtime = $this->createMock(
+            BlogEditorPreferencesHttpRuntimeInterface::class
+        );
+        $runtime->expects(self::once())
+            ->method('editorPreferencesReady')
+            ->willReturn(false);
+        $factory = new class($runtime) implements
+            BlogAdminHttpRuntimeFactoryInterface {
+            public function __construct(
+                private readonly BlogAdminHttpRuntimeInterface $runtime
+            ) {
+            }
+
+            public function create(
+                ModuleRuntimeContext $context,
+                WebAdminConfig $webAdminConfig
+            ): BlogAdminHttpRuntimeInterface {
+                return $this->runtime;
+            }
+        };
+        $reporter = new CapturingBlogAdminIssueReporter();
+        $routes = new ModuleRouteCollection();
+        $this->claimWebAdmin($routes, '/admin');
+        (new BlogRouteProvider(
+            runtimeFactory: $factory,
+            issueReporter: $reporter
+        ))->registerRoutes(
+            $routes,
+            new ModuleRuntimeContext($this->projectRoot)
+        );
+
+        $response = $routes->dispatch($this->get(
+            '/admin/blog/settings/presentation',
+            [],
+            str_repeat('A', 43)
+        ));
+
+        self::assertNotNull($response);
+        self::assertSame(503, $response->status());
+        self::assertSame('Service unavailable', $response->body());
+        self::assertSame(
+            ['blog.editor_preferences_runtime_unavailable'],
+            $reporter->issues
+        );
     }
 
     public function testCustomEffectiveWebAdminPrefixOwnsTheBlogChild(): void

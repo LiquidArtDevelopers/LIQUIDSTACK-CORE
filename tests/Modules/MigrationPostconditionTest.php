@@ -159,6 +159,7 @@ final class SupersessionMigrationProviderFixture implements
     MigrationProviderInterface
 {
     public static bool $includeCurrent = true;
+    public static bool $currentIsTransactionalForSqlite = true;
 
     public static function moduleId(): string
     {
@@ -204,7 +205,8 @@ final class SupersessionMigrationProviderFixture implements
                 ],
             ],
             destructive: false,
-            transactionalDrivers: ['sqlite'],
+            transactionalDrivers: self::$currentIsTransactionalForSqlite
+                ? ['sqlite'] : [],
             retrySafe: true,
             postconditionVerifier: new PhaseMigrationPostconditionFixture(true),
             supersedesPostconditions: ['0001_legacy_phase']
@@ -252,6 +254,7 @@ final class MigrationPostconditionTest extends TestCase
         MutableMigrationPostconditionFixture::$satisfied = true;
         MutableMigrationPostconditionFixture::$throws = false;
         SupersessionMigrationProviderFixture::$includeCurrent = true;
+        SupersessionMigrationProviderFixture::$currentIsTransactionalForSqlite = true;
         $this->filesystem = new Filesystem();
         $this->root = sys_get_temp_dir()
             . '/liquidstack-postcondition-' . bin2hex(random_bytes(8));
@@ -535,6 +538,58 @@ final class MigrationPostconditionTest extends TestCase
             ['postcondition_drift', 'pending'],
             array_column($plan->entries(), 'status')
         );
+    }
+
+    public function testVerifiedNonTransactionalSupersederResumesRetrySafeSql(): void
+    {
+        $this->configureProvider(SupersessionMigrationProviderFixture::class);
+        SupersessionMigrationProviderFixture::$includeCurrent = false;
+        $pdo = $this->sqlite();
+        (new MigrationRunner())->apply(
+            $pdo,
+            $this->catalog(),
+            $this->scopes()
+        );
+
+        // Simulate DDL/DML already committed by a non-transactional driver
+        // before the corrected postcondition could write the registry record.
+        $pdo->exec(
+            "INSERT INTO ls_webadmin_phase (state) VALUES ('current')"
+        );
+        SupersessionMigrationProviderFixture::$includeCurrent = true;
+        SupersessionMigrationProviderFixture::$currentIsTransactionalForSqlite = false;
+        $catalog = $this->catalog();
+
+        $plan = (new MigrationDatabasePlanner())->plan(
+            $pdo,
+            $catalog,
+            $this->scopes()
+        );
+
+        self::assertTrue($plan->isApplicable());
+        self::assertSame(
+            ['applied', 'pending'],
+            array_column($plan->entries(), 'status')
+        );
+
+        $result = (new MigrationRunner())->apply(
+            $pdo,
+            $catalog,
+            $this->scopes()
+        );
+
+        self::assertSame(
+            ['0002_current_phase'],
+            array_column($result->applied(), 'id')
+        );
+        self::assertSame(2, (int) $pdo->query(
+            'SELECT COUNT(*) FROM ls_module_migrations'
+        )->fetchColumn());
+        self::assertTrue((new MigrationDatabasePlanner())->plan(
+            $pdo,
+            $catalog,
+            $this->scopes()
+        )->isApplicable());
     }
 
     public function testCatalogRejectsAnUnknownPostconditionSupersession(): void

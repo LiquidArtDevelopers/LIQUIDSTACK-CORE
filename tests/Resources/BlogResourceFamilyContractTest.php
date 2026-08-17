@@ -17,6 +17,8 @@ final class BlogResourceFamilyContractTest extends TestCase
         'sectionBlogFeatured01',
         'sectionBlogSlider01',
         'sectionBlogRelated01',
+        'sectionBlogSlider02',
+        'sectionBlogStack01',
     ];
 
     public function testTheBlogResourceFamilyHasACompleteProjectContract(): void
@@ -38,7 +40,16 @@ final class BlogResourceFamilyContractTest extends TestCase
             );
         }
 
-        foreach (['moduleBlogArchive01', 'moduleBlogFilters01'] as $resource) {
+        foreach ([
+            'moduleBlogArchive01',
+            'moduleBlogCategoryBar01',
+            'moduleBlogFilters01',
+            'moduleBlogGrid02',
+            'moduleBlogPagination01',
+            'moduleBlogResults01',
+            'moduleBlogSearch01',
+            'sectionBlogCatalog01',
+        ] as $resource) {
             self::assertFileExists($root . "/App/controllers/{$resource}.php");
             self::assertFileExists($root . "/App/templates/_{$resource}.html");
             self::assertFileExists(
@@ -55,6 +66,16 @@ final class BlogResourceFamilyContractTest extends TestCase
         self::assertFileExists(
             $root . '/src/js/resources/_sectionBlogSlider01.js'
         );
+        self::assertFileExists(
+            $root . '/src/js/modules/blog/blogCollectionLoader.js'
+        );
+        foreach ([
+            '_moduleBlogGrid02.js',
+            '_sectionBlogSlider02.js',
+            '_sectionBlogStack01.js',
+        ] as $runtime) {
+            self::assertFileExists($root . '/src/js/resources/' . $runtime);
+        }
     }
 
     public function testSectionTemplatesKeepSectionArticleSemantics(): void
@@ -115,7 +136,7 @@ final class BlogResourceFamilyContractTest extends TestCase
         foreach ([
             'liquidstack_blog_resource_context' => '/function\s+liquidstack_blog_resource_context\s*\(\s*string\s+\$resource\s*,\s*int\s+\$index\s*,\s*array\s+\$params\s*,\s*int\s+\$defaultHeadingLevel\s*=\s*2\s*,\s*int\s+\$maximumItems\s*=\s*50\s*\)\s*:\s*array/',
             'liquidstack_blog_resource_escape' => '/function\s+liquidstack_blog_resource_escape\s*\(\s*string\s+\$value\s*\)\s*:\s*string/',
-            'liquidstack_blog_resource_card' => '/function\s+liquidstack_blog_resource_card\s*\(\s*array\s+\$context\s*,\s*array\s+\$item\s*,\s*string\s+\$modifier\s*=\s*[\'\"]{2}\s*\)\s*:\s*string/',
+            'liquidstack_blog_resource_card' => '/function\s+liquidstack_blog_resource_card\s*\(\s*array\s+\$context\s*,\s*array\s+\$item\s*,\s*string\s+\$modifier\s*=\s*[\'\"]{2}\s*,\s*string\s+\$ctaLabel\s*=\s*[\'\"]{2}\s*\)\s*:\s*string/',
             'liquidstack_blog_resource_heading' => '/function\s+liquidstack_blog_resource_heading\s*\(\s*array\s+\$context\s*\)\s*:\s*string/',
         ] as $function => $signature) {
             self::assertSame(
@@ -149,6 +170,8 @@ final class BlogResourceFamilyContractTest extends TestCase
             'sectionBlogList01',
             'sectionBlogSlider01',
             'sectionBlogRelated01',
+            'sectionBlogSlider02',
+            'sectionBlogStack01',
         ] as $resource) {
             $controller = (string) file_get_contents(
                 $root . "/App/controllers/{$resource}.php"
@@ -188,6 +211,8 @@ final class BlogResourceFamilyContractTest extends TestCase
                 'sectionBlogList01',
                 'sectionBlogSlider01',
                 'sectionBlogRelated01',
+                'sectionBlogSlider02',
+                'sectionBlogStack01',
             ] as $resource) {
                 $html = controller($resource, 2, [
                     '{header-primary}' => '<h4 class="external-heading">'
@@ -247,6 +272,145 @@ final class BlogResourceFamilyContractTest extends TestCase
                 chdir($previousCwd);
             }
         }
+
+        $gridController = (string) file_get_contents(
+            self::moduleProjectRoot()
+                . '/App/controllers/moduleBlogGrid02.php'
+        );
+        self::assertStringContainsString(
+            "require_once __DIR__ . '/_moduleBlogResources.php';",
+            $gridController
+        );
+        self::assertStringContainsString(
+            'liquidstack_blog_resource_context(',
+            $gridController
+        );
+        self::assertStringNotContainsString(
+            'liquidstack_blog_resource_heading(',
+            $gridController
+        );
+    }
+
+    public function testRelatedSectionKeepsItsEmptyAndSemanticStates(): void
+    {
+        $previousRoot = Paths::projectRoot();
+        $previousCwd = getcwd();
+        $previousLibxmlErrors = libxml_use_internal_errors(true);
+        Paths::setProjectRoot(self::moduleProjectRoot());
+        chdir(dirname(__DIR__, 2));
+
+        try {
+            self::assertSame('', controller('sectionBlogRelated01', 0, [
+                'items_data' => [],
+            ]));
+
+            foreach ([1, 3] as $itemCount) {
+                $items = [];
+                for ($position = 1; $position <= $itemCount; ++$position) {
+                    $items[] = [
+                        'url' => '/es/noticias/relacionada-' . $position,
+                        'h1' => 'Noticia relacionada ' . $position,
+                        'excerpt' => 'Contenido relacionado de prueba.',
+                        'published_at' => '2026-01-1' . $position . ' 12:00:00',
+                        'thumbnail' => [
+                            'src' => '/assets/img/dummy/relacionada-'
+                                . $position . '.avif',
+                            'alt' => 'Miniatura relacionada ' . $position,
+                            'width' => 480,
+                            'height' => 270,
+                        ],
+                    ];
+                }
+
+                $id = 'related-state-' . $itemCount;
+                $headingId = $id . '-heading';
+                $html = controller('sectionBlogRelated01', $itemCount, [
+                    'id_prefix' => $id,
+                    'items_data' => $items,
+                    'items' => $itemCount,
+                    'header_level' => 2,
+                    'header_text' => 'Noticias relacionadas',
+                ]);
+
+                $document = new DOMDocument();
+                self::assertTrue($document->loadHTML(
+                    '<!DOCTYPE html><html><body>' . $html . '</body></html>',
+                    LIBXML_NONET
+                ));
+                $xpath = new DOMXPath($document);
+                $sections = $xpath->query(
+                    '//section[contains(concat(" ", normalize-space(@class), " "),'
+                        . ' " sectionBlogRelated01 ")]'
+                );
+                self::assertNotFalse($sections);
+                self::assertCount(1, $sections);
+                $section = $sections->item(0);
+                self::assertInstanceOf(DOMElement::class, $section);
+                self::assertSame($id, $section->getAttribute('id'));
+                self::assertSame(
+                    $headingId,
+                    $section->getAttribute('aria-labelledby')
+                );
+
+                $headings = $xpath->query(
+                    './h2[@id="' . $headingId . '"]',
+                    $section
+                );
+                self::assertNotFalse($headings);
+                self::assertCount(1, $headings);
+
+                $articles = $xpath->query('.//article', $section);
+                self::assertNotFalse($articles);
+                self::assertCount($itemCount, $articles);
+
+                $itemHeadings = $xpath->query('.//article/h3/a', $section);
+                self::assertNotFalse($itemHeadings);
+                self::assertCount($itemCount, $itemHeadings);
+
+                $media = $xpath->query(
+                    './/article/figure[contains(concat(" ",'
+                        . ' normalize-space(@class), " "),'
+                        . ' " sectionBlogRelated01-media ")]/img',
+                    $section
+                );
+                self::assertNotFalse($media);
+                self::assertCount($itemCount, $media);
+
+                $unexpectedHeadings = $xpath->query(
+                    './/h1 | .//article//h2',
+                    $section
+                );
+                self::assertNotFalse($unexpectedHeadings);
+                self::assertCount(0, $unexpectedHeadings);
+            }
+
+            $scss = (string) file_get_contents(
+                self::moduleProjectRoot()
+                    . '/src/scss/resources/_sectionBlogRelated01.scss'
+            );
+            foreach ([
+                '.sectionBlogRelated01-media {',
+                'aspect-ratio: 16 / 9;',
+                'overflow: hidden;',
+                'max-width: 100%;',
+                'height: 100%;',
+                'object-fit: cover;',
+            ] as $containmentContract) {
+                self::assertStringContainsString($containmentContract, $scss);
+            }
+            self::assertMatchesRegularExpression(
+                '/> h1,\s*> h2,\s*> h3,\s*> h4,\s*> h5,\s*> h6\s*\{'
+                    . '\s*color:\s*c\.\$color02;\s*\}/s',
+                $scss
+            );
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previousLibxmlErrors);
+            Paths::setProjectRoot($previousRoot);
+            if (is_string($previousCwd)) {
+                chdir($previousCwd);
+            }
+        }
     }
 
     public function testFiltersRemainAWorkingGetFormWithoutJavascript(): void
@@ -270,6 +434,11 @@ final class BlogResourceFamilyContractTest extends TestCase
         self::assertStringContainsString('{mode-disabled}', $template);
         self::assertStringContainsString('type="submit"', $template);
         self::assertStringContainsString('aria-live="polite"', $template);
+        self::assertStringContainsString('data-state="idle"', $template);
+        self::assertStringContainsString(
+            'data-error-message="{error-message}"',
+            $template
+        );
         self::assertStringContainsString('name="category[]"', $controller);
         self::assertStringContainsString('array_slice(', $controller);
         self::assertStringContainsString("        100\n", $controller);
@@ -311,6 +480,9 @@ final class BlogResourceFamilyContractTest extends TestCase
                     'name' => 'Matrix',
                     'count' => 4,
                 ]],
+                'labels' => [
+                    'error' => 'Retry <without leaving> & keep context.',
+                ],
             ]);
             self::assertDoesNotMatchRegularExpression(
                 '/<select[^>]+name="category_mode"[^>]+disabled>/',
@@ -318,6 +490,10 @@ final class BlogResourceFamilyContractTest extends TestCase
             );
             self::assertStringContainsString(
                 'name="category[]" value="matrix"',
+                $withCategories
+            );
+            self::assertStringContainsString(
+                'data-error-message="Retry &lt;without leaving&gt; &amp; keep context."',
                 $withCategories
             );
 
@@ -381,7 +557,7 @@ final class BlogResourceFamilyContractTest extends TestCase
 
         foreach ([
             "method === 'get'",
-            'if (!canEnhance)',
+            'if (enhancedForms.length === 0)',
             'event.preventDefault()',
             'new FormDataConstructor(form)',
             'params.append(name, rawValue)',
@@ -391,7 +567,15 @@ final class BlogResourceFamilyContractTest extends TestCase
             "addEventListener('popstate'",
             'new Parser().parseFromString(',
             'requestController?.abort()',
+            'REQUEST_TIMEOUT_MS = 12_000',
+            'let requestTimer = null',
+            'clearRequestTimer()',
             'ownGeneration !== requestGeneration',
+            'communicateRequestError(activeForm, target)',
+            "setFilterStatus(status, 'error'",
+            'status?.dataset?.errorMessage',
+            'syncPreservedHiddenState(form, sourceForm)',
+            'installFormGroup(group.forms)',
             "setAttribute('aria-busy', 'true')",
             "credentials: 'same-origin'",
             "historyMode === 'push'",
@@ -415,6 +599,11 @@ final class BlogResourceFamilyContractTest extends TestCase
         ] as $forbidden) {
             self::assertStringNotContainsString($forbidden, $javascript);
         }
+
+        self::assertMatchesRegularExpression(
+            '/catch \(error\) \{(?:(?!navigate\(url\)).)*\}\s*finally \{/s',
+            $javascript
+        );
     }
 
     public function testSliderRuntimeSupportsSeveralInstancesAndCleansUp(): void
@@ -430,10 +619,14 @@ final class BlogResourceFamilyContractTest extends TestCase
         foreach ([
             "querySelectorAll(selector)",
             'new Map()',
-            'viewport.scrollBy({',
-            "behavior: reducedMotion() ? 'auto' : 'smooth'",
+            "import gsap from 'gsap'",
+            'Draggable, InertiaPlugin',
+            'gsap.registerPlugin(Draggable, InertiaPlugin)',
+            'Draggable.create(proxy, options)',
+            'inertia: true',
             "'(prefers-reduced-motion: reduce)'",
             'new ResizeObserverConstructor(scheduleControlsUpdate)',
+            'new IntersectionObserverConstructor((entries) =>',
             'resizeObserver?.disconnect()',
             'listenerController.abort()',
             'import.meta.hot.dispose(cleanupSectionBlogSlider01)',
@@ -451,6 +644,35 @@ final class BlogResourceFamilyContractTest extends TestCase
         self::assertStringNotContainsString('document.cookie', $javascript);
     }
 
+    public function testDynamicSectionsResetHostSectionAlignment(): void
+    {
+        $root = self::moduleProjectRoot();
+
+        foreach ([
+                'sectionBlogSlider02',
+            'sectionBlogStack01',
+        ] as $resource) {
+            $scss = (string) file_get_contents(
+                $root . "/src/scss/resources/_{$resource}.scss"
+            );
+            self::assertStringContainsString(
+                'align-items: stretch;',
+                $scss,
+                $resource
+            );
+            self::assertStringContainsString(
+                'justify-content: stretch;',
+                $scss,
+                $resource
+            );
+            self::assertStringContainsString(
+                'justify-items: stretch;',
+                $scss,
+                $resource
+            );
+        }
+    }
+
     public function testStandardBlogResourcesOnlyUseTheCoreColorFamilies(): void
     {
         $root = self::moduleProjectRoot();
@@ -458,7 +680,13 @@ final class BlogResourceFamilyContractTest extends TestCase
             self::ARTICLE_RESOURCE,
             ...self::SECTION_RESOURCES,
             'moduleBlogArchive01',
+            'moduleBlogCategoryBar01',
             'moduleBlogFilters01',
+            'moduleBlogGrid02',
+            'moduleBlogPagination01',
+            'moduleBlogResults01',
+            'moduleBlogSearch01',
+            'sectionBlogCatalog01',
         ];
 
         foreach ($resources as $resource) {
@@ -489,12 +717,20 @@ final class BlogResourceFamilyContractTest extends TestCase
         self::assertSame([
             'artBlogArticle01',
             'moduleBlogArchive01',
+            'moduleBlogCategoryBar01',
             'moduleBlogFilters01',
+            'moduleBlogGrid02',
+            'moduleBlogPagination01',
+            'moduleBlogResults01',
+            'moduleBlogSearch01',
+            'sectionBlogCatalog01',
             'sectionBlogFeatured01',
             'sectionBlogGrid01',
             'sectionBlogList01',
             'sectionBlogRelated01',
             'sectionBlogSlider01',
+            'sectionBlogSlider02',
+            'sectionBlogStack01',
         ], $manifest['resources']);
 
         $groups = [];
@@ -504,15 +740,33 @@ final class BlogResourceFamilyContractTest extends TestCase
 
         self::assertSame([
             'App/controllers/_moduleBlogResources.php',
+            'src/js/modules/blog/blogCollectionLoader.js',
         ], $groups['resource-support']);
+        self::assertSame([
+            'App/app/_moduleBlogPublicArticle.php',
+        ], $groups['public-article-support']);
+        self::assertSame([
+            'App/app/_moduleBlogPublicCollections.php',
+        ], $groups['public-collections-support']);
+        self::assertSame([
+            'App/app/_moduleBlogPublicIndex.php',
+        ], $groups['public-index-support']);
         self::assertCount(3, $groups['resource-artBlogArticle01']);
         self::assertCount(3, $groups['resource-moduleBlogArchive01']);
+        self::assertCount(3, $groups['resource-moduleBlogCategoryBar01']);
         self::assertCount(4, $groups['resource-moduleBlogFilters01']);
+        self::assertCount(4, $groups['resource-moduleBlogGrid02']);
+        self::assertCount(4, $groups['resource-moduleBlogPagination01']);
+        self::assertCount(3, $groups['resource-moduleBlogResults01']);
+        self::assertCount(3, $groups['resource-moduleBlogSearch01']);
+        self::assertCount(3, $groups['resource-sectionBlogCatalog01']);
         self::assertCount(3, $groups['resource-sectionBlogFeatured01']);
         self::assertCount(3, $groups['resource-sectionBlogGrid01']);
         self::assertCount(3, $groups['resource-sectionBlogList01']);
         self::assertCount(3, $groups['resource-sectionBlogRelated01']);
         self::assertCount(4, $groups['resource-sectionBlogSlider01']);
+        self::assertCount(4, $groups['resource-sectionBlogSlider02']);
+        self::assertCount(4, $groups['resource-sectionBlogStack01']);
         self::assertEqualsCanonicalizing([
             'App/views/showroom/_blog.php',
             'src/js/showroom/blog.js',

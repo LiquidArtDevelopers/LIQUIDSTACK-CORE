@@ -2,6 +2,7 @@
 
 .hero00{
     position: relative;
+    isolation: isolate;
     overflow: hidden;
     width: c.$anchoFull;
     min-height: 100dvh;
@@ -14,15 +15,30 @@
     @media only screen and (min-width:c.$tablet){
         min-height: 80dvh;
     }    
-    .bg{ 
-        position:absolute;
-        background-position: center;
-        background-size: cover;
-        inset:0; 
-        will-change:transform;
+    &-picture {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        width: 100%;
+        height: 100%;
+    }
+    &-media {
+        width: 100%;
+        height: 100%;
+        display: block;
+        object-fit: cover;
+        object-position: center;
+
+        &[data-blog-image-object-position-y='top'] {
+            object-position: center top;
+        }
+        &[data-blog-image-object-position-y='bottom'] {
+            object-position: center bottom;
+        }
     }
     .hero00-content{
         width: 100%;
+        position: relative;
         z-index: 1;
         display: flex;
         justify-content: center;

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationApplyOptions;
 use App\Core\Modules\Migrations\MigrationDefinition;
 use App\Core\Modules\Migrations\MigrationRunner;
 use App\Core\Modules\Migrations\MigrationScope;
@@ -10,7 +11,9 @@ use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\WebAdmin\WebAdminMigrationProvider;
 use App\Core\Modules\WebAdmin\WebAdminMediaMigrationPostconditionVerifier;
+use App\Core\Modules\WebAdmin\WebAdminMediaQuarantineMigrationPostconditionVerifier;
 use App\Core\Modules\WebAdmin\WebAdminMigrationPostconditionVerifier;
+use App\Core\Modules\WebAdmin\WebAdminProfileMigrationPostconditionVerifier;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -62,7 +65,7 @@ final class WebAdminMigrationProviderTest extends TestCase
     {
         $entries = $this->catalog()->entries();
 
-        self::assertCount(2, $entries);
+        self::assertCount(5, $entries);
         $migrationsById = [];
         foreach ($entries as $entry) {
             self::assertSame('webadmin', $entry['module']);
@@ -72,6 +75,9 @@ final class WebAdminMigrationProviderTest extends TestCase
         self::assertSame([
             '0001_webadmin_identity_and_access',
             '0002_webadmin_media_library',
+            '0003_webadmin_media_avif_source',
+            '0004_webadmin_profile_preferences',
+            '0005_webadmin_media_quarantine',
         ], array_keys($migrationsById));
 
         $migration = $migrationsById['0001_webadmin_identity_and_access'];
@@ -114,6 +120,47 @@ final class WebAdminMigrationProviderTest extends TestCase
             'webadmin-media-schema-v1',
             $media->postconditionVerifier()?->contractVersion()
         );
+
+        $avifSource = $migrationsById['0003_webadmin_media_avif_source'];
+        self::assertTrue($avifSource->isDestructive());
+        self::assertTrue($avifSource->isTransactionalFor('sqlite'));
+        self::assertTrue($avifSource->isRetrySafe());
+        self::assertSame([
+            '0001_webadmin_identity_and_access',
+            '0002_webadmin_media_library',
+        ], $avifSource->supersededPostconditionIds());
+        self::assertSame(
+            'webadmin-media-schema-v2-avif-source',
+            $avifSource->postconditionVerifier()?->contractVersion()
+        );
+
+        $profiles = $migrationsById['0004_webadmin_profile_preferences'];
+        self::assertFalse($profiles->isDestructive());
+        self::assertTrue($profiles->isTransactionalFor('sqlite'));
+        self::assertTrue($profiles->isRetrySafe());
+        self::assertInstanceOf(
+            WebAdminProfileMigrationPostconditionVerifier::class,
+            $profiles->postconditionVerifier()
+        );
+
+        $quarantine = $migrationsById['0005_webadmin_media_quarantine'];
+        self::assertFalse($quarantine->isDestructive());
+        self::assertTrue($quarantine->isTransactionalFor('sqlite'));
+        self::assertTrue($quarantine->isRetrySafe());
+        self::assertSame([
+            '0001_webadmin_identity_and_access',
+            '0002_webadmin_media_library',
+            '0003_webadmin_media_avif_source',
+            '0004_webadmin_profile_preferences',
+        ], $quarantine->supersededPostconditionIds());
+        self::assertInstanceOf(
+            WebAdminMediaQuarantineMigrationPostconditionVerifier::class,
+            $quarantine->postconditionVerifier()
+        );
+        self::assertSame(
+            'webadmin-media-quarantine-v1',
+            $quarantine->postconditionVerifier()?->contractVersion()
+        );
     }
 
     public function testSQLiteApplyCreatesTheCompleteScopedSchemaAndSeeds(): void
@@ -122,7 +169,8 @@ final class WebAdminMigrationProviderTest extends TestCase
         $result = (new MigrationRunner())->apply(
             $pdo,
             $this->catalog(),
-            $this->scopes()
+            $this->scopes(),
+            $this->destructiveOptions()
         );
 
         self::assertTrue($result->changed());
@@ -131,6 +179,9 @@ final class WebAdminMigrationProviderTest extends TestCase
             [
                 'webadmin:0001_webadmin_identity_and_access',
                 'webadmin:0002_webadmin_media_library',
+                'webadmin:0003_webadmin_media_avif_source',
+                'webadmin:0004_webadmin_profile_preferences',
+                'webadmin:0005_webadmin_media_quarantine',
             ],
             array_map(
                 static fn (array $entry): string =>
@@ -147,6 +198,8 @@ final class WebAdminMigrationProviderTest extends TestCase
         }
         self::assertContains('ls_webadmin_media_assets', $tables);
         self::assertContains('ls_webadmin_media_variants', $tables);
+        self::assertContains('ls_webadmin_user_profiles', $tables);
+        self::assertContains('ls_webadmin_media_quarantines', $tables);
         self::assertContains('ls_module_migrations', $tables);
 
         self::assertSame([
@@ -177,6 +230,7 @@ final class WebAdminMigrationProviderTest extends TestCase
         self::assertSame([
             'webadmin.access' => 0,
             'webadmin.audit.view' => 0,
+            'webadmin.media.delete' => 1,
             'webadmin.media.upload' => 1,
             'webadmin.media.view' => 1,
             'webadmin.profile.manage_self' => 0,
@@ -195,6 +249,7 @@ final class WebAdminMigrationProviderTest extends TestCase
             'site_admin' => [
                 'webadmin.access',
                 'webadmin.audit.view',
+                'webadmin.media.delete',
                 'webadmin.media.upload',
                 'webadmin.media.view',
                 'webadmin.profile.manage_self',
@@ -206,6 +261,7 @@ final class WebAdminMigrationProviderTest extends TestCase
             'system_superadmin' => [
                 'webadmin.access',
                 'webadmin.audit.view',
+                'webadmin.media.delete',
                 'webadmin.media.upload',
                 'webadmin.media.view',
                 'webadmin.profile.manage_self',
@@ -375,8 +431,18 @@ final class WebAdminMigrationProviderTest extends TestCase
         $catalog = $this->catalog();
         $runner = new MigrationRunner();
 
-        $first = $runner->apply($pdo, $catalog, $this->scopes());
-        $second = $runner->apply($pdo, $catalog, $this->scopes());
+        $first = $runner->apply(
+            $pdo,
+            $catalog,
+            $this->scopes(),
+            $this->destructiveOptions()
+        );
+        $second = $runner->apply(
+            $pdo,
+            $catalog,
+            $this->scopes(),
+            $this->destructiveOptions()
+        );
         self::assertTrue($first->changed());
         self::assertFalse($second->changed());
 
@@ -415,10 +481,10 @@ final class WebAdminMigrationProviderTest extends TestCase
         self::assertSame(3, (int) $pdo->query(
             'SELECT COUNT(*) FROM ls_webadmin_roles'
         )->fetchColumn());
-        self::assertSame(10, (int) $pdo->query(
+        self::assertSame(11, (int) $pdo->query(
             'SELECT COUNT(*) FROM ls_webadmin_capabilities'
         )->fetchColumn());
-        self::assertSame(21, (int) $pdo->query(
+        self::assertSame(23, (int) $pdo->query(
             'SELECT COUNT(*) FROM ls_webadmin_role_capabilities'
         )->fetchColumn());
         self::assertSame([
@@ -445,7 +511,7 @@ final class WebAdminMigrationProviderTest extends TestCase
             "SELECT value_text FROM ls_webadmin_state "
             . "WHERE state_key = 'bootstrap.initial_accounts'"
         )->fetchColumn(), 'Retry-safe seeds must never reset bootstrap state.');
-        self::assertSame(2, (int) $pdo->query(
+        self::assertSame(5, (int) $pdo->query(
             'SELECT COUNT(*) FROM ls_module_migrations'
         )->fetchColumn());
     }
@@ -460,7 +526,8 @@ final class WebAdminMigrationProviderTest extends TestCase
         (new MigrationRunner())->apply(
             $pdo,
             $this->catalog(),
-            $scopes
+            $scopes,
+            $this->destructiveOptions()
         );
 
         foreach (self::TABLE_SUFFIXES as $suffix) {
@@ -563,16 +630,49 @@ final class WebAdminMigrationProviderTest extends TestCase
         );
     }
 
+    public function testMySqlAvifConstraintReplacementTargetsMySqlAndMariaDb(): void
+    {
+        $migration = $this->migration('0003_webadmin_media_avif_source');
+        $scope = MigrationScope::forTablePrefix(
+            'webadmin',
+            'ls_webadmin_'
+        );
+        $sql = implode("\n", $migration->statementsFor('mysql', $scope));
+
+        self::assertStringContainsString(
+            '/*!80016 DROP CHECK `ls_webadmin_c_ma_mime`, */',
+            $sql
+        );
+        self::assertStringContainsString(
+            '/*M! DROP CONSTRAINT `ls_webadmin_c_ma_mime`, */',
+            $sql
+        );
+        self::assertStringContainsString(
+            "'image/webp', 'image/avif'",
+            $sql
+        );
+        self::assertStringNotContainsString('{{', $sql);
+    }
+
     private function sqliteWithSchema(): PDO
     {
         $pdo = $this->sqlite();
         (new MigrationRunner())->apply(
             $pdo,
             $this->catalog(),
-            $this->scopes()
+            $this->scopes(),
+            $this->destructiveOptions()
         );
 
         return $pdo;
+    }
+
+    private function destructiveOptions(): MigrationApplyOptions
+    {
+        return new MigrationApplyOptions(
+            allowDestructive: true,
+            backupConfirmed: true
+        );
     }
 
     private function sqlite(): PDO

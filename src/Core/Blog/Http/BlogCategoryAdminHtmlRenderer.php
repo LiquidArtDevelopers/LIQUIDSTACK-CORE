@@ -52,7 +52,8 @@ final class BlogCategoryAdminHtmlRenderer
             ? $this->localeOptions($localePublicPaths)
             : '';
         $tools = $canEdit
-            ? '<p><a href="' . $this->path($basePath . '/new')
+            ? '<p><a class="webadminAction webadminAction--primary" href="'
+                . $this->path($basePath . '/new')
                 . '">Crear categor&iacute;a</a></p>'
                 . '<form method="get" action="'
                 . $this->path($basePath . '/assign') . '"><fieldset>'
@@ -63,19 +64,23 @@ final class BlogCategoryAdminHtmlRenderer
                 . '<select id="category-locale" name="locale" required>'
                 . '<option value="" selected disabled>Selecciona un idioma</option>'
                 . $localeOptions . '</select>'
-                . '<button type="submit">Gestionar asignaci&oacute;n</button>'
+                . '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Gestionar asignaci&oacute;n</button>'
                 . '</fieldset></form>'
             : '';
 
         return $this->page(
             'Categor&iacute;as del Blog',
-            '<article class="blogAdminPage" aria-labelledby="category-title">'
+            '<article class="blogAdminPage blogAdminPage--categories" '
+            . 'aria-labelledby="category-title">'
             . '<h1 id="category-title">Categor&iacute;as del Blog</h1>'
             . $tools
+            . '<div class="blogAdminPage__tableViewport" tabindex="0" '
+            . 'role="region" aria-label="Traducciones de categor&iacute;as">'
             . '<table><caption>Traducciones de categor&iacute;as</caption>'
             . '<thead><tr><th scope="col">Nombre</th><th scope="col">Idioma</th>'
             . '<th scope="col">Slug</th><th scope="col">Acciones</th>'
-            . '</tr></thead><tbody>' . $rows . '</tbody></table>'
+            . '</tr></thead><tbody>' . $rows . '</tbody></table></div>'
             . $this->back($basePath) . '</article>',
             $basePath,
             '/blog/categories',
@@ -116,7 +121,8 @@ final class BlogCategoryAdminHtmlRenderer
             . '<label for="category-create-locale">Idioma</label><select '
             . 'id="category-create-locale" name="locale" required>'
             . $options . '</select>' . $this->draftFields(null)
-            . '<button type="submit">Guardar categor&iacute;a</button></form>'
+            . '<button class="webadminAction webadminAction--primary" '
+            . 'type="submit">Guardar categor&iacute;a</button></form>'
             . $this->back($basePath) . '</article>',
             $basePath,
             '/blog/categories/new',
@@ -132,7 +138,8 @@ final class BlogCategoryAdminHtmlRenderer
         ?WebAdminShellContext $shell = null
     ): string {
         $localizationAction = $canAddLocalization
-            ? '<p><a href="' . $this->query($basePath . '/new', [
+            ? '<p><a class="webadminAction webadminAction--secondary" href="'
+                . $this->query($basePath . '/new', [
                 'category' => $category->categoryPublicId(),
             ]) . '">A&ntilde;adir otro idioma</a></p>'
             : '<p role="status">Esta categor&iacute;a ya est&aacute; traducida a '
@@ -153,8 +160,24 @@ final class BlogCategoryAdminHtmlRenderer
             . '<input type="hidden" name="lock_version" value="'
             . $category->lockVersion() . '">'
             . $this->draftFields($category)
-            . '<button type="submit">Guardar cambios</button></form>'
+            . '<button class="webadminAction webadminAction--primary" '
+            . 'type="submit">Guardar cambios</button></form>'
             . $localizationAction
+            . '<form method="post" action="'
+            . $this->path($basePath . '/delete') . '" '
+            . 'data-blog-confirm-form '
+            . 'data-blog-confirm-action="category-delete" data-blog-title="'
+            . $this->escape($category->draft()->name()) . '">'
+            . $this->csrf($csrf)
+            . '<input type="hidden" name="category" value="'
+            . $this->escape($category->categoryPublicId()) . '">'
+            . '<input type="hidden" name="locale" value="'
+            . $this->escape($category->locale()) . '">'
+            . '<input type="hidden" name="lock_version" value="'
+            . $category->lockVersion() . '">'
+            . '<button class="webadminAction webadminAction--danger" '
+            . 'type="submit">Eliminar categor&iacute;a en este idioma'
+            . '</button></form>'
             . $this->back($basePath) . '</article>',
             $basePath,
             '/blog/categories/edit',
@@ -189,6 +212,8 @@ final class BlogCategoryAdminHtmlRenderer
         string $csrf,
         string $postPublicId,
         string $locale,
+        int $lockVersion,
+        int $categoryWorkspaceVersion,
         array $categories,
         array $assignedPublicIds,
         ?WebAdminShellContext $shell = null
@@ -221,9 +246,17 @@ final class BlogCategoryAdminHtmlRenderer
             . $this->path($basePath . '/assign') . '">'
             . $this->csrf($csrf)
             . '<input type="hidden" name="post" value="'
-            . $this->escape($postPublicId) . '"><fieldset>'
+            . $this->escape($postPublicId) . '">'
+            . '<input type="hidden" name="locale" value="'
+            . $this->escape($locale) . '">'
+            . '<input type="hidden" name="lock_version" value="'
+            . $lockVersion . '">'
+            . '<input type="hidden" name="category_workspace_version" value="'
+            . $categoryWorkspaceVersion . '"><fieldset>'
             . '<legend>Categor&iacute;as del art&iacute;culo</legend><ul>' . $items
-            . '</ul></fieldset><button type="submit">Guardar asignaci&oacute;n</button>'
+            . '</ul></fieldset><button class="webadminAction '
+            . 'webadminAction--primary" type="submit">'
+            . 'Guardar asignaci&oacute;n</button>'
             . '</form>' . $this->back($basePath) . '</article>',
             $basePath,
             '/blog/categories/assign',
@@ -322,6 +355,8 @@ final class BlogCategoryAdminHtmlRenderer
             activePath: $activePath,
             assets: new WebAdminPageAssets([
                 '/assets/modules/blog/blog-admin.css',
+            ], [
+                '/assets/modules/blog/blog-admin-list.js',
             ])
         );
 

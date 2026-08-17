@@ -591,6 +591,13 @@ final class MigrationDefinition
             '/\AINSERT\s+IGNORE\b/is',
             '/\AINSERT\s+INTO\b[\s\S]*\bON\s+DUPLICATE\s+KEY\s+UPDATE\b/i',
             '/\ADROP\s+(?:TABLE|VIEW|INDEX|TRIGGER|PROCEDURE|FUNCTION|EVENT)\s+IF\s+EXISTS\b/is',
+            '/\AALTER\s+TABLE\s+\{\{table:[a-z][a-z0-9_]*\}\}\s+'
+                . '\/\*!80016\s+DROP\s+CHECK\s+'
+                . '\{\{table:[a-z][a-z0-9_]*\}\}\s*,\s*\*\/\s*'
+                . '\/\*M!\s+DROP\s+CONSTRAINT\s+'
+                . '\{\{table:[a-z][a-z0-9_]*\}\}\s*,\s*\*\/\s*'
+                . 'ADD\s+CONSTRAINT\s+\{\{table:[a-z][a-z0-9_]*\}\}\s+'
+                . 'CHECK\s*\([\s\S]+\)\z/i',
         ] as $pattern) {
             if (preg_match($pattern, $sql) === 1) {
                 return true;

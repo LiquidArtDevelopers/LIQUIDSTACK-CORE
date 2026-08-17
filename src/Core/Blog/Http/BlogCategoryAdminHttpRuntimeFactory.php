@@ -11,12 +11,14 @@ use App\Core\Blog\Categories\BlogCategoryService;
 use App\Core\Blog\Categories\Persistence\PdoBlogCategoryRepository;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogConfigLoader;
+use App\Core\Blog\EditorialWorkflow\Persistence\PdoBlogEditorialWorkspaceRepository;
 use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Blog\Sitemap\BlogSitemapPublicationCoordinatorFactory;
 use App\Core\Blog\Sitemap\Cache\BlogSitemapCacheException;
 use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Modules\Blog\BlogCategoryHttpSchemaGate;
+use App\Core\Modules\Blog\BlogPrivateDraftPublicationSchemaGate;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\Modules\ModuleRuntimeContext;
@@ -235,6 +237,14 @@ final class BlogCategoryAdminHttpRuntimeFactory implements
                     $exception->issueCode()
                 );
             }
+            $workflowRepository =
+                (new BlogPrivateDraftPublicationSchemaGate())->isReady(
+                    $pdo,
+                    $registry,
+                    $scopes
+                )
+                    ? new PdoBlogEditorialWorkspaceRepository($pdo, $blogScope)
+                    : null;
 
             return new BlogCategoryAdminHttpRuntime(
                 $languages,
@@ -252,14 +262,19 @@ final class BlogCategoryAdminHttpRuntimeFactory implements
                     sitemapPublicationCoordinator: $sitemapCoordinator
                 ),
                 new BlogCategoryService(
-                    new PdoBlogCategoryRepository($pdo, $blogScope),
+                    new PdoBlogCategoryRepository(
+                        $pdo,
+                        $blogScope,
+                        $workflowRepository !== null
+                    ),
                     $this->uuidGenerator,
                     $this->clock,
                     new WebAdminBlogCategoryAuditAdapter(
                         $pdo,
                         $tables,
                         $this->uuidGenerator
-                    )
+                    ),
+                    $workflowRepository
                 ),
                 $authentication,
                 $authorization,

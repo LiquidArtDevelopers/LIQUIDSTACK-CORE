@@ -10,6 +10,7 @@ use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentCodec;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTextProjector;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorCategoryOption;
+use App\Core\Blog\StructuredContent\Rendering\BlogEditorPreviewSandboxPolicy;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorMediaOption;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorRevisionSummary;
 use App\Core\Blog\StructuredContent\Rendering\BlogStructuredEditorHtmlRenderer;
@@ -39,7 +40,8 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
                 3,
                 6,
                 new DateTimeImmutable('2026-08-02T12:30:00+02:00')
-            )]
+            )],
+            editorStylesheets: ['/assets/css/blogEditorTheme-A1b2.css']
         );
 
         self::assertStringStartsWith('<!doctype html><html lang="es">', $html);
@@ -52,6 +54,14 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             $html
         );
         self::assertStringContainsString(
+            '<link rel="stylesheet" href="/assets/css/blogEditorTheme-A1b2.css">',
+            $html
+        );
+        self::assertLessThan(
+            strpos($html, '/assets/css/blogEditorTheme-A1b2.css'),
+            strpos($html, '/assets/modules/blog/blog-admin.css')
+        );
+        self::assertStringContainsString(
             '<script src="/assets/modules/webadmin/webadmin.js" defer></script>',
             $html
         );
@@ -60,10 +70,45 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             $html
         );
         self::assertSame(1, substr_count($html, '<h1'));
+        self::assertStringNotContainsString('blogEditor__pageHeader', $html);
         self::assertStringContainsString(
-            '<form id="blog-editor-form" class="blogEditor__form" method="post" action="/admin/blog/editor/save" data-blog-editor data-blog-editor-readonly="false">',
+            '<h1 id="blog-editor-title" '
+                . 'class="webadminShell-visuallyHidden">'
+                . 'Editor visual del Blog</h1>',
             $html
         );
+        self::assertStringContainsString(
+            '<form id="blog-editor-form" class="blogEditor__form" method="post" action="/admin/blog/editor/save" data-blog-editor data-blog-editor-readonly="false" data-blog-layout-editor-ready="false"',
+            $html
+        );
+        self::assertStringContainsString('data-blog-heading-presets="[', $html);
+        self::assertStringContainsString(
+            'data-blog-heading-defaults="{&quot;h2&quot;:',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-technical-limits="{&quot;entry&quot;:',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-limit-field="meta_description"',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-field-feedback="meta_description"',
+            $html
+        );
+        self::assertStringContainsString(
+            'Recomendaci&oacute;n SEO orientativa: 120&ndash;160 caracteres.',
+            $html
+        );
+        foreach (['h1', 'slug', 'seo_title', 'meta_description', 'excerpt'] as $field) {
+            self::assertMatchesRegularExpression(
+                '/<(?:input|textarea)[^>]+name="' . $field
+                    . '"(?![^>]*\smaxlength=)[^>]*>/u',
+                $html
+            );
+        }
         self::assertStringContainsString('data-webadmin-shell', $html);
         self::assertStringContainsString('data-blog-inspector-tab="entry"', $html);
         self::assertStringContainsString('data-blog-inspector-tab="block"', $html);
@@ -95,6 +140,12 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             $html
         );
         self::assertStringContainsString('name="locale" value="es"', $html);
+        self::assertStringContainsString(
+            'class="blogEditor__entryLocale"><img '
+                . 'src="/assets/modules/blog/flags/es.svg"',
+            $html
+        );
+        self::assertStringContainsString('<span>ES</span>', $html);
         self::assertStringContainsString('name="lock_version" value="7"', $html);
         self::assertStringContainsString(
             'name="document_json" value="{&quot;schema&quot;:&quot;liquidstack.blog.document&quot;',
@@ -122,29 +173,33 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             $html
         );
         foreach ([
-            'paragraph', 'heading', 'list', 'callout',
-            'link', 'image', 'video', 'cta',
+            'paragraph', 'image', 'video', 'embed', 'cta',
         ] as $type) {
             self::assertStringContainsString(
                 'data-blog-add-block="' . $type . '"',
                 $html
             );
         }
-        self::assertStringContainsString(
-            'data-blog-heading-level="2">A&ntilde;adir secci&oacute;n H2',
-            $html
-        );
-        self::assertStringContainsString(
-            'data-blog-heading-level="3">A&ntilde;adir art&iacute;culo H3',
-            $html
-        );
-        foreach ([4, 5, 6] as $level) {
-            self::assertStringContainsString(
-                'data-blog-heading-level="' . $level
-                    . '">A&ntilde;adir subapartado H' . $level,
+        foreach (['heading', 'list', 'callout', 'link'] as $legacyTextType) {
+            self::assertStringNotContainsString(
+                'data-blog-add-block="' . $legacyTextType . '"',
                 $html
             );
         }
+        self::assertStringContainsString(
+            'data-blog-add-block="cta">A&ntilde;adir bot&oacute;n</button>',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-add-block="embed">A&ntilde;adir HTML</button>',
+            $html
+        );
+        self::assertStringNotContainsString('data-blog-heading-level=', $html);
+        self::assertStringContainsString(
+            'Texto re&uacute;ne p&aacute;rrafos, encabezados H2-H6, '
+                . 'listas, citas y destacados.',
+            $html
+        );
         self::assertStringContainsString(
             '>A&ntilde;adir v&iacute;deo de YouTube</button>',
             $html
@@ -159,49 +214,151 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             $html
         );
         self::assertStringContainsString(
-            'data-block-id="' . $this->id(1) . '">Bloque 1: P&aacute;rrafo',
+            'data-block-id="' . $this->id(1) . '">Bloque 1: Texto',
             $html
         );
         self::assertStringContainsString(
             'href="/admin/blog/editor/preview?post='
-            . $variant->postPublicId() . '&amp;locale=es" target="_blank" '
-            . 'rel="noopener noreferrer"',
-            $html
-        );
-        self::assertStringContainsString(
-            'href="/admin/blog/editor/revisions?post='
             . $variant->postPublicId() . '&amp;locale=es"',
             $html
         );
         self::assertStringContainsString(
-            'href="/admin/blog/posts/new?post=' . $variant->postPublicId()
-                . '">Otro idioma</a>',
+            'class="webadminAction webadminAction--secondary" '
+                . 'data-blog-editor-preview '
+                . 'href="/admin/blog/editor/preview?',
             $html
         );
+        self::assertStringNotContainsString(
+            'href="/admin/blog/editor/preview?post='
+            . $variant->postPublicId() . '&amp;locale=es" target="_blank"',
+            $html
+        );
+        self::assertStringNotContainsString(
+            'class="blogEditor__navigation"',
+            $html
+        );
+        self::assertStringContainsString(
+            'href="/admin/blog/editor/revisions?post=',
+            $html
+        );
+        self::assertStringContainsString(
+            '<a class="webadminAction webadminAction--secondary" '
+                . 'href="/admin/blog/editor/revisions?',
+            $html
+        );
+        self::assertStringNotContainsString('Revisiones recientes', $html);
+        self::assertStringNotContainsString(
+            'class="blogEditor__revisions"',
+            $html
+        );
+        self::assertStringNotContainsString('>Otro idioma</a>', $html);
+        self::assertStringContainsString(
+            '<div class="blogEditor__save blogEditor__actionBar '
+                . 'webadminActionGroup" '
+                . 'role="group" aria-label="Acciones del art&iacute;culo">',
+            $html
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--secondary" '
+                . 'type="submit" form="blog-editor-form" '
+                . 'data-blog-editor-save>Guardar documento</button>',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-editor-status '
+                . 'data-blog-editor-form="blog-editor-form"',
+            $html
+        );
+        self::assertStringNotContainsString('>Volver al Blog</a>', $html);
         self::assertStringNotContainsString('/categories/assign', $html);
         self::assertStringNotContainsString('/posts/publish', $html);
-        self::assertStringContainsString(
-            '<form method="post" action="/admin/blog/editor/restore">',
-            $html
-        );
-        self::assertStringContainsString(
+        self::assertStringContainsString('>Revisiones</a>', $html);
+        self::assertStringNotContainsString('/editor/restore', $html);
+        self::assertStringNotContainsString(
             'name="revision" value="' . $revisionId . '"',
             $html
         );
-        self::assertStringContainsString(
-            '<time datetime="2026-08-02T10:30:00+00:00">2026-08-02 10:30 UTC</time>',
-            $html
-        );
         self::assertDoesNotMatchRegularExpression('/\s(?:style|on[a-z]+)=/i', $html);
-        self::assertSame(2, substr_count($html, '<script '));
+        self::assertSame(3, substr_count($html, '<script '));
         self::assertSame(
-            2,
+            3,
             preg_match_all(
                 '/<script src="[^"]+" defer><\/script>/',
                 $html
             )
         );
+        self::assertStringContainsString(
+            '/assets/modules/webadmin/webadmin-media-picker.css',
+            $html
+        );
+        self::assertStringContainsString(
+            '/assets/modules/webadmin/webadmin-media-picker.js',
+            $html
+        );
         self::assertStringNotContainsString('<iframe', strtolower($html));
+    }
+
+    public function testLayoutEditorCapabilityIsExposedExplicitly(): void
+    {
+        $document = $this->document();
+        $html = (new BlogStructuredEditorHtmlRenderer())->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $this->variant($document),
+            $document,
+            (new BlogDocumentCodec())->encode($document),
+            layoutEditorReady: true
+        );
+
+        self::assertStringContainsString(
+            'data-blog-layout-editor-ready="true"',
+            $html
+        );
+    }
+
+    public function testAdvancedPreviewReceivesOneClosedNoncePolicy(): void
+    {
+        $document = $this->document();
+        $nonce = 'abcdefghijklmnopQRSTUVWX';
+        $policy = new BlogEditorPreviewSandboxPolicy($nonce);
+        $html = (new BlogStructuredEditorHtmlRenderer())->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $this->variant($document),
+            $document,
+            (new BlogDocumentCodec())->encode($document),
+            layoutEditorReady: true,
+            previewSandbox: $policy
+        );
+
+        self::assertStringContainsString(
+            'data-blog-advanced-preview-style-nonce="' . $nonce . '"',
+            $html
+        );
+        preg_match(
+            '/data-blog-advanced-preview-csp="([^"]+)"/',
+            $html,
+            $policyMatch
+        );
+        self::assertSame(
+            $policy->contentSecurityPolicy(),
+            html_entity_decode(
+                $policyMatch[1],
+                ENT_QUOTES | ENT_HTML5,
+                'UTF-8'
+            )
+        );
+        self::assertStringNotContainsString("'unsafe-inline'", $html);
+        self::assertSame(
+            2,
+            substr_count($policy->contentSecurityPolicy(), "'nonce-$nonce'")
+        );
+    }
+
+    public function testAdvancedPreviewRejectsAnInvalidStyleNonce(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new BlogEditorPreviewSandboxPolicy("bad'nonce");
     }
 
     public function testWorkflowControlsRespectPresentationCapabilities(): void
@@ -220,12 +377,13 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
         );
 
         self::assertStringContainsString(
-            'href="/admin/blog/categories/assign?post='
-                . $draft->postPublicId() . '&amp;locale=es"',
+            'data-blog-category-manager-open',
             $draftHtml
         );
         self::assertStringContainsString(
-            '<form method="post" action="/admin/blog/posts/publish">',
+            '<form id="blog-editor-publish-form" method="post" '
+                . 'data-blog-editor-publish-form '
+                . 'action="/admin/blog/posts/publish">',
             $draftHtml
         );
         self::assertStringContainsString('>Publicar</button>', $draftHtml);
@@ -250,8 +408,32 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             '<form method="post" action="/admin/blog/posts/unpublish">',
             $publishedHtml
         );
-        self::assertStringContainsString('>Retirar</button>', $publishedHtml);
+        self::assertStringContainsString(
+            '>Retirar publicaci&oacute;n</button>',
+            $publishedHtml
+        );
         self::assertStringNotContainsString('/categories/assign', $publishedHtml);
+
+        $privateWorkflowHtml = $renderer->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $published,
+            $document,
+            (new BlogDocumentCodec())->encode($document),
+            canPublish: true,
+            privateDraftPublicationReady: true
+        );
+        self::assertStringContainsString(
+            '<form id="blog-editor-publish-form" method="post" '
+                . 'data-blog-editor-publish-form '
+                . 'action="/admin/blog/editor/publish">',
+            $privateWorkflowHtml
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Publicar</button>',
+            $privateWorkflowHtml
+        );
     }
 
     public function testCategoryAssignmentIsLocalizedTypedAndSeparate(): void
@@ -311,18 +493,40 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
                 . 'aria-live="polite"',
             $html
         );
+        $adminCss = file_get_contents(
+            dirname(__DIR__, 3)
+                . '/modules/blog/published/assets/blog-admin.css'
+        );
+        self::assertIsString($adminCss);
         self::assertStringContainsString(
-            'href="/admin/blog/categories/new" target="_blank" '
-                . 'rel="noopener noreferrer">Crear categor&iacute;a '
-                . '(se abre aparte)</a>',
+            '[data-blog-category-manager-status]'
+                . "\n    ):empty {\n    display: none;",
+            $adminCss
+        );
+        self::assertStringContainsString(
+            'data-blog-category-tools '
+                . 'data-blog-category-endpoint="/admin/blog/categories" '
+                . 'data-blog-category-locale="es"',
             $html
         );
         self::assertStringContainsString(
-            'href="/admin/blog/categories/assign?post='
-                . $variant->postPublicId() . '&amp;locale=es" '
-                . 'target="_blank" rel="noopener noreferrer"',
+            'data-blog-category-quick-form',
             $html
         );
+        self::assertStringContainsString(
+            'data-blog-category-manager-open',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-category-manager aria-labelledby="'
+                . 'blog-editor-category-manager-title"',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-blog-category-manager-create',
+            $html
+        );
+        self::assertStringNotContainsString('target="_blank"', $html);
 
         preg_match(
             '/<form method="post" action="\/admin\/blog\/categories\/assign"'
@@ -334,6 +538,56 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
         self::assertStringNotContainsString(
             'name="locale"',
             $categoryForm[0]
+        );
+    }
+
+    public function testRobotsControlsAreFormAssociatedAndDummyForcesSafeState(): void
+    {
+        $document = $this->document();
+        $renderer = new BlogStructuredEditorHtmlRenderer();
+        $html = $renderer->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $this->variant($document),
+            $document,
+            (new BlogDocumentCodec())->encode($document)
+        );
+
+        self::assertStringContainsString(
+            'data-blog-robots-controls data-blog-dummy-category="false"',
+            $html
+        );
+        foreach (['index', 'follow'] as $directive) {
+            self::assertStringContainsString(
+                'name="robots_' . $directive . '" value="0" '
+                    . 'form="blog-editor-form"',
+                $html
+            );
+            self::assertMatchesRegularExpression(
+                '/name="robots_' . $directive
+                    . '" type="checkbox" value="1" '
+                    . 'form="blog-editor-form" checked/',
+                $html
+            );
+        }
+
+        $dummyHtml = $renderer->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $this->variant($document),
+            $document,
+            (new BlogDocumentCodec())->encode($document),
+            dummyCategoryAssigned: true
+        );
+        self::assertStringContainsString(
+            'data-blog-robots-controls data-blog-dummy-category="true"',
+            $dummyHtml
+        );
+        self::assertSame(2, substr_count($dummyHtml, ' disabled '));
+        self::assertStringNotContainsString('form="blog-editor-form" checked', $dummyHtml);
+        self::assertStringContainsString(
+            '<strong>noindex,nofollow</strong>',
+            $dummyHtml
         );
     }
 
@@ -375,14 +629,13 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             $html
         );
         self::assertMatchesRegularExpression(
-            '/<button type="submit" disabled>Guardar documento<\/button>/',
+            '/<button class="webadminAction webadminAction--secondary" '
+                . 'type="submit" form="blog-editor-form" '
+                . 'data-blog-editor-save disabled>Guardar documento<\/button>/',
             $html
         );
-        self::assertMatchesRegularExpression(
-            '/action="\/admin\/blog\/editor\/restore"[\s\S]+?'
-            . '<button type="submit" disabled>Restaurar esta revisi&oacute;n<\/button>/',
-            $html
-        );
+        self::assertStringContainsString('>Revisiones</a>', $html);
+        self::assertStringNotContainsString('/editor/restore', $html);
     }
 
     public function testEmptyCatalogDisablesOnlyNewImageButton(): void
@@ -404,7 +657,8 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             'data-blog-add-block="paragraph">',
             $html
         );
-        self::assertStringContainsString(
+        self::assertStringContainsString('>Revisiones</a>', $html);
+        self::assertStringNotContainsString(
             '<li>No hay revisiones guardadas.</li>',
             $html
         );
@@ -435,6 +689,73 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
         self::assertStringContainsString('aria-hidden="true"', $catalog[0]);
         self::assertStringContainsString('tabindex="-1"', $catalog[0]);
         self::assertStringNotContainsString(' name=', $catalog[0]);
+    }
+
+    public function testContextualMediaPickerAllowsViewWithoutGrantingUpload(): void
+    {
+        $document = $this->document();
+        $mediaId = $this->id(900_001);
+        $media = new BlogEditorMediaOption(
+            $mediaId,
+            'Portada Matrix',
+            '/admin/media/file?asset=' . $mediaId . '&width=480'
+        );
+        $renderer = new BlogStructuredEditorHtmlRenderer();
+        $withoutUpload = $renderer->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $this->variant($document),
+            $document,
+            (new BlogDocumentCodec())->encode($document),
+            [$media]
+        );
+        self::assertStringContainsString(
+            'data-webadmin-media-picker-owner="blog-editor-form"',
+            $withoutUpload
+        );
+        self::assertStringContainsString(
+            'data-webadmin-media-picker-catalog="/admin/media/catalog"',
+            $withoutUpload
+        );
+        self::assertStringNotContainsString(
+            'data-webadmin-media-picker-upload',
+            $withoutUpload
+        );
+
+        $html = $renderer->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $this->variant($document),
+            $document,
+            (new BlogDocumentCodec())->encode($document),
+            [$media],
+            canUploadMedia: true
+        );
+
+        self::assertStringContainsString(
+            'data-webadmin-media-picker-owner="blog-editor-form"',
+            $html
+        );
+        self::assertStringContainsString(
+            'action="/admin/media/upload"',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-webadmin-media-picker-upload',
+            $html
+        );
+        self::assertStringContainsString(
+            '<input type="hidden" name="csrf" value="csrf-token-safe">',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-webadmin-media-picker-progress hidden',
+            $html
+        );
+        self::assertLessThan(
+            strpos($html, 'data-webadmin-media-picker-owner'),
+            strpos($html, '</form>')
+        );
     }
 
     public function testCanonicalJsonAndDocumentMustMatch(): void

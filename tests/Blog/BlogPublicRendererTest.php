@@ -9,16 +9,81 @@ use App\Core\Blog\BlogSitemapEntry;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogAnalyticsConfig;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
+use App\Core\Blog\Http\BlogPublicArticleShellContext;
 use App\Core\Blog\Http\BlogPublicHtmlRenderer;
 use App\Core\Blog\Http\BlogSitemapRenderer;
+use App\Core\Blog\PublicShell\BlogPublicShellSecurityContext;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Rendering\BlogImageResolverInterface;
 use App\Core\Blog\StructuredContent\Rendering\BlogResolvedImage;
 use App\Core\Blog\StructuredContent\Rendering\BlogResolvedImageCandidate;
+use App\Core\WebAdmin\Profile\WebAdminPublicProfile;
+use App\Core\WebAdmin\Profile\WebAdminTimeZone;
 use PHPUnit\Framework\TestCase;
 
 final class BlogPublicRendererTest extends TestCase
 {
+    public function testLiveAuthorProfileAndLocalizedDateAreRenderedInHero(): void
+    {
+        $profile = new WebAdminPublicProfile(
+            '33333333-3333-4333-8333-333333333333',
+            '<Igor & equipo>',
+            'site_admin',
+            'Administrador',
+            WebAdminTimeZone::utc(),
+            false,
+            0
+        );
+        $html = (new BlogPublicHtmlRenderer())->render(
+            $this->variant('Matrix body'),
+            'https://example.test/news/matrix',
+            authorProfile: $profile
+        );
+
+        self::assertStringContainsString(
+            'class="blogArticleHero-signature"',
+            $html
+        );
+        self::assertStringContainsString('&lt;Igor &amp; equipo&gt;', $html);
+        self::assertStringContainsString('Administrador', $html);
+        self::assertStringContainsString('UTC</time>', $html);
+        self::assertStringNotContainsString('<Igor & equipo>', $html);
+    }
+
+    public function testPersistedRobotsPreferencesReachStandaloneAndProjectSsr(): void
+    {
+        $variant = $this->variant(
+            'Robots body.',
+            BlogRobotsPreferences::noIndexNoFollow()
+        );
+        $standalone = (new BlogPublicHtmlRenderer())->render(
+            $variant,
+            'https://example.test/news/robots'
+        );
+        self::assertStringContainsString(
+            '<meta name="robots" content="noindex,nofollow">',
+            $standalone
+        );
+
+        $view = tempnam(sys_get_temp_dir(), 'liquidstack-blog-robots-');
+        self::assertIsString($view);
+        file_put_contents($view, <<<'PHP'
+<?php echo $blogArticle->robotsDirective();
+PHP);
+        try {
+            self::assertSame(
+                'noindex,nofollow',
+                (new BlogPublicHtmlRenderer($view))->render(
+                    $variant,
+                    'https://example.test/news/robots'
+                )
+            );
+        } finally {
+            @unlink($view);
+        }
+    }
+
     public function testPublishedPlainTextIsEscapedAndSplitIntoParagraphs(): void
     {
         $variant = $this->variant(
@@ -30,7 +95,11 @@ final class BlogPublicRendererTest extends TestCase
         );
 
         self::assertStringContainsString('<html lang="en">', $html);
-        self::assertStringContainsString('<h1>Matrix &amp; systems</h1>', $html);
+        self::assertStringContainsString(
+            '<h1 class="moduleH1Type04-title">'
+                . 'Matrix &amp; systems</h1>',
+            $html
+        );
         self::assertStringContainsString(
             '<p>First line' . "\n" . 'continued</p>',
             $html
@@ -40,7 +109,7 @@ final class BlogPublicRendererTest extends TestCase
             '<script src="/assets/modules/blog/blog-public.js" defer></script>',
             $html
         );
-        self::assertSame(1, substr_count($html, '<h1>'));
+        self::assertSame(1, substr_count($html, '<h1'));
         self::assertStringContainsString(
             '<meta name="robots" content="index,follow">',
             $html
@@ -81,7 +150,7 @@ final class BlogPublicRendererTest extends TestCase
         );
     }
 
-    public function testProjectViewReceivesOnlyTheTypedSafeProjection(): void
+    public function testProjectViewReceivesTypedArticleAndShellProjections(): void
     {
         $view = tempnam(sys_get_temp_dir(), 'liquidstack-blog-view-');
         self::assertIsString($view);
@@ -89,6 +158,12 @@ final class BlogPublicRendererTest extends TestCase
 <?php
 if (!$blogArticle instanceof \App\Core\Blog\Http\BlogPublicArticleViewModel) {
     throw new \RuntimeException('Unexpected model.');
+}
+if (!$blogArticleShell instanceof \App\Core\Blog\Http\BlogPublicArticleShellContext) {
+    throw new \RuntimeException('Unexpected shell context.');
+}
+if ($blogArticleShell->security()->nonce() !== $blogArticleShell->nonce()) {
+    throw new \RuntimeException('Incoherent shell context.');
 }
 $escape = static fn (string $value): string => htmlspecialchars(
     $value,
@@ -111,12 +186,22 @@ foreach ($blogArticle->languageNavigationUrls() as $locale => $url) {
     echo '<a data-language="' . $escape($locale) . '" href="' . $escape($url) . '"></a>';
 }
 echo '<div data-cover="' . ($blogArticle->coverImageUrl() ?? '') . '">';
-echo $blogArticle->bodyHtml() . '</div></body></html>';
+echo $blogArticle->bodyHtml() . '</div>';
+echo '<script nonce="' . $escape($blogArticleShell->nonce()) . '" src="'
+    . $escape($blogArticleShell->publicRuntimeUrl()) . '" defer></script>';
+echo '</body></html>';
 PHP);
 
         try {
             $renderer = new BlogPublicHtmlRenderer($view);
             self::assertTrue($renderer->usesProjectArticleView());
+            $nonce = 'renderercontextnonce000001';
+            $shellContext = new BlogPublicArticleShellContext(
+                new BlogPublicShellSecurityContext($nonce, [
+                    'Content-Security-Policy' =>
+                        "default-src 'self'; script-src 'nonce-{$nonce}'",
+                ])
+            );
             $html = $renderer->render(
                 $this->variant("First & \"quoted\"\n\nSecond & final"),
                 'https://example.test/en/news/matrix',
@@ -129,7 +214,8 @@ PHP);
                     'es' => 'https://example.test/noticias/matrix',
                     'en' => 'https://example.test/en/news/matrix',
                     'eu' => 'https://example.test/eu/albisteak',
-                ]
+                ],
+                shellContext: $shellContext
             );
 
             self::assertStringContainsString(
@@ -165,7 +251,12 @@ PHP);
                 'data-language="eu" href="https://example.test/eu/albisteak"',
                 $html
             );
-            self::assertStringNotContainsString('<script>', $html);
+            self::assertStringContainsString(
+                '<script nonce="' . $nonce . '" src="'
+                    . BlogPublicArticleShellContext::PUBLIC_RUNTIME_URL
+                    . '" defer></script>',
+                $html
+            );
             self::assertStringNotContainsString(
                 BlogPublicHtmlRenderer::STANDALONE_STYLESHEET,
                 $html
@@ -204,6 +295,104 @@ PHP);
 
             self::assertSame('', $leaked);
         }
+    }
+
+    public function testProjectViewCanBindScopedCustomCssToShellNonce(): void
+    {
+        $document = BlogDocument::fromArray([
+            'schema' => BlogDocument::SCHEMA,
+            'version' => BlogDocument::LAYOUT_VERSION,
+            'template' => 'article-basic-01',
+            'blocks' => [[
+                'id' => '40000000-0000-4000-8000-000000000001',
+                'type' => 'section',
+                'children' => [[
+                    'id' => '40000000-0000-4000-8000-000000000002',
+                    'type' => 'heading',
+                    'level' => 2,
+                    'content' => [[
+                        'type' => 'text',
+                        'text' => 'Custom section',
+                        'marks' => [],
+                    ]],
+                    'presentation' => [
+                        'width' => 'full',
+                        'align' => 'start',
+                        'text_align' => 'start',
+                    ],
+                ], [
+                    'id' => '40000000-0000-4000-8000-000000000003',
+                    'type' => 'paragraph',
+                    'html' => '<p class="lead">Custom article</p>',
+                    'css' => 'color:#123;.lead{font-weight:700;}',
+                    'presentation' => [
+                        'width' => 'full',
+                        'align' => 'start',
+                        'text_align' => 'start',
+                    ],
+                ]],
+            ]],
+        ]);
+        $resolver = new class implements BlogImageResolverInterface {
+            public function resolve(string $mediaAssetPublicId): ?BlogResolvedImage
+            {
+                return null;
+            }
+        };
+        $nonce = 'customcssshellnonce000001';
+        $shellContext = new BlogPublicArticleShellContext(
+            new BlogPublicShellSecurityContext($nonce, [
+                'Content-Security-Policy' =>
+                    "default-src 'self'; script-src 'nonce-{$nonce}'; "
+                        . "style-src 'self' 'unsafe-inline'",
+            ])
+        );
+        $view = tempnam(sys_get_temp_dir(), 'liquidstack-blog-css-shell-');
+        self::assertIsString($view);
+        file_put_contents($view, <<<'PHP'
+<?php
+$escape = static fn (string $value): string => htmlspecialchars(
+    $value,
+    ENT_QUOTES | ENT_SUBSTITUTE,
+    'UTF-8'
+);
+echo '<style nonce="' . $escape($blogArticleShell->nonce()) . '">'
+    . $blogArticle->customCss() . '</style>';
+echo '<script nonce="' . $escape($blogArticleShell->nonce()) . '" src="'
+    . $escape($blogArticleShell->publicRuntimeUrl()) . '" defer></script>';
+PHP);
+
+        try {
+            $html = (new BlogPublicHtmlRenderer($view))->renderStructured(
+                $this->variant('Matrix body'),
+                'https://example.test/en/news/matrix',
+                $document,
+                $resolver,
+                styleNonce: $nonce,
+                shellContext: $shellContext
+            );
+        } finally {
+            @unlink($view);
+        }
+
+        self::assertStringContainsString(
+            '<style nonce="' . $nonce . '">',
+            $html
+        );
+        self::assertStringContainsString(
+            '[data-ls-blog-custom="40000000-0000-4000-8000-000000000003"]',
+            $html
+        );
+        self::assertStringContainsString(
+            '<script nonce="' . $nonce . '" src="'
+                . BlogPublicArticleShellContext::PUBLIC_RUNTIME_URL
+                . '" defer></script>',
+            $html
+        );
+        self::assertStringContainsString(
+            "'nonce-{$nonce}'",
+            $shellContext->security()->headers()['Content-Security-Policy']
+        );
     }
 
     public function testSitemapUsesOnlyConfiguredCanonicalOriginAndSorts(): void
@@ -394,7 +583,10 @@ PHP);
             $xpath->query(
                 '/html/body/header['
                     . 'contains(concat(" ", normalize-space(@class), " "), '
-                    . '" blogArticleHeader ")'
+                    . '" blogArticleHero ")'
+                    . ']/div['
+                    . 'contains(concat(" ", normalize-space(@class), " "), '
+                    . '" blogArticleHero-media ")'
                     . ']/figure['
                     . 'contains(concat(" ", normalize-space(@class), " "), '
                     . '" blogDocument__image--cover ")'
@@ -450,7 +642,8 @@ PHP);
                 $projectHtml
             );
             self::assertStringContainsString(
-                'class="blogDocument blogDocument--cover"',
+                'class="blogDocument blogDocument--cover '
+                    . 'blogDocument--background-white"',
                 $projectHtml
             );
             self::assertSame(
@@ -530,9 +723,82 @@ PHP);
             '<script src="/assets/modules/blog/blog-analytics.js"',
             $enabled
         );
+
+        $nonce = 'analyticsshellnonce000001';
+        $shellContext = new BlogPublicArticleShellContext(
+            new BlogPublicShellSecurityContext($nonce, [
+                'Content-Security-Policy' =>
+                    "default-src 'self'; script-src 'nonce-{$nonce}'",
+            ])
+        );
+        $view = tempnam(sys_get_temp_dir(), 'liquidstack-blog-analytics-');
+        self::assertIsString($view);
+        file_put_contents($view, <<<'PHP'
+<?php
+echo '<html';
+if ($blogArticle->analyticsEnabled()) {
+    echo ' data-blog-analytics-enabled="true"'
+        . ' data-blog-analytics-retention-days="'
+        . $blogArticle->analyticsRetentionDays() . '"'
+        . ' data-blog-analytics-session-timeout="'
+        . $blogArticle->analyticsSessionTimeoutSeconds() . '"'
+        . ' data-blog-analytics-page-grant="'
+        . htmlspecialchars(
+            (string) $blogArticle->analyticsPageGrant(),
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8'
+        ) . '"';
+}
+echo '><script nonce="'
+    . htmlspecialchars(
+        $blogArticleShell->nonce(),
+        ENT_QUOTES | ENT_SUBSTITUTE,
+        'UTF-8'
+    ) . '" src="'
+    . htmlspecialchars(
+        $blogArticleShell->publicRuntimeUrl(),
+        ENT_QUOTES | ENT_SUBSTITUTE,
+        'UTF-8'
+    ) . '" defer></script></html>';
+PHP);
+        try {
+            $projectRenderer = new BlogPublicHtmlRenderer($view);
+            $projectDisabled = $projectRenderer->render(
+                $this->variant('Matrix body'),
+                'https://example.test/news/matrix',
+                shellContext: $shellContext
+            );
+            $projectEnabled = $projectRenderer->render(
+                $this->variant('Matrix body'),
+                'https://example.test/news/matrix',
+                analytics: new BlogAnalyticsConfig(true, 120, 2400),
+                analyticsPageGrant: 'eyJ2IjoxfQ.' . str_repeat('a', 43),
+                shellContext: $shellContext
+            );
+        } finally {
+            @unlink($view);
+        }
+        self::assertStringNotContainsString(
+            'data-blog-analytics-enabled',
+            $projectDisabled
+        );
+        foreach ([
+            'data-blog-analytics-enabled="true"',
+            'data-blog-analytics-retention-days="120"',
+            'data-blog-analytics-session-timeout="2400"',
+            'data-blog-analytics-page-grant="eyJ2IjoxfQ.',
+            '<script nonce="' . $nonce . '" src="'
+                . BlogPublicArticleShellContext::PUBLIC_RUNTIME_URL
+                . '" defer>',
+        ] as $marker) {
+            self::assertStringContainsString($marker, $projectEnabled);
+        }
     }
 
-    private function variant(string $body): BlogPostVariant
+    private function variant(
+        string $body,
+        ?BlogRobotsPreferences $robotsPreferences = null
+    ): BlogPostVariant
     {
         $now = new DateTimeImmutable('2026-01-01T00:00:00Z');
 
@@ -546,7 +812,8 @@ PHP);
                 'matrix',
                 'Matrix & title',
                 'Matrix "description"',
-                'Matrix excerpt'
+                'Matrix excerpt',
+                $robotsPreferences
             ),
             BlogPostVariant::PUBLISHED,
             $now,

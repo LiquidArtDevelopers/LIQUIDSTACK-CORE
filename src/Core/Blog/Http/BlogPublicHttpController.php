@@ -7,12 +7,19 @@ namespace App\Core\Blog\Http;
 use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\PublicFeed\BlogPublicRelatedQuery;
+use App\Core\Blog\PublicShell\BlogPublicShellSecurityContext;
+use App\Core\Blog\Seo\BlogPublicRobotsPolicy;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
+use App\Core\Blog\Seo\BlogUrlResolution;
+use App\Core\Blog\StructuredContent\Document\BlogSafeIframePolicy;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use Throwable;
 
 final class BlogPublicHttpController
 {
+    private readonly BlogPublicRobotsPolicy $robotsPolicy;
+
     public function __construct(
         private readonly BlogPublicHttpRuntime $runtime,
         private readonly BlogPublicHtmlRenderer $articleRenderer =
@@ -20,8 +27,10 @@ final class BlogPublicHttpController
         private readonly BlogSitemapRenderer $sitemapRenderer =
             new BlogSitemapRenderer(),
         private readonly BlogPublicMediaHttpResponseFactory
-            $mediaResponseFactory = new BlogPublicMediaHttpResponseFactory()
+            $mediaResponseFactory = new BlogPublicMediaHttpResponseFactory(),
+        ?BlogPublicRobotsPolicy $robotsPolicy = null
     ) {
+        $this->robotsPolicy = $robotsPolicy ?? $runtime->robotsPolicy();
     }
 
     public function article(string $locale, string $slug): ?Response
@@ -32,7 +41,7 @@ final class BlogPublicHttpController
                 $slug
             );
             if ($variant === null) {
-                return null;
+                return $this->retiredUrlResponse($locale, $slug);
             }
             $base = $this->runtime->config()->publicPath($locale);
             if ($base === null) {
@@ -60,6 +69,16 @@ final class BlogPublicHttpController
             $analytics = $analyticsPageGrant === null
                 ? null
                 : $this->runtime->publicAnalyticsConfig();
+            $robotsPreferences = $this->robotsPolicy->effectiveFor($variant);
+            try {
+                $authorProfile = $this->runtime->authorProfile(
+                    $variant->createdByUserPublicId()
+                );
+            } catch (Throwable) {
+                // The public article remains available if optional profile
+                // projection is temporarily unavailable.
+                $authorProfile = null;
+            }
             try {
                 $relatedArticles = $this->runtime->publicFeed()
                     ->cardsForRelated(new BlogPublicRelatedQuery(
@@ -71,6 +90,18 @@ final class BlogPublicHttpController
                 // an otherwise valid published article unavailable.
                 $relatedArticles = [];
             }
+            $usesProjectArticleView =
+                $this->articleRenderer->usesProjectArticleView();
+            $projectSecurity = $usesProjectArticleView
+                ? $this->runtime->publicShellSecurityPolicy()->context()
+                : null;
+            $shellContext = $projectSecurity === null
+                ? null
+                : new BlogPublicArticleShellContext($projectSecurity);
+            $styleNonce = $structured === null
+                ? null
+                : ($projectSecurity?->nonce()
+                    ?? base64_encode(random_bytes(18)));
             $html = $structured === null
                 ? $this->articleRenderer->renderFromOrigin(
                     $variant,
@@ -81,7 +112,10 @@ final class BlogPublicHttpController
                     $languageNavigationPaths,
                     $relatedArticles,
                     $analytics,
-                    $analyticsPageGrant
+                    $analyticsPageGrant,
+                    $robotsPreferences,
+                    $authorProfile,
+                    $shellContext
                 )
                 : $this->articleRenderer->renderStructuredFromOrigin(
                     $variant,
@@ -96,13 +130,22 @@ final class BlogPublicHttpController
                     $languageNavigationPaths,
                     $relatedArticles,
                     $analytics,
-                    $analyticsPageGrant
+                    $analyticsPageGrant,
+                    $robotsPreferences,
+                    $authorProfile,
+                    $styleNonce,
+                    $shellContext
                 );
 
             return new Response(
                 200,
                 $html,
-                $this->articleHeaders($analyticsPageGrant !== null)
+                $this->articleHeaders(
+                    $robotsPreferences,
+                    $analyticsPageGrant !== null,
+                    $styleNonce,
+                    $projectSecurity
+                )
             );
         } catch (BlogException $exception) {
             if ($exception->issueCode() === BlogException::INVALID_INPUT) {
@@ -115,6 +158,42 @@ final class BlogPublicHttpController
         } catch (Throwable) {
             throw new BlogPublicHttpRuntimeException();
         }
+    }
+
+    private function retiredUrlResponse(
+        string $locale,
+        string $slug
+    ): ?Response {
+        $resolution = $this->runtime->urlResolution($locale, $slug);
+        if ($resolution === null) {
+            return null;
+        }
+        $headers = [
+            'Cache-Control' => 'public, max-age=60, must-revalidate',
+            'X-Robots-Tag' => 'noindex, nofollow',
+            'X-Content-Type-Options' => 'nosniff',
+            'Referrer-Policy' => 'no-referrer',
+        ];
+        if ($resolution->state() === BlogUrlResolution::REDIRECT) {
+            $targetLocale = $resolution->redirectLocale();
+            $targetSlug = $resolution->redirectSlug();
+            $base = $targetLocale === null
+                ? null : $this->runtime->config()->publicPath($targetLocale);
+            if ($base === null || $targetSlug === null) {
+                return new Response(404, '', $headers);
+            }
+
+            return new Response(301, '', [
+                'Location' => $base . '/' . $targetSlug,
+                'Cache-Control' => 'public, max-age=300, must-revalidate',
+                'X-Robots-Tag' => 'noindex, follow',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        }
+        $status = $resolution->state() === BlogUrlResolution::GONE
+            ? 410 : 404;
+
+        return new Response($status, '', $headers);
     }
 
     public function media(
@@ -217,7 +296,12 @@ final class BlogPublicHttpController
     }
 
     /** @return array<string, string> */
-    private function articleHeaders(bool $containsAnalyticsGrant = false): array
+    private function articleHeaders(
+        BlogRobotsPreferences $robotsPreferences,
+        bool $containsAnalyticsGrant = false,
+        #[\SensitiveParameter] ?string $styleNonce = null,
+        ?BlogPublicShellSecurityContext $projectSecurity = null
+    ): array
     {
         $headers = [
             'Content-Type' => 'text/html; charset=utf-8',
@@ -229,21 +313,46 @@ final class BlogPublicHttpController
             'X-Frame-Options' => 'DENY',
             'Cross-Origin-Opener-Policy' => 'same-origin',
             'Cross-Origin-Resource-Policy' => 'same-origin',
+            'X-Robots-Tag' => $robotsPreferences->directive(),
         ];
         if ($containsAnalyticsGrant) {
             $headers['Cache-Control'] = 'private, no-store';
         }
 
-        if (!$this->articleRenderer->usesProjectArticleView()) {
-            $headers['Content-Security-Policy'] =
-                "default-src 'none'; style-src 'self'; "
-                . "script-src 'self'; script-src-attr 'none'; "
-                . "connect-src 'self'; "
-                . "img-src 'self' data:; "
-                . "frame-src https://www.youtube-nocookie.com; "
-                . "frame-ancestors 'none'; base-uri 'none'; "
-                . "form-action 'none'";
+        if ($this->articleRenderer->usesProjectArticleView()) {
+            if ($projectSecurity === null) {
+                throw new BlogPublicHttpRuntimeException();
+            }
+
+            return array_replace($headers, $projectSecurity->headers());
         }
+
+        // The standalone shell may compose the managed hero00 resource.
+        // Its only dynamic presentation attribute is the sanitized
+        // background-image fallback emitted by CORE. Structured Blog
+        // content never accepts arbitrary style attributes, so allow
+        // attributes here without relaxing external <style> sources.
+        $nonceSource = $styleNonce === null
+            ? '' : " 'nonce-" . $styleNonce . "'";
+        if (
+            $styleNonce !== null
+            && preg_match(
+                '/\A[A-Za-z0-9+\/_-]{16,128}={0,2}\z/D',
+                $styleNonce
+            ) !== 1
+        ) {
+            throw new BlogPublicHttpRuntimeException();
+        }
+        $headers['Content-Security-Policy'] =
+            "default-src 'none'; style-src 'self'" . $nonceSource . "; "
+            . "style-src-attr 'unsafe-inline'; "
+            . "script-src 'self'; script-src-attr 'none'; "
+            . "connect-src 'self'; "
+            . "img-src 'self' data:; "
+            . 'frame-src '
+            . implode(' ', BlogSafeIframePolicy::cspSources()) . '; '
+            . "frame-ancestors 'none'; base-uri 'none'; "
+            . "form-action 'none'";
 
         return $headers;
     }

@@ -8,9 +8,12 @@ use App\Core\Blog\BlogException;
 use App\Core\Blog\Categories\Audit\BlogCategoryAuditEvent;
 use App\Core\Blog\Categories\Audit\BlogCategoryAuditPortInterface;
 use App\Core\Blog\Categories\Persistence\BlogCategoryLocaleLookupRepositoryInterface;
+use App\Core\Blog\Categories\Persistence\BlogCategoryDeletionRepositoryInterface;
 use App\Core\Blog\Categories\Persistence\BlogCategoryPersistenceConflict;
 use App\Core\Blog\Categories\Persistence\BlogCategoryPersistenceException;
 use App\Core\Blog\Categories\Persistence\BlogCategoryRepositoryInterface;
+use App\Core\Blog\Categories\Persistence\BlogReservedCategoryRepositoryInterface;
+use App\Core\Blog\EditorialWorkflow\Persistence\BlogEditorialWorkspaceRepositoryInterface;
 use App\Core\WebAdmin\Support\ClockInterface;
 use App\Core\WebAdmin\Support\RandomUuidV4Generator;
 use App\Core\WebAdmin\Support\SystemClock;
@@ -30,7 +33,9 @@ final class BlogCategoryService
         private readonly UuidGeneratorInterface $uuidGenerator =
             new RandomUuidV4Generator(),
         private readonly ClockInterface $clock = new SystemClock(),
-        private readonly ?BlogCategoryAuditPortInterface $auditPort = null
+        private readonly ?BlogCategoryAuditPortInterface $auditPort = null,
+        private readonly ?BlogEditorialWorkspaceRepositoryInterface
+            $workflowRepository = null
     ) {
     }
 
@@ -41,6 +46,7 @@ final class BlogCategoryService
         BlogCategoryDraft $draft
     ): BlogCategoryLocalization {
         $locale = BlogCategoryInput::locale($locale);
+        $this->assertOrdinaryDraft($draft);
         $categoryPublicId = $this->newPublicId();
         $localizationPublicId = $this->newPublicId();
 
@@ -89,6 +95,7 @@ final class BlogCategoryService
     ): BlogCategoryLocalization {
         $categoryPublicId = BlogCategoryInput::publicId($categoryPublicId);
         $locale = BlogCategoryInput::locale($locale);
+        $this->assertOrdinaryDraft($draft);
         $localizationPublicId = $this->newPublicId();
 
         return $this->mutate(function (PDO $pdo) use (
@@ -100,6 +107,7 @@ final class BlogCategoryService
         ): BlogCategoryLocalization {
             $actor = $this->authorizedActor($actorGate, $pdo);
             $now = $this->now();
+            $this->assertMutableCategory($categoryPublicId);
             if (!$this->repository->lockCategory($categoryPublicId)) {
                 throw new BlogCategoryException(
                     BlogCategoryException::NOT_FOUND
@@ -147,6 +155,7 @@ final class BlogCategoryService
         $categoryPublicId = BlogCategoryInput::publicId($categoryPublicId);
         $locale = BlogCategoryInput::locale($locale);
         BlogCategoryInput::expectedLockVersion($expectedLockVersion);
+        $this->assertOrdinaryDraft($draft);
 
         return $this->mutate(function (PDO $pdo) use (
             $actorGate,
@@ -166,6 +175,7 @@ final class BlogCategoryService
                     BlogCategoryException::NOT_FOUND
                 );
             }
+            $this->assertMutableCategory($categoryPublicId, $current);
             if ($current->lockVersion() !== $expectedLockVersion) {
                 throw new BlogCategoryException(
                     BlogCategoryException::LOCK_CONFLICT
@@ -198,6 +208,102 @@ final class BlogCategoryService
             );
 
             return $stored;
+        });
+    }
+
+    /**
+     * Deletes one localization using optimistic locking. The aggregate is
+     * removed only when that was its final localization. Assigned categories
+     * fail closed so neither live nor private workspace relations disappear.
+     *
+     * @param callable(PDO): string $actorGate
+     * @return bool true when the category aggregate was also deleted
+     */
+    public function deleteLocalization(
+        #[\SensitiveParameter] callable $actorGate,
+        string $categoryPublicId,
+        string $locale,
+        int $expectedLockVersion
+    ): bool {
+        $categoryPublicId = BlogCategoryInput::publicId($categoryPublicId);
+        $locale = BlogCategoryInput::locale($locale);
+        BlogCategoryInput::expectedLockVersion($expectedLockVersion);
+        $deletions = $this->repository;
+        if (!$deletions instanceof BlogCategoryDeletionRepositoryInterface) {
+            throw new BlogCategoryException(
+                BlogCategoryException::STORAGE_UNAVAILABLE
+            );
+        }
+
+        return $this->mutate(function (PDO $pdo) use (
+            $actorGate,
+            $categoryPublicId,
+            $locale,
+            $expectedLockVersion,
+            $deletions
+        ): bool {
+            $actor = $this->authorizedActor($actorGate, $pdo);
+            $now = $this->now();
+            if (!$this->repository->lockCategory($categoryPublicId)) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::NOT_FOUND
+                );
+            }
+            $current = $this->repository->lockLocalization(
+                $categoryPublicId,
+                $locale
+            );
+            if ($current === null) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::NOT_FOUND
+                );
+            }
+            $this->assertMutableCategory($categoryPublicId, $current);
+            if ($current->lockVersion() !== $expectedLockVersion) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::LOCK_CONFLICT
+                );
+            }
+            if (
+                $deletions->categoryHasAssignments($categoryPublicId)
+                || ($this->workflowRepository !== null
+                    && $this->workflowRepository
+                        ->categoryHasWorkspaceReference(
+                            $categoryPublicId,
+                            true
+                        ))
+            ) {
+                throw new BlogCategoryException(BlogCategoryException::IN_USE);
+            }
+            if (!$deletions->deleteLocalization(
+                $current->localizationPublicId(),
+                $expectedLockVersion
+            )) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::LOCK_CONFLICT
+                );
+            }
+            $aggregateDeleted = $deletions->localizationCount(
+                $categoryPublicId
+            ) === 0;
+            if ($aggregateDeleted) {
+                if (!$deletions->deleteCategory($categoryPublicId)) {
+                    throw new BlogCategoryException(
+                        BlogCategoryException::LOCK_CONFLICT
+                    );
+                }
+            } else {
+                $this->repository->touchCategory($categoryPublicId, $now);
+            }
+            $this->audit(
+                $pdo,
+                BlogCategoryAuditEvent::DELETE,
+                $actor,
+                $categoryPublicId,
+                $now
+            );
+
+            return $aggregateDeleted;
         });
     }
 
@@ -235,6 +341,11 @@ final class BlogCategoryService
             $normalized[$publicId] = $this->newPublicId();
         }
 
+        $normalized = $this->preserveReservedAssignment(
+            $normalized,
+            $this->assignedToPost($postPublicId)
+        );
+
         $this->mutate(function (PDO $pdo) use (
             $actorGate,
             $postPublicId,
@@ -268,6 +379,117 @@ final class BlogCategoryService
         });
     }
 
+    /**
+     * Locale-aware editor entry point. With 0014 enabled, assignments always
+     * stay in the shared post-wide workspace until an explicit publication.
+     *
+     * @param callable(PDO): string $actorGate
+     * @param list<string> $categoryPublicIds
+     */
+    public function assignToVariant(
+        #[\SensitiveParameter] callable $actorGate,
+        string $postPublicId,
+        string $locale,
+        int $expectedLockVersion,
+        int $expectedWorkspaceVersion,
+        array $categoryPublicIds
+    ): int {
+        $postPublicId = BlogCategoryInput::publicId($postPublicId);
+        $locale = BlogCategoryInput::locale($locale);
+        BlogCategoryInput::expectedLockVersion($expectedLockVersion);
+        if ($expectedWorkspaceVersion < 0) {
+            throw new BlogCategoryException(
+                BlogCategoryException::INVALID_INPUT
+            );
+        }
+        $normalized = $this->normalizedAssignments($categoryPublicIds);
+        $normalized = $this->preserveReservedAssignment(
+            $normalized,
+            $this->assignedToVariant($postPublicId, $locale)
+        );
+
+        return $this->mutate(function (PDO $pdo) use (
+            $actorGate,
+            $postPublicId,
+            $locale,
+            $expectedLockVersion,
+            $expectedWorkspaceVersion,
+            $normalized
+        ): int {
+            $actor = $this->authorizedActor($actorGate, $pdo);
+            $now = $this->now();
+            if (!$this->repository->lockPost($postPublicId)) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::POST_NOT_FOUND
+                );
+            }
+            if (!$this->repository->categoriesExist(array_keys($normalized))) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::NOT_FOUND
+                );
+            }
+            if ($this->workflowRepository === null) {
+                $this->repository->replaceAssignments(
+                    $postPublicId,
+                    $normalized,
+                    $actor,
+                    $now
+                );
+                $this->audit(
+                    $pdo,
+                    BlogCategoryAuditEvent::ASSIGN,
+                    $actor,
+                    $postPublicId,
+                    $now
+                );
+
+                return 0;
+            }
+            $state = $this->workflowRepository->variantState(
+                $postPublicId,
+                $locale,
+                true
+            );
+            if ($state === null) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::POST_NOT_FOUND
+                );
+            }
+            if ($state->lockVersion() !== $expectedLockVersion) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::LOCK_CONFLICT
+                );
+            }
+            $actualWorkspaceVersion = $this->workflowRepository
+                ->categoryWorkspaceVersion($postPublicId, true);
+            if ($actualWorkspaceVersion !== $expectedWorkspaceVersion) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::LOCK_CONFLICT
+                );
+            }
+            $categoryAssignmentVersion = $this->workflowRepository
+                ->categoryAssignmentVersion($postPublicId, true);
+            $workspaceVersion = $this->workflowRepository
+                ->replaceWorkspaceCategories(
+                    $postPublicId,
+                    array_keys($normalized),
+                    $expectedWorkspaceVersion,
+                    $categoryAssignmentVersion,
+                    $actor,
+                    $now
+                );
+            $this->audit(
+                $pdo,
+                BlogCategoryAuditEvent::ASSIGN,
+                $actor,
+                $postPublicId,
+                $now
+            );
+
+            return $workspaceVersion;
+        });
+    }
+
     /** @return list<BlogCategoryLocalization> */
     public function list(
         int $limit = self::DEFAULT_LIST_LIMIT,
@@ -278,8 +500,22 @@ final class BlogCategoryService
         $offset = BlogCategoryInput::listOffset($offset);
         $locale = $locale === null ? null : BlogCategoryInput::locale($locale);
 
-        return $this->read(fn (): array =>
-            $this->repository->listLocalizations($limit, $offset, $locale));
+        return $this->read(function () use ($limit, $offset, $locale): array {
+            $reservedPublicId = $this->reservedCategoryPublicId();
+
+            return array_values(array_filter(
+                $this->repository->listLocalizations(
+                    $limit,
+                    $offset,
+                    $locale
+                ),
+                static fn (BlogCategoryLocalization $category): bool =>
+                    $category->categoryPublicId() !== $reservedPublicId
+                    && !BlogReservedCategoryPolicy::isDummySlug(
+                        $category->draft()->slug()
+                    )
+            ));
+        });
     }
 
     public function load(
@@ -302,6 +538,7 @@ final class BlogCategoryService
                     BlogCategoryException::NOT_FOUND
                 );
             }
+            $this->assertMutableCategory($categoryPublicId, $category);
 
             return $category;
         });
@@ -344,6 +581,7 @@ final class BlogCategoryService
             $categoryPublicId,
             $normalizedCandidates
         ): array {
+            $this->assertMutableCategory($categoryPublicId);
             $locales = $this->repository instanceof
                 BlogCategoryLocaleLookupRepositoryInterface
                 ? $this->repository->categoryLocales($categoryPublicId)
@@ -368,6 +606,183 @@ final class BlogCategoryService
 
         return $this->read(fn (): array =>
             $this->repository->assignedCategoryPublicIds($postPublicId));
+    }
+
+    public function privateWorkflowEnabled(): bool
+    {
+        return $this->workflowRepository !== null;
+    }
+
+    public function categoryWorkspaceVersion(string $postPublicId): int
+    {
+        $postPublicId = BlogCategoryInput::publicId($postPublicId);
+
+        return $this->read(fn (): int => $this->workflowRepository === null
+            ? 0
+            : $this->workflowRepository->categoryWorkspaceVersion(
+                $postPublicId
+            ));
+    }
+
+    /** @return list<string> */
+    public function assignedToVariant(
+        string $postPublicId,
+        string $locale
+    ): array {
+        $postPublicId = BlogCategoryInput::publicId($postPublicId);
+        $locale = BlogCategoryInput::locale($locale);
+
+        return $this->read(function () use ($postPublicId, $locale): array {
+            if ($this->workflowRepository === null) {
+                return $this->repository->assignedCategoryPublicIds(
+                    $postPublicId
+                );
+            }
+            $state = $this->workflowRepository->variantState(
+                $postPublicId,
+                $locale
+            );
+            if ($state === null) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::POST_NOT_FOUND
+                );
+            }
+            $private = $this->workflowRepository
+                ->workspaceCategoryPublicIds($postPublicId);
+            if ($private !== null) {
+                return $private;
+            }
+
+            return $this->repository->assignedCategoryPublicIds(
+                $postPublicId
+            );
+        });
+    }
+
+    public function reservedCategoryAssignedToVariant(
+        string $postPublicId,
+        string $locale
+    ): bool {
+        $reservedPublicId = $this->reservedCategoryPublicId();
+        if ($reservedPublicId === null) {
+            return false;
+        }
+
+        return in_array(
+            $reservedPublicId,
+            $this->assignedToVariant($postPublicId, $locale),
+            true
+        );
+    }
+
+    /**
+     * @param list<string> $categoryPublicIds
+     * @return array<string, string>
+     */
+    private function normalizedAssignments(array $categoryPublicIds): array
+    {
+        if (
+            !array_is_list($categoryPublicIds)
+            || count($categoryPublicIds) > self::MAX_ASSIGNMENTS
+        ) {
+            throw new BlogCategoryException(
+                BlogCategoryException::INVALID_INPUT
+            );
+        }
+        $normalized = [];
+        foreach ($categoryPublicIds as $publicId) {
+            if (!is_string($publicId)) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::INVALID_INPUT
+                );
+            }
+            $publicId = BlogCategoryInput::publicId($publicId);
+            if (isset($normalized[$publicId])) {
+                throw new BlogCategoryException(
+                    BlogCategoryException::INVALID_INPUT
+                );
+            }
+            $normalized[$publicId] = $this->newPublicId();
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Ordinary assignment forms never expose the internal category. Preserve
+     * an existing assignment and reject attempts to add it through this API.
+     *
+     * @param array<string, string> $normalized
+     * @param list<string> $currentPublicIds
+     * @return array<string, string>
+     */
+    private function preserveReservedAssignment(
+        array $normalized,
+        array $currentPublicIds
+    ): array {
+        $reservedPublicId = $this->reservedCategoryPublicId();
+        if ($reservedPublicId === null) {
+            return $normalized;
+        }
+        $currentlyAssigned = in_array(
+            $reservedPublicId,
+            $currentPublicIds,
+            true
+        );
+        $requested = isset($normalized[$reservedPublicId]);
+        if ($requested && !$currentlyAssigned) {
+            throw new BlogCategoryException(BlogCategoryException::RESERVED);
+        }
+        if ($currentlyAssigned && !$requested) {
+            $normalized[$reservedPublicId] = $this->newPublicId();
+        }
+
+        return $normalized;
+    }
+
+    public function reservedCategoryPublicId(): ?string
+    {
+        $repository = $this->repository;
+        if (!$repository instanceof BlogReservedCategoryRepositoryInterface) {
+            return null;
+        }
+        try {
+            return $repository->reservedCategoryPublicId(
+                BlogReservedCategoryPolicy::DUMMY_SLUG
+            );
+        } catch (Throwable) {
+            throw new BlogCategoryException(
+                BlogCategoryException::STORAGE_UNAVAILABLE
+            );
+        }
+    }
+
+    private function assertOrdinaryDraft(BlogCategoryDraft $draft): void
+    {
+        if (BlogReservedCategoryPolicy::isDummySlug($draft->slug())) {
+            throw new BlogCategoryException(BlogCategoryException::RESERVED);
+        }
+    }
+
+    private function assertMutableCategory(
+        string $categoryPublicId,
+        ?BlogCategoryLocalization $current = null
+    ): void {
+        if ($current !== null && BlogReservedCategoryPolicy::isDummySlug(
+            $current->draft()->slug()
+        )) {
+            throw new BlogCategoryException(BlogCategoryException::RESERVED);
+        }
+        $repository = $this->repository;
+        if (
+            $repository instanceof BlogReservedCategoryRepositoryInterface
+            && $repository->categoryHasReservedSlug(
+                $categoryPublicId,
+                BlogReservedCategoryPolicy::DUMMY_SLUG
+            )
+        ) {
+            throw new BlogCategoryException(BlogCategoryException::RESERVED);
+        }
     }
 
     /**

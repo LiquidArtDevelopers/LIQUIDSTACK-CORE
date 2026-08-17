@@ -10,6 +10,7 @@ use App\Core\Blog\Categories\BlogCategoryException;
 use App\Core\Blog\Categories\BlogCategoryPublicProjectionService;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\PublishedPostCard;
+use Throwable;
 
 /**
  * Presentation boundary for project-owned Blog indexes and resources.
@@ -27,7 +28,9 @@ final class BlogPublicFeed
         private readonly ?BlogPublicCatalogRepositoryInterface
             $catalogRepository = null,
         private readonly ?BlogPublicDiscoveryRepositoryInterface
-            $discoveryRepository = null
+            $discoveryRepository = null,
+        private readonly ?BlogPublicCardMediaRepositoryInterface
+            $mediaRepository = null
     ) {
     }
 
@@ -109,7 +112,9 @@ final class BlogPublicFeed
      *     h1: string,
      *     excerpt: string,
      *     published_at: string,
-     *     updated_at: string
+     *     updated_at: string,
+     *     categories: list<array{locale:string,slug:string,name:string}>,
+     *     thumbnail?: array{src:string,srcset:string,alt:string,width:int,height:int}
      * }>
      */
     public function cardsForQuery(BlogPublicCatalogQuery $query): array
@@ -121,17 +126,13 @@ final class BlogPublicFeed
         $repository = $this->catalogRepository
             ?? throw new BlogException(BlogException::STORAGE_UNAVAILABLE);
 
-        return array_map(
-            static fn (PublishedPostCard $card): array => [
-                'locale' => $card->locale(),
-                'slug' => $card->slug(),
-                'url' => $basePath . '/' . $card->slug(),
-                'h1' => $card->h1(),
-                'excerpt' => $card->excerpt(),
-                'published_at' => $card->publishedAt()->format(DATE_ATOM),
-                'updated_at' => $card->updatedAt()->format(DATE_ATOM),
-            ],
-            $repository->search($query)
+        return $this->projectCards(
+            $query->locale(),
+            $basePath,
+            $repository->search($query),
+            $repository instanceof BlogPublicCardCategoryRepositoryInterface
+                ? $repository
+                : null
         );
     }
 
@@ -146,7 +147,9 @@ final class BlogPublicFeed
      *     h1: string,
      *     excerpt: string,
      *     published_at: string,
-     *     updated_at: string
+     *     updated_at: string,
+     *     categories: list<array{locale:string,slug:string,name:string}>,
+     *     thumbnail?: array{src:string,srcset:string,alt:string,width:int,height:int}
      * }>
      */
     public function cardsForRelated(BlogPublicRelatedQuery $query): array
@@ -166,7 +169,9 @@ final class BlogPublicFeed
      *     h1: string,
      *     excerpt: string,
      *     published_at: string,
-     *     updated_at: string
+     *     updated_at: string,
+     *     categories: list<array{locale:string,slug:string,name:string}>,
+     *     thumbnail?: array{src:string,srcset:string,alt:string,width:int,height:int}
      * }>
      */
     public function cardsForArchive(BlogPublicArchiveQuery $query): array
@@ -205,7 +210,9 @@ final class BlogPublicFeed
      *     h1: string,
      *     excerpt: string,
      *     published_at: string,
-     *     updated_at: string
+     *     updated_at: string,
+     *     categories: list<array{locale:string,slug:string,name:string}>,
+     *     thumbnail?: array{src:string,srcset:string,alt:string,width:int,height:int}
      * }>
      */
     private function discoveryCards(string $locale, callable $load): array
@@ -215,17 +222,82 @@ final class BlogPublicFeed
             throw new BlogException(BlogException::INVALID_INPUT);
         }
 
+        $repository = $this->requiredDiscoveryRepository();
+
+        return $this->projectCards(
+            $locale,
+            $basePath,
+            $load($repository),
+            $repository instanceof BlogPublicCardCategoryRepositoryInterface
+                ? $repository
+                : null
+        );
+    }
+
+    /**
+     * @param list<PublishedPostCard> $cards
+     * @return list<array<string, mixed>>
+     */
+    private function projectCards(
+        string $locale,
+        string $basePath,
+        array $cards,
+        ?BlogPublicCardCategoryRepositoryInterface $categoryRepository
+    ): array {
+        $slugs = array_map(
+            static fn (PublishedPostCard $card): string => $card->slug(),
+            $cards
+        );
+        $categoriesBySlug = $categoryRepository === null || $cards === []
+            ? []
+            : $categoryRepository->categoriesForCards(
+                new BlogPublicCardCategoryQuery(
+                    $locale,
+                    $slugs
+                )
+            );
+        $thumbnailsBySlug = [];
+        if ($this->mediaRepository !== null && $cards !== []) {
+            try {
+                $thumbnailsBySlug = $this->mediaRepository
+                    ->thumbnailsForCards(
+                        new BlogPublicCardMediaQuery($locale, $slugs)
+                    );
+            } catch (Throwable) {
+                // Optional media never makes an otherwise valid feed fail.
+                $thumbnailsBySlug = [];
+            }
+        }
+
         return array_map(
-            static fn (PublishedPostCard $card): array => [
-                'locale' => $card->locale(),
-                'slug' => $card->slug(),
-                'url' => $basePath . '/' . $card->slug(),
-                'h1' => $card->h1(),
-                'excerpt' => $card->excerpt(),
-                'published_at' => $card->publishedAt()->format(DATE_ATOM),
-                'updated_at' => $card->updatedAt()->format(DATE_ATOM),
-            ],
-            $load($this->requiredDiscoveryRepository())
+            static function (PublishedPostCard $card) use (
+                $basePath,
+                $categoriesBySlug,
+                $thumbnailsBySlug
+            ): array {
+                $categories = $categoriesBySlug[$card->slug()] ?? [];
+                $item = [
+                    'locale' => $card->locale(),
+                    'slug' => $card->slug(),
+                    'url' => $basePath . '/' . $card->slug(),
+                    'h1' => $card->h1(),
+                    'excerpt' => $card->excerpt(),
+                    'published_at' => $card->publishedAt()->format(DATE_ATOM),
+                    'updated_at' => $card->updatedAt()->format(DATE_ATOM),
+                    'categories' => array_map(
+                        static fn (BlogPublicCardCategory $category): array =>
+                            $category->toResourceData(),
+                        $categories
+                    ),
+                ];
+                $thumbnail = $thumbnailsBySlug[$card->slug()] ?? null;
+                if ($thumbnail instanceof BlogPublicCardThumbnail) {
+                    $item['thumbnail'] = $thumbnail->toResourceData();
+                }
+
+                return $item;
+            },
+            $cards
         );
     }
 

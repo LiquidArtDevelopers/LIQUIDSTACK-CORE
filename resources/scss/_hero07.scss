@@ -27,6 +27,14 @@
         height: 100%;
         object-fit: cover;
         object-position: center;
+
+        &[data-blog-image-object-position-y='top'] {
+            object-position: center top;
+        }
+
+        &[data-blog-image-object-position-y='bottom'] {
+            object-position: center bottom;
+        }
     }
 
     &-content {

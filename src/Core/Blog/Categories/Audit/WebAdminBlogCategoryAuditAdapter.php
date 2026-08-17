@@ -34,6 +34,10 @@ final class WebAdminBlogCategoryAuditAdapter implements
             'code' => 'blog.category.assignments_saved',
             'type' => 'blog_article',
         ],
+        BlogCategoryAuditEvent::DELETE => [
+            'code' => 'blog.category.localization_deleted',
+            'type' => 'blog_category',
+        ],
     ];
 
     public function __construct(

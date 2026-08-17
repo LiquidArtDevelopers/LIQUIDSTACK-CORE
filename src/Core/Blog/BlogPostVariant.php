@@ -132,6 +132,7 @@ final class BlogPostVariant
             'meta_description' => $this->draft->metaDescription(),
             'excerpt' => $this->draft->excerpt(),
             'body_text' => $this->draft->bodyText(),
+            'robots' => $this->draft->robotsPreferences()->toArray(),
             'status' => $this->status,
             'published_at' => $this->publishedAt?->format('Y-m-d H:i:s.u'),
             'lock_version' => $this->lockVersion,

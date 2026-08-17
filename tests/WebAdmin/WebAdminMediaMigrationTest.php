@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationApplyOptions;
 use App\Core\Modules\Migrations\MigrationRegistry;
 use App\Core\Modules\Migrations\MigrationRunner;
 use App\Core\Modules\Migrations\MigrationScope;
@@ -151,6 +152,82 @@ final class WebAdminMediaMigrationTest extends TestCase
         );
     }
 
+    public function testAvifSourceMigrationPreservesExistingAssetsAndVariants(): void
+    {
+        $pdo = $this->sqlite();
+        $scope = $this->scope();
+        $migrations = [];
+        foreach ($this->catalog()->entries() as $entry) {
+            $migrations[$entry['migration']->id()] = $entry['migration'];
+        }
+        foreach ([
+            '0001_webadmin_identity_and_access',
+            '0002_webadmin_media_library',
+        ] as $id) {
+            $pdo->beginTransaction();
+            foreach ($migrations[$id]->statementsFor('sqlite', $scope) as $sql) {
+                $pdo->exec($sql);
+            }
+            $pdo->commit();
+        }
+        $pdo->exec(
+            "INSERT INTO ls_webadmin_users "
+            . "(public_id, email_canonical, status) VALUES "
+            . "('01234567-89ab-4cde-8f01-23456789abcd', "
+            . "'media@example.test', 'active')"
+        );
+        $pdo->exec(
+            "INSERT INTO ls_webadmin_media_assets ("
+            . 'public_id, label, source_mime, source_width, source_height, '
+            . 'source_bytes, source_sha256, created_by_user_id) VALUES ('
+            . "'11111111-1111-4111-8111-111111111111', 'Existing', "
+            . "'image/png', 800, 600, 1024, '" . str_repeat('a', 64)
+            . "', 1)"
+        );
+        $pdo->exec(
+            "INSERT INTO ls_webadmin_media_variants ("
+            . 'asset_id, width, height, bytes, sha256, storage_key, mime) '
+            . "VALUES (1, 480, 360, 512, '" . str_repeat('b', 64)
+            . "', '11/11111111-1111-4111-8111-111111111111/480.avif', "
+            . "'image/avif')"
+        );
+
+        $pdo->beginTransaction();
+        foreach (
+            $migrations['0003_webadmin_media_avif_source']
+                ->statementsFor('sqlite', $scope) as $sql
+        ) {
+            $pdo->exec($sql);
+        }
+        $pdo->commit();
+
+        self::assertSame(1, (int) $pdo->query(
+            'SELECT COUNT(*) FROM ls_webadmin_media_assets'
+        )->fetchColumn());
+        self::assertSame(1, (int) $pdo->query(
+            'SELECT COUNT(*) FROM ls_webadmin_media_variants'
+        )->fetchColumn());
+        self::assertSame([], $pdo->query(
+            'PRAGMA foreign_key_check'
+        )->fetchAll(PDO::FETCH_ASSOC));
+        self::assertTrue(
+            $migrations['0003_webadmin_media_avif_source']
+                ->postconditionVerifier()?->verify($pdo, $scope)
+        );
+        $pdo->exec(
+            "INSERT INTO ls_webadmin_media_assets ("
+            . 'public_id, label, source_mime, source_width, source_height, '
+            . 'source_bytes, source_sha256, created_by_user_id) VALUES ('
+            . "'22222222-2222-4222-8222-222222222222', 'Native AVIF', "
+            . "'image/avif', 16, 16, 256, '" . str_repeat('c', 64)
+            . "', 1)"
+        );
+        self::assertSame('image/avif', $pdo->query(
+            "SELECT source_mime FROM ls_webadmin_media_assets "
+            . "WHERE label = 'Native AVIF'"
+        )->fetchColumn());
+    }
+
     public function testMySqlAndMariaDbCheckClauseCanonicalizationIsAccepted(): void
     {
         $scope = $this->scope();
@@ -159,7 +236,7 @@ final class WebAdminMediaMigrationTest extends TestCase
             [$scope->tableName('c_ma_dims'), '`source_width` between 1 and 12000 and `source_height` between 1 and 12000 and `source_width` * `source_height` <= 40000000'],
             [$scope->tableName('c_ma_hash'), 'char_length(`source_sha256`) = 64'],
             [$scope->tableName('c_ma_label'), 'char_length(`label`) between 1 and 120'],
-            [$scope->tableName('c_ma_mime'), "`source_mime` in ('image/jpeg','image/png','image/webp')"],
+            [$scope->tableName('c_ma_mime'), "`source_mime` in ('image/jpeg','image/png','image/webp','image/avif')"],
             [$scope->tableName('c_ma_public'), 'char_length(`public_id`) = 36'],
             [$scope->tableName('c_mv_bytes'), '`bytes` > 0'],
             [$scope->tableName('c_mv_dims'), '`width` between 1 and 2560 and `height` between 1 and 2560'],
@@ -677,7 +754,13 @@ final class WebAdminMediaMigrationTest extends TestCase
             $this->registry(),
             $scope
         ));
-        self::assertFalse((new WebAdminMediaHttpSchemaGate())->isReady(
+        $mediaGate = new WebAdminMediaHttpSchemaGate();
+        self::assertFalse($mediaGate->isReady(
+            $pdo,
+            $this->registry(),
+            $scope
+        ));
+        self::assertFalse($mediaGate->acceptsAvifSource(
             $pdo,
             $this->registry(),
             $scope
@@ -695,7 +778,37 @@ final class WebAdminMediaMigrationTest extends TestCase
             new DateTimeImmutable('2026-08-02 00:01:00', new DateTimeZone('UTC'))
         );
 
-        self::assertTrue((new WebAdminMediaHttpSchemaGate())->isReady(
+        self::assertTrue($mediaGate->isReady(
+            $pdo,
+            $this->registry(),
+            $scope
+        ));
+        self::assertFalse($mediaGate->acceptsAvifSource(
+            $pdo,
+            $this->registry(),
+            $scope
+        ));
+
+        $pdo->beginTransaction();
+        foreach ($entries[2]['migration']->statementsFor('sqlite', $scope) as $sql) {
+            $pdo->exec($sql);
+        }
+        $pdo->commit();
+        $registry->record(
+            $pdo,
+            'webadmin',
+            $entries[2]['migration'],
+            $scope,
+            3,
+            new DateTimeImmutable('2026-08-02 00:02:00', new DateTimeZone('UTC'))
+        );
+
+        self::assertTrue($mediaGate->isReady(
+            $pdo,
+            $this->registry(),
+            $scope
+        ));
+        self::assertTrue($mediaGate->acceptsAvifSource(
             $pdo,
             $this->registry(),
             $scope
@@ -715,7 +828,7 @@ final class WebAdminMediaMigrationTest extends TestCase
     {
         $mediaMigration = null;
         foreach ($this->catalog()->entries() as $entry) {
-            if ($entry['migration']->id() === '0002_webadmin_media_library') {
+            if ($entry['migration']->id() === '0003_webadmin_media_avif_source') {
                 $mediaMigration = $entry['migration'];
                 break;
             }
@@ -861,7 +974,15 @@ final class WebAdminMediaMigrationTest extends TestCase
     private function sqliteWithSchema(): PDO
     {
         $pdo = $this->sqlite();
-        (new MigrationRunner())->apply($pdo, $this->catalog(), $this->scopes());
+        (new MigrationRunner())->apply(
+            $pdo,
+            $this->catalog(),
+            $this->scopes(),
+            new MigrationApplyOptions(
+                allowDestructive: true,
+                backupConfirmed: true
+            )
+        );
 
         return $pdo;
     }

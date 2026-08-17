@@ -22,7 +22,17 @@ declare(strict_types=1);
  *         title: string,
  *         excerpt: string,
  *         datetime: string,
- *         date_text: string
+ *         date_text: string,
+ *         key: string,
+ *         categories: list<array{slug:string,name:string,url:string}>,
+ *         media: null|array{
+ *             src:string,
+ *             srcset:string,
+ *             sizes:string,
+ *             alt:string,
+ *             width:int,
+ *             height:int
+ *         }
  *     }>
  * }
  */
@@ -135,6 +145,7 @@ function liquidstack_blog_resource_context(
         ? max(0, min($maximumItems, (int) $params['items']))
         : min($maximumItems, count($rawItems));
     $language = strtolower((string) ($GLOBALS['lang'] ?? 'es'));
+    $stableItemIds = ($params['stable_item_ids'] ?? false) === true;
     $items = [];
 
     foreach (array_slice($rawItems, 0, $limit) as $rawItem) {
@@ -191,13 +202,31 @@ function liquidstack_blog_resource_context(
         }
 
         $position = count($items) + 1;
+        $cardKey = substr(
+            hash('sha256', $language . "\0" . $url),
+            0,
+            24
+        );
+        $categories = liquidstack_blog_resource_categories(
+            $value('categories')
+        );
+        $media = liquidstack_blog_resource_preferred_media(
+            $resource,
+            $value('thumbnail'),
+            $value('media')
+        );
         $items[] = [
-            'id' => $id . '-item-' . $position . '-heading',
+            'id' => $id . '-item-'
+                . ($stableItemIds ? $cardKey : (string) $position)
+                . '-heading',
             'url' => $url,
             'title' => $title,
             'excerpt' => $excerpt,
             'datetime' => $date->format('Y-m-d'),
             'date_text' => $dateText,
+            'key' => $cardKey,
+            'categories' => $categories,
+            'media' => $media,
         ];
     }
 
@@ -224,11 +253,378 @@ function liquidstack_blog_resource_escape(string $value): string
     );
 }
 
-/** @param array<string, string> $item */
+function liquidstack_blog_resource_safe_url(mixed $value): string
+{
+    if (!is_string($value)) {
+        return '';
+    }
+    $url = trim($value);
+    if ($url === '' || str_contains($url, '\\')) {
+        return '';
+    }
+    if (str_starts_with($url, '/') && !str_starts_with($url, '//')) {
+        return $url;
+    }
+    if (
+        filter_var($url, FILTER_VALIDATE_URL) !== false
+        && in_array(
+            strtolower((string) parse_url($url, PHP_URL_SCHEME)),
+            ['http', 'https'],
+            true
+        )
+    ) {
+        return $url;
+    }
+
+    return '';
+}
+
+/** @return list<array{slug:string,name:string,url:string}> */
+function liquidstack_blog_resource_categories(mixed $value): array
+{
+    if (!is_array($value)) {
+        return [];
+    }
+    $categories = [];
+    foreach (array_slice(array_values($value), 0, 10) as $rawCategory) {
+        $read = static function (string $field) use ($rawCategory): mixed {
+            if (is_array($rawCategory)) {
+                return $rawCategory[$field] ?? null;
+            }
+            if (is_object($rawCategory) && isset($rawCategory->{$field})) {
+                return $rawCategory->{$field};
+            }
+
+            return null;
+        };
+        $slug = is_string($read('slug')) ? trim($read('slug')) : '';
+        $name = is_string($read('name')) ? trim($read('name')) : '';
+        if (
+            $name === ''
+            || preg_match('/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/', $slug) !== 1
+        ) {
+            continue;
+        }
+        $categories[$slug] = [
+            'slug' => $slug,
+            'name' => $name,
+            'url' => liquidstack_blog_resource_safe_url($read('url')),
+        ];
+    }
+
+    return array_values($categories);
+}
+
+function liquidstack_blog_resource_safe_media_url(mixed $value): string
+{
+    if (!is_string($value)) {
+        return '';
+    }
+    $url = $value;
+    if (
+        $url === ''
+        || trim($url) !== $url
+        || strlen($url) > 2_048
+        || preg_match('//u', $url) !== 1
+        || preg_match('/[\p{Cc}\p{Cf}]/u', $url) === 1
+        || preg_match('/\s/u', $url) === 1
+        || preg_match('/%(?![0-9A-Fa-f]{2})/', $url) === 1
+        || str_contains($url, '\\')
+        || str_contains($url, '#')
+        || str_contains($url, ',')
+        || preg_match('/[<>"\'`]/', $url) === 1
+    ) {
+        return '';
+    }
+    if (str_starts_with($url, '/') && !str_starts_with($url, '//')) {
+        return liquidstack_blog_resource_media_path_is_safe($url)
+            ? $url
+            : '';
+    }
+    if (!str_starts_with($url, 'https://')) {
+        return '';
+    }
+    $parts = parse_url($url);
+    if (
+        filter_var($url, FILTER_VALIDATE_URL) === false
+        || !is_array($parts)
+        || ($parts['scheme'] ?? null) !== 'https'
+        || !is_string($parts['host'] ?? null)
+        || ($parts['host'] ?? '') === ''
+        || isset($parts['user'])
+        || isset($parts['pass'])
+        || !liquidstack_blog_resource_media_path_is_safe($url)
+    ) {
+        return '';
+    }
+
+    return $url;
+}
+
+function liquidstack_blog_resource_media_path_is_safe(string $url): bool
+{
+    $parts = parse_url($url);
+    $path = is_array($parts) ? ($parts['path'] ?? null) : null;
+    if (
+        !is_string($path)
+        || !str_starts_with($path, '/')
+        || str_contains($path, '//')
+        || preg_match('/%(?:2f|5c)/i', $path) === 1
+    ) {
+        return false;
+    }
+
+    $decoded = $path;
+    $stable = false;
+    for ($pass = 0; $pass < 8; ++$pass) {
+        if (
+            preg_match('/%(?:2f|5c)/i', $decoded) === 1
+            || preg_match('/%(?![0-9A-Fa-f]{2})/', $decoded) === 1
+        ) {
+            return false;
+        }
+        $next = rawurldecode($decoded);
+        if ($next === $decoded) {
+            $stable = true;
+            break;
+        }
+        $decoded = $next;
+    }
+    if (
+        !$stable
+        || preg_match('//u', $decoded) !== 1
+        || preg_match('/[\p{Cc}\p{Cf}]/u', $decoded) === 1
+        || str_contains($decoded, '\\')
+        || str_contains($decoded, '//')
+    ) {
+        return false;
+    }
+
+    foreach (explode('/', $decoded) as $segment) {
+        if ($segment === '.' || $segment === '..') {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function liquidstack_blog_resource_srcset(mixed $value): string
+{
+    if (!is_string($value)) {
+        return '';
+    }
+    $srcset = trim($value);
+    if ($srcset === '' || strlen($srcset) > 4_096) {
+        return '';
+    }
+    $candidates = array_map('trim', explode(',', $srcset));
+    if (
+        $candidates === []
+        || count($candidates) > 8
+        || in_array('', $candidates, true)
+    ) {
+        return '';
+    }
+
+    $normalized = [];
+    $previousWidth = 0;
+    foreach ($candidates as $candidate) {
+        if (
+            preg_match(
+                '/\A(\S+)\s+([1-9][0-9]{0,4})w\z/',
+                $candidate,
+                $matches
+            ) !== 1
+        ) {
+            return '';
+        }
+        $url = liquidstack_blog_resource_safe_media_url($matches[1]);
+        $width = (int) $matches[2];
+        if ($url === '' || $width > 2_560 || $width <= $previousWidth) {
+            return '';
+        }
+        $normalized[] = $url . ' ' . $width . 'w';
+        $previousWidth = $width;
+    }
+
+    return implode(', ', $normalized);
+}
+
+function liquidstack_blog_resource_sizes(mixed $value): string
+{
+    if (!is_string($value)) {
+        return '';
+    }
+    $sizes = trim($value);
+    if ($sizes === '' || strlen($sizes) > 512) {
+        return '';
+    }
+    $parts = array_map('trim', explode(',', $sizes));
+    if ($parts === [] || count($parts) > 6 || in_array('', $parts, true)) {
+        return '';
+    }
+    $length = '(?:0|[1-9][0-9]{0,3})(?:\.[0-9]{1,3})?'
+        . '(?:px|rem|em|vw)';
+    $condition = '\((?:min|max)-width:\s*' . $length . '\)';
+    foreach ($parts as $part) {
+        if (
+            preg_match(
+                '/\A(?:' . $condition . '\s+)?' . $length . '\z/i',
+                $part
+            ) !== 1
+        ) {
+            return '';
+        }
+    }
+
+    return implode(', ', $parts);
+}
+
+function liquidstack_blog_resource_default_media_sizes(
+    string $resource
+): string {
+    return match ($resource) {
+        'sectionBlogSlider01', 'sectionBlogSlider02' =>
+            '(min-width: 64rem) 27rem, '
+                . '(min-width: 48rem) 42vw, 82vw',
+        'sectionBlogList01' =>
+            '(min-width: 48rem) 18rem, 92vw',
+        'sectionBlogFeatured01' =>
+            '(min-width: 48rem) 55vw, 92vw',
+        'sectionBlogStack01' =>
+            '(min-width: 64rem) 60rem, 92vw',
+        'moduleBlogGrid02' =>
+            '(min-width: 64rem) 42vw, 92vw',
+        default =>
+            '(min-width: 64rem) 24rem, '
+                . '(min-width: 48rem) 42vw, 92vw',
+    };
+}
+
+/**
+ * @return null|array{
+ *     src:string,
+ *     srcset:string,
+ *     sizes:string,
+ *     alt:string,
+ *     width:int,
+ *     height:int
+ * }
+ */
+function liquidstack_blog_resource_media(
+    mixed $value,
+    string $defaultSizes = ''
+): ?array
+{
+    if (!is_array($value) && !is_object($value)) {
+        return null;
+    }
+    $read = static function (string $field) use ($value): mixed {
+        if (is_array($value)) {
+            return $value[$field] ?? null;
+        }
+
+        return isset($value->{$field}) ? $value->{$field} : null;
+    };
+    $src = liquidstack_blog_resource_safe_media_url($read('src'));
+    $srcset = liquidstack_blog_resource_srcset($read('srcset'));
+    $sizes = liquidstack_blog_resource_sizes($read('sizes'));
+    if ($sizes === '') {
+        $sizes = liquidstack_blog_resource_sizes($defaultSizes);
+    }
+    $rawAlt = $read('alt');
+    $altIsValid = is_string($rawAlt)
+        && strlen($rawAlt) <= 1_000
+        && preg_match('//u', $rawAlt) === 1
+        && preg_match('/[\p{Cc}\p{Cf}]/u', $rawAlt) !== 1;
+    $width = filter_var($read('width'), FILTER_VALIDATE_INT, [
+        'options' => ['min_range' => 1, 'max_range' => 10_000],
+    ]);
+    $height = filter_var($read('height'), FILTER_VALIDATE_INT, [
+        'options' => ['min_range' => 1, 'max_range' => 10_000],
+    ]);
+    if (
+        $src === ''
+        || !$altIsValid
+        || $width === false
+        || $height === false
+    ) {
+        return null;
+    }
+
+    return [
+        'src' => $src,
+        'srcset' => $srcset,
+        'sizes' => $sizes,
+        'alt' => $rawAlt,
+        'width' => (int) $width,
+        'height' => (int) $height,
+    ];
+}
+
+/**
+ * Selects a projected thumbnail only when its mandatory attributes are safe.
+ * Optional responsive attributes fail closed independently, so a malformed
+ * `srcset` can never discard an otherwise valid, smaller fallback image.
+ *
+ * @return null|array{
+ *     src:string,
+ *     srcset:string,
+ *     sizes:string,
+ *     alt:string,
+ *     width:int,
+ *     height:int
+ * }
+ */
+function liquidstack_blog_resource_preferred_media(
+    string $resource,
+    mixed $thumbnail,
+    mixed $media
+): ?array {
+    $defaultSizes = liquidstack_blog_resource_default_media_sizes($resource);
+
+    return liquidstack_blog_resource_media($thumbnail, $defaultSizes)
+        ?? liquidstack_blog_resource_media($media, $defaultSizes);
+}
+
+/** @param null|array<string, mixed> $media */
+function liquidstack_blog_resource_media_markup(
+    string $resource,
+    ?array $media
+): string {
+    if ($media === null) {
+        return '';
+    }
+    $escape = 'liquidstack_blog_resource_escape';
+    $srcset = ($media['srcset'] ?? '') === ''
+        ? ''
+        : ' srcset="' . $escape((string) $media['srcset']) . '"';
+    $sizes = ($media['sizes'] ?? '') === ''
+        ? ''
+        : ' sizes="' . $escape((string) $media['sizes']) . '"';
+    $draggable = in_array(
+        $resource,
+        ['sectionBlogSlider01', 'sectionBlogSlider02'],
+        true
+    ) ? ' draggable="false"' : '';
+
+    return '<figure class="' . $escape($resource . '-media') . '">'
+        . '<img src="' . $escape((string) $media['src']) . '"'
+        . $srcset . $sizes . ' alt="'
+        . $escape((string) $media['alt']) . '" width="'
+        . (int) $media['width'] . '" height="'
+        . (int) $media['height']
+        . '" loading="lazy" decoding="async"'
+        . $draggable . '></figure>';
+}
+
+/** @param array<string, mixed> $item */
 function liquidstack_blog_resource_card(
     array $context,
     array $item,
-    string $modifier = ''
+    string $modifier = '',
+    string $ctaLabel = ''
 ): string {
     $resource = $context['resource'];
     $tag = $context['child_tag'];
@@ -238,15 +634,51 @@ function liquidstack_blog_resource_card(
     ) === 1 ? ' ' . $modifier : '';
     $escape = 'liquidstack_blog_resource_escape';
 
+    $media = liquidstack_blog_resource_media_markup(
+        $resource,
+        is_array($item['media'] ?? null) ? $item['media'] : null
+    );
+    $categories = '';
+    if (is_array($item['categories'] ?? null) && $item['categories'] !== []) {
+        $categoryItems = '';
+        foreach ($item['categories'] as $category) {
+            $label = $escape((string) ($category['name'] ?? ''));
+            if ($label === '') {
+                continue;
+            }
+            $url = (string) ($category['url'] ?? '');
+            $categoryItems .= '<li>' . ($url === ''
+                ? '<span>' . $label . '</span>'
+                : '<a href="' . $escape($url) . '">' . $label . '</a>')
+                . '</li>';
+        }
+        if ($categoryItems !== '') {
+            $categories = '<ul class="'
+                . $escape($resource . '-categories')
+                . '">' . $categoryItems . '</ul>';
+        }
+    }
+
+    $ctaLabel = trim($ctaLabel);
+    $cta = $ctaLabel === ''
+        ? ''
+        : '<a class="' . $escape($resource . '-cta') . '" href="'
+            . $escape($item['url']) . '" aria-label="'
+            . $escape($ctaLabel . ': ' . $item['title']) . '"><span>'
+            . $escape($ctaLabel)
+            . '</span><span aria-hidden="true">&rarr;</span></a>';
+
     return '<article class="' . $escape($resource . '-item' . $modifier)
-        . '" aria-labelledby="' . $escape($item['id']) . '">'
+        . '" data-blog-card-key="' . $escape((string) ($item['key'] ?? ''))
+        . '" aria-labelledby="' . $escape($item['id']) . '">' . $media
         . '<p class="' . $escape($resource . '-date') . '"><time datetime="'
         . $escape($item['datetime']) . '">' . $escape($item['date_text'])
-        . '</time></p><' . $tag . ' id="' . $escape($item['id']) . '">'
+        . '</time></p>' . $categories . '<' . $tag . ' id="'
+        . $escape($item['id']) . '">'
         . '<a href="' . $escape($item['url']) . '">'
         . $escape($item['title']) . '</a></' . $tag . '>'
         . '<p class="' . $escape($resource . '-excerpt') . '">'
-        . $escape($item['excerpt']) . '</p></article>';
+        . $escape($item['excerpt']) . '</p>' . $cta . '</article>';
 }
 
 function liquidstack_blog_resource_heading(array $context): string

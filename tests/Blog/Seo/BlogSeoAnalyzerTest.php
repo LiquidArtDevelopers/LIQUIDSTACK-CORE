@@ -14,6 +14,23 @@ use PHPUnit\Framework\TestCase;
 
 final class BlogSeoAnalyzerTest extends TestCase
 {
+    public function testCompetingPagePreservesLiteralMarkupAsPlainText(): void
+    {
+        $page = new BlogSeoCompetingPage(
+            BlogSeoCompetingPage::BLOG,
+            'es',
+            '/es/noticias/tiempo-respuesta',
+            'Tiempo de respuesta <24 h',
+            '<strong>Título literal</strong>'
+        );
+
+        self::assertSame('Tiempo de respuesta <24 h', $page->h1());
+        self::assertSame(
+            '<strong>Título literal</strong>',
+            $page->seoTitle()
+        );
+    }
+
     public function testAnalysisIsDeterministicAdvisoryAndHasNoScore(): void
     {
         $analyzer = new BlogSeoAnalyzer();

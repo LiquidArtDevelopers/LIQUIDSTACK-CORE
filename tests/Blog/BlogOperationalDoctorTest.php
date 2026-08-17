@@ -3,11 +3,14 @@
 declare(strict_types=1);
 
 use App\Core\Blog\Configuration\BlogPublicOrigin;
+use App\Core\Blog\Diagnostics\BlogDiagnosticService;
 use App\Core\Composer\MigrationCommandRuntime;
 use App\Core\Composer\MigrationCommandRuntimeFactoryInterface;
 use App\Core\Modules\Diagnostics\ModuleDoctor;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationApplyOptions;
+use App\Core\Modules\Migrations\MigrationDatabasePlanner;
 use App\Core\Modules\Migrations\MigrationRunner;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
@@ -116,10 +119,20 @@ final class BlogOperationalDoctorTest extends TestCase
             $registry,
             $this->projectRoot
         );
-        (new MigrationRunner())->apply(
+        $preview = (new MigrationDatabasePlanner())->plan(
             $this->pdo,
             $this->catalog,
             $this->scopes
+        );
+        (new MigrationRunner())->apply(
+            $this->pdo,
+            $this->catalog,
+            $this->scopes,
+            new MigrationApplyOptions(
+                expectedPlanHash: $preview->hash(),
+                allowDestructive: true,
+                backupConfirmed: true
+            )
         );
     }
 
@@ -167,6 +180,10 @@ final class BlogOperationalDoctorTest extends TestCase
             'public/assets/modules/blog/flags/es-pv.svg',
             'public/assets/modules/blog/flags/es.svg',
             'public/assets/modules/blog/flags/gb.svg',
+            'public/assets/modules/blog/icons/position-center.svg',
+            'public/assets/modules/blog/icons/position-left.svg',
+            'public/assets/modules/blog/icons/position-right.svg',
+            'src/js/modules/blog/blogCollectionLoader.js',
         ], $blog['assets']['required']);
         self::assertTrue($blog['readiness']['blog_ready']);
         self::assertSame([], $blog['readiness']['blockers']);
@@ -217,6 +234,41 @@ final class BlogOperationalDoctorTest extends TestCase
             'database.migrations_not_ready',
             $blog['readiness']['blockers']
         );
+    }
+
+    public function testMissingDomExtensionBlocksOnlySelectedBlog(): void
+    {
+        $report = (new ModuleDoctor(
+            migrationRuntimeFactory:
+                new BlogOperationalDoctorRuntimeFactoryFixture(
+                    new MigrationCommandRuntime(
+                        $this->pdo,
+                        $this->catalog,
+                        $this->scopes
+                    )
+                ),
+            blogDiagnostics: new BlogDiagnosticService(
+                domExtensionAvailable: false
+            )
+        ))->inspect($this->projectRoot, $this->coreRoot);
+        $payload = $report->toArray();
+        $blog = $payload['module_diagnostics']['blog'];
+
+        self::assertFalse($report->isHealthy());
+        self::assertFalse($blog['readiness']['blog_ready']);
+        self::assertSame(
+            ['runtime.dom_extension_missing'],
+            $blog['readiness']['blockers']
+        );
+        self::assertSame('missing', $blog['runtime']['dom_extension']['status']);
+
+        $checks = array_values(array_filter(
+            $payload['checks'],
+            static fn (array $check): bool =>
+                ($check['id'] ?? null) === 'blog.runtime.dom_extension'
+        ));
+        self::assertCount(1, $checks);
+        self::assertSame('error', $checks[0]['status'] ?? null);
     }
 
     public function testMissingBlogAssetsBlockReadinessWithoutAWrite(): void
@@ -291,6 +343,10 @@ final class BlogOperationalDoctorTest extends TestCase
             'public/assets/modules/blog/flags/es-pv.svg',
             'public/assets/modules/blog/flags/es.svg',
             'public/assets/modules/blog/flags/gb.svg',
+            'public/assets/modules/blog/icons/position-center.svg',
+            'public/assets/modules/blog/icons/position-left.svg',
+            'public/assets/modules/blog/icons/position-right.svg',
+            'src/js/modules/blog/blogCollectionLoader.js',
         ], $blog['assets']['required']);
         self::assertTrue($blog['readiness']['blog_ready']);
     }

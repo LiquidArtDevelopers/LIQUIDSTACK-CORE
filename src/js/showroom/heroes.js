@@ -8,8 +8,10 @@ import gsapParallax from '../resources/_gsapParallaxScroll.js';
 
 let resizeHandler = null;
 let resizeDelay = null;
+let parallaxCleanup = null;
 
 export default function initShowroomHeroes() {
+  parallaxCleanup?.();
   initHero03();
   initHero04();
   initHero05();
@@ -42,9 +44,9 @@ export default function initShowroomHeroes() {
   window.addEventListener('resize', resizeHandler);
 
   refresh();
-  gsapParallax({
+  parallaxCleanup = gsapParallax({
     container: '.hero00',
-    bg: '.bg',
+    bg: '.hero00-media',
     moveDesktop: 20,
     moveMobile: 20,
     sizeMode: 'cover',
@@ -54,6 +56,8 @@ export default function initShowroomHeroes() {
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     resizeDelay?.kill();
+    parallaxCleanup?.();
+    parallaxCleanup = null;
     if (resizeHandler) {
       window.removeEventListener('resize', resizeHandler);
     }

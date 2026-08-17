@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Core\Blog\Diagnostics\BlogDiagnosticService;
 use App\Core\Composer\MigrationCommandRuntime;
 use App\Core\Composer\MigrationCommandRuntimeFactoryInterface;
 use App\Core\Modules\Diagnostics\ModuleDoctor;
 use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationApplyOptions;
 use App\Core\Modules\Migrations\MigrationRunner;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
 use App\Core\Modules\ModuleRegistry;
@@ -115,7 +117,11 @@ final class WebAdminOperationalDoctorTest extends TestCase
         (new MigrationRunner())->apply(
             $this->pdo,
             $this->catalog,
-            $this->scopes
+            $this->scopes,
+            new MigrationApplyOptions(
+                allowDestructive: true,
+                backupConfirmed: true
+            )
         );
     }
 
@@ -154,6 +160,8 @@ final class WebAdminOperationalDoctorTest extends TestCase
         self::assertSame('applied', $webAdmin['readiness']['migrations']);
         self::assertSame('sqlite', $webAdmin['database']['connection']['driver']);
         self::assertSame([
+            'public/assets/modules/webadmin/webadmin-media-picker.css',
+            'public/assets/modules/webadmin/webadmin-media-picker.js',
             'public/assets/modules/webadmin/webadmin.css',
             'public/assets/modules/webadmin/webadmin.js',
         ], $webAdmin['assets']['required']);
@@ -201,6 +209,35 @@ final class WebAdminOperationalDoctorTest extends TestCase
         self::assertStringNotContainsString(
             'sensitive-dsn-and-password-must-not-leak',
             $encoded
+        );
+    }
+
+    public function testMissingBlogDomDependencyDoesNotAffectWebAdminOnly(): void
+    {
+        $runtime = new MigrationCommandRuntime(
+            $this->pdo,
+            $this->catalog,
+            $this->scopes
+        );
+        $report = (new ModuleDoctor(
+            migrationRuntimeFactory: new OperationalDoctorRuntimeFactory(
+                $runtime
+            ),
+            blogDiagnostics: new BlogDiagnosticService(
+                domExtensionAvailable: false
+            )
+        ))->inspect($this->projectRoot, $this->coreRoot);
+        $payload = $report->toArray();
+
+        self::assertTrue($report->isHealthy());
+        self::assertArrayNotHasKey(
+            'blog',
+            $payload['module_diagnostics']
+        );
+        self::assertTrue(
+            $payload['module_diagnostics']['webadmin']['readiness'][
+                'runtime_ready'
+            ]
         );
     }
 

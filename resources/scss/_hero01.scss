@@ -56,4 +56,16 @@
         display: flex;
         justify-content: center;
     }
+    &.hero01--contrast-surface{
+        .hero01-content>.moduleH1Type01{
+            background-color: c.$color01;
+            backdrop-filter: none;
+            .moduleH1Type01-header,
+            .moduleH1Type01-header *,
+            >p,
+            >p *{
+                color: c.$color00;
+            }
+        }
+    }
 }

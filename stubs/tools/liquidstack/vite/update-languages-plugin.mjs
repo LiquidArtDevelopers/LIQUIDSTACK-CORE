@@ -37,8 +37,8 @@ export const resolveLanguageUpdate = (file) => {
   return {
     file: normalized,
     // El updater resuelve este nombre de vista contra routes/get.php. Así
-    // `_showroom.php` puede hidratar `templates` en AIWA y `showroom` en un
-    // stack que conserve ese content, sin codificar aliases del proyecto.
+    // `_showroom.php` puede hidratar `templates` en un consumidor y `showroom`
+    // en un stack que conserve ese content, sin codificar aliases del proyecto.
     slug: filename,
   };
 };

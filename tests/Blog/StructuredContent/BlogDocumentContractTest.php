@@ -164,7 +164,12 @@ final class BlogDocumentContractTest extends TestCase
         $registry = new BlogDocumentTemplateRegistry();
 
         self::assertSame(
-            ['article-basic-01', 'article-cover-01'],
+            [
+                BlogDocumentTemplateRegistry::ARTICLE_BASIC,
+                BlogDocumentTemplateRegistry::ARTICLE_COVER,
+                BlogDocumentTemplateRegistry::ARTICLE_HERO00,
+                BlogDocumentTemplateRegistry::ARTICLE_HERO06,
+            ],
             $registry->keys()
         );
         self::assertTrue($registry->supports('article-basic-01'));
@@ -531,10 +536,29 @@ final class BlogDocumentContractTest extends TestCase
         );
     }
 
-    public function testInlineContractRejectsFreeHtmlControlsAndInvalidMarks(): void
+    public function testInlineContractPreservesLiteralMarkupAndSqlCopy(): void
+    {
+        $document = BlogDocument::fromArray($this->document([
+            $this->paragraph(1, [
+                $this->text('Tiempo de respuesta medio (ideal <24 h)'),
+                $this->text('<strong>Texto literal</strong>'),
+                $this->text('SELECT * FROM posts; DROP TABLE posts; --'),
+            ]),
+        ]));
+
+        self::assertSame(
+            [
+                'Tiempo de respuesta medio (ideal <24 h)',
+                '<strong>Texto literal</strong>',
+                'SELECT * FROM posts; DROP TABLE posts; --',
+            ],
+            array_column($document->blocks()[0]['content'], 'text')
+        );
+    }
+
+    public function testInlineContractRejectsControlsAndInvalidMarks(): void
     {
         $invalidNodes = [
-            ['type' => 'text', 'text' => '<strong>HTML</strong>', 'marks' => []],
             ['type' => 'text', 'text' => "Control\x07", 'marks' => []],
             ['type' => 'text', 'text' => "Bad \xC3\x28", 'marks' => []],
             ['type' => 'text', 'text' => 'Text', 'marks' => ['underline']],
@@ -679,10 +703,6 @@ final class BlogDocumentContractTest extends TestCase
         $media = $this->image(1);
         $media['media_asset_public_id'] = 'not-a-uuid';
         $cases[] = $media;
-        $html = $this->image(1);
-        $html['caption'] = '<em>Caption</em>';
-        $cases[] = $html;
-
         foreach ($cases as $block) {
             $invalid = $this->document([$block]);
             $this->assertIssue(
@@ -690,6 +710,15 @@ final class BlogDocumentContractTest extends TestCase
                 static fn (): BlogDocument => BlogDocument::fromArray($invalid)
             );
         }
+
+        $literalMarkup = $this->image(1);
+        $literalMarkup['caption'] = '<em>Caption</em>';
+        self::assertSame(
+            '<em>Caption</em>',
+            BlogDocument::fromArray(
+                $this->document([$literalMarkup])
+            )->blocks()[0]['caption']
+        );
     }
 
     public function testVideoIsOnlyBoundedYoutubeInSchemaV1(): void
@@ -706,7 +735,6 @@ final class BlogDocumentContractTest extends TestCase
             ['video_id', 'short'],
             ['video_id', 'bad/videoid'],
             ['title', ''],
-            ['title', '<b>Video</b>'],
             ['start_seconds', -1],
             ['start_seconds', 86_401],
             ['start_seconds', '0'],
@@ -719,11 +747,19 @@ final class BlogDocumentContractTest extends TestCase
                 static fn (): BlogDocument => BlogDocument::fromArray($invalid)
             );
         }
+
+        $literalMarkup = $this->video(1, '<b>Video</b>');
+        self::assertSame(
+            '<b>Video</b>',
+            BlogDocument::fromArray(
+                $this->document([$literalMarkup])
+            )->blocks()[0]['title']
+        );
     }
 
     public function testExceptionsNeverExposeRejectedPayload(): void
     {
-        $secret = '<script>secret-payload</script>';
+        $secret = "Control\x07secret-payload";
         $invalid = $this->document([
             $this->paragraph(1, [$this->text($secret)]),
         ]);

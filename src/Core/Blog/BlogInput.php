@@ -134,7 +134,6 @@ final class BlogInput
         self::assertUtf8AndLength($value, $maxBytes);
         if (
             preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $value) === 1
-            || strip_tags($value) !== $value
         ) {
             throw new BlogException(BlogException::INVALID_INPUT);
         }
@@ -159,7 +158,6 @@ final class BlogInput
         self::assertUtf8AndLength($value, $maxBytes);
         if (
             preg_match('/[\x00-\x1F\x7F]/', $value) === 1
-            || strip_tags($value) !== $value
         ) {
             throw new BlogException(BlogException::INVALID_INPUT);
         }

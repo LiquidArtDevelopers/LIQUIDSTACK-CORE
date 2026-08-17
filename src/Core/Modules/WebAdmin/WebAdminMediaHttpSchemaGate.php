@@ -85,6 +85,52 @@ final class WebAdminMediaHttpSchemaGate
         }
     }
 
+    public function acceptsAvifSource(
+        PDO $pdo,
+        ModuleRegistry $registry,
+        MigrationScope $scope
+    ): bool {
+        try {
+            if ($scope->moduleId() !== 'webadmin') {
+                return false;
+            }
+
+            return $this->migrationGate->isReady(
+                $pdo,
+                $registry,
+                MigrationScopeCollection::fromTablePrefixes([
+                    'webadmin' => $scope->tablePrefix(),
+                ]),
+                WebAdminMigrationRequirements::mediaAvifSource()
+            );
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    public function supportsQuarantineDeletion(
+        PDO $pdo,
+        ModuleRegistry $registry,
+        MigrationScope $scope
+    ): bool {
+        try {
+            if ($scope->moduleId() !== 'webadmin') {
+                return false;
+            }
+
+            return $this->migrationGate->isReady(
+                $pdo,
+                $registry,
+                MigrationScopeCollection::fromTablePrefixes([
+                    'webadmin' => $scope->tablePrefix(),
+                ]),
+                WebAdminMigrationRequirements::mediaQuarantine()
+            );
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
     /** @param list<array<string, mixed>> $rows */
     private function validSeeds(array $rows): bool
     {

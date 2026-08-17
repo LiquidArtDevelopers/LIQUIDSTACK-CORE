@@ -247,7 +247,8 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         $blogRepository = new PdoBlogRepository($this->pdo, $blogScope);
         $structuredRepository = new PdoBlogStructuredContentRepository(
             $this->pdo,
-            $blogScope
+            $blogScope,
+            layoutReady: true
         );
         $audit = new WebAdminBlogMutationAuditAdapter(
             $this->pdo,
@@ -272,7 +273,8 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
             ),
             new RandomUuidV4Generator(),
             $clock,
-            $audit
+            $audit,
+            layoutReady: true
         );
         $this->runtime = new BlogAdminHttpRuntime(
             __DIR__,
@@ -305,7 +307,8 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
                 new BlogCategoryService(
                     new PdoBlogCategoryRepository($this->pdo, $blogScope)
                 )
-            )
+            ),
+            layoutEditorReady: true
         );
         $this->controller = new BlogStructuredEditorHttpController(
             $this->runtime
@@ -321,16 +324,15 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         ));
         self::assertSame(200, $editor->status());
         self::assertStringContainsString(
-            '<h1 id="blog-editor-title">Construir art&iacute;culo</h1>',
+            '<h1 id="blog-editor-title" '
+                . 'class="webadminShell-visuallyHidden">'
+                . 'Editor visual del Blog</h1>',
             $editor->body()
         );
         self::assertStringContainsString('Legacy first paragraph.', $editor->body());
         self::assertStringContainsString('Matrix poster', $editor->body());
-        self::assertStringContainsString(
-            '/admin/blog/posts/new?post=' . self::POST,
-            $editor->body()
-        );
-        self::assertStringContainsString(
+        self::assertStringNotContainsString('>Otro idioma</a>', $editor->body());
+        self::assertStringNotContainsString(
             '/admin/blog/categories/assign?post=' . self::POST
                 . '&amp;locale=es',
             $editor->body()
@@ -375,6 +377,43 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
             "connect-src 'self'",
             $editor->headers()['Content-Security-Policy']
         );
+        self::assertStringContainsString(
+            "frame-src 'self'",
+            $editor->headers()['Content-Security-Policy']
+        );
+        self::assertStringContainsString(
+            "font-src 'self'",
+            $editor->headers()['Content-Security-Policy']
+        );
+        self::assertMatchesRegularExpression(
+            '/data-blog-advanced-preview-style-nonce="([A-Za-z0-9+\/_-]{16,128}={0,2})"/',
+            $editor->body()
+        );
+        preg_match(
+            '/data-blog-advanced-preview-style-nonce="([A-Za-z0-9+\/_-]{16,128}={0,2})"/',
+            $editor->body(),
+            $editorNonceMatch
+        );
+        $editorNonce = $editorNonceMatch[1];
+        self::assertStringContainsString(
+            "'nonce-" . $editorNonce . "'",
+            $editor->headers()['Content-Security-Policy']
+        );
+        preg_match(
+            '/data-blog-advanced-preview-csp="([^"]+)"/',
+            $editor->body(),
+            $sandboxPolicyMatch
+        );
+        $sandboxPolicy = html_entity_decode(
+            $sandboxPolicyMatch[1],
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8'
+        );
+        self::assertSame(
+            2,
+            substr_count($sandboxPolicy, "'nonce-" . $editorNonce . "'")
+        );
+        self::assertStringNotContainsString("'unsafe-inline'", $sandboxPolicy);
 
         $editorHead = $this->controller->edit($this->head(
             '/admin/blog/editor',
@@ -382,8 +421,13 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         ));
         self::assertSame(200, $editorHead->status());
         self::assertSame('', $editorHead->body());
-        self::assertSame(
+        self::assertNotSame(
             $editor->headers()['Content-Security-Policy'],
+            $editorHead->headers()['Content-Security-Policy'],
+            'Every editor response must receive a fresh preview nonce.'
+        );
+        self::assertMatchesRegularExpression(
+            "/style-src 'self' 'nonce-[A-Za-z0-9+\/_-]{16,128}={0,2}'/",
             $editorHead->headers()['Content-Security-Policy']
         );
 
@@ -400,8 +444,34 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
             '>Legacy second paragraph.</p>',
             $preview->body()
         );
+        self::assertStringStartsWith(
+            '<!doctype html><html lang="es" '
+                . 'data-blog-preview-ready="true">',
+            $preview->body()
+        );
+        self::assertSame('es', $preview->headers()['Content-Language']);
+        self::assertSame(1, substr_count(
+            $preview->body(),
+            '<div id="smooth-wrapper">'
+        ));
+        self::assertSame(1, substr_count(
+            $preview->body(),
+            '<div id="smooth-content">'
+        ));
+        self::assertStringNotContainsString(
+            'blogPreviewNotice',
+            $preview->body()
+        );
+        self::assertStringNotContainsString(
+            'Volver al editor',
+            $preview->body()
+        );
         self::assertStringNotContainsString('rel="canonical"', $preview->body());
-        $this->assertPrivateHtml($preview);
+        $this->assertPrivateHtml($preview, true);
+        self::assertStringContainsString(
+            'frame-src https://www.youtube-nocookie.com',
+            $preview->headers()['Content-Security-Policy']
+        );
 
         $previewHead = $this->controller->preview($this->head(
             '/admin/blog/editor/preview',
@@ -718,8 +788,45 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         self::assertSame(200, $detail->status());
         self::assertStringContainsString('First structured body.', $detail->body());
         self::assertStringContainsString('data-webadmin-shell', $detail->body());
+        self::assertStringContainsString(
+            'Restaurar esta revisi&oacute;n',
+            $detail->body()
+        );
+        self::assertStringContainsString(
+            'action="/admin/blog/editor/restore"',
+            $detail->body()
+        );
+        self::assertStringContainsString(
+            'name="lock_version" value="2"',
+            $detail->body()
+        );
+        self::assertStringContainsString(
+            'name="revision" value="' . $firstRevision . '"',
+            $detail->body()
+        );
         self::assertSame(1, substr_count($detail->body(), '<main'));
         $this->assertPrivateHtml($detail);
+
+        $this->removeCapability(BlogAdminHttpController::EDIT_CAPABILITY);
+        $readOnlyDetail = $this->controller->revisions($this->get(
+            '/admin/blog/editor/revisions',
+            [
+                'post' => self::POST,
+                'locale' => 'es',
+                'revision' => $firstRevision,
+            ]
+        ));
+        self::assertSame(200, $readOnlyDetail->status());
+        self::assertStringNotContainsString(
+            'Restaurar esta revisi&oacute;n',
+            $readOnlyDetail->body()
+        );
+        self::assertStringNotContainsString(
+            'action="/admin/blog/editor/restore"',
+            $readOnlyDetail->body()
+        );
+        $this->addCapability(BlogAdminHttpController::EDIT_CAPABILITY);
+
         $detailHead = $this->controller->revisions($this->head(
             '/admin/blog/editor/revisions',
             [
@@ -785,6 +892,32 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         self::assertSame(2, $this->rowCount('ls_blog_content_revisions'));
         self::assertSame(3, $this->lockVersion());
 
+        $staleRestore = $restoreForm;
+        $staleRestore['lock_version'] = '2';
+        $conflict = $this->controller->restore($this->post(
+            '/admin/blog/editor/restore',
+            $staleRestore
+        ));
+        self::assertSame(409, $conflict->status());
+        self::assertStringContainsString(
+            'No se pudo restaurar la revisi&oacute;n',
+            $conflict->body()
+        );
+        self::assertStringContainsString(
+            'No se ha restaurado contenido',
+            $conflict->body()
+        );
+        self::assertStringContainsString(
+            'Volver al historial',
+            $conflict->body()
+        );
+        self::assertStringContainsString(
+            'data-webadmin-shell',
+            $conflict->body()
+        );
+        self::assertSame(2, $this->rowCount('ls_blog_content_revisions'));
+        self::assertSame(3, $this->lockVersion());
+
         $restored = $this->controller->restore($this->post(
             '/admin/blog/editor/restore',
             $restoreForm
@@ -846,6 +979,218 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         );
     }
 
+    public function testAsyncSaveReturnsTypedFailuresAndCanRefreshCsrf(): void
+    {
+        $secret = 'Never echo this asynchronous Matrix draft';
+        $form = $this->saveForm(
+            $this->documentJson($secret),
+            1,
+            $secret
+        );
+
+        $expired = $this->controller->save($this->asyncPost(
+            '/admin/blog/editor/save',
+            $form,
+            []
+        ));
+        $this->assertAsyncFailure($expired, 401, 'session_expired');
+
+        $staleCsrfForm = $form;
+        $staleCsrfForm['csrf'] = str_repeat('X', 43);
+        $staleCsrf = $this->controller->save($this->asyncPost(
+            '/admin/blog/editor/save',
+            $staleCsrfForm
+        ));
+        $this->assertAsyncFailure($staleCsrf, 409, 'csrf_stale');
+        $staleCsrfPayload = json_decode(
+            $staleCsrf->body(),
+            true,
+            8,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertSame($this->csrfToken, $staleCsrfPayload['csrf']);
+
+        $this->removeCapability(BlogAdminHttpController::EDIT_CAPABILITY);
+        $forbidden = $this->controller->save($this->asyncPost(
+            '/admin/blog/editor/save',
+            $form
+        ));
+        $this->assertAsyncFailure($forbidden, 403, 'forbidden');
+        self::assertArrayNotHasKey(
+            'csrf',
+            json_decode($forbidden->body(), true, 8, JSON_THROW_ON_ERROR)
+        );
+        $this->addCapability(BlogAdminHttpController::EDIT_CAPABILITY);
+
+        $staleLockForm = $form;
+        $staleLockForm['lock_version'] = '2';
+        $staleLock = $this->controller->save($this->asyncPost(
+            '/admin/blog/editor/save',
+            $staleLockForm
+        ));
+        $this->assertAsyncFailure($staleLock, 409, 'lock_conflict');
+
+        $invalidForm = $form;
+        $invalidForm['document_json'] = '{"secret":"' . $secret . '"}';
+        $invalid = $this->controller->save($this->asyncPost(
+            '/admin/blog/editor/save',
+            $invalidForm
+        ));
+        $this->assertAsyncFailure($invalid, 422, 'invalid_draft');
+        $invalidPayload = json_decode(
+            $invalid->body(),
+            true,
+            8,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertSame([
+            'scope' => 'document',
+            'field' => 'document_json',
+            'block_id' => null,
+            'code' => 'invalid_structure',
+            'limit' => null,
+        ], $invalidPayload['issue']);
+
+        $oversizedForm = $form;
+        $oversizedForm['h1'] = str_repeat('€', 86);
+        $oversized = $this->controller->save($this->asyncPost(
+            '/admin/blog/editor/save',
+            $oversizedForm
+        ));
+        $this->assertAsyncFailure($oversized, 422, 'invalid_draft');
+        $oversizedPayload = json_decode(
+            $oversized->body(),
+            true,
+            8,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertSame('entry', $oversizedPayload['issue']['scope']);
+        self::assertSame('h1', $oversizedPayload['issue']['field']);
+        self::assertSame('bytes_exceeded', $oversizedPayload['issue']['code']);
+        self::assertSame(255, $oversizedPayload['issue']['limit']);
+
+        foreach ([$expired, $staleCsrf, $forbidden, $staleLock, $invalid]
+            as $response) {
+            $this->assertDoesNotLeak($response, $secret);
+        }
+
+        $form['meta_description'] = str_repeat('a', 200);
+        $saved = $this->controller->save($this->asyncPost(
+            '/admin/blog/editor/save',
+            $form
+        ));
+        self::assertSame(200, $saved->status());
+        $savedPayload = json_decode(
+            $saved->body(),
+            true,
+            64,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertTrue($savedPayload['ok']);
+        self::assertSame(2, $savedPayload['lock_version']);
+        self::assertMatchesRegularExpression(
+            '/^[0-9a-f]{64}$/',
+            $savedPayload['document_sha256']
+        );
+        self::assertIsArray($savedPayload['document']);
+    }
+
+    public function testUnexpectedAsyncSaveFailureUsesClientAllowlistedCode(): void
+    {
+        $secret = 'Never echo this unavailable asynchronous draft';
+        $runtime = new CapabilityRaceBlogStructuredRuntime(
+            $this->runtime,
+            static function (): void {
+                throw new \RuntimeException(
+                    'Forced persistence failure containing a private draft'
+                );
+            }
+        );
+        $response = (new BlogStructuredEditorHttpController($runtime))->save(
+            $this->asyncPost(
+                '/admin/blog/editor/save',
+                $this->saveForm($this->documentJson($secret), 1, $secret)
+            )
+        );
+
+        $this->assertAsyncFailure($response, 503, 'unavailable');
+        $this->assertDoesNotLeak($response, $secret);
+        self::assertSame(0, $this->rowCount('ls_blog_content_docs'));
+        self::assertSame(0, $this->rowCount('ls_blog_content_revisions'));
+        self::assertSame(1, $this->lockVersion());
+    }
+
+    public function testAsyncSaveAcceptsAdvancedParagraphHtmlAndCss(): void
+    {
+        $response = $this->controller->save($this->asyncPost(
+            '/admin/blog/editor/save',
+            $this->saveForm(
+                $this->advancedDocumentJson(),
+                1,
+                'Advanced structured H1'
+            )
+        ));
+
+        self::assertSame(200, $response->status(), $response->body());
+        self::assertSame(
+            'application/json; charset=utf-8',
+            $response->headers()['Content-Type']
+        );
+        $payload = json_decode(
+            $response->body(),
+            true,
+            64,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertTrue($payload['ok']);
+        self::assertSame(2, $payload['lock_version']);
+        self::assertSame(
+            BlogDocument::LAYOUT_VERSION,
+            $payload['document']['version']
+        );
+        $paragraph = $payload['document']['blocks'][0]['children'][1];
+        self::assertSame(
+            '<p>uno</p><p class="miClase">dos</p>',
+            $paragraph['html']
+        );
+        self::assertSame('& .miClase{color:red;}', $paragraph['css']);
+        self::assertSame("Advanced section\n\nuno\ndos", $this->bodyText());
+        self::assertSame(1, $this->rowCount('ls_blog_content_docs'));
+        self::assertSame(1, $this->rowCount('ls_blog_content_revisions'));
+    }
+
+    public function testAsyncSaveAcceptsRootAndInlineSemanticBreaks(): void
+    {
+        $documentJson = $this->semanticBreakDocumentJson();
+        $canonicalDocument = json_decode(
+            $documentJson,
+            true,
+            64,
+            JSON_THROW_ON_ERROR
+        );
+        $response = $this->controller->save($this->asyncPost(
+            '/admin/blog/editor/save',
+            $this->saveForm($documentJson, 1, 'Semantic breaks H1')
+        ));
+
+        self::assertSame(200, $response->status(), $response->body());
+        $payload = json_decode(
+            $response->body(),
+            true,
+            64,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertTrue($payload['ok']);
+        self::assertSame(2, $payload['lock_version']);
+        self::assertSame($canonicalDocument, $payload['document']);
+        $flow = $payload['document']['blocks'][0]['children'][0]['content'];
+        self::assertSame(['type' => 'break'], $flow[1]);
+        self::assertSame(['type' => 'break'], $flow[2]['content'][1]);
+        self::assertSame(1, $this->rowCount('ls_blog_content_docs'));
+        self::assertSame(1, $this->rowCount('ls_blog_content_revisions'));
+        self::assertSame(2, $this->lockVersion());
+    }
+
     public function testStaleLockAndUnavailableMediaFailClosedWithoutLeakage(): void
     {
         $secret = 'Never leak this submitted Matrix draft';
@@ -900,6 +1245,19 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         self::assertSame('Service unavailable', $response->body());
         $this->assertDoesNotLeak($response, $secret);
         $this->assertDoesNotLeak($response, 'storage detail');
+
+        $asyncResponse = $this->controller->save($this->asyncPost(
+            '/admin/blog/editor/save',
+            $this->saveForm($this->documentJson($secret), 1, $secret)
+        ));
+        $this->assertAsyncFailure(
+            $asyncResponse,
+            503,
+            'unavailable'
+        );
+        $this->assertDoesNotLeak($asyncResponse, $secret);
+        $this->assertDoesNotLeak($asyncResponse, 'storage detail');
+
         self::assertSame(0, $this->rowCount('ls_blog_content_docs'));
         self::assertSame(0, $this->rowCount('ls_blog_content_media'));
         self::assertSame(0, $this->rowCount('ls_blog_content_revisions'));
@@ -1199,6 +1557,54 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * @param array<string, string> $form
+     * @param null|array<string, string> $cookies
+     */
+    private function asyncPost(
+        string $path,
+        array $form,
+        ?array $cookies = null
+    ): Request {
+        return Request::fromInput([
+            'REQUEST_METHOD' => 'POST',
+            'REQUEST_URI' => $path,
+            'HTTPS' => 'on',
+            'REMOTE_ADDR' => '192.0.2.80',
+        ], form: $form, cookies: $cookies ?? [
+            'LS_WEBADMIN_SID' => $this->sessionToken,
+        ], headers: [
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/x-www-form-urlencoded',
+            'User-Agent' => 'Structured editor asynchronous test',
+            'X-LiquidStack-Editor' => 'async',
+        ]);
+    }
+
+    private function assertAsyncFailure(
+        Response $response,
+        int $status,
+        string $error
+    ): void {
+        self::assertSame($status, $response->status());
+        self::assertSame(
+            'application/json; charset=utf-8',
+            $response->headers()['Content-Type']
+        );
+        self::assertSame(
+            'no-store, no-cache, must-revalidate, max-age=0',
+            $response->headers()['Cache-Control']
+        );
+        $payload = json_decode(
+            $response->body(),
+            true,
+            8,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertFalse($payload['ok']);
+        self::assertSame($error, $payload['error']);
+    }
+
     /** @return array<string, string> */
     private function saveForm(
         string $documentJson,
@@ -1250,6 +1656,88 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
             'version' => BlogDocument::VERSION,
             'template' => BlogDocumentTemplateRegistry::ARTICLE_BASIC,
             'blocks' => $blocks,
+        ]));
+    }
+
+    private function advancedDocumentJson(): string
+    {
+        $presentation = [
+            'width' => 'full',
+            'align' => 'start',
+            'text_align' => 'start',
+        ];
+
+        return (new BlogDocumentCodec())->encode(BlogDocument::fromArray([
+            'schema' => BlogDocument::SCHEMA,
+            'version' => BlogDocument::LAYOUT_VERSION,
+            'template' => BlogDocumentTemplateRegistry::ARTICLE_BASIC,
+            'blocks' => [[
+                'id' => '40000000-0000-4000-8000-000000000010',
+                'type' => 'section',
+                'children' => [[
+                    'id' => '40000000-0000-4000-8000-000000000011',
+                    'type' => 'heading',
+                    'level' => 2,
+                    'content' => [[
+                        'type' => 'text',
+                        'text' => 'Advanced section',
+                        'marks' => [],
+                    ]],
+                    'presentation' => $presentation,
+                ], [
+                    'id' => '40000000-0000-4000-8000-000000000012',
+                    'type' => 'paragraph',
+                    'html' => '<p>uno</p><p class="miClase">dos</p>',
+                    'css' => '.miClase { color: red; }',
+                    'presentation' => $presentation,
+                ]],
+            ]],
+        ]));
+    }
+
+    private function semanticBreakDocumentJson(): string
+    {
+        return (new BlogDocumentCodec())->encode(BlogDocument::fromArray([
+            'schema' => BlogDocument::SCHEMA,
+            'version' => BlogDocument::LAYOUT_VERSION,
+            'template' => BlogDocumentTemplateRegistry::ARTICLE_BASIC,
+            'blocks' => [[
+                'id' => '40000000-0000-4000-8000-000000000020',
+                'type' => 'section',
+                'children' => [[
+                    'id' => '40000000-0000-4000-8000-000000000021',
+                    'type' => 'paragraph',
+                    'content' => [[
+                        'type' => 'heading',
+                        'level' => 2,
+                        'content' => [[
+                            'type' => 'text',
+                            'text' => 'Semantic break section',
+                            'marks' => [],
+                        ]],
+                    ], [
+                        'type' => 'break',
+                    ], [
+                        'type' => 'paragraph',
+                        'content' => [[
+                            'type' => 'text',
+                            'text' => 'First line',
+                            'marks' => [],
+                        ], [
+                            'type' => 'break',
+                        ], [
+                            'type' => 'text',
+                            'text' => 'Second line',
+                            'marks' => [],
+                        ]],
+                    ]],
+                    'presentation' => [
+                        'width' => 'full',
+                        'align' => 'start',
+                        'text_align' => 'start',
+                    ],
+                ]],
+            ]],
         ]));
     }
 
@@ -1338,7 +1826,10 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         );
     }
 
-    private function assertPrivateHtml(Response $response): void
+    private function assertPrivateHtml(
+        Response $response,
+        bool $sameOriginFrame = false
+    ): void
     {
         self::assertSame(
             'no-store, no-cache, must-revalidate, max-age=0',
@@ -1356,9 +1847,25 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
         self::assertStringContainsString("form-action 'self'", $csp);
         self::assertStringNotContainsString("'unsafe-inline'", $csp);
         self::assertStringNotContainsString("'unsafe-eval'", $csp);
-        self::assertStringNotContainsString('https:', $csp);
+        if ($sameOriginFrame) {
+            self::assertStringContainsString(
+                'frame-src https://www.youtube-nocookie.com',
+                $csp
+            );
+        } else {
+            self::assertStringNotContainsString('https:', $csp);
+        }
         self::assertSame('no-referrer', $response->headers()['Referrer-Policy']);
-        self::assertSame('DENY', $response->headers()['X-Frame-Options']);
+        self::assertSame(
+            $sameOriginFrame ? 'SAMEORIGIN' : 'DENY',
+            $response->headers()['X-Frame-Options']
+        );
+        self::assertStringContainsString(
+            $sameOriginFrame
+                ? "frame-ancestors 'self'"
+                : "frame-ancestors 'none'",
+            $csp
+        );
     }
 
     private function assertDoesNotLeak(Response $response, string $secret): void

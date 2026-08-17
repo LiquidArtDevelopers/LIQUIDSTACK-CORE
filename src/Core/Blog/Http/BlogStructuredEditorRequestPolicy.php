@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Core\Blog\Http;
 
-use App\Core\Blog\BlogDraft;
-use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Http\Request;
 use App\Core\WebAdmin\Http\WebAdminHttpRequestPolicy;
 
@@ -22,6 +20,7 @@ final class BlogStructuredEditorRequestPolicy
         'meta_description',
         'excerpt',
     ];
+    private const ROBOTS_KEYS = ['robots_index', 'robots_follow'];
 
     public function __construct(
         private readonly WebAdminHttpRequestPolicy $webAdminPolicy =
@@ -54,21 +53,51 @@ final class BlogStructuredEditorRequestPolicy
             'document_json',
         ], self::METADATA_KEYS);
 
+        $form = $request->formParams();
+        $hasIndex = array_key_exists('robots_index', $form);
+        $hasFollow = array_key_exists('robots_follow', $form);
+        if ($hasIndex !== $hasFollow) {
+            return false;
+        }
+        if ($hasIndex) {
+            $keys = array_merge($keys, self::ROBOTS_KEYS);
+        }
+
         if (!$this->webAdminPolicy->acceptsFormPost($request, $keys)) {
             return false;
         }
 
         return $this->validIdentity($request)
-            && $this->validMetadata($request)
+            && $this->hasEditorPayload($request)
             && is_string($request->form('document_json'))
-            && strlen($request->form('document_json')) >= 2
-            && strlen($request->form('document_json'))
-                <= BlogDocument::MAX_JSON_BYTES;
+            && (!$hasIndex
+                || ($this->validBooleanFlag($request->form('robots_index'))
+                    && $this->validBooleanFlag(
+                        $request->form('robots_follow')
+                    )));
     }
 
     public function acceptsSeoAnalysis(Request $request): bool
     {
         return $this->acceptsSave($request);
+    }
+
+    public function acceptsPublish(Request $request): bool
+    {
+        if (!$this->webAdminPolicy->acceptsFormPost($request, [
+            'csrf',
+            'post',
+            'locale',
+            'lock_version',
+            'category_workspace_version',
+        ])) {
+            return false;
+        }
+
+        return $this->validIdentity($request)
+            && $this->validNonNegativeVersion(
+                $request->form('category_workspace_version')
+            );
     }
 
     public function acceptsRestore(Request $request): bool
@@ -135,22 +164,26 @@ final class BlogStructuredEditorRequestPolicy
             && (string) (int) $version === $version;
     }
 
-    private function validMetadata(Request $request): bool
+    private function hasEditorPayload(Request $request): bool
     {
-        $limits = [
-            'h1' => BlogDraft::MAX_H1_BYTES,
-            'slug' => BlogDraft::MAX_SLUG_BYTES,
-            'seo_title' => BlogDraft::MAX_SEO_TITLE_BYTES,
-            'meta_description' => BlogDraft::MAX_META_DESCRIPTION_BYTES,
-            'excerpt' => BlogDraft::MAX_EXCERPT_BYTES,
-        ];
-        foreach ($limits as $key => $limit) {
-            $value = $request->form($key);
-            if (!is_string($value) || strlen($value) > $limit) {
+        foreach (self::METADATA_KEYS as $key) {
+            if (!is_string($request->form($key))) {
                 return false;
             }
         }
 
-        return trim((string) $request->form('h1')) !== '';
+        return true;
+    }
+
+    private function validBooleanFlag(mixed $value): bool
+    {
+        return $value === '0' || $value === '1';
+    }
+
+    private function validNonNegativeVersion(mixed $value): bool
+    {
+        return is_string($value)
+            && preg_match('/\A(?:0|[1-9][0-9]{0,18})\z/', $value) === 1
+            && (string) (int) $value === $value;
     }
 }

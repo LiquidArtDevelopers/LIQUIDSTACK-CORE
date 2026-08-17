@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Core\Database\SharedPdoConnectionFactory;
 use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationApplyOptions;
 use App\Core\Modules\Migrations\MigrationException;
 use App\Core\Modules\Migrations\MigrationRegistry;
 use App\Core\Modules\Migrations\MigrationRunner;
@@ -13,6 +14,8 @@ use App\Core\Modules\WebAdmin\WebAdminCanonicalSeedVerifier;
 use App\Core\Modules\WebAdmin\WebAdminInitialSchemaContract;
 use App\Core\Modules\WebAdmin\WebAdminHttpSchemaGate;
 use App\Core\Modules\WebAdmin\WebAdminMigrationPostconditionVerifier;
+use App\Core\Modules\WebAdmin\WebAdminProfileHttpSchemaGate;
+use App\Core\Modules\WebAdmin\WebAdminProfileMigrationPostconditionVerifier;
 use App\Core\WebAdmin\Authentication\WebAdminAuthenticationRepository;
 use App\Core\WebAdmin\Authentication\WebAdminAuthenticationService;
 use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
@@ -127,7 +130,11 @@ final class WebAdminMySqlIntegrationTest extends TestCase
                 $firstRun = $runner->apply(
                     $connection,
                     $catalog,
-                    $scopes
+                    $scopes,
+                    new MigrationApplyOptions(
+                        allowDestructive: true,
+                        backupConfirmed: true
+                    )
                 );
             } catch (MigrationException $exception) {
                 if (
@@ -235,6 +242,19 @@ final class WebAdminMySqlIntegrationTest extends TestCase
                     $connection,
                     $registry,
                     $webAdminScope
+                )
+            );
+            self::assertTrue(
+                (new WebAdminProfileMigrationPostconditionVerifier())->verify(
+                    $connection,
+                    $webAdminScope
+                )
+            );
+            self::assertTrue(
+                (new WebAdminProfileHttpSchemaGate())->isReady(
+                    $connection,
+                    $registry,
+                    $scopes
                 )
             );
         } finally {
@@ -528,6 +548,7 @@ final class WebAdminMySqlIntegrationTest extends TestCase
         );
         $expectedCapabilities[] = MediaService::VIEW_CAPABILITY;
         $expectedCapabilities[] = MediaService::UPLOAD_CAPABILITY;
+        $expectedCapabilities[] = MediaService::DELETE_CAPABILITY;
         sort($expectedCapabilities, SORT_STRING);
         self::assertSame(
             $expectedCapabilities,
@@ -540,6 +561,7 @@ final class WebAdminMySqlIntegrationTest extends TestCase
         foreach (['system_superadmin', 'site_admin'] as $role) {
             $expectedGrants[$role][] = MediaService::VIEW_CAPABILITY;
             $expectedGrants[$role][] = MediaService::UPLOAD_CAPABILITY;
+            $expectedGrants[$role][] = MediaService::DELETE_CAPABILITY;
         }
         ksort($expectedGrants, SORT_STRING);
         foreach ($expectedGrants as &$capabilities) {
@@ -1897,7 +1919,12 @@ final class WebAdminMySqlIntegrationTest extends TestCase
         foreach (WebAdminInitialSchemaContract::tableSuffixes() as $suffix) {
             $tables[] = self::TABLE_PREFIX . $suffix;
         }
-        foreach (['media_assets', 'media_variants'] as $suffix) {
+        foreach ([
+            'media_assets',
+            'media_variants',
+            'media_quarantines',
+            'user_profiles',
+        ] as $suffix) {
             $tables[] = self::TABLE_PREFIX . $suffix;
         }
         sort($tables, SORT_STRING);

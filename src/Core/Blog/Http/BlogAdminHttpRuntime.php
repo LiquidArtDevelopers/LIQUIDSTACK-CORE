@@ -8,6 +8,7 @@ use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Analytics\BlogAnalyticsReportInterface;
 use App\Core\Blog\Configuration\BlogConfig;
+use App\Core\Blog\EditorPreferences\BlogEditorPreferencesService;
 use App\Core\Blog\Seo\BlogSeoAnalysisService;
 use App\Core\Blog\Seo\BlogSeoHttpRuntimeInterface;
 use App\Core\Blog\StructuredContent\Categories\BlogEditorCategoryCatalogInterface;
@@ -20,15 +21,19 @@ use App\Core\WebAdmin\Authorization\WebAdminMutationActorGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Navigation\WebAdminNavigationCatalog;
 use App\Core\WebAdmin\Security\OpaqueSecret;
+use App\Core\WebAdmin\Profile\PdoWebAdminProfileRepository;
+use App\Core\WebAdmin\Profile\WebAdminPublicProfile;
 use Closure;
 use PDO;
 use Throwable;
 
 class BlogAdminHttpRuntime implements
     BlogAdminHttpRuntimeInterface,
-    BlogStructuredEditorHttpRuntimeInterface,
+    BlogStructuredLayoutEditorHttpRuntimeInterface,
     BlogStructuredEditorCategoryHttpRuntimeInterface,
-    BlogSeoHttpRuntimeInterface
+    BlogSeoHttpRuntimeInterface,
+    BlogEditorPreferencesHttpRuntimeInterface,
+    BlogAdminProfileHttpRuntimeInterface
 {
     private readonly WebAdminNavigationCatalog $navigation;
 
@@ -56,9 +61,25 @@ class BlogAdminHttpRuntime implements
         private readonly ?BlogEditorCategoryCatalogInterface
             $editorCategoryCatalog = null,
         protected readonly ?BlogAnalyticsReportInterface
-            $optionalAnalyticsReport = null
+            $optionalAnalyticsReport = null,
+        private readonly bool $layoutEditorReady = false,
+        private readonly ?BlogEditorPreferencesService
+            $optionalEditorPreferences = null,
+        private readonly bool $privateDraftPublicationReady = false,
+        private readonly ?PdoWebAdminProfileRepository $profiles = null
     ) {
         $this->navigation = $navigation ?? new WebAdminNavigationCatalog();
+    }
+
+    public function profileForSession(string $sessionToken): ?WebAdminPublicProfile
+    {
+        $session = $this->authentication->resolveAuthenticatedSession(
+            $sessionToken
+        );
+        if ($session === null || $this->profiles === null) {
+            return null;
+        }
+        return $this->profiles->liveByPublicId($session->userPublicId());
     }
 
     public function projectRoot(): string
@@ -133,6 +154,29 @@ class BlogAdminHttpRuntime implements
         }
 
         return $this->editorImageResolver;
+    }
+
+    public function layoutEditorReady(): bool
+    {
+        return $this->layoutEditorReady;
+    }
+
+    public function editorPreferencesReady(): bool
+    {
+        return $this->optionalEditorPreferences !== null;
+    }
+
+    public function editorPreferences(): BlogEditorPreferencesService
+    {
+        return $this->optionalEditorPreferences
+            ?? throw new BlogAdminHttpRuntimeException(
+                'blog.editor_preferences_unavailable'
+            );
+    }
+
+    public function privateDraftPublicationReady(): bool
+    {
+        return $this->privateDraftPublicationReady;
     }
 
     public function editorCategoryCatalog(): ?BlogEditorCategoryCatalogInterface
@@ -262,6 +306,11 @@ class BlogAdminHttpRuntime implements
             'languages' => $this->languages,
             'blog_config' => $this->blogConfig->toSafeArray(),
             'webadmin_config' => $this->webAdminConfig->toSafeArray(),
+            'layout_editor_ready' => $this->layoutEditorReady,
+            'editor_preferences_ready' =>
+                $this->optionalEditorPreferences !== null,
+            'private_draft_publication_ready' =>
+                $this->privateDraftPublicationReady,
         ];
     }
 }

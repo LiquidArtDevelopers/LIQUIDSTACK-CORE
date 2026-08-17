@@ -9,6 +9,8 @@ use App\Core\Composer\MediaInitCommandRuntimeInterface;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationCatalog;
+use App\Core\Modules\Migrations\MigrationApplyOptions;
+use App\Core\Modules\Migrations\MigrationDatabasePlanner;
 use App\Core\Modules\Migrations\MigrationRunner;
 use App\Core\Modules\ModuleRegistry;
 use App\Core\WebAdmin\Media\MediaStorageInitializationResult;
@@ -230,10 +232,21 @@ final class MediaInitCommandTest extends TestCase
             $registry,
             $project
         );
+        $catalog = MigrationCatalog::fromRegistry($registry);
+        $preview = (new MigrationDatabasePlanner())->plan(
+            $pdo,
+            $catalog,
+            $scopes
+        );
         (new MigrationRunner())->apply(
             $pdo,
-            MigrationCatalog::fromRegistry($registry),
-            $scopes
+            $catalog,
+            $scopes,
+            new MigrationApplyOptions(
+                expectedPlanHash: $preview->hash(),
+                allowDestructive: true,
+                backupConfirmed: true
+            )
         );
 
         $pdo->exec(

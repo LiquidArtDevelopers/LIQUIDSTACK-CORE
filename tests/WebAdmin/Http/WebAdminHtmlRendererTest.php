@@ -6,9 +6,40 @@ use App\Core\WebAdmin\Http\WebAdminHtmlRenderer;
 use App\Core\WebAdmin\Http\WebAdminPageDocumentRenderer;
 use App\Core\WebAdmin\Navigation\WebAdminNavigationItem;
 use PHPUnit\Framework\TestCase;
+use App\Core\WebAdmin\Profile\WebAdminPublicProfile;
+use App\Core\WebAdmin\Profile\WebAdminTimeZone;
 
 final class WebAdminHtmlRendererTest extends TestCase
 {
+    public function testProfileFormIsEscapedAndExposesExplicitIanaContract(): void
+    {
+        $html = (new WebAdminHtmlRenderer())->profile(
+            '/admin',
+            'csrf-token',
+            new WebAdminPublicProfile(
+                '11111111-1111-4111-8111-111111111111',
+                '<Equipo & Proyecto>',
+                'site_admin',
+                'Administrador',
+                WebAdminTimeZone::fromIana('Europe/Madrid'),
+                true,
+                3
+            )
+        );
+
+        self::assertStringContainsString('action="/admin/profile"', $html);
+        self::assertStringContainsString('name="time_zone"', $html);
+        self::assertStringContainsString('value="Europe/Madrid"', $html);
+        self::assertStringContainsString('name="lock_version" value="3"', $html);
+        self::assertStringContainsString('&lt;Equipo &amp; Proyecto&gt;', $html);
+        self::assertStringNotContainsString('<Equipo & Proyecto>', $html);
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Guardar perfil</button>',
+            $html
+        );
+    }
+
     private WebAdminHtmlRenderer $renderer;
 
     protected function setUp(): void
@@ -398,6 +429,10 @@ final class WebAdminHtmlRendererTest extends TestCase
         );
         self::assertStringContainsString('>Activo</td>', $html);
         self::assertStringContainsString('Invitar editor', $html);
+        self::assertStringContainsString(
+            '<a class="webadminAction webadminAction--primary" ',
+            $html
+        );
         self::assertStringNotContainsString('name="role"', $html);
     }
 
@@ -463,6 +498,11 @@ final class WebAdminHtmlRendererTest extends TestCase
             'id="webadmin-user-invite-error" role="alert"',
             $html
         );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Enviar invitaci&oacute;n</button>',
+            $html
+        );
     }
 
     public function testActiveEditorDetailUsesSeparateAuthorizedForms(): void
@@ -513,6 +553,16 @@ final class WebAdminHtmlRendererTest extends TestCase
             'id="webadmin-user-edit-error" role="alert"',
             $html
         );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Guardar capacidades</button>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--danger" '
+                . 'type="submit">Suspender editor</button>',
+            $html
+        );
     }
 
     public function testSuspendedEditorOnlyExposesResumeWhenThatIsAuthorized(): void
@@ -536,6 +586,11 @@ final class WebAdminHtmlRendererTest extends TestCase
         self::assertStringNotContainsString('/users/capabilities', $html);
         self::assertStringNotContainsString('/users/invite/resend', $html);
         self::assertStringContainsString('>Suspendido</dd>', $html);
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--primary" '
+                . 'type="submit">Reactivar editor</button>',
+            $html
+        );
     }
 
     public function testInvitedEditorCanExposeSuspendAndResendAsSeparateForms(): void
@@ -554,6 +609,16 @@ final class WebAdminHtmlRendererTest extends TestCase
         self::assertStringContainsString('/admin/users/suspend', $html);
         self::assertStringContainsString('/admin/users/invite/resend', $html);
         self::assertStringContainsString('Invitaci&oacute;n pendiente', $html);
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--danger" '
+                . 'type="submit">Suspender editor</button>',
+            $html
+        );
+        self::assertStringContainsString(
+            '<button class="webadminAction webadminAction--secondary" '
+                . 'type="submit">Reenviar invitaci&oacute;n</button>',
+            $html
+        );
     }
 
     public function testEditorDetailRendersNoFormOrTargetWithoutAnyPermission(): void

@@ -60,10 +60,14 @@ function controller_hero06(int $i = 0, array $params = []): string
         '{hero06-content}'    => '',
         '{img-dl}'            => $imageKey,
         '{img-src}'           => $escapeAttr($assetUrl($imageSrc)),
+        '{img-srcset}'        => $escapeAttr($assetUrl($imageSrc))
+            . ' ' . $imageWidth . 'w',
+        '{img-sizes}'         => '100vw',
         '{img-alt}'           => $escapeAttr($imageAlt),
         '{img-title}'         => $escapeAttr($imageTitle),
         '{img-width}'         => (string) $imageWidth,
         '{img-height}'        => (string) $imageHeight,
+        '{img-object-position-y}' => 'center',
     ];
 
     return render('App/templates/_hero06.html', array_replace($vars, $params));

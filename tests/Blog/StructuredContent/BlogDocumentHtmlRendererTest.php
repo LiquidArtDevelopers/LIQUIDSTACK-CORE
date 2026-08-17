@@ -18,6 +18,28 @@ use RuntimeException;
 
 final class BlogDocumentHtmlRendererTest extends TestCase
 {
+    public function testLiteralMarkupAndSqlLookingCopyAreEscapedAsText(): void
+    {
+        $document = BlogDocument::fromArray($this->document([
+            $this->paragraph(1, [
+                $this->text(
+                    'Tiempo <24 h; <strong>literal</strong>; '
+                    . 'SELECT * FROM posts; DROP TABLE posts; --'
+                ),
+            ]),
+        ]));
+
+        $html = (new BlogDocumentHtmlRenderer($this->resolver([])))
+            ->render($document);
+
+        self::assertStringContainsString(
+            'Tiempo &lt;24 h; &lt;strong&gt;literal&lt;/strong&gt;; '
+                . 'SELECT * FROM posts; DROP TABLE posts; --',
+            $html
+        );
+        self::assertStringNotContainsString('<strong>literal</strong>', $html);
+    }
+
     public function testItRendersEveryV1BlockAsOneSemanticBodyFragment(): void
     {
         $imageId = $this->id(900_008);
@@ -83,7 +105,9 @@ final class BlogDocumentHtmlRendererTest extends TestCase
         $html = $renderer->render($document);
 
         self::assertStringStartsWith(
-            '<div class="blogDocument blogDocument--basic">',
+            '<div class="blogDocument blogDocument--basic '
+                . 'blogDocument--background-white" '
+                . 'data-blog-canvas="white">',
             $html
         );
         self::assertStringEndsWith('</div>', $html);
@@ -132,7 +156,10 @@ final class BlogDocumentHtmlRendererTest extends TestCase
         );
         self::assertStringContainsString(
             '<figure id="blog-block-' . $this->id(8)
-            . '" class="blogDocument__image blogDocument__image--wide">',
+            . '" class="blogDocument__image blogDocument__image--wide '
+            . 'blogDocument__image--radius-medium '
+            . 'blogDocument__image--fit-cover '
+            . 'blogDocument__image--position-y-center"',
             $html
         );
         self::assertStringContainsString('<picture class="blogDocument__picture">', $html);
@@ -317,21 +344,33 @@ final class BlogDocumentHtmlRendererTest extends TestCase
         $html = $renderer->render($document);
         $mainHtml = $renderer->renderMain($document);
         $headerMedia = $renderer->renderHeaderMedia($document);
+        $typedHeaderMedia = $renderer->headerMedia($document);
 
         self::assertStringStartsWith(
-            '<div class="blogDocument blogDocument--cover">',
+            '<div class="blogDocument blogDocument--cover '
+                . 'blogDocument--background-white" '
+                . 'data-blog-canvas="white">',
             $html
         );
         self::assertStringContainsString(
-            'class="blogDocument__image blogDocument__image--cover"',
+            'class="blogDocument__image blogDocument__image--cover '
+                . 'blogDocument__image--radius-medium '
+                . 'blogDocument__image--fit-cover '
+                . 'blogDocument__image--position-y-center"',
             $html
         );
         self::assertStringNotContainsString(
-            'class="blogDocument__image blogDocument__image--cover"',
+            'class="blogDocument__image blogDocument__image--cover '
+                . 'blogDocument__image--radius-medium '
+                . 'blogDocument__image--fit-cover '
+                . 'blogDocument__image--position-y-center"',
             $mainHtml
         );
         self::assertStringContainsString(
-            'class="blogDocument__image blogDocument__image--cover"',
+            'class="blogDocument__image blogDocument__image--cover '
+                . 'blogDocument__image--radius-medium '
+                . 'blogDocument__image--fit-cover '
+                . 'blogDocument__image--position-y-center"',
             $headerMedia
         );
         self::assertStringContainsString('sizes="100vw"', $headerMedia);
@@ -340,6 +379,21 @@ final class BlogDocumentHtmlRendererTest extends TestCase
             $headerMedia
         );
         self::assertStringNotContainsString('loading="lazy"', $headerMedia);
+        self::assertNotNull($typedHeaderMedia);
+        self::assertSame('Matrix image', $typedHeaderMedia->alt());
+        self::assertNull($typedHeaderMedia->title());
+        self::assertSame('100vw', $typedHeaderMedia->sizes());
+        self::assertSame(900, $typedHeaderMedia->image()->width());
+        self::assertSame(600, $typedHeaderMedia->image()->height());
+        self::assertSame(
+            [480, 900],
+            array_map(
+                static fn (BlogResolvedImageCandidate $candidate): int =>
+                    $candidate->width(),
+                $typedHeaderMedia->image()->candidates()
+            )
+        );
+        self::assertSame($headerMedia, $typedHeaderMedia->html());
         $xpath = $this->xpath($mainHtml);
         self::assertCount(
             0,
@@ -350,6 +404,9 @@ final class BlogDocumentHtmlRendererTest extends TestCase
         self::assertSame('', (new BlogDocumentHtmlRenderer(
             $this->resolver([])
         ))->renderHeaderMedia(BlogDocument::fromArray($this->document([]))));
+        self::assertNull((new BlogDocumentHtmlRenderer(
+            $this->resolver([])
+        ))->headerMedia(BlogDocument::fromArray($this->document([]))));
     }
 
     public function testEmptyBasicDocumentRendersAnEmptyBodyContainer(): void
@@ -357,7 +414,9 @@ final class BlogDocumentHtmlRendererTest extends TestCase
         $document = BlogDocument::fromArray($this->document([]));
 
         self::assertSame(
-            '<div class="blogDocument blogDocument--basic"></div>',
+            '<div class="blogDocument blogDocument--basic '
+                . 'blogDocument--background-white" '
+                . 'data-blog-canvas="white"></div>',
             (new BlogDocumentHtmlRenderer($this->resolver([])))
                 ->render($document)
         );

@@ -101,6 +101,14 @@ PHP);
                 'session_timeout_seconds' => 1800,
                 'collect_in_dev' => false,
             ],
+            'public_index' => [
+                'page_size' => 12,
+                'pagination_paths' => [
+                    'es' => '/noticias/page/{page}',
+                    'eu' => '/eu/albisteak/page/{page}',
+                    'en' => '/en/news/page/{page}',
+                ],
+            ],
         ]);
     }
 
@@ -128,6 +136,43 @@ PHP);
             'database'
         ]['connection']);
         self::assertSame('client_blog_', $config->tablePrefix());
+    }
+
+    public function testProjectCanConfigureBoundedPublicIndexPagination(): void
+    {
+        $this->writeConfig(<<<'PHP'
+<?php
+
+return [
+    'public_paths' => [
+        'es' => '/noticias',
+        'en' => '/en/news',
+    ],
+    'public_index' => [
+        'page_size' => 24,
+        'pagination_paths' => [
+            'es' => '/noticias/pagina/{page}',
+            'en' => '/en/news/page/{page}',
+        ],
+    ],
+];
+PHP);
+
+        $config = $this->load(['es', 'en']);
+
+        self::assertSame(24, $config->publicIndex()->pageSize());
+        self::assertSame(
+            '/noticias/pagina/7',
+            $config->publicIndex()->pathForPage('es', 7, '/noticias')
+        );
+        self::assertSame(
+            '/en/news',
+            $config->publicIndex()->pathForPage('en', 1, '/en/news')
+        );
+        self::assertSame(
+            'shared',
+            (new BlogConfigLoader())->databaseConnection($this->fixtureRoot)
+        );
     }
 
     public function testProjectCanSelectARegularContainedPublicArticleView(): void
@@ -343,6 +388,51 @@ PHP);
         yield 'invalid prefix' => [[
             'database' => ['table_prefix' => 'Blog_'],
         ], 'config.invalid_table_prefix', 'database.table_prefix'];
+        yield 'public index page size exceeds the feed lookahead bound' => [[
+            'public_index' => ['page_size' => 50],
+        ], 'config.public_index_page_size_invalid', 'public_index.page_size'];
+        yield 'public index page size cannot be zero' => [[
+            'public_index' => ['page_size' => 0],
+        ], 'config.public_index_page_size_invalid', 'public_index.page_size'];
+        yield 'public index pagination route must belong to each locale' => [[
+            'public_paths' => [
+                'es' => '/noticias',
+                'en' => '/en/news',
+            ],
+            'public_index' => [
+                'pagination_paths' => [
+                    'es' => '/noticias/pagina/{page}',
+                    'en' => '/news/page/{page}',
+                ],
+            ],
+        ], 'config.public_index_pagination_path_invalid',
+            'public_index.pagination_paths.en'];
+        yield 'public index pagination route needs exactly one page token' => [[
+            'public_index' => [
+                'pagination_paths' => [
+                    'es' => '/blog/page/{page}/{page}',
+                    'en' => '/en/blog/page/{page}',
+                ],
+            ],
+        ], 'config.public_index_pagination_path_invalid',
+            'public_index.pagination_paths.es'];
+        yield 'public index pagination route cannot omit the page token' => [[
+            'public_index' => [
+                'pagination_paths' => [
+                    'es' => '/blog/page/2',
+                    'en' => '/en/blog/page/{page}',
+                ],
+            ],
+        ], 'config.public_index_pagination_path_invalid',
+            'public_index.pagination_paths.es'];
+        yield 'public index pagination route must cover every locale' => [[
+            'public_index' => [
+                'pagination_paths' => [
+                    'es' => '/blog/page/{page}',
+                ],
+            ],
+        ], 'config.public_index_pagination_path_invalid',
+            'public_index.pagination_paths.en'];
     }
 
     public function testInvalidLanguageCatalogAndEmptyCatalogFailClosed(): void

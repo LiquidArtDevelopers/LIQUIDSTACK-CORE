@@ -7,6 +7,7 @@ use App\Core\Blog\Analytics\BlogAnalyticsReportInterface;
 use App\Core\Blog\Analytics\BlogArticleAnalyticsSummary;
 use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogService;
+use App\Core\Blog\Categories\BlogReservedCategoryPolicy;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Http\BlogAdminHttpController;
 use App\Core\Blog\Http\BlogCategoryAdminHttpController;
@@ -15,6 +16,7 @@ use App\Core\Blog\Http\BlogAdminHttpRuntimeInterface;
 use App\Core\Blog\Http\BlogAnalyticsAdminHttpRuntimeInterface;
 use App\Core\Blog\Http\BlogStructuredEditorHttpRuntimeInterface;
 use App\Core\Blog\Persistence\PdoBlogRepository;
+use App\Core\Blog\Seo\PdoBlogUrlHistoryRepository;
 use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Modules\Blog\BlogMigrationProvider;
@@ -302,7 +304,8 @@ final class BlogAdminHttpControllerTest extends TestCase
         $blogRepository = new PdoBlogRepository(
             $this->pdo,
             $blogScope,
-            true
+            true,
+            reservedCategoryPolicyEnabled: true
         );
         $structuredContentRepository = new
             App\Core\Blog\StructuredContent\Persistence\PdoBlogStructuredContentRepository(
@@ -318,7 +321,11 @@ final class BlogAdminHttpControllerTest extends TestCase
                 App\Core\Blog\StructuredContent\Media\PdoWebAdminMediaAvailabilityAdapter(
                     $this->pdo,
                     $webAdminScope
-                )
+                ),
+            urlHistory: new PdoBlogUrlHistoryRepository(
+                $this->pdo,
+                $blogScope
+            )
         );
         $languages = ['es', 'eu'];
         $blogConfig = new BlogConfig(
@@ -402,6 +409,10 @@ final class BlogAdminHttpControllerTest extends TestCase
             "img-src 'self'",
             $empty->headers()['Content-Security-Policy']
         );
+        self::assertStringContainsString(
+            "frame-src 'self'",
+            $empty->headers()['Content-Security-Policy']
+        );
         $this->assertPrivateHeaders($empty);
 
         $create = $this->controller->create($this->post(
@@ -461,12 +472,49 @@ final class BlogAdminHttpControllerTest extends TestCase
         )->fetchColumn());
 
         $publishForm['lock_version'] = '3';
-        $this->assertPrg($this->controller->unpublish($this->post(
+        $retired = $this->controller->unpublish($this->post(
             '/admin/blog/posts/unpublish',
             $publishForm
-        )));
+        ));
+        self::assertSame(303, $retired->status());
+        self::assertSame(
+            '/admin/blog/posts/url?post=' . $post . '&locale=es',
+            $retired->headers()['Location']
+        );
         self::assertSame('draft', $this->pdo->query(
             'SELECT status FROM ls_blog_post_localizations'
+        )->fetchColumn());
+        $urlPage = $this->controller->urlManager($this->get(
+            '/admin/blog/posts/url',
+            ['post' => $post, 'locale' => 'es']
+        ));
+        self::assertSame(200, $urlPage->status());
+        self::assertStringContainsString('responde 404', $urlPage->body());
+        self::assertStringContainsString(
+            'name="historical_slug" value="matrix-reloaded"',
+            $urlPage->body()
+        );
+
+        $gone = $this->controller->finalizeUrl($this->post(
+            '/admin/blog/posts/url-resolution',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $post,
+                'locale' => 'es',
+                'lock_version' => '4',
+                'historical_slug' => 'matrix-reloaded',
+                'resolution' => 'gone',
+                'replacement_post' => '',
+            ]
+        ));
+        self::assertSame(303, $gone->status());
+        self::assertSame(
+            '/admin/blog/posts/url?post=' . $post . '&locale=es',
+            $gone->headers()['Location']
+        );
+        self::assertSame('gone', $this->pdo->query(
+            'SELECT state FROM ls_blog_url_history '
+                . "WHERE slug = 'matrix-reloaded'"
         )->fetchColumn());
     }
 
@@ -487,10 +535,28 @@ final class BlogAdminHttpControllerTest extends TestCase
                 'csrf' => str_repeat('X', 43),
                 'post' => $source,
                 'locale' => 'es',
+                'destination_locale' => 'es',
                 'lock_version' => '1',
+                'operation_id' => '91000000-0000-4000-8000-000000000001',
             ]
         ));
         self::assertSame(403, $invalidDuplicate->status());
+        self::assertSame(1, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+
+        $inactiveLocale = $this->controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'destination_locale' => 'fr',
+                'lock_version' => '1',
+                'operation_id' => '91000000-0000-4000-8000-000000000002',
+            ]
+        ));
+        self::assertSame(422, $inactiveLocale->status());
         self::assertSame(1, (int) $this->pdo->query(
             'SELECT COUNT(*) FROM ls_blog_posts'
         )->fetchColumn());
@@ -501,7 +567,9 @@ final class BlogAdminHttpControllerTest extends TestCase
                 'csrf' => $this->csrfToken,
                 'post' => $source,
                 'locale' => 'es',
+                'destination_locale' => 'es',
                 'lock_version' => '1',
+                'operation_id' => '91000000-0000-4000-8000-000000000003',
             ]
         ));
         self::assertSame(303, $duplicate->status());
@@ -516,6 +584,56 @@ final class BlogAdminHttpControllerTest extends TestCase
             "SELECT COUNT(*) FROM ls_blog_post_localizations "
                 . "WHERE status = 'draft' AND slug IS NULL "
                 . "AND h1 = 'Copia de Matrix'"
+        )->fetchColumn());
+
+        $replay = $this->controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'destination_locale' => 'es',
+                'lock_version' => '1',
+                'operation_id' => '91000000-0000-4000-8000-000000000003',
+            ]
+        ));
+        self::assertSame(303, $replay->status());
+        self::assertSame(
+            $duplicate->headers()['Location'],
+            $replay->headers()['Location']
+        );
+        self::assertSame(2, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+
+        $keyDrift = $this->controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'destination_locale' => 'eu',
+                'lock_version' => '1',
+                'operation_id' => '91000000-0000-4000-8000-000000000003',
+            ]
+        ));
+        self::assertSame(409, $keyDrift->status());
+        self::assertStringContainsString(
+            'No se pudo crear el borrador',
+            $keyDrift->body()
+        );
+        self::assertStringContainsString(
+            'No se ha creado un segundo borrador',
+            $keyDrift->body()
+        );
+        self::assertStringContainsString(
+            'href="/admin/blog"',
+            $keyDrift->body()
+        );
+        self::assertSame('text/html; charset=utf-8',
+            $keyDrift->headers()['Content-Type']);
+        self::assertSame(1, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_copy_operations'
         )->fetchColumn());
 
         $trash = $this->controller->trashPost($this->post(
@@ -542,6 +660,18 @@ final class BlogAdminHttpControllerTest extends TestCase
         );
         self::assertStringContainsString(
             'action="/admin/blog/posts/restore"',
+            $trashPage->body()
+        );
+        self::assertStringContainsString(
+            '<th scope="col">Estado</th>',
+            $trashPage->body()
+        );
+        self::assertStringContainsString(
+            'blogAdminPage__postStatus--deleted',
+            $trashPage->body()
+        );
+        self::assertStringContainsString(
+            '<span>Eliminado</span>',
             $trashPage->body()
         );
 
@@ -593,7 +723,7 @@ final class BlogAdminHttpControllerTest extends TestCase
         );
     }
 
-    public function testDuplicateRequiresCategoryEditBecauseItClonesAssignments(): void
+    public function testIndependentDuplicateRequiresCategoryEditButLocaleCopyDoesNot(): void
     {
         self::assertSame(303, $this->controller->create($this->post(
             '/admin/blog/posts/create',
@@ -609,8 +739,16 @@ final class BlogAdminHttpControllerTest extends TestCase
 
         $index = $this->controller->index($this->get('/admin/blog'));
         self::assertSame(200, $index->status());
-        self::assertStringNotContainsString(
+        self::assertStringContainsString(
             'action="/admin/blog/posts/duplicate"',
+            $index->body()
+        );
+        self::assertMatchesRegularExpression(
+            '/name="destination_locale" value="es"[^>]* disabled>/',
+            $index->body()
+        );
+        self::assertMatchesRegularExpression(
+            '/name="destination_locale" value="eu"(?![^>]* disabled)[^>]*>/',
             $index->body()
         );
         $response = $this->controller->duplicate($this->post(
@@ -619,13 +757,49 @@ final class BlogAdminHttpControllerTest extends TestCase
                 'csrf' => $this->csrfToken,
                 'post' => $source,
                 'locale' => 'es',
+                'destination_locale' => 'es',
                 'lock_version' => '1',
+                'operation_id' => '92000000-0000-4000-8000-000000000001',
             ]
         ));
 
         self::assertSame(403, $response->status());
         self::assertSame(1, (int) $this->pdo->query(
             'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+
+        $localeCopy = $this->controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'destination_locale' => 'eu',
+                'lock_version' => '1',
+                'operation_id' => '92000000-0000-4000-8000-000000000002',
+            ]
+        ));
+        self::assertSame(303, $localeCopy->status());
+        self::assertSame(
+            '/admin/blog/editor?post=' . $source . '&locale=eu',
+            $localeCopy->headers()['Location']
+        );
+        self::assertSame(1, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+        self::assertSame(2, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_post_localizations'
+        )->fetchColumn());
+        self::assertSame(1, (int) $this->pdo->query(
+            "SELECT COUNT(*) FROM ls_blog_post_localizations "
+                . "WHERE locale = 'eu' AND status = 'draft' "
+                . "AND slug IS NULL AND h1 = 'Matrix'"
+        )->fetchColumn());
+        self::assertSame(0, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_editorial_workspaces'
+        )->fetchColumn());
+        self::assertSame(0, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_publication_heads'
         )->fetchColumn());
     }
 
@@ -641,7 +815,11 @@ final class BlogAdminHttpControllerTest extends TestCase
         )->fetchColumn();
         $scope = MigrationScope::forTablePrefix('blog', 'ls_blog_');
         $legacyService = new BlogService(
-            new PdoBlogRepository($this->pdo, $scope),
+            new PdoBlogRepository(
+                $this->pdo,
+                $scope,
+                reservedCategoryPolicyEnabled: true
+            ),
             new RandomUuidV4Generator(),
             new BlogAdminControllerClock(
                 new DateTimeImmutable('2030-01-01 10:00:00 UTC')
@@ -687,7 +865,9 @@ final class BlogAdminHttpControllerTest extends TestCase
                 'csrf' => $this->csrfToken,
                 'post' => $source,
                 'locale' => 'es',
+                'destination_locale' => 'es',
                 'lock_version' => '1',
+                'operation_id' => '93000000-0000-4000-8000-000000000001',
             ]
         ))->status());
         self::assertSame(404, $controller->trash($this->get(
@@ -767,8 +947,12 @@ final class BlogAdminHttpControllerTest extends TestCase
             '/admin/blog/posts/edit',
             ['post' => $post, 'locale' => 'es']
         ));
-        self::assertStringContainsString(
+        self::assertStringNotContainsString(
             'A&ntilde;adir otro idioma',
+            $editBeforeTranslation->body()
+        );
+        self::assertStringNotContainsString(
+            '/admin/blog/posts/new?post=',
             $editBeforeTranslation->body()
         );
 
@@ -802,7 +986,7 @@ final class BlogAdminHttpControllerTest extends TestCase
             'A&ntilde;adir otro idioma',
             $editComplete->body()
         );
-        self::assertStringContainsString(
+        self::assertStringNotContainsString(
             'todos los idiomas activos',
             $editComplete->body()
         );
@@ -962,6 +1146,81 @@ final class BlogAdminHttpControllerTest extends TestCase
         ))->status());
     }
 
+    public function testDuplicateReplayExplainsThatItsResultIsInTrash(): void
+    {
+        self::assertSame(303, $this->controller->create($this->post(
+            '/admin/blog/posts/create',
+            ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
+                + $this->editorial('copy-replay-trash')
+        ))->status());
+        $source = (string) $this->pdo->query(
+            'SELECT public_id FROM ls_blog_posts'
+        )->fetchColumn();
+        $operation = '91000000-0000-4000-8000-000000000099';
+        $copyForm = [
+            'csrf' => $this->csrfToken,
+            'post' => $source,
+            'locale' => 'es',
+            'destination_locale' => 'es',
+            'lock_version' => '1',
+            'operation_id' => $operation,
+        ];
+
+        $created = $this->controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            $copyForm
+        ));
+        self::assertSame(303, $created->status());
+        parse_str(
+            (string) parse_url(
+                $created->headers()['Location'],
+                PHP_URL_QUERY
+            ),
+            $createdQuery
+        );
+        $createdPost = (string) ($createdQuery['post'] ?? '');
+        self::assertMatchesRegularExpression(
+            '/\A[0-9a-f-]{36}\z/',
+            $createdPost
+        );
+
+        self::assertSame(303, $this->controller->trashPost($this->post(
+            '/admin/blog/posts/trash',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $createdPost,
+                'locale' => 'es',
+                'lock_version' => '1',
+            ]
+        ))->status());
+
+        $replay = $this->controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            $copyForm
+        ));
+        self::assertSame(409, $replay->status());
+        self::assertStringContainsString(
+            'El borrador creado por esta solicitud est&aacute; en la Papelera.',
+            $replay->body()
+        );
+        self::assertStringContainsString(
+            'No se ha creado otro; rest&aacute;uralo para continuar.',
+            $replay->body()
+        );
+        self::assertSame(2, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+        self::assertSame(2, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_post_localizations'
+        )->fetchColumn());
+        self::assertSame(1, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_post_tombstones'
+        )->fetchColumn());
+        self::assertSame(1, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_copy_operations'
+        )->fetchColumn());
+    }
+
     public function testMalformedSemanticAndUnauthorizedRequestsFailClosed(): void
     {
         $malformed = $this->post('/admin/blog/posts/create', [
@@ -1113,21 +1372,21 @@ final class BlogAdminHttpControllerTest extends TestCase
 
         $first = $this->controller->index($this->get('/admin/blog'));
         self::assertSame(200, $first->status());
-        self::assertSame(51, substr_count($first->body(), '<tr>'));
+        self::assertSame(21, substr_count($first->body(), '<tr>'));
         self::assertStringContainsString(
-            'rel="next" href="/admin/blog?offset=50"',
+            'rel="next" href="/admin/blog?offset=20"',
             $first->body()
         );
         self::assertStringNotContainsString('rel="prev"', $first->body());
 
         $last = $this->controller->index($this->get(
             '/admin/blog',
-            ['offset' => '50']
+            ['offset' => '40']
         ));
         self::assertSame(200, $last->status());
-        self::assertSame(2, substr_count($last->body(), '<tr>'));
+        self::assertSame(12, substr_count($last->body(), '<tr>'));
         self::assertStringContainsString(
-            'rel="prev" href="/admin/blog"',
+            'rel="prev" href="/admin/blog?offset=20"',
             $last->body()
         );
         self::assertStringNotContainsString('rel="next"', $last->body());
@@ -1140,6 +1399,122 @@ final class BlogAdminHttpControllerTest extends TestCase
             '/admin/blog/posts/updated',
             ['offset' => '50']
         ))->status());
+    }
+
+    public function testIndexSearchFiltersAndPaginationShareTheNativeGet(): void
+    {
+        $this->seedBlogSummaries(51);
+
+        $first = $this->controller->index($this->get('/admin/blog', [
+            'q' => 'Matrix',
+            'status' => 'draft',
+            'locale' => 'es',
+        ]));
+        self::assertSame(200, $first->status());
+        self::assertStringContainsString(
+            'data-blog-admin-filter-form',
+            $first->body()
+        );
+        self::assertStringContainsString(
+            'data-blog-admin-results data-blog-admin-result-count="20"',
+            $first->body()
+        );
+        self::assertStringContainsString(
+            'rel="next" href="/admin/blog?q=Matrix&amp;status=draft'
+                . '&amp;locale=es&amp;offset=20"',
+            $first->body()
+        );
+        self::assertStringContainsString(
+            "connect-src 'self'",
+            $first->headers()['Content-Security-Policy']
+        );
+
+        $last = $this->controller->index($this->get('/admin/blog', [
+            'q' => 'Matrix',
+            'status' => 'draft',
+            'locale' => 'es',
+            'offset' => '40',
+        ]));
+        self::assertSame(200, $last->status());
+        self::assertStringContainsString('Matrix 51', $last->body());
+        self::assertStringNotContainsString('Matrix 40</th>', $last->body());
+        self::assertStringContainsString(
+            'rel="prev" href="/admin/blog?q=Matrix&amp;status=draft'
+                . '&amp;locale=es&amp;offset=20"',
+            $last->body()
+        );
+
+        $bySlug = $this->controller->index($this->get('/admin/blog', [
+            'q' => 'matrix-51',
+        ]));
+        self::assertSame(200, $bySlug->status());
+        self::assertStringContainsString('Matrix 51', $bySlug->body());
+        self::assertStringNotContainsString('Matrix 50</th>', $bySlug->body());
+
+        foreach ([['q' => 'x'], ['locale' => 'fr']] as $invalidQuery) {
+            self::assertSame(400, $this->controller->index($this->get(
+                '/admin/blog',
+                $invalidQuery
+            ))->status());
+        }
+    }
+
+    public function testIndexExcludesCanonicalDummyBeforeReactivePaging(): void
+    {
+        $this->seedBlogSummaries(30);
+        $this->assignCanonicalDummyToSeededSummaries(6);
+
+        $first = $this->controller->index($this->get('/admin/blog'));
+        self::assertSame(200, $first->status());
+        self::assertStringContainsString(
+            'data-blog-admin-results data-blog-admin-result-count="20"',
+            $first->body()
+        );
+        self::assertStringContainsString(
+            'rel="next" href="/admin/blog?offset=20"',
+            $first->body()
+        );
+        for ($index = 1; $index <= 6; ++$index) {
+            self::assertStringNotContainsString(
+                '>Matrix ' . $index . '</th>',
+                $first->body()
+            );
+        }
+        self::assertStringContainsString('>Matrix 7</th>', $first->body());
+
+        // This is the same native GET consumed by the progressive-enhancement
+        // fetch path; filtering, sorting, offsets and its result sentinel all
+        // remain downstream of the canonical exclusion.
+        $reactiveGet = $this->controller->index($this->get('/admin/blog', [
+            'q' => 'Matrix',
+            'status' => 'draft',
+            'locale' => 'es',
+            'offset' => '20',
+            'per_page' => '10',
+            'sort' => 'title',
+            'dir' => 'asc',
+        ]));
+        self::assertSame(200, $reactiveGet->status());
+        self::assertStringContainsString(
+            'data-blog-admin-results data-blog-admin-result-count="4"',
+            $reactiveGet->body()
+        );
+        self::assertStringNotContainsString(
+            'rel="next"',
+            $reactiveGet->body()
+        );
+        foreach (['Matrix 30', 'Matrix 7', 'Matrix 8', 'Matrix 9'] as $title) {
+            self::assertStringContainsString(
+                '>' . $title . '</th>',
+                $reactiveGet->body()
+            );
+        }
+
+        self::assertSame(400, $this->controller->index($this->get(
+            '/admin/blog',
+            ['include_dummy' => '1']
+        ))->status());
+        self::assertStringNotContainsString('include_dummy', $first->body());
     }
 
     public function testIndexOnlyOffersActionsAllowedByStateAndCapabilities(): void
@@ -1198,7 +1573,7 @@ final class BlogAdminHttpControllerTest extends TestCase
                 . '&amp;locale=es',
             $index->body()
         );
-        self::assertStringNotContainsString(
+        self::assertStringContainsString(
             '/admin/blog/editor?post='
                 . $posts['matrix-published']['public_id']
                 . '&amp;locale=es',
@@ -1208,7 +1583,10 @@ final class BlogAdminHttpControllerTest extends TestCase
             $index->body(),
             '/admin/blog/editor/preview?'
         ));
-        self::assertStringContainsString('>Vista web</a>', $index->body());
+        self::assertStringContainsString(
+            'aria-label="Vista web"',
+            $index->body()
+        );
         $publishedPreview = $this->controller->preview($this->get(
             '/admin/blog/posts/preview',
             [
@@ -1217,8 +1595,10 @@ final class BlogAdminHttpControllerTest extends TestCase
             ]
         ));
         self::assertSame(200, $publishedPreview->status());
-        self::assertStringNotContainsString(
-            '/admin/blog/editor?',
+        self::assertStringContainsString(
+            '/admin/blog/editor?post='
+                . $posts['matrix-published']['public_id']
+                . '&amp;locale=es',
             $publishedPreview->body()
         );
         $draftPreview = $this->controller->preview($this->get(
@@ -1251,7 +1631,7 @@ final class BlogAdminHttpControllerTest extends TestCase
             '/admin/blog/posts/preview?'
         ));
         self::assertStringContainsString(
-            '>Vista web</a>',
+            'aria-label="Vista web"',
             $withoutMedia->body()
         );
         self::assertStringNotContainsString(
@@ -1508,6 +1888,34 @@ final class BlogAdminHttpControllerTest extends TestCase
                 'created' => $timestamp,
                 'updated' => $timestamp,
             ]));
+        }
+    }
+
+    private function assignCanonicalDummyToSeededSummaries(int $count): void
+    {
+        $categoryId = (int) $this->pdo->query(
+            'SELECT id FROM ls_blog_categories WHERE public_id = '
+                . $this->pdo->quote(
+                    BlogReservedCategoryPolicy::DUMMY_CATEGORY_PUBLIC_ID
+                )
+        )->fetchColumn();
+        self::assertGreaterThan(0, $categoryId);
+        $statement = $this->pdo->prepare(
+            'INSERT INTO ls_blog_post_categories '
+                . '(public_id, post_id, category_id, '
+                . 'assigned_by_user_public_id) SELECT :relation, id, '
+                . ':category, :actor FROM ls_blog_posts '
+                . 'WHERE public_id = :post'
+        );
+        self::assertNotFalse($statement);
+        for ($index = 1; $index <= $count; ++$index) {
+            self::assertTrue($statement->execute([
+                'relation' => $this->fixtureUuid('8', $index),
+                'category' => $categoryId,
+                'actor' => '10000000-0000-4000-8000-000000000001',
+                'post' => $this->fixtureUuid('4', $index),
+            ]));
+            self::assertSame(1, $statement->rowCount());
         }
     }
 

@@ -40,6 +40,12 @@ body.webadmin {
         linear-gradient(145deg, var(--ls-webadmin-background), var(--ls-webadmin-background-soft));
 }
 
+@media (max-width: 20rem) {
+    html {
+        min-width: 100%;
+    }
+}
+
 .webadmin > main {
     width: min(100%, 74rem);
     min-height: 100vh;
@@ -61,6 +67,8 @@ body.webadmin {
 }
 
 .webadmin .webadminShell {
+    --ls-webadmin-sidebar-edge: min(18rem, calc(100vw - 3rem));
+    --ls-webadmin-inspector-edge: min(28rem, calc(100vw - 3rem));
     min-height: 100vh;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -94,7 +102,7 @@ body.webadmin {
 }
 
 .webadmin .webadminShell-brand {
-    margin: 0 0 2rem;
+    margin: 0 0 1rem;
     color: var(--ls-webadmin-surface-strong);
     font-size: 1.15rem;
     font-weight: 800;
@@ -166,13 +174,73 @@ body.webadmin {
 .webadmin .webadminShell-inspectorToggle {
     min-width: 2.75rem;
     min-height: 2.75rem;
-    padding: 0.55rem 0.8rem;
+    width: 2.75rem;
+    padding: 0;
     display: none;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    inset-block-start: 5.25rem;
+    z-index: 45;
     color: var(--ls-webadmin-accent);
     border: 1px solid var(--ls-webadmin-border);
-    border-radius: 0.5rem;
-    background: transparent;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 0.35rem 1rem rgba(39, 39, 39, 0.14);
     white-space: nowrap;
+    transition:
+        inset-inline-start 180ms ease,
+        inset-inline-end 180ms ease,
+        color 180ms ease,
+        background-color 180ms ease;
+}
+
+.webadmin .webadminShell-menuToggle {
+    inset-inline-start: 0;
+    border-width: 1px 1px 1px 0;
+    border-radius: 0 0.65rem 0.65rem 0;
+}
+
+.webadmin .webadminShell-inspectorToggle {
+    inset-inline-end: 0;
+    border-width: 1px 0 1px 1px;
+    border-radius: 0.65rem 0 0 0.65rem;
+}
+
+.webadmin .webadminShell[data-webadmin-sidebar-open='true']
+    .webadminShell-menuToggle {
+    inset-inline-start: var(--ls-webadmin-sidebar-edge);
+}
+
+.webadmin .webadminShell[data-webadmin-inspector-open='true']
+    .webadminShell-inspectorToggle {
+    inset-inline-end: var(--ls-webadmin-inspector-edge);
+}
+
+.webadmin .webadminShell-menuToggle:hover,
+.webadmin .webadminShell-inspectorToggle:hover,
+.webadmin .webadminShell-menuToggle:focus-visible,
+.webadmin .webadminShell-inspectorToggle:focus-visible {
+    color: var(--ls-webadmin-surface-strong);
+    background: var(--ls-webadmin-accent);
+}
+
+.webadmin .webadminShell-toggleIcon {
+    font-size: 1.65rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.webadmin .webadminShell-visuallyHidden {
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    border: 0;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
 }
 
 .webadmin .webadminShell[data-webadmin-shell-bound='true']
@@ -195,7 +263,8 @@ body.webadmin {
 }
 
 .webadmin .webadminShell-logout {
-    margin: 0;
+    margin-block: 0;
+    margin-inline-start: auto;
 }
 
 .webadmin .webadminShell-logout button {
@@ -268,7 +337,7 @@ body.webadmin {
 
     .webadmin .webadminShell[data-webadmin-shell-bound='true']
         .webadminShell-inspector {
-        width: min(28rem, 100vw);
+        width: min(28rem, calc(100vw - 3rem));
         height: calc(100vh - 4.5rem);
         height: calc(100dvh - 4.5rem);
         position: fixed;
@@ -292,7 +361,14 @@ body.webadmin {
     }
 
     .webadmin .webadminShell-menuToggle,
-    .webadmin .webadminShell-inspectorToggle,
+    .webadmin .webadminShell-inspectorToggle {
+        width: 2.5rem;
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+        padding: 0;
+        font-size: 0.8rem;
+    }
+
     .webadmin .webadminShell-logout button {
         min-height: 2.5rem;
         padding: 0.4rem 0.55rem;
@@ -333,11 +409,62 @@ body.webadmin {
     min-width: 0;
 }
 
-.webadmin .webadminMedia input[type='file'] {
-    padding: 0.55rem;
+.webadmin .webadminMedia input[data-webadmin-media-file] {
+    padding: 0.4rem;
+    overflow: hidden;
+    cursor: pointer;
 }
 
-.webadmin .webadminMedia > section > ul {
+.webadmin .webadminMedia input[data-webadmin-media-file]::file-selector-button {
+    min-height: 2.5rem;
+    margin-inline-end: 0.8rem;
+    padding: 0.55rem 0.9rem;
+    color: var(--ls-webadmin-surface-strong);
+    font: inherit;
+    font-weight: 750;
+    border: 0;
+    border-radius: 0.5rem;
+    background: var(--ls-webadmin-accent);
+    cursor: pointer;
+}
+
+.webadmin .webadminMedia input[data-webadmin-media-file-bound='true'] {
+    color: transparent;
+}
+
+.webadmin .webadminMedia__fileName {
+    min-height: 2.7rem;
+    padding: 0.65rem 0.8rem;
+    display: flex;
+    align-items: center;
+    overflow-wrap: anywhere;
+    color: var(--ls-webadmin-muted);
+    border-radius: 0.55rem;
+    background: #eef3f4;
+}
+
+.webadmin .webadminMedia__fileName[
+    data-webadmin-media-file-selected='true'
+] {
+    color: var(--ls-webadmin-accent-hover);
+    font-weight: 800;
+    background: var(--ls-webadmin-highlight-soft);
+}
+
+.webadmin .webadminMedia [data-webadmin-media-submit] {
+    min-width: 13rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+}
+
+.webadmin .webadminMedia [data-webadmin-media-submit]:disabled {
+    opacity: 0.72;
+    cursor: wait;
+}
+
+.webadmin .webadminMedia [data-webadmin-media-catalog] {
     margin: 1.25rem 0 0;
     padding: 0;
     display: grid;
@@ -346,11 +473,11 @@ body.webadmin {
     list-style: none;
 }
 
-.webadmin .webadminMedia > section > ul > li {
+.webadmin .webadminMedia [data-webadmin-media-catalog] > li {
     min-width: 0;
 }
 
-.webadmin .webadminMedia > section > ul > li > article {
+.webadmin .webadminMedia [data-webadmin-media-catalog] > li > article {
     min-width: 0;
     height: 100%;
     padding: 1rem;
@@ -360,7 +487,7 @@ body.webadmin {
     background: var(--ls-webadmin-surface-strong);
 }
 
-.webadmin .webadminMedia > section > ul > li > article > img {
+.webadmin .webadminMedia [data-webadmin-media-catalog] > li > article > img {
     width: 100%;
     aspect-ratio: 4 / 3;
     display: block;
@@ -368,7 +495,7 @@ body.webadmin {
     background: #e4e8ea;
 }
 
-.webadmin .webadminMedia > section > ul > li > article > h3 {
+.webadmin .webadminMedia [data-webadmin-media-catalog] > li > article > h3 {
     margin: 0;
     overflow-wrap: anywhere;
 }
@@ -394,6 +521,34 @@ body.webadmin {
     margin: 0;
 }
 
+.webadmin .webadminMedia__usage {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 750;
+}
+
+.webadmin .webadminMedia__usage::before {
+    width: 0.55rem;
+    height: 0.55rem;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: currentColor;
+    content: '';
+}
+
+.webadmin .webadminMedia__usage--used {
+    color: var(--ls-webadmin-danger);
+}
+
+.webadmin .webadminMedia__usage--unused {
+    color: var(--ls-webadmin-success);
+}
+
+.webadmin .webadminMedia__usage--unknown {
+    color: var(--ls-webadmin-muted);
+}
+
 .webadmin .webadminMedia nav[aria-label='Paginaci&oacute;n'] {
     margin-block-start: 1.5rem;
     display: flex;
@@ -408,6 +563,145 @@ body.webadmin {
     border: 1px solid var(--ls-webadmin-border);
     border-radius: 0.5rem;
     background: var(--ls-webadmin-surface-strong);
+}
+
+.webadmin .webadminMedia [data-webadmin-media-delete-form] {
+    margin-block-start: auto;
+    padding-block-start: 0.25rem;
+}
+
+.webadmin .webadminMedia [data-webadmin-media-delete-open] {
+    color: var(--ls-webadmin-danger);
+    border: 1px solid currentColor;
+    background: transparent;
+}
+
+.webadmin .webadminMedia [data-webadmin-media-delete-open]:hover {
+    color: #ffffff;
+    background: var(--ls-webadmin-danger);
+}
+
+.webadmin .webadminMedia__deleteFeedback {
+    margin: 0;
+}
+
+.webadmin .webadminMedia__deleteFeedback:empty {
+    display: none;
+}
+
+.webadmin .webadminMedia__deleteFeedback[
+    data-webadmin-media-delete-feedback='error'
+] {
+    color: var(--ls-webadmin-danger);
+}
+
+.webadmin .webadminMedia__deleteDialog {
+    width: min(calc(100% - 2rem), 34rem);
+    max-height: calc(100dvh - 2rem);
+    padding: clamp(1.25rem, 3vw, 2rem);
+    color: var(--ls-webadmin-text);
+    border: 1px solid var(--ls-webadmin-border);
+    border-radius: 1rem;
+    background: var(--ls-webadmin-surface-strong);
+    box-shadow: var(--ls-webadmin-shadow);
+}
+
+.webadmin .webadminMedia__deleteDialog::backdrop {
+    background: rgba(20, 20, 20, 0.68);
+    backdrop-filter: blur(0.18rem);
+}
+
+.webadmin .webadminMedia__deleteDialog > h2 {
+    margin-block-start: 0;
+}
+
+.webadmin .webadminMedia__deleteDialogActions {
+    margin-block-start: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.webadmin .webadminMedia__deleteDialogActions [
+    data-webadmin-media-delete-cancel
+] {
+    color: var(--ls-webadmin-text);
+    border: 1px solid var(--ls-webadmin-border);
+    background: var(--ls-webadmin-surface-strong);
+}
+
+.webadmin .webadminMedia__deleteDialogActions [
+    data-webadmin-media-delete-confirm
+] {
+    color: #fff;
+    background: var(--ls-webadmin-danger);
+}
+
+.webadmin .webadminMedia__deleteDialog[aria-busy='true'] button {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+.webadmin .webadminLoader {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.webadmin .webadminLoader[hidden] {
+    display: none;
+}
+
+.webadmin .webadminLoader__cube {
+    width: 1.1rem;
+    height: 1.1rem;
+    display: block;
+    position: relative;
+    transform-style: preserve-3d;
+    animation: webadminLoaderCubeRotate 1.15s linear infinite;
+}
+
+.webadmin .webadminLoader__cube > span {
+    width: 0.8rem;
+    height: 0.8rem;
+    position: absolute;
+    inset: 0.15rem;
+    border: 1px solid currentColor;
+    background: var(--ls-webadmin-highlight);
+}
+
+.webadmin .webadminLoader__cube > span:nth-child(1) {
+    transform: translateZ(0.4rem);
+}
+
+.webadmin .webadminLoader__cube > span:nth-child(2) {
+    transform: rotateY(90deg) translateZ(0.4rem);
+}
+
+.webadmin .webadminLoader__cube > span:nth-child(3) {
+    transform: rotateX(90deg) translateZ(0.4rem);
+}
+
+.webadmin .webadminLoader__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+@keyframes webadminLoaderCubeRotate {
+    from {
+        transform: rotateX(-28deg) rotateY(0deg);
+    }
+
+    to {
+        transform: rotateX(-28deg) rotateY(360deg);
+    }
 }
 
 .webadmin .artAuth01 {
@@ -496,6 +790,9 @@ body.webadmin {
     padding: 0;
     border: 0;
 }
+.webadmin legend{
+    margin-bottom: 0.5rem;
+}
 
 .webadmin legend,
 .webadmin label {
@@ -540,7 +837,11 @@ body.webadmin {
 
 .webadmin input[type="checkbox"] {
     width: 1.25rem;
+    height: 1.25rem;
     min-height: 1.25rem;
+    margin: 0;
+    padding: 0;
+    flex: 0 0 1.25rem;
     accent-color: var(--ls-webadmin-accent);
 }
 
@@ -562,6 +863,89 @@ body.webadmin {
 
 .webadmin button:hover {
     background: var(--ls-webadmin-accent-hover);
+}
+
+.webadmin .webadminAction {
+    --ls-webadmin-action-color: var(--ls-webadmin-accent-hover);
+    --ls-webadmin-action-background: var(--ls-webadmin-surface-strong);
+    --ls-webadmin-action-border: var(--ls-webadmin-border);
+    --ls-webadmin-action-hover-color: var(--ls-webadmin-surface-strong);
+    --ls-webadmin-action-hover-background: var(--ls-webadmin-accent-hover);
+    --ls-webadmin-action-hover-border: var(--ls-webadmin-accent-hover);
+    width: fit-content;
+    max-width: 100%;
+    min-height: 2.75rem;
+    padding: 0.65rem 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--ls-webadmin-action-color);
+    font: inherit;
+    font-weight: 750;
+    line-height: 1.2;
+    text-align: center;
+    border: 1px solid var(--ls-webadmin-action-border);
+    border-radius: 0.55rem;
+    background: var(--ls-webadmin-action-background);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.webadmin .webadminAction--primary {
+    --ls-webadmin-action-color: var(--ls-webadmin-surface-strong);
+    --ls-webadmin-action-background: var(--ls-webadmin-accent);
+    --ls-webadmin-action-border: var(--ls-webadmin-accent);
+}
+
+.webadmin .webadminAction--secondary {
+    --ls-webadmin-action-color: var(--ls-webadmin-accent-hover);
+    --ls-webadmin-action-background: var(--ls-webadmin-surface-strong);
+    --ls-webadmin-action-border: var(--ls-webadmin-border);
+}
+
+.webadmin .webadminAction--danger {
+    --ls-webadmin-action-color: var(--ls-webadmin-danger);
+    --ls-webadmin-action-background: transparent;
+    --ls-webadmin-action-border: var(--ls-webadmin-danger);
+    --ls-webadmin-action-hover-color: var(--ls-webadmin-surface-strong);
+    --ls-webadmin-action-hover-background: var(--ls-webadmin-danger);
+    --ls-webadmin-action-hover-border: var(--ls-webadmin-danger);
+}
+
+.webadmin .webadminAction--compact {
+    min-height: 2.75rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.webadmin .webadminAction:hover:not(:disabled):not([aria-disabled='true']) {
+    color: var(--ls-webadmin-action-hover-color);
+    border-color: var(--ls-webadmin-action-hover-border);
+    background: var(--ls-webadmin-action-hover-background);
+}
+
+.webadmin .webadminAction:focus-visible {
+    outline: 0.2rem solid var(--ls-webadmin-focus);
+    outline-offset: 0.2rem;
+}
+
+.webadmin button.webadminAction:disabled,
+.webadmin .webadminAction[aria-disabled='true'] {
+    color: var(--ls-webadmin-muted);
+    border-color: var(--ls-webadmin-border);
+    background: var(--ls-webadmin-surface-strong);
+    cursor: not-allowed;
+    opacity: 0.62;
+}
+
+.webadmin .webadminActionGroup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 .webadmin a {
@@ -1029,6 +1413,8 @@ body.webadmin {
     }
 
     .webadmin .webadminShell {
+        --ls-webadmin-sidebar-edge: 18rem;
+        --ls-webadmin-inspector-edge: 24rem;
         grid-template-columns: minmax(15rem, 18rem) minmax(0, 1fr);
     }
 
@@ -1036,6 +1422,9 @@ body.webadmin {
         height: 100vh;
         position: sticky;
         inset-block-start: 0;
+        display: flex;
+        flex-direction: column;
+        row-gap: 1rem;
     }
 
     .webadmin .webadminShell-layout--withInspector {
@@ -1060,6 +1449,11 @@ body.webadmin {
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .webadmin .webadminLoader__cube {
+        animation: none;
+        transform: rotateX(-28deg) rotateY(35deg);
+    }
+
     .webadmin *,
     .webadmin *::before,
     .webadmin *::after {

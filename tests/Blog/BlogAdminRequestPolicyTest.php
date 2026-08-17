@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Core\Blog\Admin\BlogAdminCatalogQuery;
 use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Http\BlogAdminRequestPolicy;
@@ -20,7 +21,7 @@ final class BlogAdminRequestPolicyTest extends TestCase
     public function testSafeRoutesAcceptOnlyTheirExactQueries(): void
     {
         self::assertTrue($this->policy->acceptsIndex($this->get('/admin/blog')));
-        foreach (['0', '50', (string) BlogService::MAX_LIST_OFFSET] as $offset) {
+        foreach (['0', '20', (string) BlogService::MAX_LIST_OFFSET] as $offset) {
             self::assertTrue($this->policy->acceptsIndex($this->get(
                 '/admin/blog',
                 ['offset' => $offset]
@@ -33,8 +34,62 @@ final class BlogAdminRequestPolicyTest extends TestCase
             )), $period);
             self::assertTrue($this->policy->acceptsIndex($this->get(
                 '/admin/blog',
-                ['offset' => '50', 'period' => $period]
+                ['offset' => '20', 'period' => $period]
             )), $period);
+        }
+        self::assertTrue($this->policy->acceptsIndex($this->get(
+            '/admin/blog',
+            [
+                'q' => 'Matrix',
+                'status' => 'published',
+                'locale' => 'eu',
+                'period' => '90',
+                'offset' => '50',
+                'per_page' => '50',
+                'sort' => BlogAdminCatalogQuery::SORT_AUTHOR,
+                'dir' => BlogAdminCatalogQuery::DIRECTION_ASC,
+            ]
+        )));
+        foreach ([10, 20, 50] as $pageSize) {
+            self::assertTrue($this->policy->acceptsIndex($this->get(
+                '/admin/blog',
+                [
+                    'per_page' => (string) $pageSize,
+                    'offset' => (string) $pageSize,
+                ]
+            )), (string) $pageSize);
+        }
+        foreach ([
+            BlogAdminCatalogQuery::SORT_TITLE,
+            BlogAdminCatalogQuery::SORT_LOCALE,
+            BlogAdminCatalogQuery::SORT_STATUS,
+            BlogAdminCatalogQuery::SORT_AUTHOR,
+            BlogAdminCatalogQuery::SORT_ROBOTS,
+            BlogAdminCatalogQuery::SORT_UPDATED,
+        ] as $sort) {
+            foreach (['asc', 'desc'] as $direction) {
+                self::assertTrue($this->policy->acceptsIndex($this->get(
+                    '/admin/blog',
+                    ['sort' => $sort, 'dir' => $direction]
+                )), $sort . ':' . $direction);
+            }
+        }
+        self::assertTrue($this->policy->acceptsIndex($this->get(
+            '/admin/blog',
+            ['q' => '', 'status' => '', 'locale' => '']
+        )));
+        foreach ([
+            ['status' => 'archived'],
+            ['locale' => 'ES'],
+            ['q' => str_repeat(
+                'x',
+                BlogAdminCatalogQuery::MAX_SEARCH_INPUT_BYTES + 1
+            )],
+        ] as $invalidFilter) {
+            self::assertFalse($this->policy->acceptsIndex($this->get(
+                '/admin/blog',
+                $invalidFilter
+            )));
         }
         foreach (['', '0', '07', '14', '365'] as $period) {
             self::assertFalse($this->policy->acceptsIndex($this->get(
@@ -50,6 +105,7 @@ final class BlogAdminRequestPolicyTest extends TestCase
                 '-1',
                 '1',
                 '49',
+                '50',
                 '51',
                 '1.0',
                 (string) (BlogService::MAX_LIST_OFFSET + 1),
@@ -63,8 +119,26 @@ final class BlogAdminRequestPolicyTest extends TestCase
         }
         self::assertFalse($this->policy->acceptsIndex($this->get(
             '/admin/blog',
-            ['offset' => '50', 'extra' => 'x']
+            ['offset' => '20', 'extra' => 'x']
         )));
+        foreach (['', '0', '15', '020', '100'] as $pageSize) {
+            self::assertFalse($this->policy->acceptsIndex($this->get(
+                '/admin/blog',
+                ['per_page' => $pageSize]
+            )), $pageSize);
+        }
+        foreach (['categories', 'updated_at DESC', 'UPDATED'] as $sort) {
+            self::assertFalse($this->policy->acceptsIndex($this->get(
+                '/admin/blog',
+                ['sort' => $sort]
+            )), $sort);
+        }
+        foreach (['', 'ASC', 'sideways'] as $direction) {
+            self::assertFalse($this->policy->acceptsIndex($this->get(
+                '/admin/blog',
+                ['dir' => $direction]
+            )), $direction);
+        }
         self::assertTrue($this->policy->acceptsUpdated($this->get(
             '/admin/blog/posts/updated'
         )));
@@ -220,11 +294,24 @@ final class BlogAdminRequestPolicyTest extends TestCase
             'csrf' => 'csrf',
             'post' => $this->uuid(),
             'locale' => 'en',
+            'destination_locale' => 'en',
             'lock_version' => '9',
+            'operation_id' => $this->uuid(),
         ]);
         self::assertTrue($this->policy->acceptsDuplicate($action));
-        self::assertTrue($this->policy->acceptsTrash($action));
-        self::assertTrue($this->policy->acceptsRestoreFromTrash($action));
+        self::assertFalse($this->policy->acceptsTrash($action));
+        self::assertFalse($this->policy->acceptsRestoreFromTrash($action));
+
+        $editorialAction = $this->post('/admin/blog/posts/trash', [
+            'csrf' => 'csrf',
+            'post' => $this->uuid(),
+            'locale' => 'en',
+            'lock_version' => '9',
+        ]);
+        self::assertTrue($this->policy->acceptsTrash($editorialAction));
+        self::assertTrue(
+            $this->policy->acceptsRestoreFromTrash($editorialAction)
+        );
 
         $invalid = $this->post('/admin/blog/posts/trash', [
             'csrf' => 'csrf',
@@ -235,6 +322,74 @@ final class BlogAdminRequestPolicyTest extends TestCase
         self::assertFalse($this->policy->acceptsDuplicate($invalid));
         self::assertFalse($this->policy->acceptsTrash($invalid));
         self::assertFalse($this->policy->acceptsRestoreFromTrash($invalid));
+
+        foreach ([
+            [],
+            ['destination_locale' => 'EN'],
+            ['destination_locale' => ''],
+        ] as $destination) {
+            self::assertFalse($this->policy->acceptsDuplicate($this->post(
+                '/admin/blog/posts/duplicate',
+                [
+                    'csrf' => 'csrf',
+                    'post' => $this->uuid(),
+                    'locale' => 'en',
+                    'lock_version' => '9',
+                    'operation_id' => $this->uuid(),
+                ] + $destination
+            )));
+        }
+        self::assertFalse($this->policy->acceptsDuplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            [
+                'csrf' => 'csrf',
+                'post' => $this->uuid(),
+                'locale' => 'en',
+                'destination_locale' => 'en',
+                'lock_version' => '9',
+                'operation_id' => '11111111-1111-1111-8111-111111111111',
+            ]
+        )));
+    }
+
+    public function testUrlResolutionIsAnExactPostOnlyContract(): void
+    {
+        self::assertTrue($this->policy->acceptsUrlManager($this->get(
+            '/admin/blog/posts/url',
+            ['post' => $this->uuid(), 'locale' => 'es']
+        )));
+        self::assertFalse($this->policy->acceptsUrlManager($this->get(
+            '/admin/blog/posts/url',
+            ['post' => $this->uuid(), 'locale' => 'es', 'extra' => 'no']
+        )));
+        $base = [
+            'csrf' => 'csrf',
+            'post' => $this->uuid(),
+            'locale' => 'es',
+            'lock_version' => '3',
+            'historical_slug' => 'url-antigua',
+            'resolution' => 'gone',
+            'replacement_post' => '',
+        ];
+        self::assertTrue($this->policy->acceptsUrlResolution($this->post(
+            '/admin/blog/posts/url-resolution',
+            $base
+        )));
+        $base['resolution'] = 'redirect';
+        $base['replacement_post'] = $this->uuid();
+        self::assertTrue($this->policy->acceptsUrlResolution($this->post(
+            '/admin/blog/posts/url-resolution',
+            $base
+        )));
+        self::assertFalse($this->policy->acceptsUrlResolution($this->get(
+            '/admin/blog/posts/url-resolution',
+            $base
+        )));
+        $base['extra'] = 'forbidden';
+        self::assertFalse($this->policy->acceptsUrlResolution($this->post(
+            '/admin/blog/posts/url-resolution',
+            $base
+        )));
     }
 
     public function testMaximumLegalEditorialPayloadFitsTheRealHttpBoundary(): void

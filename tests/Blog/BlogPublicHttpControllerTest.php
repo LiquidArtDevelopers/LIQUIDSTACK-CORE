@@ -20,6 +20,9 @@ use App\Core\Blog\PublicFeed\BlogPublicCatalogRepositoryInterface;
 use App\Core\Blog\PublicFeed\BlogPublicDiscoveryRepositoryInterface;
 use App\Core\Blog\PublicFeed\BlogPublicRelatedQuery;
 use App\Core\Blog\PublishedPostCard;
+use App\Core\Blog\Seo\BlogPublicRobotsOverrideInterface;
+use App\Core\Blog\Seo\BlogPublicRobotsPolicy;
+use App\Core\Blog\StructuredContent\Document\BlogSafeIframePolicy;
 use App\Core\Http\Request;
 use App\Core\Modules\Blog\BlogMigrationProvider;
 use App\Core\Modules\Migrations\MigrationDefinition;
@@ -134,7 +137,7 @@ final class BlogPublicHttpControllerTest extends TestCase
             $article->body()
         );
         self::assertStringContainsString(
-            '<h1>Matrix &amp; sistemas</h1>',
+            '<h1 class="moduleH1Type04-title">Matrix &amp; sistemas</h1>',
             $article->body()
         );
         self::assertStringContainsString(
@@ -150,13 +153,23 @@ final class BlogPublicHttpControllerTest extends TestCase
             $article->headers()['Content-Security-Policy']
         );
         self::assertStringContainsString(
-            "script-src 'self'",
+            "style-src-attr 'unsafe-inline'",
+            $article->headers()['Content-Security-Policy']
+        );
+        self::assertStringNotContainsString(
+            "style-src 'self' 'unsafe-inline'",
             $article->headers()['Content-Security-Policy']
         );
         self::assertStringContainsString(
-            'frame-src https://www.youtube-nocookie.com',
+            "script-src 'self'",
             $article->headers()['Content-Security-Policy']
         );
+        foreach (BlogSafeIframePolicy::cspSources() as $frameSource) {
+            self::assertStringContainsString(
+                $frameSource,
+                $article->headers()['Content-Security-Policy']
+            );
+        }
 
         $sitemap = $this->controller->sitemap();
         self::assertSame(200, $sitemap->status());
@@ -179,6 +192,80 @@ final class BlogPublicHttpControllerTest extends TestCase
         self::assertStringNotContainsString(
             '/noticias/matrix',
             $this->controller->sitemap()->body()
+        );
+    }
+
+    public function testPublishedArticleExposesRobotsHeader(): void
+    {
+        $created = $this->service->createPost(
+            $this->actorGate(),
+            'es',
+            $this->draft()
+        );
+        $this->service->publish(
+            $this->actorGate(),
+            $created->postPublicId(),
+            'es',
+            $created->lockVersion()
+        );
+
+        $article = $this->controller->article('es', 'matrix');
+        self::assertNotNull($article);
+        self::assertSame('index,follow', $article->headers()['X-Robots-Tag']);
+        self::assertStringContainsString(
+            '<meta name="robots" content="index,follow">',
+            $article->body()
+        );
+    }
+
+    public function testControllerUsesTheRuntimeRobotsOverrideByDefault(): void
+    {
+        $created = $this->service->createPost(
+            $this->actorGate(),
+            'es',
+            $this->draft()
+        );
+        $this->service->publish(
+            $this->actorGate(),
+            $created->postPublicId(),
+            'es',
+            $created->lockVersion()
+        );
+        $policy = new BlogPublicRobotsPolicy(
+            new class implements BlogPublicRobotsOverrideInterface {
+                public function forcesNoIndexNoFollow(
+                    \App\Core\Blog\BlogPostVariant $variant
+                ): bool {
+                    return true;
+                }
+            }
+        );
+        $runtime = new BlogPublicHttpRuntime(
+            new BlogConfig(
+                ['es' => '/noticias'],
+                '/blog-sitemap.xml',
+                'ls_blog_',
+                'fixture'
+            ),
+            BlogPublicOrigin::fromEnvironment([
+                BlogPublicOrigin::ENV => 'https://example.test',
+            ]),
+            $this->service,
+            robotsPolicy: $policy
+        );
+
+        $article = (new BlogPublicHttpController($runtime))->article(
+            'es',
+            'matrix'
+        );
+
+        self::assertSame(
+            'noindex,nofollow',
+            $article?->headers()['X-Robots-Tag'] ?? null
+        );
+        self::assertStringContainsString(
+            '<meta name="robots" content="noindex,nofollow">',
+            $article?->body() ?? ''
         );
     }
 
@@ -369,7 +456,7 @@ PHP);
         self::assertNotNull($response);
         self::assertSame(200, $response->status());
         self::assertStringContainsString(
-            '<h1>Matrix &amp; sistemas</h1>',
+            '<h1 class="moduleH1Type04-title">Matrix &amp; sistemas</h1>',
             $response->body()
         );
     }
@@ -434,7 +521,7 @@ PHP);
         self::assertSame($etag, $nonMatching->headers()['ETag']);
     }
 
-    public function testProjectShellOwnsCspWhileDefensiveHeadersRemain(): void
+    public function testControllerOwnsProjectCspAndSharesItsNonceWithView(): void
     {
         $created = $this->service->createPost(
             $this->actorGate(),
@@ -451,6 +538,9 @@ PHP);
         self::assertIsString($view);
         file_put_contents($view, <<<'PHP'
 <?php
+if (!$blogArticleShell instanceof \App\Core\Blog\Http\BlogPublicArticleShellContext) {
+    throw new \RuntimeException('Unexpected public-shell context.');
+}
 echo '<!doctype html><html lang="'
     . htmlspecialchars($blogArticle->locale(), ENT_QUOTES, 'UTF-8')
     . '"><body><h1>'
@@ -464,6 +554,11 @@ foreach ($blogArticle->languageNavigationUrls() as $locale => $url) {
     echo '<a data-language="' . htmlspecialchars($locale, ENT_QUOTES, 'UTF-8')
         . '" href="' . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . '"></a>';
 }
+echo '<script nonce="'
+    . htmlspecialchars($blogArticleShell->nonce(), ENT_QUOTES, 'UTF-8')
+    . '" src="'
+    . htmlspecialchars($blogArticleShell->publicRuntimeUrl(), ENT_QUOTES, 'UTF-8')
+    . '" defer></script>';
 echo '</body></html>';
 PHP);
 
@@ -475,10 +570,25 @@ PHP);
             $article = $controller->article('es', 'matrix');
             self::assertNotNull($article);
             self::assertSame(200, $article->status());
-            self::assertArrayNotHasKey(
-                'Content-Security-Policy',
-                $article->headers()
+            $csp = $article->headers()['Content-Security-Policy'] ?? '';
+            self::assertMatchesRegularExpression(
+                "/script-src 'nonce-[A-Za-z0-9_-]{32}' 'strict-dynamic'/",
+                $csp
             );
+            self::assertSame(1, preg_match(
+                "/'nonce-([A-Za-z0-9_-]{32})'/",
+                $csp,
+                $nonceMatch
+            ));
+            $nonce = $nonceMatch[1] ?? '';
+            self::assertStringContainsString(
+                '<script nonce="' . $nonce
+                    . '" src="/assets/modules/blog/blog-public.js" defer>',
+                $article->body()
+            );
+            foreach (BlogSafeIframePolicy::cspSources() as $source) {
+                self::assertStringContainsString($source, $csp);
+            }
             self::assertSame(
                 'DENY',
                 $article->headers()['X-Frame-Options']
@@ -511,6 +621,15 @@ PHP);
                 'data-language="eu" href="https://example.test/eu/albisteak"',
                 $article->body()
             );
+
+            $next = $controller->article('es', 'matrix');
+            self::assertNotNull($next);
+            self::assertSame(1, preg_match(
+                "/'nonce-([A-Za-z0-9_-]{32})'/",
+                $next->headers()['Content-Security-Policy'] ?? '',
+                $nextNonceMatch
+            ));
+            self::assertNotSame($nonce, $nextNonceMatch[1] ?? '');
         } finally {
             @unlink($view);
         }

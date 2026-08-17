@@ -161,6 +161,32 @@ final class WebAdminRouteProviderPreflightTest extends TestCase
         self::assertSame([], $this->reporter->issueCodes);
     }
 
+    public function testProfilePrgMarkerPassesPreflightButOtherQueryDoesNot(): void
+    {
+        $accepted = $this->routes->dispatch(Request::fromInput([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin/profile?updated=1',
+            'HTTPS' => 'on',
+        ], ['updated' => '1']));
+
+        self::assertNotNull($accepted);
+        self::assertSame(303, $accepted->status());
+        self::assertSame('/admin/login', $accepted->headers()['Location']);
+        self::assertSame(0, $this->factory->calls);
+        self::assertSame([], $this->reporter->issueCodes);
+
+        $rejected = $this->routes->dispatch(Request::fromInput([
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/admin/profile?updated=0',
+            'HTTPS' => 'on',
+        ], ['updated' => '0']));
+
+        self::assertNotNull($rejected);
+        self::assertSame(400, $rejected->status());
+        self::assertSame(0, $this->factory->calls);
+        self::assertSame([], $this->reporter->issueCodes);
+    }
+
     public function testAnonymousRootRedirectNeedsNeitherPdoNorSchema(): void
     {
         foreach (['GET', 'HEAD'] as $method) {

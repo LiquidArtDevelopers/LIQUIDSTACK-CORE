@@ -8,12 +8,45 @@ use App\Core\Modules\Migrations\MigrationFeatureRequirement;
 
 final class BlogMigrationRequirements
 {
+    /** @var list<string> Public reads keep the exact pre-0019 frontier. */
+    private const NORMALIZED_PUBLIC_RUNTIME_MIGRATIONS = [
+        '0001_blog_posts',
+        '0002_blog_capabilities',
+        '0003_blog_categories',
+        '0004_blog_category_capabilities',
+        '0005_blog_structured_content',
+        '0006_blog_sitemap_publication_state',
+        '0007_blog_post_tombstones',
+        '0008_blog_article_delete_capability',
+        '0009_blog_analytics',
+        '0010_blog_analytics_view_capability',
+        '0011_blog_layout_editor_v2',
+        '0012_blog_editor_preferences',
+        '0013_blog_settings_manage_capability',
+        '0014_blog_private_draft_publication',
+        '0015_blog_robots_preferences',
+        '0016_blog_url_history',
+        '0017_blog_dummy_category',
+        '0018_blog_dummy_category_normalization',
+    ];
+
+    /**
+     * 0019 is an administration-only deployment frontier because only copy
+     * POSTs consume its operation registry.
+     *
+     * @var list<string>
+     */
+    private const NORMALIZED_ADMIN_RUNTIME_MIGRATIONS = [
+        ...self::NORMALIZED_PUBLIC_RUNTIME_MIGRATIONS,
+        '0019_blog_copy_operation_idempotency',
+    ];
+
     public static function publicContent(): MigrationFeatureRequirement
     {
         return new MigrationFeatureRequirement(
             'blog',
             'blog.public_content',
-            ['0001_blog_posts']
+            self::NORMALIZED_PUBLIC_RUNTIME_MIGRATIONS
         );
     }
 
@@ -22,10 +55,7 @@ final class BlogMigrationRequirements
         return new MigrationFeatureRequirement(
             'blog',
             'blog.administration',
-            [
-                '0001_blog_posts',
-                '0002_blog_capabilities',
-            ]
+            self::NORMALIZED_ADMIN_RUNTIME_MIGRATIONS
         );
     }
 
@@ -34,10 +64,7 @@ final class BlogMigrationRequirements
         return new MigrationFeatureRequirement(
             'blog',
             'blog.categories.public',
-            [
-                '0001_blog_posts',
-                '0003_blog_categories',
-            ]
+            self::NORMALIZED_PUBLIC_RUNTIME_MIGRATIONS
         );
     }
 
@@ -46,12 +73,7 @@ final class BlogMigrationRequirements
         return new MigrationFeatureRequirement(
             'blog',
             'blog.categories.administration',
-            [
-                '0001_blog_posts',
-                '0002_blog_capabilities',
-                '0003_blog_categories',
-                '0004_blog_category_capabilities',
-            ]
+            self::NORMALIZED_ADMIN_RUNTIME_MIGRATIONS
         );
     }
 
@@ -110,6 +132,82 @@ final class BlogMigrationRequirements
                 '0002_blog_capabilities',
                 '0009_blog_analytics',
                 '0010_blog_analytics_view_capability',
+            ]
+        );
+    }
+
+    /** Optional v2 layout companions; v1 remains valid when this is pending. */
+    public static function layoutEditor(): MigrationFeatureRequirement
+    {
+        return new MigrationFeatureRequirement(
+            'blog',
+            'blog.layout_editor.v2',
+            [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0011_blog_layout_editor_v2',
+            ]
+        );
+    }
+
+    /** Optional global defaults; existing editor routes never consume it. */
+    public static function editorPreferences(): MigrationFeatureRequirement
+    {
+        return new MigrationFeatureRequirement(
+            'blog',
+            'blog.editor_preferences',
+            [
+                '0012_blog_editor_preferences',
+                '0013_blog_settings_manage_capability',
+            ]
+        );
+    }
+
+    /** Optional private draft/public head frontier for published articles. */
+    public static function privateDraftPublication(): MigrationFeatureRequirement
+    {
+        return new MigrationFeatureRequirement(
+            'blog',
+            'blog.private_draft_publication',
+            [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0011_blog_layout_editor_v2',
+                '0012_blog_editor_preferences',
+                '0014_blog_private_draft_publication',
+            ]
+        );
+    }
+
+    /** Optional per-variant robots preferences and immutable snapshots. */
+    public static function robotsPreferences(): MigrationFeatureRequirement
+    {
+        return new MigrationFeatureRequirement(
+            'blog',
+            'blog.robots_preferences',
+            [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0011_blog_layout_editor_v2',
+                '0012_blog_editor_preferences',
+                '0014_blog_private_draft_publication',
+                '0015_blog_robots_preferences',
+            ]
+        );
+    }
+
+    /** Persistent public URL lifecycle: active, temporary 404, 410 or 301. */
+    public static function urlHistory(): MigrationFeatureRequirement
+    {
+        return new MigrationFeatureRequirement(
+            'blog',
+            'blog.url_history',
+            [
+                '0001_blog_posts',
+                '0016_blog_url_history',
             ]
         );
     }

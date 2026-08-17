@@ -8,6 +8,55 @@ use PHPUnit\Framework\TestCase;
 
 final class WebAdminHttpRequestPolicyTest extends TestCase
 {
+    public function testProfileNavigationAcceptsOnlyItsCanonicalPrgMarker(): void
+    {
+        $policy = new WebAdminHttpRequestPolicy();
+
+        foreach (['GET', 'HEAD'] as $method) {
+            self::assertTrue($policy->acceptsProfileNavigation(
+                Request::fromInput([
+                    'REQUEST_METHOD' => $method,
+                    'REQUEST_URI' => '/admin/profile',
+                ])
+            ));
+            self::assertTrue($policy->acceptsProfileNavigation(
+                Request::fromInput([
+                    'REQUEST_METHOD' => $method,
+                    'REQUEST_URI' => '/admin/profile?updated=1',
+                ], ['updated' => '1'])
+            ));
+        }
+
+        foreach ([
+            Request::fromInput([
+                'REQUEST_METHOD' => 'GET',
+                'REQUEST_URI' => '/admin/profile?updated=0',
+            ], ['updated' => '0']),
+            Request::fromInput([
+                'REQUEST_METHOD' => 'GET',
+                'REQUEST_URI' => '/admin/profile?updated=1&next=private',
+            ], ['updated' => '1', 'next' => 'private']),
+            Request::fromInput([
+                'REQUEST_METHOD' => 'GET',
+                'REQUEST_URI' => '/admin/profile?updated%5B%5D=1',
+            ], ['updated' => ['1']]),
+            Request::fromInput([
+                'REQUEST_METHOD' => 'POST',
+                'REQUEST_URI' => '/admin/profile?updated=1',
+            ], ['updated' => '1']),
+            Request::fromInput([
+                'REQUEST_METHOD' => 'GET',
+                'REQUEST_URI' => '/admin/profile',
+            ], form: ['unexpected' => 'value']),
+            Request::fromInput([
+                'REQUEST_METHOD' => 'GET',
+                'REQUEST_URI' => '/admin/profile',
+            ], body: 'unexpected'),
+        ] as $request) {
+            self::assertFalse($policy->acceptsProfileNavigation($request));
+        }
+    }
+
     public function testCredentialActionNavigationAllowsOnlyAnOptionalSingleToken(): void
     {
         $policy = new WebAdminHttpRequestPolicy();

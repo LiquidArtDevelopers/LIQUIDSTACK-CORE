@@ -5,8 +5,9 @@
 
 ## Situación actual
 
-AIWA es el laboratorio completo de WebAdmin y Liquid Blog. Durante esta fase
-su DB modular se ejecuta en MySQL/MariaDB local mediante XAMPP. La DB de
+El consumidor de referencia es el laboratorio completo de WebAdmin y Liquid
+Blog. Durante esta fase su DB modular se ejecuta en MySQL/MariaDB local mediante
+XAMPP. La DB de
 producción todavía no forma parte del flujo y no debe reutilizar las
 credenciales locales.
 
@@ -90,7 +91,8 @@ con inventario, comprobaciones y recuperación probados.
   producción, tanto con destino vacío como con traslado de contenido.
 - Definir exportación/importación versionada de DB y medios sin incluir
   secretos, fixtures o usuarios de laboratorio por accidente.
-- Rotar las credenciales usadas durante el desarrollo de AIWA antes de
+- Rotar las credenciales usadas durante el desarrollo del consumidor de
+  referencia antes de
   habilitar producción; la credencial local actual no debe reutilizarse.
 
 ## Criterio de salida

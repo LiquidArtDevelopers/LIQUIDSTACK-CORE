@@ -5,6 +5,7 @@ namespace App\Core;
 use App\Core\Environment\ProjectEnvironmentLoader;
 use App\Core\Environment\ProjectEnvironmentLoadResult;
 use App\Core\Http\Request;
+use App\Core\Routing\DynamicProjectRoute;
 use App\Core\Routing\ModulePublicRouteDispatcher;
 use App\Core\Routing\ModuleRouteDispatcher;
 use App\Core\Routing\ShowroomCategoryRoute;
@@ -176,6 +177,7 @@ class Application
         $GLOBALS['url']          = $context->url;
         $GLOBALS['urlWithQuery'] = $context->urlWithQuery;
         $GLOBALS['urlLang']      = $context->urlLang;
+        $GLOBALS['routeParams']  = [];
 
         $arrayRutasGet = require Paths::appPath() . '/config/routes/get.php';
         $GLOBALS['arrayRutasGet'] = $arrayRutasGet;
@@ -206,6 +208,25 @@ class Application
             return;
         }
 
+        $dynamicRoute = DynamicProjectRoute::match(
+            $url,
+            array_keys($rutasPorIdioma)
+        );
+        if ($dynamicRoute !== null) {
+            $routeKey = $dynamicRoute['route'];
+            $GLOBALS['routeParams'] = $dynamicRoute['params'];
+            $this->ensureRouteSession(
+                $rutasPorIdioma[$routeKey],
+                $deferPublicSession
+            );
+            $this->renderMatchedRoute(
+                $lang,
+                $url,
+                $rutasPorIdioma[$routeKey]
+            );
+            return;
+        }
+
         $showroomRoute = ShowroomCategoryRoute::resolve($url, $rutasPorIdioma);
         if ($showroomRoute !== null) {
             $this->ensureRouteSession(
@@ -225,7 +246,7 @@ class Application
         // A modular miss returns to the established project 404 with all the
         // legacy guarantees, including an active PHP session.
         $this->ensureSession();
-        $this->renderNotFound($lang);
+        $this->renderNotFound($lang, $url);
     }
 
     /** @param array<string, mixed> $route */
@@ -439,7 +460,7 @@ class Application
             : [];
     }
 
-    private function renderNotFound(string $lang): void
+    private function renderNotFound(string $lang, string $url): void
     {
         
         $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/global/{$lang}.json"));

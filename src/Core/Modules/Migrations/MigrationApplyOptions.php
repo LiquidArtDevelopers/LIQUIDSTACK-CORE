@@ -12,7 +12,8 @@ final class MigrationApplyOptions
         private readonly ?string $expectedPlanHash = null,
         private readonly bool $allowDestructive = false,
         private readonly bool $backupConfirmed = false,
-        private readonly int $lockTimeoutSeconds = 10
+        private readonly int $lockTimeoutSeconds = 10,
+        private readonly bool $deferDestructive = false
     ) {
         if (
             $expectedPlanHash !== null
@@ -23,6 +24,14 @@ final class MigrationApplyOptions
         if ($lockTimeoutSeconds < 0 || $lockTimeoutSeconds > 300) {
             throw new InvalidArgumentException(
                 'El timeout del lock debe estar entre 0 y 300 segundos.'
+            );
+        }
+        if (
+            $deferDestructive
+            && ($allowDestructive || $backupConfirmed)
+        ) {
+            throw new InvalidArgumentException(
+                'No se puede diferir y autorizar migraciones destructivas a la vez.'
             );
         }
     }
@@ -45,5 +54,10 @@ final class MigrationApplyOptions
     public function lockTimeoutSeconds(): int
     {
         return $this->lockTimeoutSeconds;
+    }
+
+    public function deferDestructive(): bool
+    {
+        return $this->deferDestructive;
     }
 }

@@ -38,11 +38,16 @@ final class BlogStructuredRevisionRecord
             if (
                 $internalId < 1
                 || $revisionNumber < 1
-                || $persistedSchemaVersion !== $snapshot->schemaVersion()
-                || $persistedDocumentBytes !== $snapshot->documentBytes()
-                || !hash_equals($snapshot->templateKey(), $persistedTemplateKey)
+                || $persistedSchemaVersion
+                    !== $snapshot->compatibilitySchemaVersion()
+                || $persistedDocumentBytes
+                    !== $snapshot->compatibilityDocumentBytes()
                 || !hash_equals(
-                    $snapshot->documentSha256(),
+                    $snapshot->compatibilityTemplateKey(),
+                    $persistedTemplateKey
+                )
+                || !hash_equals(
+                    $snapshot->compatibilityDocumentSha256(),
                     $persistedDocumentSha256
                 )
                 || !hash_equals(
@@ -50,7 +55,7 @@ final class BlogStructuredRevisionRecord
                     $persistedBodyTextSha256
                 )
                 || !hash_equals(
-                    $snapshot->snapshotSha256(),
+                    $snapshot->compatibilitySnapshotSha256(),
                     $persistedSnapshotSha256
                 )
             ) {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Functional UI UX QA"
+  short_description: "Explore and break functional UI user journeys"
+  default_prompt: "Use $test-functional-ui to exercise every user journey in this functional UI and find UX failures through realistic and adverse use."

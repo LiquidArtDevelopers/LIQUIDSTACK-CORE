@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Core\Blog\Http;
 
 use App\Core\Http\Response;
+use App\Core\Blog\Preview\BlogPreviewAssetSet;
+use App\Core\Blog\StructuredContent\Rendering\BlogEditorPreviewSandboxPolicy;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 
 final class BlogStructuredEditorHttpResponseFactory
@@ -17,11 +19,63 @@ final class BlogStructuredEditorHttpResponseFactory
     {
         return new Response($status, $body, $this->headers(
             "default-src 'none'; img-src 'self' data:; style-src 'self'; "
-                . "script-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors "
+                . "script-src 'self'; connect-src 'self'; frame-src 'self'; "
+                . "form-action 'self'; frame-ancestors "
                 . "'none'; base-uri 'none'"
         ) + [
             'Content-Type' => 'text/html; charset=utf-8',
             'Content-Language' => 'es',
+        ]);
+    }
+
+    public function editorHtml(
+        int $status,
+        string $body,
+        BlogEditorPreviewSandboxPolicy $previewSandbox
+    ): Response {
+        return new Response($status, $body, $this->headers(
+            "default-src 'none'; img-src 'self' data:; style-src 'self' "
+                . $previewSandbox->styleSource()
+                . "; style-src-elem 'self' "
+                . $previewSandbox->styleSource()
+                . "; style-src-attr 'none'; font-src 'self'; "
+                . "script-src 'self'; "
+                . "script-src-attr 'none'; connect-src 'self'; "
+                . "frame-src 'self'; form-action 'self'; frame-ancestors "
+                . "'none'; base-uri 'none'; object-src 'none'"
+        ) + [
+            'Content-Type' => 'text/html; charset=utf-8',
+            'Content-Language' => 'es',
+        ]);
+    }
+
+    /** Private SSR preview embeddable only by the same WebAdmin origin. */
+    public function previewHtml(
+        int $status,
+        string $body,
+        string $contentLanguage,
+        BlogPreviewAssetSet $assets,
+        #[\SensitiveParameter] ?string $styleNonce = null
+    ): Response
+    {
+        if (
+            preg_match(
+                '/\A[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*\z/D',
+                $contentLanguage
+            ) !== 1
+        ) {
+            throw new \InvalidArgumentException(
+                'Invalid preview content language.'
+            );
+        }
+        $headers = $this->headers(
+            $assets->contentSecurityPolicy($styleNonce)
+        );
+        $headers['X-Frame-Options'] = 'SAMEORIGIN';
+
+        return new Response($status, $body, $headers + [
+            'Content-Type' => 'text/html; charset=utf-8',
+            'Content-Language' => $contentLanguage,
         ]);
     }
 

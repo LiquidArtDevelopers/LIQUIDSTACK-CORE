@@ -169,6 +169,90 @@ try {
         '--no-interaction',
         '--no-progress',
     ]);
+
+    $webAdminRequireOutput = $runComposer([
+        'require',
+        'liquidstack/webadmin',
+        '--no-interaction',
+        '--no-progress',
+        '--no-audit',
+    ]);
+    if (!str_contains(
+        $webAdminRequireOutput,
+        'Módulos LiquidStack activos: core, webadmin.'
+    )) {
+        throw new RuntimeException(
+            'El hook post-update no resolvió el consumidor WebAdmin-only.'
+        );
+    }
+    $webAdminOnlyComposer = json_decode(
+        (string) file_get_contents($temporaryRoot . '/composer.json'),
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    if (
+        ($webAdminOnlyComposer['require']['liquidstack/webadmin'] ?? null)
+            !== '*'
+        || isset($webAdminOnlyComposer['require']['liquidstack/blog'])
+    ) {
+        throw new RuntimeException(
+            'El selector WebAdmin-only no quedó aislado en composer.json.'
+        );
+    }
+    foreach ([
+        'webadmin.css',
+        'webadmin.js',
+        'webadmin-media-picker.css',
+        'webadmin-media-picker.js',
+    ] as $asset) {
+        if (!is_file(
+            $temporaryRoot . '/public/assets/modules/webadmin/' . $asset
+        )) {
+            throw new RuntimeException(sprintf(
+                'WebAdmin-only no instaló el asset %s.',
+                $asset
+            ));
+        }
+    }
+    if (is_file(
+        $temporaryRoot . '/public/assets/modules/blog/blog-admin.css'
+    )) {
+        throw new RuntimeException(
+            'WebAdmin-only publicó assets de Blog sin activar el módulo.'
+        );
+    }
+    $webAdminOnlyDoctor = json_decode(
+        trim($runComposerExpectingFailure([
+            'liquidstack:doctor',
+            '--format=json',
+            '--no-interaction',
+        ])),
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    if (
+        ($webAdminOnlyDoctor['ok'] ?? null) !== false
+        || ($webAdminOnlyDoctor['modules']['requested'] ?? null)
+            !== ['webadmin']
+        || ($webAdminOnlyDoctor['modules']['enabled'] ?? null)
+            !== ['webadmin']
+        || !isset($webAdminOnlyDoctor['module_diagnostics']['webadmin'])
+        || isset($webAdminOnlyDoctor['module_diagnostics']['blog'])
+    ) {
+        throw new RuntimeException(
+            'Doctor no representó correctamente el consumidor WebAdmin-only.'
+        );
+    }
+    $runComposer([
+        'remove',
+        'liquidstack/webadmin',
+        '--no-interaction',
+        '--no-progress',
+        '--no-audit',
+    ]);
+
     $requireOutput = $runComposer([
         'require',
         'liquidstack/blog',
@@ -213,6 +297,10 @@ try {
             => 'public/assets/modules/webadmin/webadmin.css',
         'modules/webadmin/published/assets/webadmin.js'
             => 'public/assets/modules/webadmin/webadmin.js',
+        'modules/webadmin/published/assets/webadmin-media-picker.css'
+            => 'public/assets/modules/webadmin/webadmin-media-picker.css',
+        'modules/webadmin/published/assets/webadmin-media-picker.js'
+            => 'public/assets/modules/webadmin/webadmin-media-picker.js',
         'modules/blog/published/assets/blog-admin.css'
             => 'public/assets/modules/blog/blog-admin.css',
         'modules/blog/published/assets/blog-editor.js'
@@ -343,31 +431,132 @@ try {
         JSON_THROW_ON_ERROR
     );
     $expectedMigrations = [
-        ['module' => 'webadmin', 'id' => '0001_webadmin_identity_and_access'],
-        ['module' => 'webadmin', 'id' => '0002_webadmin_media_library'],
-        ['module' => 'blog', 'id' => '0001_blog_posts'],
-        ['module' => 'blog', 'id' => '0002_blog_capabilities'],
-        ['module' => 'blog', 'id' => '0003_blog_categories'],
-        ['module' => 'blog', 'id' => '0004_blog_category_capabilities'],
-        ['module' => 'blog', 'id' => '0005_blog_structured_content'],
+        [
+            'module' => 'webadmin',
+            'target_scope_module' => 'webadmin',
+            'id' => '0001_webadmin_identity_and_access',
+        ],
+        [
+            'module' => 'webadmin',
+            'target_scope_module' => 'webadmin',
+            'id' => '0002_webadmin_media_library',
+        ],
+        [
+            'module' => 'webadmin',
+            'target_scope_module' => 'webadmin',
+            'id' => '0003_webadmin_media_avif_source',
+        ],
+        [
+            'module' => 'webadmin',
+            'target_scope_module' => 'webadmin',
+            'id' => '0004_webadmin_profile_preferences',
+        ],
+        [
+            'module' => 'webadmin',
+            'target_scope_module' => 'webadmin',
+            'id' => '0005_webadmin_media_quarantine',
+        ],
         [
             'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0001_blog_posts',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'webadmin',
+            'id' => '0002_blog_capabilities',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0003_blog_categories',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'webadmin',
+            'id' => '0004_blog_category_capabilities',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0005_blog_structured_content',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
             'id' => '0006_blog_sitemap_publication_state',
         ],
-        ['module' => 'blog', 'id' => '0007_blog_post_tombstones'],
         [
             'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0007_blog_post_tombstones',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'webadmin',
             'id' => '0008_blog_article_delete_capability',
         ],
-        ['module' => 'blog', 'id' => '0009_blog_analytics'],
         [
             'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0009_blog_analytics',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'webadmin',
             'id' => '0010_blog_analytics_view_capability',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0011_blog_layout_editor_v2',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0012_blog_editor_preferences',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'webadmin',
+            'id' => '0013_blog_settings_manage_capability',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0014_blog_private_draft_publication',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0015_blog_robots_preferences',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0016_blog_url_history',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0017_blog_dummy_category',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0018_blog_dummy_category_normalization',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0019_blog_copy_operation_idempotency',
         ],
     ];
     $plannedMigrations = array_map(
         static fn (array $entry): array => [
             'module' => $entry['module'] ?? null,
+            'target_scope_module' =>
+                $entry['target_scope_module'] ?? null,
             'id' => $entry['id'] ?? null,
         ],
         is_array($migrationPlan['migrations']['entries'] ?? null)
