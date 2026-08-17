@@ -348,6 +348,31 @@ final class SectionBlogCatalog01ContractTest extends TestCase
         self::assertStringNotContainsString('filterColor', $scss);
     }
 
+    public function testGridOwnsAFullWidthExplicitColumnWithoutConsumerLayoutDependencies(): void
+    {
+        $scss = (string) file_get_contents(
+            self::moduleProjectRoot()
+                . '/src/scss/resources/_sectionBlogCatalog01.scss'
+        );
+
+        self::assertMatchesRegularExpression(
+            '/\.sectionBlogCatalog01\s*\{\s*'
+                . 'width:\s*100%;\s*'
+                . 'min-width:\s*0;\s*'
+                . 'display:\s*grid;\s*'
+                . 'grid-template-columns:\s*minmax\(0,\s*1fr\);/',
+            $scss
+        );
+        self::assertMatchesRegularExpression(
+            '/>\s*\*\s*\{\s*min-width:\s*0;\s*\}/',
+            $scss
+        );
+        self::assertDoesNotMatchRegularExpression(
+            '/(?:body|main|\.blog-index)\s+\.sectionBlogCatalog01/',
+            $scss
+        );
+    }
+
     /** @return array<string, mixed> */
     private static function item(): array
     {

@@ -261,7 +261,8 @@
         ],
         "modules/blog/resources/project/src/scss/resources/_sectionBlogCatalog01.scss": [
             "sha256:3ade8558b5d46c35d9db82d7af81aceeff76c65c7ff8a8e7768ac36cf80a8230",
-            "sha256:7a24861a1a078939178e157e598a76bd002be8124390063c7ecf7f5c0277b0b0"
+            "sha256:7a24861a1a078939178e157e598a76bd002be8124390063c7ecf7f5c0277b0b0",
+            "sha256:f95b7b61b6c6efe4c61f36a8f73d4f45fc3a460bd8948c5a89da27d3fc4f9775"
         ],
         "modules/blog/resources/project/src/scss/resources/_sectionBlogFeatured01.scss": [
             "sha256:bf1bebbe45fd6908e1346e44e495f2c55afd9e9f87bfb8505fc115a92ca82f7d"
