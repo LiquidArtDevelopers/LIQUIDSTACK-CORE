@@ -169,6 +169,8 @@ final class BlogOperationalDoctorTest extends TestCase
         );
         self::assertSame('ready', $blog['dependency']['status']);
         self::assertSame('applied', $blog['database']['status']);
+        self::assertSame('ready', $blog['tags']['status']);
+        self::assertTrue($blog['tags']['ready']);
         self::assertSame([
             'public/assets/modules/blog/blog-admin-list.js',
             'public/assets/modules/blog/blog-admin.css',
@@ -232,6 +234,37 @@ final class BlogOperationalDoctorTest extends TestCase
         self::assertSame('blocked', $blog['database']['status']);
         self::assertContains(
             'database.migrations_not_ready',
+            $blog['readiness']['blockers']
+        );
+    }
+
+    public function testTagCapabilityDriftHasDedicatedDoctorBlocker(): void
+    {
+        $this->pdo->exec(
+            'DELETE FROM ls_webadmin_role_capabilities WHERE role_id = '
+                . '(SELECT id FROM ls_webadmin_roles WHERE code = '
+                . "'site_admin') AND capability_id = (SELECT id FROM "
+                . "ls_webadmin_capabilities WHERE code = 'blog.tags.edit')"
+        );
+        $report = (new ModuleDoctor(
+            migrationRuntimeFactory:
+                new BlogOperationalDoctorRuntimeFactoryFixture(
+                    new MigrationCommandRuntime(
+                        $this->pdo,
+                        $this->catalog,
+                        $this->scopes
+                    )
+                )
+        ))->inspect($this->projectRoot, $this->coreRoot);
+        $blog = $report->toArray()['module_diagnostics']['blog'];
+
+        self::assertFalse($report->isHealthy());
+        self::assertSame(
+            'administration_not_ready',
+            $blog['tags']['status']
+        );
+        self::assertContains(
+            'tags.administration_not_ready',
             $blog['readiness']['blockers']
         );
     }

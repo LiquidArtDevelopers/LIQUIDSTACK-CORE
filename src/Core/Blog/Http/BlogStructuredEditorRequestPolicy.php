@@ -90,6 +90,7 @@ final class BlogStructuredEditorRequestPolicy
             'locale',
             'lock_version',
             'category_workspace_version',
+            'tag_workspace_version',
         ])) {
             return false;
         }
@@ -97,6 +98,9 @@ final class BlogStructuredEditorRequestPolicy
         return $this->validIdentity($request)
             && $this->validNonNegativeVersion(
                 $request->form('category_workspace_version')
+            )
+            && $this->validNonNegativeVersion(
+                $request->form('tag_workspace_version')
             );
     }
 

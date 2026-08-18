@@ -28,6 +28,8 @@ use App\Core\Blog\StructuredContent\Media\BlogMediaAvailabilityPortInterface;
 use App\Core\Blog\StructuredContent\Persistence\BlogStructuredContentRepositoryInterface;
 use App\Core\Blog\Seo\BlogUrlHistoryRepositoryInterface;
 use App\Core\Blog\Seo\BlogUrlResolution;
+use App\Core\Blog\Tags\BlogTag;
+use App\Core\Blog\Tags\Persistence\BlogTagRepositoryInterface;
 use App\Core\WebAdmin\Support\ClockInterface;
 use App\Core\WebAdmin\Support\RandomUuidV4Generator;
 use App\Core\WebAdmin\Support\SystemClock;
@@ -72,7 +74,8 @@ final class BlogService
         private readonly ?BlogEditorialWorkspaceRepositoryInterface
             $editorialWorkflowRepository = null,
         private readonly ?BlogUrlHistoryRepositoryInterface $urlHistory = null,
-        private readonly ?BlogDocumentV2Projector $layoutProjector = null
+        private readonly ?BlogDocumentV2Projector $layoutProjector = null,
+        private readonly ?BlogTagRepositoryInterface $tagRepository = null
     ) {
         $this->draftMutationCoordinator = $draftMutationCoordinator
             ?? new BlogDraftMutationCoordinator(
@@ -249,6 +252,39 @@ final class BlogService
             if (count($categoryPublicIds) > 100) {
                 throw new BlogPersistenceException();
             }
+            $tagPublicIds = [];
+            if ($independentPost && $this->tagRepository !== null) {
+                $tagWorkspace = $this->tagRepository->workspaceState(
+                    $source->localizationPublicId(),
+                    true
+                );
+                $tagAssignmentVersion = $this->tagRepository
+                    ->assignmentVersion(
+                        $source->localizationPublicId(),
+                        true
+                    );
+                if (
+                    $tagWorkspace !== null
+                    && $tagWorkspace->baseAssignmentVersion()
+                        !== $tagAssignmentVersion
+                ) {
+                    throw new BlogPersistenceException();
+                }
+                $sourceTags = $tagWorkspace === null
+                    ? $this->tagRepository->liveTags(
+                        $source->localizationPublicId()
+                    )
+                    : ($this->tagRepository->workspaceTags(
+                        $source->localizationPublicId()
+                    ) ?? throw new BlogPersistenceException());
+                if (count($sourceTags) > 30) {
+                    throw new BlogPersistenceException();
+                }
+                $tagPublicIds = array_map(
+                    static fn (BlogTag $tag): string => $tag->publicId(),
+                    $sourceTags
+                );
+            }
 
             $sourceSnapshot = null;
             $current = $this->structuredContentRepository->current(
@@ -351,6 +387,14 @@ final class BlogService
                 $categoryRepository->insertCategoryAssignments(
                     $destinationPostPublicId,
                     $assignmentIds,
+                    $actorPublicId,
+                    $now
+                );
+            }
+            if ($independentPost && $this->tagRepository !== null) {
+                $this->tagRepository->replaceLiveTags(
+                    $newLocalizationPublicId,
+                    $tagPublicIds,
                     $actorPublicId,
                     $now
                 );

@@ -22,6 +22,10 @@ use App\Core\Blog\PublicFeed\BlogPublicArchiveQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCardCategory;
 use App\Core\Blog\PublicFeed\BlogPublicCardCategoryQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCardCategoryRepositoryInterface;
+use App\Core\Blog\PublicFeed\BlogPublicCardTag;
+use App\Core\Blog\PublicFeed\BlogPublicCardTaxonomyBatch;
+use App\Core\Blog\PublicFeed\BlogPublicCardTaxonomyQuery;
+use App\Core\Blog\PublicFeed\BlogPublicCardTaxonomyRepositoryInterface;
 use App\Core\Blog\PublicFeed\BlogPublicCardMediaQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCardMediaRepositoryInterface;
 use App\Core\Blog\PublicFeed\BlogPublicCardThumbnail;
@@ -195,6 +199,7 @@ final class BlogPublicFeedTest extends TestCase
             'published_at' => '2030-01-02T12:00:00+00:00',
             'updated_at' => '2030-01-03T13:00:00+00:00',
             'categories' => [],
+            'tags' => [],
         ]], $feed->cardsForQuery($query));
     }
 
@@ -322,7 +327,89 @@ final class BlogPublicFeedTest extends TestCase
             'slug' => 'noticias',
             'name' => 'Noticias',
         ]], $cards[0]['categories']);
+        self::assertSame([], $cards[0]['tags']);
         self::assertArrayNotHasKey('category_public_id', $cards[0]);
+    }
+
+    public function testCardsAndArticleUseOneIdFreeTaxonomyBatch(): void
+    {
+        $card = $this->card();
+        $catalog = new class($card) implements
+            BlogPublicCatalogRepositoryInterface,
+            BlogPublicCardTaxonomyRepositoryInterface {
+            public int $taxonomyCalls = 0;
+            public ?BlogPublicCardTaxonomyQuery $taxonomyQuery = null;
+
+            public function __construct(
+                private readonly PublishedPostCard $card
+            ) {
+            }
+
+            public function search(BlogPublicCatalogQuery $query): array
+            {
+                return [$this->card];
+            }
+
+            public function categoriesForCards(
+                BlogPublicCardCategoryQuery $query
+            ): array {
+                throw new RuntimeException('Legacy batch must not run.');
+            }
+
+            public function taxonomiesForCards(
+                BlogPublicCardTaxonomyQuery $query
+            ): BlogPublicCardTaxonomyBatch {
+                ++$this->taxonomyCalls;
+                $this->taxonomyQuery = $query;
+
+                return new BlogPublicCardTaxonomyBatch(
+                    ['matrix-despierta' => [new BlogPublicCardCategory(
+                        'es',
+                        'noticias',
+                        'Noticias'
+                    )]],
+                    ['matrix-despierta' => [new BlogPublicCardTag(
+                        'es',
+                        'inteligencia-artificial',
+                        'Inteligencia artificial'
+                    )]]
+                );
+            }
+        };
+        $feed = new BlogPublicFeed(
+            $this->config(),
+            new BlogService($this->createMock(BlogRepositoryInterface::class)),
+            catalogRepository: $catalog
+        );
+
+        $cards = $feed->cardsForQuery(new BlogPublicCatalogQuery('es'));
+
+        self::assertSame(1, $catalog->taxonomyCalls);
+        self::assertSame(
+            ['matrix-despierta'],
+            $catalog->taxonomyQuery?->cardSlugs()
+        );
+        self::assertSame([[
+            'locale' => 'es',
+            'slug' => 'inteligencia-artificial',
+            'name' => 'Inteligencia artificial',
+        ]], $cards[0]['tags']);
+        self::assertArrayNotHasKey('id', $cards[0]['tags'][0]);
+        self::assertArrayNotHasKey('public_id', $cards[0]['tags'][0]);
+
+        self::assertSame([
+            'categories' => [[
+                'locale' => 'es',
+                'slug' => 'noticias',
+                'name' => 'Noticias',
+            ]],
+            'tags' => [[
+                'locale' => 'es',
+                'slug' => 'inteligencia-artificial',
+                'name' => 'Inteligencia artificial',
+            ]],
+        ], $feed->taxonomiesForArticle('es', 'matrix-despierta'));
+        self::assertSame(2, $catalog->taxonomyCalls);
     }
 
     public function testCardsReceiveAnIdFreeResponsiveThumbnailAdditively(): void

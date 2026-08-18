@@ -284,6 +284,64 @@ main:has(.blogDocument--layout) {
     padding: 0;
 }
 
+.blogPublicArticleTaxonomies {
+    width: min(100%, var(--ls-blog-content));
+    margin-inline: auto;
+    padding-block: clamp(1.25rem, 3vw, 2rem);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: clamp(1.5rem, 4vw, 3rem);
+    border-block: 1px solid var(--ls-blog-border);
+}
+
+.blogPublicArticleTaxonomies__group {
+    min-width: min(100%, 14rem);
+    display: grid;
+    gap: clamp(0.75rem, 2vw, 1rem);
+}
+
+.blogPublicArticleTaxonomies__label {
+    color: var(--ls-blog-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
+}
+
+.blogPublicArticleTaxonomies__list {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(0.6rem, 1.5vw, 0.9rem);
+    list-style: none;
+}
+
+.blogPublicArticleTaxonomies__item {
+    margin: 0;
+}
+
+.blogPublicArticleTaxonomies__item > span {
+    min-height: 2.25rem;
+    padding: 0.45rem 0.85rem;
+    border: 1px solid var(--ls-blog-color02);
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    color: var(--ls-blog-color00);
+    background: var(--ls-blog-color02);
+    font-size: clamp(0.82rem, 1.5vw, 0.94rem);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.blogPublicArticleTaxonomies__group--tags
+    .blogPublicArticleTaxonomies__item > span {
+    color: var(--ls-blog-color02);
+    background: var(--ls-blog-color00);
+}
+
 article:has(.blogDocument--layout)
     > div:has(> .blogDocument--layout) {
     width: 100%;

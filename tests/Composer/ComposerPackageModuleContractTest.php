@@ -36,6 +36,12 @@ final class ComposerPackageModuleContractTest extends TestCase
         );
         self::assertArrayNotHasKey('ext-dom', $composer['require']);
         self::assertSame(
+            '^1.31',
+            $composer['require']['symfony/polyfill-intl-normalizer'] ?? null,
+            'La identidad canónica de etiquetas no puede depender de que '
+                . 'ext-intl esté instalada en el stack consumidor.'
+        );
+        self::assertSame(
             'Required when liquidstack/blog is enabled for structured HTML '
                 . 'sanitization and consent-safe iframe projection.',
             $composer['suggest']['ext-dom'] ?? null

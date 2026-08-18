@@ -628,6 +628,13 @@
     var EMBED_POLICY = null;
     var IMAGE_PRESENTATION_POLICY = null;
     var UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+    var TAG_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+    var MAX_TAGS_PER_VARIANT = 30;
+    var MAX_TAG_CSV_BYTES = 4096;
+    var MAX_TAG_NAME_CHARACTERS = 64;
+    var MAX_TAG_NAME_BYTES = 255;
+    var UNSAFE_TAG_TEXT =
+        /(?:\p{Cc}|\p{Zl}|\p{Zp}|(?!\u200D)\p{Cf})/u;
     var instanceNumber = 0;
 
     function bytes(value) {
@@ -4321,7 +4328,7 @@
         var discardButton = element(
             'button',
             'blogEditor__confirmDialogConfirm',
-            'Salir sin guardar'
+            'Salir sin guardar el contenido'
         );
         discardButton.type = 'button';
         discardButton.dataset.variant = 'danger';
@@ -4404,8 +4411,8 @@
                 }
                 saveButton.hidden = !canSave;
                 message.textContent = canSave
-                    ? 'Elige si quieres guardar el borrador antes de salir.'
-                    : 'El guardado autom\u00e1tico no est\u00e1 disponible. Puedes seguir editando o salir sin guardar.';
+                    ? 'Elige si quieres guardar el contenido antes de salir. Las categor\u00edas y etiquetas confirmadas se guardan aparte en el borrador privado.'
+                    : 'El guardado autom\u00e1tico del contenido no est\u00e1 disponible. Puedes seguir editando o salir sin guardar el contenido. Las categor\u00edas y etiquetas confirmadas se guardan aparte en el borrador privado.';
                 var promise = new Promise(function (resolve) {
                     pending = {
                         promise: null,
@@ -4518,12 +4525,25 @@
                     return;
                 }
                 if (choice === 'discard') {
-                    submitEditorLogout(
-                        context,
-                        logoutForm,
-                        event.submitter
+                    return discardEditorialFacets(context).then(
+                        function (ready) {
+                            if (!ready) {
+                                context.allowNavigation = false;
+                                context.navigationPending = false;
+                                announce(
+                                    context,
+                                    'No se complet\u00f3 el guardado pendiente de categor\u00edas o etiquetas. La sesi\u00f3n sigue abierta para reintentarlo.',
+                                    true
+                                );
+                                return;
+                            }
+                            submitEditorLogout(
+                                context,
+                                logoutForm,
+                                event.submitter
+                            );
+                        }
                     );
-                    return;
                 }
                 if (choice !== 'save' || !canSave) {
                     context.navigationPending = false;
@@ -20508,14 +20528,18 @@
     }
 
     function categoryRequest(state, url, options, slot) {
-        var previous = state[slot];
+        var abortable = typeof slot === 'string' && slot !== '';
+        var previous = abortable ? state[slot] : null;
         if (previous && typeof previous.abort === 'function') {
             previous.abort();
         }
-        var controller = typeof window.AbortController === 'function'
+        var controller = abortable
+            && typeof window.AbortController === 'function'
             ? new window.AbortController()
             : null;
-        state[slot] = controller;
+        if (abortable) {
+            state[slot] = controller;
+        }
         var request = Object.assign({
             credentials: 'same-origin',
             redirect: 'error'
@@ -20550,7 +20574,7 @@
                 return payload;
             });
         }).finally(function () {
-            if (state[slot] === controller) {
+            if (abortable && state[slot] === controller) {
                 state[slot] = null;
             }
         });
@@ -20589,7 +20613,27 @@
         }));
     }
 
+    function categorySelectionFingerprint(form) {
+        return Array.from(categorySelectedIds(form)).sort().join(',');
+    }
+
+    function categoryMarkDirty(state) {
+        if (!state || typeof state.cleanFingerprint !== 'string') {
+            return;
+        }
+        state.dirty = categorySelectionFingerprint(state.assignmentForm)
+            !== state.cleanFingerprint;
+        if (state.dirty && !state.assignmentPending) {
+            state.assignmentStatus.textContent =
+                'Hay cambios de categorías pendientes de guardar.';
+            state.assignmentStatus.dataset.state = 'pending';
+        }
+    }
+
     function renderCategoryChoices(state, categories, newlySelected) {
+        var previousFingerprint = typeof state.cleanFingerprint === 'string'
+            ? categorySelectionFingerprint(state.assignmentForm)
+            : null;
         var selected = categorySelectedIds(state.assignmentForm);
         if (typeof newlySelected === 'string') {
             selected.add(newlySelected);
@@ -20623,6 +20667,13 @@
             );
             empty.dataset.blogCategoryEmpty = 'true';
             choices.append(empty);
+        }
+        if (
+            previousFingerprint !== null
+            && categorySelectionFingerprint(state.assignmentForm)
+                !== previousFingerprint
+        ) {
+            categoryMarkDirty(state);
         }
     }
 
@@ -20980,6 +21031,184 @@
         });
     }
 
+    function registerEditorialFacet(context, facet) {
+        if (!Array.isArray(context.editorialFacets)) {
+            context.editorialFacets = [];
+        }
+        context.editorialFacets.push(facet);
+    }
+
+    function editorialFacetsHaveChanges(context) {
+        return Array.isArray(context.editorialFacets)
+            && context.editorialFacets.some(function (facet) {
+                return facet.dirty() || facet.pending();
+            });
+    }
+
+    function editorialFacetsCommit(context) {
+        if (!Array.isArray(context.editorialFacets)) {
+            return true;
+        }
+        return context.editorialFacets.every(function (facet) {
+            return typeof facet.commit !== 'function' || facet.commit();
+        });
+    }
+
+    function editorialFacetsInSeries(context, method) {
+        if (!Array.isArray(context.editorialFacets)) {
+            return Promise.resolve(true);
+        }
+        return context.editorialFacets.reduce(function (promise, facet) {
+            return promise.then(function (ready) {
+                if (!ready || typeof facet[method] !== 'function') {
+                    return ready;
+                }
+                return Promise.resolve(facet[method]()).then(Boolean);
+            });
+        }, Promise.resolve(true));
+    }
+
+    function waitEditorialFacets(context) {
+        return editorialFacetsInSeries(context, 'wait');
+    }
+
+    function saveEditorialFacets(context) {
+        if (!editorialFacetsCommit(context)) {
+            return Promise.resolve(false);
+        }
+        return editorialFacetsInSeries(context, 'save');
+    }
+
+    function discardEditorialFacets(context) {
+        return editorialFacetsInSeries(context, 'discard');
+    }
+
+    function validCategoryAssignmentPayload(payload) {
+        return exactKeys(payload, [
+            'ok',
+            'lock_version',
+            'category_workspace_version'
+        ])
+            && payload.ok === true
+            && Number.isInteger(payload.lock_version)
+            && payload.lock_version > 0
+            && Number.isInteger(payload.category_workspace_version)
+            && payload.category_workspace_version >= 0;
+    }
+
+    function saveCategoryAssignment(state) {
+        if (state.assignmentPending) {
+            return state.assignmentPromise.then(function (saved) {
+                return saved ? saveCategoryAssignment(state) : false;
+            });
+        }
+        var submittedFingerprint = categorySelectionFingerprint(
+            state.assignmentForm
+        );
+        if (submittedFingerprint === state.cleanFingerprint) {
+            state.dirty = false;
+            return Promise.resolve(true);
+        }
+        var workspace = state.assignmentForm.elements.namedItem(
+            'category_workspace_version'
+        );
+        if (!(workspace instanceof HTMLInputElement)) {
+            return Promise.resolve(false);
+        }
+
+        state.assignmentPending = true;
+        state.assignmentForm.setAttribute('aria-busy', 'true');
+        if (state.assignmentSubmit instanceof HTMLButtonElement) {
+            state.assignmentSubmit.disabled = true;
+        }
+        state.assignmentStatus.textContent =
+            'Guardando categorías en el borrador…';
+        state.assignmentStatus.dataset.state = 'pending';
+        sync(state.context);
+
+        var requestPromise = categoryRequest(
+            state,
+            state.assignmentForm.action,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type':
+                        'application/x-www-form-urlencoded;charset=UTF-8'
+                },
+                body: formBody(state.assignmentForm).toString()
+            },
+            null
+        ).then(function (payload) {
+            if (
+                !validCategoryAssignmentPayload(payload)
+                || !v2SyncEditorialLockVersion(
+                    state.context,
+                    payload.lock_version
+                )
+                || !v2SyncCategoryWorkspaceVersion(
+                    state.context,
+                    payload.category_workspace_version
+                )
+            ) {
+                throw new Error('category-save-invalid-response');
+            }
+            state.cleanFingerprint = submittedFingerprint;
+            categoryMarkDirty(state);
+            state.assignmentStatus.textContent = state.dirty
+                ? 'Se guardó la selección enviada. Guardando cambios posteriores…'
+                : 'Categorías guardadas en el borrador privado. Se aplicarán al publicar.';
+            state.assignmentStatus.dataset.state = state.dirty
+                ? 'pending'
+                : 'ok';
+            return true;
+        }).catch(function (error) {
+            state.dirty = true;
+            var message = categoryErrorMessage(
+                error,
+                'guardar las categorías'
+            );
+            if (message !== '') {
+                state.assignmentStatus.textContent = message
+                    + ' La selección sigue disponible para reintentar.';
+                state.assignmentStatus.dataset.state = 'error';
+            }
+            return false;
+        }).finally(function () {
+            state.assignmentPending = false;
+            state.assignmentForm.removeAttribute('aria-busy');
+            if (state.assignmentSubmit instanceof HTMLButtonElement) {
+                state.assignmentSubmit.disabled = false;
+            }
+        });
+
+        state.assignmentPromise = requestPromise;
+        return requestPromise.then(function (saved) {
+            if (state.assignmentPromise === requestPromise) {
+                state.assignmentPromise = null;
+            }
+            if (!saved || state.discarding) {
+                return saved;
+            }
+            return categorySelectionFingerprint(state.assignmentForm)
+                === state.cleanFingerprint
+                ? true
+                : saveCategoryAssignment(state);
+        });
+    }
+
+    function discardCategoryAssignment(state) {
+        state.discarding = true;
+        var pending = state.assignmentPending
+            ? state.assignmentPromise
+            : Promise.resolve(true);
+        return Promise.resolve(pending).then(function (saved) {
+            if (!saved) {
+                state.discarding = false;
+            }
+            return Boolean(saved);
+        });
+    }
+
     function initCategoryWorkspace(context) {
         if (!context.inspectorRoot || typeof window.fetch !== 'function') {
             return;
@@ -21040,91 +21269,48 @@
             catalog: [],
             catalogController: null,
             mutationController: null,
-            assignmentController: null,
             quickController: null,
-            openTrigger: null
+            openTrigger: null,
+            assignmentStatus: status,
+            assignmentSubmit: submit,
+            assignmentPending: false,
+            assignmentPromise: null,
+            cleanFingerprint: categorySelectionFingerprint(form),
+            dirty: false,
+            discarding: false
         };
         if (!safeRootRelativeUrl(state.endpoint) || state.locale !== context.locale) {
             return;
         }
         context.categoryManager = state;
 
+        form.addEventListener('change', function (event) {
+            if (
+                event.target instanceof HTMLInputElement
+                && event.target.name === 'categories[]'
+            ) {
+                categoryMarkDirty(state);
+            }
+        });
         form.addEventListener('submit', function (event) {
-            var workspace = form.elements.namedItem(
-                'category_workspace_version'
-            );
-            if (!(workspace instanceof HTMLInputElement)) {
-                return;
-            }
             event.preventDefault();
-            if (form.getAttribute('aria-busy') === 'true') {
-                return;
+            saveCategoryAssignment(state);
+        });
+        registerEditorialFacet(context, {
+            dirty: function () {
+                categoryMarkDirty(state);
+                return state.dirty;
+            },
+            pending: function () { return state.assignmentPending; },
+            wait: function () {
+                return state.assignmentPending
+                    ? saveCategoryAssignment(state)
+                    : Promise.resolve(true);
+            },
+            save: function () { return saveCategoryAssignment(state); },
+            discard: function () {
+                return discardCategoryAssignment(state);
             }
-            form.setAttribute('aria-busy', 'true');
-            if (submit instanceof HTMLButtonElement) {
-                submit.disabled = true;
-            }
-            status.textContent = 'Guardando categorías en el borrador…';
-            status.dataset.state = 'pending';
-            sync(context);
-            var submittedEditorFingerprint = editorialFormFingerprint(
-                context.form
-            );
-            var editorWasDirty = submittedEditorFingerprint
-                !== context.initialFingerprint;
-
-            categoryRequest(state, form.action, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-                },
-                body: formBody(form).toString()
-            }, 'assignmentController').then(function (payload) {
-                if (
-                    !Number.isInteger(payload.lock_version)
-                    || payload.lock_version < 1
-                    || !Number.isInteger(payload.category_workspace_version)
-                    || payload.category_workspace_version < 1
-                    || !v2SyncCategoryWorkspaceVersion(
-                        context,
-                        payload.category_workspace_version
-                    )
-                ) {
-                    throw new Error('category-save-invalid-response');
-                }
-                var editorStayedUnchanged = editorialFormFingerprint(
-                    context.form
-                ) === submittedEditorFingerprint;
-                sync(context);
-                if (!editorWasDirty && editorStayedUnchanged) {
-                    context.initialFingerprint = editorialFormFingerprint(
-                        context.form
-                    );
-                }
-                status.textContent = '';
-                window.requestAnimationFrame(function () {
-                    status.textContent = 'Categorías guardadas en el borrador privado. Se aplicarán al publicar.';
-                    status.dataset.state = 'ok';
-                });
-            }).catch(function (error) {
-                var message = categoryErrorMessage(
-                    error,
-                    'guardar las categorías'
-                );
-                if (message !== '') {
-                    status.textContent = '';
-                    window.requestAnimationFrame(function () {
-                        status.textContent = message
-                            + ' La selección sigue disponible para reintentar.';
-                        status.dataset.state = 'error';
-                    });
-                }
-            }).finally(function () {
-                form.removeAttribute('aria-busy');
-                if (submit instanceof HTMLButtonElement) {
-                    submit.disabled = false;
-                }
-            });
         });
 
         initCategoryCreation(state, quickForm, quickStatus);
@@ -21134,6 +21320,553 @@
 
     function initCategoryAssignment(context) {
         initCategoryWorkspace(context);
+    }
+
+    function normalizedTagName(value) {
+        if (typeof value !== 'string') {
+            return null;
+        }
+        if (value.includes(',') || UNSAFE_TAG_TEXT.test(value)) {
+            return null;
+        }
+        var normalized;
+        try {
+            normalized = value.normalize('NFC').trim().replace(/\s+/gu, ' ');
+        } catch (error) {
+            return null;
+        }
+        return !UNSAFE_TAG_TEXT.test(normalized)
+            && normalized !== ''
+            && characters(normalized) <= MAX_TAG_NAME_CHARACTERS
+            && bytes(normalized) <= MAX_TAG_NAME_BYTES
+            ? normalized
+            : null;
+    }
+
+    function tagNameKey(name) {
+        var normalized = normalizedTagName(name);
+        return normalized === null ? name : normalized;
+    }
+
+    function tagListFingerprint(tags) {
+        return JSON.stringify(tags.map(function (tag) { return tag.name; }));
+    }
+
+    function tagCsv(tags) {
+        return tags.map(function (tag) { return tag.name; }).join(', ');
+    }
+
+    function validTagAssignmentPayload(payload) {
+        if (
+            !exactKeys(payload, [
+                'ok',
+                'lock_version',
+                'tag_workspace_version',
+                'tags'
+            ])
+            || payload.ok !== true
+            || !Number.isInteger(payload.lock_version)
+            || payload.lock_version < 1
+            || !Number.isInteger(payload.tag_workspace_version)
+            || payload.tag_workspace_version < 0
+            || !Array.isArray(payload.tags)
+            || payload.tags.length > MAX_TAGS_PER_VARIANT
+        ) {
+            return false;
+        }
+        var previousSlug = null;
+        var valid = payload.tags.every(function (tag) {
+            if (
+                !exactKeys(tag, ['name', 'slug'])
+                || normalizedTagName(tag.name) !== tag.name
+                || typeof tag.slug !== 'string'
+                || tag.slug.length > 190
+                || !TAG_SLUG.test(tag.slug)
+                || (previousSlug !== null && tag.slug <= previousSlug)
+            ) {
+                return false;
+            }
+            previousSlug = tag.slug;
+            return true;
+        });
+        return valid && bytes(tagCsv(payload.tags)) <= MAX_TAG_CSV_BYTES;
+    }
+
+    function tagAssignmentErrorMessage(error) {
+        if (error && error.status === 409) {
+            return 'Las etiquetas cambiaron en otra sesión. La selección local sigue disponible para revisarla.';
+        }
+        if (error && error.status === 422) {
+            return 'Revisa las etiquetas: alguna no cumple el formato o los límites permitidos.';
+        }
+        if (error && error.status === 403) {
+            return 'La sesión o el permiso ya no son válidos. Las etiquetas locales se conservan.';
+        }
+        return 'No se pudieron guardar las etiquetas. La selección local se conserva para reintentar.';
+    }
+
+    function renderTagAssignment(state) {
+        state.list.replaceChildren();
+        if (state.tags.length === 0) {
+            var empty = element(
+                'li',
+                { 'data-blog-tag-empty': '' },
+                'No hay etiquetas asignadas.'
+            );
+            state.list.append(empty);
+            return;
+        }
+        state.tags.forEach(function (tag, index) {
+            var item = document.createElement('li');
+            item.dataset.blogTag = '';
+            if (tag.slug !== '') {
+                item.dataset.blogTagSlug = tag.slug;
+            }
+            var name = document.createElement('span');
+            name.dir = 'auto';
+            name.textContent = tag.name;
+            var remove = document.createElement('button');
+            remove.type = 'button';
+            remove.dataset.blogTagRemove = String(index);
+            remove.setAttribute(
+                'aria-label',
+                'Quitar etiqueta ' + tag.name
+            );
+            remove.textContent = '×';
+            item.append(name, remove);
+            state.list.append(item);
+        });
+    }
+
+    function syncTagAssignmentDraft(state) {
+        var csv = tagCsv(state.tags);
+        state.canonicalInput.value = csv;
+        state.dirty = tagListFingerprint(state.tags)
+            !== state.cleanFingerprint;
+        renderTagAssignment(state);
+        return bytes(csv) <= MAX_TAG_CSV_BYTES;
+    }
+
+    function refreshTagDirty(state) {
+        state.dirty = state.composer.value.trim() !== ''
+            || tagListFingerprint(state.tags) !== state.cleanFingerprint;
+    }
+
+    function markTagInputChanged(state) {
+        state.revision += 1;
+        refreshTagDirty(state);
+        if (
+            state.composer.value.trim() !== ''
+            && !state.assignmentPending
+        ) {
+            state.status.textContent = 'Pulsa Intro o escribe una coma para confirmar la etiqueta.';
+            state.status.dataset.state = 'pending';
+        }
+    }
+
+    function commitTagInput(state) {
+        var raw = state.composer.value;
+        if (raw.trim() === '') {
+            state.composer.value = '';
+            state.dirty = tagListFingerprint(state.tags)
+                !== state.cleanFingerprint;
+            return true;
+        }
+        var candidates = raw.split(',').filter(function (candidate) {
+            return candidate.trim() !== '';
+        }).map(function (candidate) {
+            return normalizedTagName(candidate);
+        });
+        if (candidates.some(function (candidate) { return candidate === null; })) {
+            state.status.textContent = 'Cada etiqueta debe tener entre 1 y 64 caracteres, sin comas ni caracteres de control.';
+            state.status.dataset.state = 'error';
+            state.composer.setAttribute('aria-invalid', 'true');
+            return false;
+        }
+
+        var next = state.tags.slice();
+        var keys = new Set(next.map(function (tag) {
+            return tagNameKey(tag.name);
+        }));
+        candidates.forEach(function (candidate) {
+            var key = tagNameKey(candidate);
+            if (!keys.has(key)) {
+                keys.add(key);
+                next.push({ name: candidate, slug: '' });
+            }
+        });
+        var csv = tagCsv(next);
+        if (
+            next.length > MAX_TAGS_PER_VARIANT
+            || bytes(csv) > MAX_TAG_CSV_BYTES
+        ) {
+            state.status.textContent = 'Puedes asignar hasta 30 etiquetas y 4096 bytes en total.';
+            state.status.dataset.state = 'error';
+            state.composer.setAttribute('aria-invalid', 'true');
+            return false;
+        }
+
+        state.tags = next;
+        state.composer.value = '';
+        state.composer.removeAttribute('aria-invalid');
+        state.revision += 1;
+        syncTagAssignmentDraft(state);
+        state.status.textContent = state.dirty
+            ? 'Hay etiquetas pendientes de guardar.'
+            : 'Las etiquetas ya estaban asignadas.';
+        state.status.dataset.state = state.dirty ? 'pending' : 'ok';
+        return true;
+    }
+
+    function scheduleTagAssignment(state) {
+        if (state.saveTimer !== null) {
+            window.clearTimeout(state.saveTimer);
+        }
+        state.saveTimer = window.setTimeout(function () {
+            state.saveTimer = null;
+            saveTagAssignment(state, false);
+        }, 650);
+    }
+
+    function tagAssignmentRequest(state) {
+        return window.fetch(state.action, {
+            method: 'POST',
+            credentials: 'same-origin',
+            redirect: 'error',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type':
+                    'application/x-www-form-urlencoded;charset=UTF-8',
+                'X-LiquidStack-Tag-Editor': 'async'
+            },
+            body: formBody(state.form).toString()
+        }).then(function (response) {
+            var contentType = response.headers.get('Content-Type') || '';
+            if (!contentType.toLowerCase().startsWith('application/json')) {
+                var invalid = new Error('tag-invalid-response');
+                invalid.status = response.status;
+                throw invalid;
+            }
+            return response.json().then(function (payload) {
+                if (!plainObject(payload)) {
+                    throw new Error('tag-invalid-response');
+                }
+                if (!response.ok || payload.ok !== true) {
+                    var failure = new Error(
+                        typeof payload.error === 'string'
+                            ? payload.error
+                            : 'tag-request-failed'
+                    );
+                    failure.status = response.status;
+                    throw failure;
+                }
+                return payload;
+            });
+        });
+    }
+
+    function saveTagAssignment(state, commitPendingInput) {
+        if (state.saveTimer !== null) {
+            window.clearTimeout(state.saveTimer);
+            state.saveTimer = null;
+        }
+        if (
+            commitPendingInput
+            && (state.composing || !commitTagInput(state))
+        ) {
+            return Promise.resolve(false);
+        }
+        if (state.assignmentPending) {
+            return state.assignmentPromise.then(function (saved) {
+                return saved
+                    ? saveTagAssignment(state, commitPendingInput)
+                    : false;
+            });
+        }
+        var submittedFingerprint = tagListFingerprint(state.tags);
+        if (submittedFingerprint === state.cleanFingerprint) {
+            refreshTagDirty(state);
+            return Promise.resolve(!state.dirty && !state.composing);
+        }
+        var submittedRevision = state.revision;
+        var submittedTags = state.tags.map(function (tag) {
+            return { name: tag.name, slug: tag.slug };
+        });
+        state.canonicalInput.value = tagCsv(submittedTags);
+        state.assignmentPending = true;
+        state.form.setAttribute('aria-busy', 'true');
+        state.submit.disabled = true;
+        state.status.textContent = 'Guardando etiquetas…';
+        state.status.dataset.state = 'pending';
+        sync(state.context);
+
+        var requestPromise = tagAssignmentRequest(state).then(
+            function (payload) {
+                if (
+                    !validTagAssignmentPayload(payload)
+                    || !v2SyncEditorialLockVersion(
+                        state.context,
+                        payload.lock_version
+                    )
+                    || !v2SyncTagWorkspaceVersion(
+                        state.context,
+                        payload.tag_workspace_version
+                    )
+                ) {
+                    throw new Error('tag-invalid-response');
+                }
+                var responseTags = payload.tags.map(function (tag) {
+                    return { name: tag.name, slug: tag.slug };
+                });
+                state.cleanFingerprint = tagListFingerprint(responseTags);
+                var stable = submittedRevision === state.revision
+                    && tagListFingerprint(state.tags)
+                        === submittedFingerprint;
+                if (stable || state.discarding) {
+                    state.tags = responseTags;
+                    state.revision += 1;
+                    syncTagAssignmentDraft(state);
+                } else {
+                    state.dirty = true;
+                }
+                state.status.textContent = state.dirty
+                    ? 'Se guardaron las etiquetas enviadas. Guardando cambios posteriores…'
+                    : 'Etiquetas guardadas en el borrador privado.';
+                state.status.dataset.state = state.dirty ? 'pending' : 'ok';
+                return true;
+            }
+        ).catch(function (error) {
+            state.dirty = true;
+            state.status.textContent = tagAssignmentErrorMessage(error);
+            state.status.dataset.state = 'error';
+            return false;
+        }).finally(function () {
+            state.assignmentPending = false;
+            state.form.removeAttribute('aria-busy');
+            state.submit.disabled = false;
+        });
+        state.assignmentPromise = requestPromise;
+
+        return requestPromise.then(function (saved) {
+            if (state.assignmentPromise === requestPromise) {
+                state.assignmentPromise = null;
+            }
+            if (!saved || state.discarding) {
+                return saved;
+            }
+            var confirmedDirty = tagListFingerprint(state.tags)
+                !== state.cleanFingerprint;
+            refreshTagDirty(state);
+            if (!confirmedDirty && !state.dirty && !state.composing) {
+                return true;
+            }
+            if (!commitPendingInput && !confirmedDirty) {
+                return false;
+            }
+            return saveTagAssignment(state, commitPendingInput);
+        });
+    }
+
+    function discardTagAssignment(state) {
+        state.discarding = true;
+        var pending = state.assignmentPending
+            ? state.assignmentPromise
+            : Promise.resolve(true);
+        return Promise.resolve(pending).then(function (saved) {
+            if (!saved) {
+                state.discarding = false;
+            }
+            return Boolean(saved);
+        });
+    }
+
+    function readAssignedTags(list) {
+        var tags = [];
+        var valid = Array.from(list.querySelectorAll('[data-blog-tag]'))
+            .every(function (item) {
+                var nameNode = item.querySelector('span');
+                var name = nameNode ? nameNode.textContent : '';
+                var slug = item.dataset.blogTagSlug || '';
+                if (
+                    normalizedTagName(name) !== name
+                    || !TAG_SLUG.test(slug)
+                    || slug.length > 190
+                ) {
+                    return false;
+                }
+                tags.push({ name: name, slug: slug });
+                return true;
+            });
+        return valid && tags.length <= MAX_TAGS_PER_VARIANT ? tags : null;
+    }
+
+    function initTagAssignment(context) {
+        if (!context.inspectorRoot || typeof window.fetch !== 'function') {
+            return;
+        }
+        var form = context.inspectorRoot.querySelector(
+            '[data-blog-tag-assignment-form]'
+        );
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+        var canonicalInput = form.querySelector('[data-blog-tag-csv]');
+        var list = form.querySelector('[data-blog-tag-list]');
+        var status = form.querySelector('[data-blog-tag-assignment-status]');
+        var submit = form.querySelector('button[type="submit"]');
+        var locale = form.elements.namedItem('locale');
+        var workspace = form.elements.namedItem('tag_workspace_version');
+        var tags = list instanceof HTMLElement ? readAssignedTags(list) : null;
+        var action = form.getAttribute('action') || '';
+        if (
+            !(canonicalInput instanceof HTMLInputElement)
+            || !(list instanceof HTMLElement)
+            || !(status instanceof HTMLElement)
+            || !(submit instanceof HTMLButtonElement)
+            || !(locale instanceof HTMLInputElement)
+            || !(workspace instanceof HTMLInputElement)
+            || tags === null
+            || !safeRootRelativeUrl(action)
+            || locale.value !== context.locale
+        ) {
+            return;
+        }
+
+        var inputId = canonicalInput.id;
+        var composer = document.createElement('input');
+        composer.id = inputId;
+        composer.type = 'text';
+        composer.dir = 'auto';
+        composer.autocomplete = 'off';
+        // The composer also accepts a complete comma-separated paste. Each
+        // individual name is validated when committed, while this boundary
+        // must preserve the full request-sized value without truncation.
+        composer.maxLength = MAX_TAG_CSV_BYTES;
+        composer.dataset.blogTagComposer = '';
+        composer.setAttribute(
+            'aria-describedby',
+            canonicalInput.getAttribute('aria-describedby') || ''
+        );
+        canonicalInput.removeAttribute('id');
+        canonicalInput.type = 'hidden';
+        canonicalInput.removeAttribute('aria-describedby');
+        canonicalInput.insertAdjacentElement('afterend', composer);
+
+        var state = {
+            context: context,
+            form: form,
+            action: action,
+            locale: locale.value,
+            canonicalInput: canonicalInput,
+            composer: composer,
+            list: list,
+            status: status,
+            submit: submit,
+            tags: tags,
+            cleanFingerprint: tagListFingerprint(tags),
+            dirty: false,
+            composing: false,
+            revision: 0,
+            assignmentPending: false,
+            assignmentPromise: null,
+            saveTimer: null,
+            discarding: false
+        };
+        syncTagAssignmentDraft(state);
+
+        composer.addEventListener('compositionstart', function () {
+            state.composing = true;
+        });
+        composer.addEventListener('compositionend', function () {
+            state.composing = false;
+            markTagInputChanged(state);
+            scheduleTagAssignment(state);
+        });
+        composer.addEventListener('input', function (event) {
+            markTagInputChanged(state);
+            if (state.composing) {
+                return;
+            }
+            if (event.inputType === 'insertFromPaste') {
+                if (commitTagInput(state)) {
+                    scheduleTagAssignment(state);
+                }
+                return;
+            }
+            scheduleTagAssignment(state);
+        });
+        composer.addEventListener('keydown', function (event) {
+            if (
+                state.composing
+                || event.isComposing
+                || !['Enter', ','].includes(event.key)
+            ) {
+                return;
+            }
+            event.preventDefault();
+            if (commitTagInput(state)) {
+                scheduleTagAssignment(state);
+            }
+        });
+        composer.addEventListener('blur', function () {
+            if (
+                !state.composing
+                && composer.value.trim() !== ''
+                && commitTagInput(state)
+            ) {
+                scheduleTagAssignment(state);
+            }
+        });
+        list.addEventListener('click', function (event) {
+            var trigger = event.target.closest('[data-blog-tag-remove]');
+            if (!(trigger instanceof HTMLButtonElement)) {
+                return;
+            }
+            var index = Number(trigger.dataset.blogTagRemove);
+            if (!Number.isInteger(index) || !state.tags[index]) {
+                return;
+            }
+            var removed = state.tags[index].name;
+            state.tags.splice(index, 1);
+            state.revision += 1;
+            syncTagAssignmentDraft(state);
+            state.status.textContent = 'Etiqueta ' + removed
+                + ' quitada. Guardando cambios…';
+            state.status.dataset.state = 'pending';
+            composer.focus();
+            scheduleTagAssignment(state);
+        });
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            saveTagAssignment(state, true);
+        });
+        registerEditorialFacet(context, {
+            commit: function () {
+                if (state.saveTimer !== null) {
+                    window.clearTimeout(state.saveTimer);
+                    state.saveTimer = null;
+                }
+                return !state.composing && commitTagInput(state);
+            },
+            dirty: function () {
+                refreshTagDirty(state);
+                return state.dirty;
+            },
+            pending: function () { return state.assignmentPending; },
+            wait: function () {
+                return state.assignmentPending
+                    ? saveTagAssignment(state, true)
+                    : Promise.resolve(true);
+            },
+            save: function () { return saveTagAssignment(state, true); },
+            discard: function () {
+                if (state.saveTimer !== null) {
+                    window.clearTimeout(state.saveTimer);
+                    state.saveTimer = null;
+                }
+                return discardTagAssignment(state);
+            }
+        });
     }
 
     function v2OpenSelectedInspector(context, preferredFocusSelector) {
@@ -23135,6 +23868,41 @@
         return synchronized;
     }
 
+    function v2SyncTagWorkspaceVersion(context, workspaceVersion) {
+        if (!Number.isInteger(workspaceVersion) || workspaceVersion < 0) {
+            return false;
+        }
+        var sourcePost = context.form.elements.namedItem('post');
+        var sourceLocale = context.form.elements.namedItem('locale');
+        if (
+            !(sourcePost instanceof HTMLInputElement)
+            || !(sourceLocale instanceof HTMLInputElement)
+        ) {
+            return false;
+        }
+        var synchronized = false;
+        document.querySelectorAll('form').forEach(function (form) {
+            if (!(form instanceof HTMLFormElement)) {
+                return;
+            }
+            var post = form.elements.namedItem('post');
+            var locale = form.elements.namedItem('locale');
+            var version = form.elements.namedItem('tag_workspace_version');
+            if (
+                !(post instanceof HTMLInputElement)
+                || !(locale instanceof HTMLInputElement)
+                || !(version instanceof HTMLInputElement)
+                || post.value !== sourcePost.value
+                || locale.value !== sourceLocale.value
+            ) {
+                return;
+            }
+            version.value = String(workspaceVersion);
+            synchronized = true;
+        });
+        return synchronized;
+    }
+
     function v2SyncCsrfToken(csrfToken) {
         if (
             typeof csrfToken !== 'string'
@@ -23278,6 +24046,33 @@
                 'La publicaci\u00f3n no est\u00e1 disponible temporalmente. El borrador se conserva.'
         }[v2SaveErrorCode(error)]
             || 'No se pudo publicar ahora. El borrador se conserva.';
+    }
+
+    function v2SetPublicationStatus(context, status) {
+        var labels = {
+            draft: 'Borrador',
+            published: 'Publicado'
+        };
+        var label = labels[status];
+        if (
+            typeof label !== 'string'
+            || !Array.isArray(context.publicationStatuses)
+        ) {
+            return;
+        }
+        context.publicationStatuses.forEach(function (target) {
+            if (!(target instanceof HTMLElement)) {
+                return;
+            }
+            target.dataset.blogEditorPublicationStatus = status;
+            target.textContent = label;
+            if (target.hasAttribute('aria-label')) {
+                target.setAttribute(
+                    'aria-label',
+                    'Estado del art\u00edculo: ' + label
+                );
+            }
+        });
     }
 
     function v2SaveDraft(context) {
@@ -23481,10 +24276,10 @@
                         || payload.status !== 'published'
                         || !Number.isInteger(payload.lock_version)
                         || payload.lock_version < 1
-                        || !Number.isInteger(
-                            payload.category_workspace_version
-                        )
+                        || !Number.isInteger(payload.category_workspace_version)
                         || payload.category_workspace_version < 0
+                        || !Number.isInteger(payload.tag_workspace_version)
+                        || payload.tag_workspace_version < 0
                         || !v2SyncEditorialLockVersion(
                             context,
                             payload.lock_version
@@ -23493,9 +24288,14 @@
                             context,
                             payload.category_workspace_version
                         )
+                        || !v2SyncTagWorkspaceVersion(
+                            context,
+                            payload.tag_workspace_version
+                        )
                     ) {
                         throw v2SaveError('save-invalid-response');
                     }
+                    v2SetPublicationStatus(context, payload.status);
                     sync(context);
                     var unchangedSinceSubmit = editorialFormFingerprint(
                         context.form
@@ -23557,7 +24357,7 @@
             event.preventDefault();
             context.allowNavigation = false;
             try {
-                v2SaveDraft(context);
+                v2PrepareSavedPreview(context, true);
             } catch (error) {
                 context.savePending = false;
                 context.savePromise = null;
@@ -23631,10 +24431,15 @@
         return candidate;
     }
 
-    function v2PreviewNeedsSave(context) {
+    function v2DocumentNeedsSave(context) {
         sync(context);
         return editorialFormFingerprint(context.form)
             !== context.initialFingerprint;
+    }
+
+    function v2PreviewNeedsSave(context) {
+        return v2DocumentNeedsSave(context)
+            || editorialFacetsHaveChanges(context);
     }
 
     function v2HasUnsavedChanges(context) {
@@ -23642,7 +24447,7 @@
             || richModalDirty(context.richEditor);
     }
 
-    function v2PrepareSavedPreview(context) {
+    function v2PrepareSavedPreview(context, forceDocumentSave) {
         if (richModalDirty(context.richEditor)) {
             announce(
                 context,
@@ -23651,10 +24456,27 @@
             );
             return Promise.resolve(false);
         }
-        if (context.readOnly || !v2PreviewNeedsSave(context)) {
+        if (context.readOnly) {
             return Promise.resolve(true);
         }
-        return v2SaveDraft(context);
+        if (!editorialFacetsCommit(context)) {
+            return Promise.resolve(false);
+        }
+        if (!editorialFacetsHaveChanges(context)) {
+            return forceDocumentSave || v2DocumentNeedsSave(context)
+                ? v2SaveDraft(context)
+                : Promise.resolve(true);
+        }
+        return waitEditorialFacets(context).then(function (ready) {
+            if (!ready) {
+                return false;
+            }
+            return forceDocumentSave || v2DocumentNeedsSave(context)
+                ? v2SaveDraft(context)
+                : true;
+        }).then(function (ready) {
+            return ready ? saveEditorialFacets(context) : false;
+        });
     }
 
     function v2LoadPreview(state) {
@@ -23826,9 +24648,7 @@
         state.save.textContent = 'Guardando…';
         v2SetPreviewStatus(state, 'Guardando borrador…', 'pending');
         state.pendingPromise = Promise.resolve().then(function () {
-            return forceSave
-                ? v2SaveDraft(context)
-                : v2PrepareSavedPreview(context);
+            return v2PrepareSavedPreview(context, forceSave);
         }).then(function (saved) {
             if (!saved) {
                 v2PreviewFailure(
@@ -24178,9 +24998,20 @@
                     return;
                 }
                 if (choice === 'discard') {
-                    context.allowNavigation = true;
-                    window.location.assign(destination.href);
-                    return;
+                    return discardEditorialFacets(context).then(function (ready) {
+                        if (!ready) {
+                            context.allowNavigation = false;
+                            context.navigationPending = false;
+                            announce(
+                                context,
+                                'No se complet\u00f3 el guardado pendiente de categor\u00edas o etiquetas. Sigues en el editor para reintentarlo.',
+                                true
+                            );
+                            return;
+                        }
+                        context.allowNavigation = true;
+                        window.location.assign(destination.href);
+                    });
                 }
                 if (
                     choice !== 'save'
@@ -24231,7 +25062,8 @@
             var dirty = true;
             try {
                 dirty = formFingerprint(context.form)
-                    !== context.initialFingerprint;
+                    !== context.initialFingerprint
+                    || editorialFacetsHaveChanges(context);
             } catch (error) {
                 event.preventDefault();
                 announce(
@@ -24262,8 +25094,20 @@
                     context.navigationPending = false;
                     return;
                 }
-                context.allowNavigation = true;
-                window.location.assign(destination.href);
+                return discardEditorialFacets(context).then(function (ready) {
+                    if (!ready) {
+                        context.allowNavigation = false;
+                        context.navigationPending = false;
+                        announce(
+                            context,
+                            'No se complet\u00f3 el guardado pendiente de categor\u00edas o etiquetas. Sigues en el editor para reintentarlo.',
+                            true
+                        );
+                        return;
+                    }
+                    context.allowNavigation = true;
+                    window.location.assign(destination.href);
+                });
             }).catch(function () {
                 context.allowNavigation = false;
                 context.navigationPending = false;
@@ -24279,7 +25123,8 @@
             shell,
             function () {
                 return formFingerprint(context.form)
-                    !== context.initialFingerprint;
+                    !== context.initialFingerprint
+                    || editorialFacetsHaveChanges(context);
             },
             null
         );
@@ -24360,11 +25205,12 @@
             slugInput.addEventListener('input', updatePublicUrl);
             updatePublicUrl();
         }
+        initCategoryAssignment(context);
+        initTagAssignment(context);
         v2BindSave(context);
         v2BindPublish(context);
         v2BindImmersivePreview(context);
         v2BindInternalNavigation(context);
-        initCategoryAssignment(context);
         initSeoAnalysis(context);
         renderV2(context);
         context.initialFingerprint = editorialFormFingerprint(context.form);
@@ -24396,6 +25242,12 @@
             '[data-blog-editor-status][data-blog-editor-form="'
                 + form.id + '"]'
         ) || form.querySelector('[data-blog-editor-status]');
+        var publicationStatuses = Array.from(document.querySelectorAll(
+            '[data-blog-editor-publication-status][data-blog-editor-form="'
+                + form.id + '"]'
+        )).filter(function (target) {
+            return target instanceof HTMLElement;
+        });
         var blockInspector = inspectorRoot
             ? inspectorRoot.querySelector('[data-blog-block-inspector]')
             : form.querySelector('[data-blog-block-inspector]');
@@ -24537,6 +25389,7 @@
             blockList: blockList,
             templateSelect: templateSelect,
             status: status,
+            publicationStatuses: publicationStatuses,
             mediaCatalog: mediaCatalog instanceof HTMLSelectElement
                 ? mediaCatalog : null,
             media: readMedia(mediaCatalog),
@@ -24580,6 +25433,7 @@
             publishPending: false,
             publishPromise: null,
             invalidFocusPending: false,
+            editorialFacets: [],
             layoutEditorReady: layoutEditorReady,
             headingPresetCatalog: headingPresetCatalog,
             headingDefaults: headingDefaults,
@@ -24946,9 +25800,10 @@
         render(context);
         sync(context);
         context.initialFingerprint = formFingerprint(form);
+        initCategoryAssignment(context);
+        initTagAssignment(context);
         bindLegacyInternalNavigation(context);
         initSeoAnalysis(context);
-        initCategoryAssignment(context);
         form.dataset.blogEditorEnhanced = 'true';
     }
 

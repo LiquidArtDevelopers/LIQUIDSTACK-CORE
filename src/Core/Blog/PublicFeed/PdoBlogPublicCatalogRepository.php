@@ -19,7 +19,7 @@ use Throwable;
 final class PdoBlogPublicCatalogRepository implements
     BlogPublicCatalogRepositoryInterface,
     BlogPublicDiscoveryRepositoryInterface,
-    BlogPublicCardCategoryRepositoryInterface
+    BlogPublicCardTaxonomyRepositoryInterface
 {
     private const UTC_FORMAT = 'Y-m-d H:i:s.u';
     private const SUPPORTED_DRIVERS = ['mysql', 'sqlite'];
@@ -34,10 +34,13 @@ final class PdoBlogPublicCatalogRepository implements
     private readonly string $localizations;
     private readonly string $categoryLocalizations;
     private readonly string $relations;
+    private readonly string $tags;
+    private readonly string $tagRelations;
 
     public function __construct(
         private readonly PDO $pdo,
-        MigrationScope $scope
+        MigrationScope $scope,
+        private readonly bool $tagsReady = false
     ) {
         try {
             $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
@@ -83,6 +86,11 @@ final class PdoBlogPublicCatalogRepository implements
                 'post_categories',
                 $driver
             );
+            $this->tags = $scope->quotedTable('tags', $driver);
+            $this->tagRelations = $scope->quotedTable(
+                'localization_tags',
+                $driver
+            );
         } catch (BlogPersistenceException $exception) {
             throw $exception;
         } catch (Throwable) {
@@ -119,10 +127,32 @@ final class PdoBlogPublicCatalogRepository implements
                     . " ESCAPE '!' OR "
                     . $this->casefoldExpression('l.body_text') . ' LIKE '
                     . $this->casefoldExpression(':search_body')
-                    . " ESCAPE '!')";
+                    . " ESCAPE '!'";
                 $parameters['search_h1'] = [$pattern, PDO::PARAM_STR];
                 $parameters['search_excerpt'] = [$pattern, PDO::PARAM_STR];
                 $parameters['search_body'] = [$pattern, PDO::PARAM_STR];
+                if ($this->tagsReady) {
+                    $sql .= ' OR EXISTS (SELECT 1 FROM '
+                        . $this->tagRelations . ' search_lt JOIN '
+                        . $this->tags . ' search_t ON search_t.id = '
+                        . 'search_lt.tag_id WHERE search_lt.localization_id = '
+                        . 'l.id AND search_t.locale = l.locale AND ('
+                        . $this->casefoldExpression('search_t.name') . ' LIKE '
+                        . $this->casefoldExpression(':search_tag_name')
+                        . " ESCAPE '!' OR "
+                        . $this->casefoldExpression('search_t.slug') . ' LIKE '
+                        . $this->casefoldExpression(':search_tag_slug')
+                        . " ESCAPE '!'))";
+                    $parameters['search_tag_name'] = [
+                        $pattern,
+                        PDO::PARAM_STR,
+                    ];
+                    $parameters['search_tag_slug'] = [
+                        $pattern,
+                        PDO::PARAM_STR,
+                    ];
+                }
+                $sql .= ')';
             }
 
             if ($query->categorySlugs() !== []) {
@@ -183,52 +213,119 @@ final class PdoBlogPublicCatalogRepository implements
     public function categoriesForCards(
         BlogPublicCardCategoryQuery $query
     ): array {
+        return $this->taxonomiesForCards(new BlogPublicCardTaxonomyQuery(
+            $query->locale(),
+            $query->cardSlugs()
+        ))->categoriesBySlug();
+    }
+
+    public function taxonomiesForCards(
+        BlogPublicCardTaxonomyQuery $query
+    ): BlogPublicCardTaxonomyBatch {
         $cardSlugs = $query->cardSlugs();
         $categories = array_fill_keys($cardSlugs, []);
+        $tags = array_fill_keys($cardSlugs, []);
         if ($cardSlugs === []) {
-            return $categories;
+            return new BlogPublicCardTaxonomyBatch($categories, $tags);
         }
 
         try {
-            $placeholders = [];
+            $categoryPlaceholders = [];
             $parameters = [
-                'card_locale' => [$query->locale(), PDO::PARAM_STR],
-                'card_status' => [
+                'taxonomy_category_card_locale' => [
+                    $query->locale(),
+                    PDO::PARAM_STR,
+                ],
+                'taxonomy_category_card_status' => [
                     BlogPostVariant::PUBLISHED,
                     PDO::PARAM_STR,
                 ],
-                'category_locale' => [$query->locale(), PDO::PARAM_STR],
-                'category_reserved_slug' => [
+                'taxonomy_category_locale' => [
+                    $query->locale(),
+                    PDO::PARAM_STR,
+                ],
+                'taxonomy_category_reserved_slug' => [
                     BlogReservedCategoryPolicy::DUMMY_SLUG,
                     PDO::PARAM_STR,
                 ],
             ];
             foreach ($cardSlugs as $position => $slug) {
-                $key = 'card_slug_' . $position;
-                $placeholders[] = ':' . $key;
+                $key = 'taxonomy_category_card_slug_' . $position;
+                $categoryPlaceholders[] = ':' . $key;
                 $parameters[$key] = [$slug, PDO::PARAM_STR];
             }
             [$reservedSql, $reservedParameters] =
                 $this->reservedCategoryPredicate(
                     'p',
-                    'card_category_reserved'
+                    'taxonomy_category_card_reserved'
                 );
             $parameters = array_replace($parameters, $reservedParameters);
 
-            $sql = 'SELECT l.slug AS card_slug, cl.locale, cl.slug, cl.name '
+            $sql = "SELECT l.slug AS card_slug, 'category' AS taxonomy_kind, "
+                . 'cl.locale, cl.slug, cl.name, cl.name AS category_sort, '
+                . "cl.public_id AS category_tie, '' AS tag_sort "
                 . 'FROM ' . $this->posts . ' p JOIN '
                 . $this->localizations . ' l ON l.post_id = p.id JOIN '
                 . $this->relations . ' pc ON pc.post_id = p.id JOIN '
                 . $this->categoryLocalizations
                 . ' cl ON cl.category_id = pc.category_id '
-                . 'WHERE l.locale = :card_locale '
-                . 'AND l.status = :card_status '
-                . 'AND l.slug IN (' . implode(', ', $placeholders) . ') '
+                . 'WHERE l.locale = :taxonomy_category_card_locale '
+                . 'AND l.status = :taxonomy_category_card_status '
+                . 'AND l.slug IN ('
+                . implode(', ', $categoryPlaceholders) . ') '
                 . 'AND l.published_at IS NOT NULL '
-                . 'AND cl.locale = :category_locale '
-                . 'AND cl.slug <> :category_reserved_slug '
-                . $reservedSql
-                . 'ORDER BY l.slug ASC, cl.name ASC, cl.public_id ASC';
+                . 'AND cl.locale = :taxonomy_category_locale '
+                . 'AND cl.slug <> :taxonomy_category_reserved_slug '
+                . $reservedSql;
+
+            if ($this->tagsReady) {
+                $tagPlaceholders = [];
+                $parameters['taxonomy_tag_card_locale'] = [
+                    $query->locale(),
+                    PDO::PARAM_STR,
+                ];
+                $parameters['taxonomy_tag_card_status'] = [
+                    BlogPostVariant::PUBLISHED,
+                    PDO::PARAM_STR,
+                ];
+                $parameters['taxonomy_tag_locale'] = [
+                    $query->locale(),
+                    PDO::PARAM_STR,
+                ];
+                foreach ($cardSlugs as $position => $slug) {
+                    $key = 'taxonomy_tag_card_slug_' . $position;
+                    $tagPlaceholders[] = ':' . $key;
+                    $parameters[$key] = [$slug, PDO::PARAM_STR];
+                }
+                [$tagReservedSql, $tagReservedParameters] =
+                    $this->reservedCategoryPredicate(
+                        'tag_p',
+                        'taxonomy_tag_card_reserved'
+                    );
+                $parameters = array_replace(
+                    $parameters,
+                    $tagReservedParameters
+                );
+                $sql .= " UNION ALL SELECT tag_l.slug AS card_slug, 'tag' "
+                    . 'AS taxonomy_kind, tag_t.locale, tag_t.slug, '
+                    . "tag_t.name, '' AS category_sort, '' AS category_tie, "
+                    . 'tag_t.slug AS tag_sort FROM ' . $this->posts
+                    . ' tag_p JOIN ' . $this->localizations
+                    . ' tag_l ON tag_l.post_id = tag_p.id JOIN '
+                    . $this->tagRelations
+                    . ' tag_lt ON tag_lt.localization_id = tag_l.id JOIN '
+                    . $this->tags . ' tag_t ON tag_t.id = tag_lt.tag_id '
+                    . 'WHERE tag_l.locale = :taxonomy_tag_card_locale '
+                    . 'AND tag_l.status = :taxonomy_tag_card_status '
+                    . 'AND tag_l.slug IN ('
+                    . implode(', ', $tagPlaceholders) . ') '
+                    . 'AND tag_l.published_at IS NOT NULL '
+                    . 'AND tag_t.locale = :taxonomy_tag_locale '
+                    . 'AND tag_t.locale = tag_l.locale '
+                    . $tagReservedSql;
+            }
+            $sql .= 'ORDER BY card_slug ASC, taxonomy_kind ASC, '
+                . 'category_sort ASC, category_tie ASC, tag_sort ASC';
             $statement = $this->prepare($sql);
             $this->execute($statement, $parameters);
             $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
@@ -243,14 +340,64 @@ final class PdoBlogPublicCatalogRepository implements
                 if (!array_key_exists($cardSlug, $categories)) {
                     throw new BlogPersistenceException();
                 }
-                $categories[$cardSlug][] = new BlogPublicCardCategory(
-                    $this->requiredString($row, 'locale'),
+                $locale = $this->requiredString($row, 'locale');
+                if (!hash_equals($query->locale(), $locale)) {
+                    throw new BlogPersistenceException();
+                }
+                $kind = $this->requiredString($row, 'taxonomy_kind');
+                if ($kind === 'category') {
+                    if (count($categories[$cardSlug]) >=
+                        BlogPublicCardTaxonomyBatch::MAX_CATEGORIES_PER_CARD) {
+                        throw new BlogPersistenceException();
+                    }
+                    $category = new BlogPublicCardCategory(
+                        $locale,
+                        $this->requiredString($row, 'slug'),
+                        $this->requiredString($row, 'name')
+                    );
+                    foreach ($categories[$cardSlug] as $knownCategory) {
+                        if (hash_equals(
+                            $knownCategory->slug(),
+                            $category->slug()
+                        )) {
+                            throw new BlogPersistenceException();
+                        }
+                    }
+                    $categories[$cardSlug][] = $category;
+                    continue;
+                }
+                if ($kind !== 'tag' || !$this->tagsReady) {
+                    throw new BlogPersistenceException();
+                }
+                if (count($tags[$cardSlug]) >=
+                    BlogPublicCardTaxonomyBatch::MAX_TAGS_PER_CARD) {
+                    throw new BlogPersistenceException();
+                }
+                $tag = new BlogPublicCardTag(
+                    $locale,
                     $this->requiredString($row, 'slug'),
                     $this->requiredString($row, 'name')
                 );
+                foreach ($tags[$cardSlug] as $knownTag) {
+                    if (hash_equals($knownTag->slug(), $tag->slug())) {
+                        throw new BlogPersistenceException();
+                    }
+                }
+                $tags[$cardSlug][] = $tag;
             }
 
-            return $categories;
+            foreach ($tags as &$cardTags) {
+                usort(
+                    $cardTags,
+                    static fn (
+                        BlogPublicCardTag $left,
+                        BlogPublicCardTag $right
+                    ): int => strcmp($left->slug(), $right->slug())
+                );
+            }
+            unset($cardTags);
+
+            return new BlogPublicCardTaxonomyBatch($categories, $tags);
         } catch (BlogPersistenceException $exception) {
             throw $exception;
         } catch (Throwable) {

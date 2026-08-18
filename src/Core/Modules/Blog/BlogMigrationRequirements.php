@@ -77,6 +77,36 @@ final class BlogMigrationRequirements
         );
     }
 
+    /** Optional public tag vocabulary and atomic publication frontier. */
+    public static function tagsPublic(): MigrationFeatureRequirement
+    {
+        return new MigrationFeatureRequirement(
+            'blog',
+            'blog.tags.public',
+            [
+                ...self::NORMALIZED_ADMIN_RUNTIME_MIGRATIONS,
+                '0020_blog_tags',
+                '0021_blog_localization_tags',
+                '0022_blog_tag_assignment_heads',
+                '0023_blog_tag_assignment_workspaces',
+                '0024_blog_tag_assignment_workspace_items',
+            ]
+        );
+    }
+
+    /** Optional private tag editor including its WebAdmin grants. */
+    public static function tagsAdministration(): MigrationFeatureRequirement
+    {
+        return new MigrationFeatureRequirement(
+            'blog',
+            'blog.tags.administration',
+            [
+                ...self::tagsPublic()->migrationIds(),
+                '0025_blog_tag_capabilities',
+            ]
+        );
+    }
+
     /** Pure Blog schema boundary for structured documents and revisions. */
     public static function structuredContent(): MigrationFeatureRequirement
     {

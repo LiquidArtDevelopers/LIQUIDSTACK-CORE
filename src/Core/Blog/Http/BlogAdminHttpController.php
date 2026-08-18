@@ -13,6 +13,7 @@ use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Routing\BlogPublicationRouteGuard;
 use App\Core\Blog\Seo\BlogUrlResolution;
+use App\Core\Blog\Tags\BlogTagCapabilities;
 use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
@@ -148,7 +149,15 @@ final class BlogAdminHttpController
             && $authorization->hasCapability(
                 $context['session'],
                 BlogCategoryAdminHttpController::EDIT_CAPABILITY
-            );
+            )
+            && (!$this->tagsAdministrationReady()
+                || ($authorization->hasCapability(
+                    $context['session'],
+                    BlogTagCapabilities::VIEW
+                ) && $authorization->hasCapability(
+                    $context['session'],
+                    BlogTagCapabilities::EDIT
+                )));
         $localesByPost = [];
         if ($canAddLocalization) {
             try {
@@ -983,8 +992,9 @@ final class BlogAdminHttpController
     }
 
     /**
-     * Duplicating preserves category assignments, so it requires the same
-     * category mutation capability as an explicit assignment change.
+     * An independent duplicate preserves taxonomy assignments. It therefore
+     * requires each active taxonomy administration capability that an
+     * explicit assignment change would require.
      *
      * @return array{session: string, csrf: string}|Response
      */
@@ -1000,6 +1010,20 @@ final class BlogAdminHttpController
             $context['session'],
             BlogCategoryAdminHttpController::EDIT_CAPABILITY
         )) {
+            return $this->plain(403, 'Forbidden');
+        }
+        if (
+            $requiresCategoryEdit
+            && $this->tagsAdministrationReady()
+            && (!$this->runtime->authorization()->hasCapability(
+                    $context['session'],
+                    BlogTagCapabilities::VIEW
+                )
+                || !$this->runtime->authorization()->hasCapability(
+                    $context['session'],
+                    BlogTagCapabilities::EDIT
+                ))
+        ) {
             return $this->plain(403, 'Forbidden');
         }
 
@@ -1047,11 +1071,27 @@ final class BlogAdminHttpController
         #[\SensitiveParameter] string $sessionToken,
         #[\SensitiveParameter] string $csrfToken
     ): Closure {
-        return $this->mutationGateAll($sessionToken, $csrfToken, [
+        $capabilities = [
             self::EDIT_CAPABILITY,
             MediaService::VIEW_CAPABILITY,
             BlogCategoryAdminHttpController::EDIT_CAPABILITY,
-        ]);
+        ];
+        if ($this->tagsAdministrationReady()) {
+            $capabilities[] = BlogTagCapabilities::VIEW;
+            $capabilities[] = BlogTagCapabilities::EDIT;
+        }
+
+        return $this->mutationGateAll(
+            $sessionToken,
+            $csrfToken,
+            $capabilities
+        );
+    }
+
+    private function tagsAdministrationReady(): bool
+    {
+        return $this->runtime instanceof BlogTagAdminHttpRuntimeInterface
+            && $this->runtime->tagsReady();
     }
 
     /** @param list<string> $capabilities @return Closure(PDO): string */

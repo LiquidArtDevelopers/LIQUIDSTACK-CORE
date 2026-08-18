@@ -1792,6 +1792,152 @@
     color: var(--ls-webadmin-danger);
 }
 
+.webadmin .blogEditor__tags {
+    min-width: 0;
+    padding-block: clamp(1.35rem, 3vw, 2rem);
+    display: grid;
+    gap: 1rem;
+}
+
+.webadmin .blogEditor__tags > :is(h3, p),
+.webadmin .blogEditor__tags form > :is(p, ul) {
+    margin: 0;
+}
+
+.webadmin .blogEditor__tags > p,
+.webadmin .blogEditor__tags .blogEditor__fieldHelp {
+    color: var(--ls-webadmin-muted);
+    line-height: 1.55;
+}
+
+.webadmin .blogEditor__tags form {
+    min-width: 0;
+    display: grid;
+    gap: 0.9rem;
+}
+
+.webadmin .blogEditor__tags form > label {
+    font-weight: 750;
+}
+
+.webadmin .blogEditor__tags [data-blog-tag-composer] {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.75rem;
+}
+
+.webadmin .blogEditor__tagList {
+    min-width: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+    list-style: none;
+}
+
+.webadmin .blogEditor__tagList [data-blog-tag] {
+    min-width: 0;
+    min-height: 2.5rem;
+    padding-block: 0.3rem;
+    padding-inline: 0.8rem 0.3rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 0.08rem solid var(--ls-webadmin-border);
+    border-radius: 999px;
+    background: var(--ls-webadmin-surface-strong);
+}
+
+.webadmin .blogEditor__tagList [data-blog-tag] > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.webadmin .blogEditor__tagList [data-blog-tag-remove] {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+    display: inline-grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    color: var(--ls-webadmin-muted);
+    background: transparent;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.webadmin .blogEditor__tagList [data-blog-tag-remove]:hover {
+    color: var(--ls-webadmin-text);
+    background: var(--ls-webadmin-surface);
+}
+
+.webadmin .blogEditor__tagList [data-blog-tag-remove]:focus-visible {
+    outline: 0.14rem solid var(--ls-webadmin-accent);
+    outline-offset: 0.1rem;
+}
+
+.webadmin .blogEditor__tagList [data-blog-tag-empty] {
+    width: 100%;
+    color: var(--ls-webadmin-muted);
+}
+
+.webadmin .blogEditor__tags [data-blog-tag-assignment-status] {
+    min-height: 1.45em;
+    color: var(--ls-webadmin-muted);
+    line-height: 1.45;
+}
+
+.webadmin
+    .blogEditor__tags
+    [data-blog-tag-assignment-status][data-state='ok'] {
+    color: var(--ls-webadmin-success);
+}
+
+.webadmin
+    .blogEditor__tags
+    [data-blog-tag-assignment-status][data-state='error'] {
+    color: var(--ls-webadmin-danger);
+}
+
+.webadmin .blogEditor__tags form > button[type='submit'] {
+    min-height: 2.75rem;
+    justify-self: start;
+}
+
+.webadmin .blogAdminPage--tagRecovery {
+    max-width: 58rem;
+}
+
+.webadmin .blogAdminPage--tagRecovery > form {
+    display: grid;
+    gap: 1rem;
+}
+
+.webadmin .blogAdminPage--tagRecovery input[name='tags'] {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.75rem;
+}
+
+@media (max-width: 36rem) {
+    .webadmin .blogEditor__tags form > button[type='submit'] {
+        width: 100%;
+    }
+}
+
+@media (forced-colors: active) {
+    .webadmin .blogEditor__tagList [data-blog-tag] {
+        border-color: CanvasText;
+    }
+
+    .webadmin .blogEditor__tagList [data-blog-tag-remove]:focus-visible {
+        outline-color: Highlight;
+    }
+}
+
 .webadmin :is(
         [data-blog-category-assignment-status],
         [data-blog-category-quick-status],
@@ -2274,6 +2420,36 @@
     gap: 0.75rem;
 }
 
+.webadmin .blogEditor__publicationStatus {
+    flex: 0 0 auto;
+    margin: 0;
+    margin-inline-start: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.webadmin .blogEditor__publicationStatus::before {
+    content: '';
+    width: 0.55rem;
+    aspect-ratio: 1;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.webadmin
+    .blogEditor__publicationStatus[data-blog-editor-publication-status='draft'] {
+    color: var(--ls-blog-editor-basic-text-orange);
+}
+
+.webadmin
+    .blogEditor__publicationStatus[data-blog-editor-publication-status='published'] {
+    color: var(--ls-webadmin-success);
+}
+
 @media (max-width: 36rem) {
     .webadmin .blogEditor__actionBar {
         padding: 0.5rem;
@@ -2294,6 +2470,12 @@
         min-width: 0;
         margin: 0;
         grid-column: 1 / -1;
+    }
+
+    .webadmin .blogEditor__actionBar .blogEditor__publicationStatus {
+        margin-inline-start: 0;
+        grid-column: 1 / -1;
+        justify-self: end;
     }
 }
 

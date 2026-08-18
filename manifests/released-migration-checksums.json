@@ -1,6 +1,6 @@
 {
     "schema": 1,
-    "frozen_through": "v1.21.1",
+    "frozen_through": "v1.23.0",
     "modules": {
         "webadmin": {
             "0001_webadmin_identity_and_access": "8ae682db1275f779938b247a2bddbe20ecc01bc2e972499fef60104d4d141d27",
@@ -28,7 +28,13 @@
             "0016_blog_url_history": "c06ec813029da517e21882b65a848f0632a7fcd93e12668b820ef06ea70ee2ea",
             "0017_blog_dummy_category": "9a62a791e33f83ce9932c311dc8e2aff36a5af2b0b916519f22e590b2018ee32",
             "0018_blog_dummy_category_normalization": "32730febd8e9a78647f93fe6678448377a4e9a7ba4e0b1301b1c5edafdc3e0c0",
-            "0019_blog_copy_operation_idempotency": "313437bf2e27749b1b7fb0fac3ad655aefa4d367e256c3c0142cd2160b17360a"
+            "0019_blog_copy_operation_idempotency": "313437bf2e27749b1b7fb0fac3ad655aefa4d367e256c3c0142cd2160b17360a",
+            "0020_blog_tags": "9496020075a17971a658af619f5b984a64248c225aa14435221007e7eb5f966f",
+            "0021_blog_localization_tags": "b1d0e3fd5552d122d1a0dc4056c4e1e9738e19a12aba7034c4d4ef267771463e",
+            "0022_blog_tag_assignment_heads": "25834e1cd01b4dd625144e2afbb13d65845f04caba0ae31120ae4371a75f38cb",
+            "0023_blog_tag_assignment_workspaces": "b4ba7c59190a741abea4ba184157883a68ea86c197bb6db1b1e57b03f0e73328",
+            "0024_blog_tag_assignment_workspace_items": "4730844270de32b68a4f186230cac290e25b303f295def8059e8b358d23da83c",
+            "0025_blog_tag_capabilities": "7c44dc5da765c041edcbc470e1512d3e5374a1f672331a792bf7c335f97a90d9"
         }
     }
 }

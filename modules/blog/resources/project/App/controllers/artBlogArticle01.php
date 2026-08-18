@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Core\Blog\Http\BlogPublicArticleTaxonomyRenderer;
+use App\Core\Blog\PublicFeed\BlogPublicCardCategory;
+use App\Core\Blog\PublicFeed\BlogPublicCardTag;
+use App\Core\Blog\PublicFeed\BlogPublicCardTaxonomyBatch;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
 
 /**
@@ -32,6 +36,93 @@ function controller_artBlogArticle01(
         ? $params['article_data']
         : [];
     unset($params['article_data']);
+
+    $articleLocale = trim((string) ($article['locale'] ?? ''));
+    $normalizeTerms = static function (
+        mixed $value,
+        bool $tags
+    ) use ($articleLocale): array {
+        if ($value === null) {
+            return [];
+        }
+        $maximum = $tags
+            ? BlogPublicCardTaxonomyBatch::MAX_TAGS_PER_CARD
+            : BlogPublicCardTaxonomyBatch::MAX_CATEGORIES_PER_CARD;
+        if (
+            !is_array($value)
+            || !array_is_list($value)
+            || count($value) > $maximum
+        ) {
+            throw new InvalidArgumentException(
+                'Invalid Blog article taxonomy presentation data.'
+            );
+        }
+        $normalized = [];
+        $seenSlugs = [];
+        $effectiveLocale = $articleLocale;
+        try {
+            foreach ($value as $term) {
+                if (
+                    !is_array($term)
+                    || !is_string($term['locale'] ?? null)
+                    || !is_string($term['slug'] ?? null)
+                    || !is_string($term['name'] ?? null)
+                ) {
+                    throw new InvalidArgumentException(
+                        'Invalid Blog article taxonomy presentation data.'
+                    );
+                }
+                $projection = $tags
+                    ? new BlogPublicCardTag(
+                        $term['locale'],
+                        $term['slug'],
+                        $term['name']
+                    )
+                    : new BlogPublicCardCategory(
+                        $term['locale'],
+                        $term['slug'],
+                        $term['name']
+                    );
+                $effectiveLocale = $effectiveLocale === ''
+                    ? $projection->locale()
+                    : $effectiveLocale;
+                if (
+                    $projection->locale() !== $effectiveLocale
+                    || isset($seenSlugs[$projection->slug()])
+                ) {
+                    throw new InvalidArgumentException(
+                        'Invalid Blog article taxonomy presentation data.'
+                    );
+                }
+                $seenSlugs[$projection->slug()] = true;
+                $normalized[] = $projection->toResourceData();
+            }
+        } catch (InvalidArgumentException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new InvalidArgumentException(
+                'Invalid Blog article taxonomy presentation data.'
+            );
+        }
+        usort(
+            $normalized,
+            static fn (array $left, array $right): int =>
+                strcmp($left['slug'], $right['slug'])
+        );
+
+        return $normalized;
+    };
+    $categories = $normalizeTerms($article['categories'] ?? null, false);
+    $tags = $normalizeTerms($article['tags'] ?? null, true);
+    if (
+        $categories !== []
+        && $tags !== []
+        && $categories[0]['locale'] !== $tags[0]['locale']
+    ) {
+        throw new InvalidArgumentException(
+            'Invalid Blog article taxonomy presentation data.'
+        );
+    }
 
     $template = trim((string) (
         $article['template'] ?? BlogDocumentTemplateRegistry::ARTICLE_BASIC
@@ -114,6 +205,37 @@ function controller_artBlogArticle01(
     ));
     $backLabel = trim((string) ($article['back_label'] ?? ''));
     $backHref = trim((string) ($article['back_href'] ?? ''));
+
+    $taxonomyLocale = $articleLocale;
+    if ($taxonomyLocale === '') {
+        $taxonomyLocale = (string) (
+            $categories[0]['locale'] ?? $tags[0]['locale'] ?? 'en'
+        );
+    }
+    $defaultTaxonomyLabels = match (
+        strtolower(explode('-', $taxonomyLocale, 2)[0])
+    ) {
+        'es' => ['categories' => 'Categorías', 'tags' => 'Etiquetas'],
+        'eu' => ['categories' => 'Kategoriak', 'tags' => 'Etiketak'],
+        default => ['categories' => 'Categories', 'tags' => 'Tags'],
+    };
+    $taxonomyLabels = [
+        'categories' => trim((string) (
+            $article['categories_label']
+                ?? $defaultTaxonomyLabels['categories']
+        )),
+        'tags' => trim((string) (
+            $article['tags_label'] ?? $defaultTaxonomyLabels['tags']
+        )),
+    ];
+    if (
+        $taxonomyLabels['categories'] === ''
+        || $taxonomyLabels['tags'] === ''
+    ) {
+        throw new InvalidArgumentException(
+            'Incomplete Blog article taxonomy labels.'
+        );
+    }
 
     $publishedAt = $article['published_at'] ?? null;
     try {
@@ -224,6 +346,20 @@ function controller_artBlogArticle01(
                 . $escape($backHref) . '" title="' . $escape($backLabel)
                 . '"><span>' . $escape($backLabel) . '</span></a>');
 
+    try {
+        $taxonomyHtml = (new BlogPublicArticleTaxonomyRenderer())
+            ->renderProjection(
+                $taxonomyLocale,
+                $categories,
+                $tags,
+                $taxonomyLabels
+            );
+    } catch (Throwable) {
+        throw new InvalidArgumentException(
+            'Invalid Blog article taxonomy presentation data.'
+        );
+    }
+
     $vars = [
         '{article-id}' => $escape($id),
         '{heading-id}' => $escape($headingId),
@@ -233,6 +369,7 @@ function controller_artBlogArticle01(
         '{article-intro}' => $introHtml,
         // Fragmentos HTML confiables: ya saneados por CORE.
         '{article-header-media}' => $headerMediaHtml,
+        '{article-taxonomies}' => $taxonomyHtml,
         '{article-body}' => $bodyHtml,
         '{article-back}' => $backHtml,
     ];

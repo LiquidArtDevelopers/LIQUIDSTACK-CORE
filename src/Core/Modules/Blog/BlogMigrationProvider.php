@@ -394,6 +394,368 @@ final class BlogMigrationProvider implements MigrationProviderInterface
                 '0018_blog_dummy_category_normalization',
             ]
         );
+
+        yield MigrationDefinition::sql(
+            id: '0020_blog_tags',
+            description: 'Crea el vocabulario localizado de etiquetas Blog.',
+            statementsByDriver: [
+                'mysql' => self::mysqlTagStatements(),
+                'sqlite' => self::sqliteTagStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogTagSchemaMigrationPostconditionVerifier(1),
+            supersedesPostconditions: self::tagSchemaSupersessions(1)
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0021_blog_localization_tags',
+            description: 'Crea las asignaciones publicadas de etiquetas.',
+            statementsByDriver: [
+                'mysql' => self::mysqlLocalizationTagStatements(),
+                'sqlite' => self::sqliteLocalizationTagStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogTagSchemaMigrationPostconditionVerifier(2),
+            supersedesPostconditions: self::tagSchemaSupersessions(2)
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0022_blog_tag_assignment_heads',
+            description: 'Versiona las asignaciones publicadas de etiquetas.',
+            statementsByDriver: [
+                'mysql' => self::mysqlTagAssignmentHeadStatements(),
+                'sqlite' => self::sqliteTagAssignmentHeadStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogTagSchemaMigrationPostconditionVerifier(3),
+            supersedesPostconditions: self::tagSchemaSupersessions(3)
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0023_blog_tag_assignment_workspaces',
+            description: 'Crea el CAS privado de etiquetas por variante.',
+            statementsByDriver: [
+                'mysql' => self::mysqlTagAssignmentWorkspaceStatements(),
+                'sqlite' => self::sqliteTagAssignmentWorkspaceStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogTagSchemaMigrationPostconditionVerifier(4),
+            supersedesPostconditions: self::tagSchemaSupersessions(4)
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0024_blog_tag_assignment_workspace_items',
+            description: 'Persiste el conjunto privado de etiquetas.',
+            statementsByDriver: [
+                'mysql' => self::mysqlTagAssignmentWorkspaceItemStatements(),
+                'sqlite' => self::sqliteTagAssignmentWorkspaceItemStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier:
+                new BlogTagSchemaMigrationPostconditionVerifier(5),
+            supersedesPostconditions: self::tagSchemaSupersessions(5)
+        );
+
+        yield MigrationDefinition::sql(
+            id: '0025_blog_tag_capabilities',
+            description: 'Registra capacidades delegables de etiquetas.',
+            statementsByDriver: [
+                'mysql' => self::mysqlTagCapabilityStatements(),
+                'sqlite' => self::sqliteTagCapabilityStatements(),
+            ],
+            destructive: false,
+            transactionalDrivers: ['sqlite'],
+            retrySafe: true,
+            postconditionVerifier: new BlogTagCapabilitySeedPostcondition(),
+            targetScopeModuleId: 'webadmin'
+        );
+    }
+
+    /** @return list<string> */
+    private static function tagSchemaSupersessions(int $stage): array
+    {
+        if ($stage < 1 || $stage > 5) {
+            throw new \InvalidArgumentException('Invalid Blog tag schema stage.');
+        }
+        $ids = [
+            '0001_blog_posts',
+            '0003_blog_categories',
+            '0005_blog_structured_content',
+            '0006_blog_sitemap_publication_state',
+            '0007_blog_post_tombstones',
+            '0009_blog_analytics',
+            '0011_blog_layout_editor_v2',
+            '0012_blog_editor_preferences',
+            '0014_blog_private_draft_publication',
+            '0015_blog_robots_preferences',
+            '0016_blog_url_history',
+            '0017_blog_dummy_category',
+            '0018_blog_dummy_category_normalization',
+            '0019_blog_copy_operation_idempotency',
+        ];
+        foreach (array_slice([
+            '0020_blog_tags',
+            '0021_blog_localization_tags',
+            '0022_blog_tag_assignment_heads',
+            '0023_blog_tag_assignment_workspaces',
+        ], 0, $stage - 1) as $id) {
+            $ids[] = $id;
+        }
+
+        return $ids;
+    }
+
+    /** @return list<string> */
+    private static function mysqlTagStatements(): array
+    {
+        return [<<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:tags}} (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `locale` VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `slug` VARCHAR(190) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `name` VARCHAR(255) NOT NULL,
+    `normalized_sha256` CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `lock_version` BIGINT UNSIGNED NOT NULL DEFAULT 1,
+    `created_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `updated_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `created_at` DATETIME(6) NOT NULL,
+    `updated_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY {{table:ux_bt_public}} (`public_id`),
+    UNIQUE KEY {{table:ux_bt_locale_slug}} (`locale`, `slug`),
+    UNIQUE KEY {{table:ux_bt_locale_hash}} (`locale`, `normalized_sha256`),
+    KEY {{table:ix_bt_locale_name}} (`locale`, `name`),
+    CONSTRAINT {{table:c_bt_public}} CHECK (`public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'),
+    CONSTRAINT {{table:c_bt_locale}} CHECK (CHAR_LENGTH(`locale`) BETWEEN 2 AND 16 AND `locale` = LOWER(`locale`) AND `locale` = TRIM(`locale`)),
+    CONSTRAINT {{table:c_bt_slug}} CHECK (CHAR_LENGTH(`slug`) BETWEEN 1 AND 190 AND `slug` REGEXP '^[a-z0-9]+(-[a-z0-9]+)*$'),
+    CONSTRAINT {{table:c_bt_name}} CHECK (CHAR_LENGTH(TRIM(`name`)) BETWEEN 1 AND 64 AND OCTET_LENGTH(`name`) <= 255),
+    CONSTRAINT {{table:c_bt_hash}} CHECK (`normalized_sha256` REGEXP '^[0-9a-f]{64}$'),
+    CONSTRAINT {{table:c_bt_lock}} CHECK (`lock_version` > 0),
+    CONSTRAINT {{table:c_bt_created_actor}} CHECK (`created_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'),
+    CONSTRAINT {{table:c_bt_updated_actor}} CHECK (`updated_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'),
+    CONSTRAINT {{table:c_bt_time}} CHECK (`updated_at` >= `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL];
+    }
+
+    /** @return list<string> */
+    private static function sqliteTagStatements(): array
+    {
+        return [<<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:tags}} (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "public_id" TEXT COLLATE BINARY NOT NULL CHECK (length("public_id") = 36 AND "public_id" = lower("public_id")),
+    "locale" TEXT COLLATE BINARY NOT NULL CHECK (length("locale") BETWEEN 2 AND 16 AND "locale" = lower("locale") AND "locale" = trim("locale")),
+    "slug" TEXT COLLATE BINARY NOT NULL CHECK (length("slug") BETWEEN 1 AND 190 AND "slug" = lower("slug") AND "slug" = trim("slug") AND "slug" NOT GLOB '*[^a-z0-9-]*' AND "slug" NOT LIKE '-%' AND "slug" NOT LIKE '%-' AND "slug" NOT LIKE '%--%'),
+    "name" TEXT NOT NULL CHECK (length(trim("name")) BETWEEN 1 AND 64 AND length(CAST("name" AS BLOB)) <= 255),
+    "normalized_sha256" TEXT COLLATE BINARY NOT NULL CHECK (length("normalized_sha256") = 64 AND "normalized_sha256" = lower("normalized_sha256") AND "normalized_sha256" NOT GLOB '*[^0-9a-f]*'),
+    "lock_version" INTEGER NOT NULL DEFAULT 1 CHECK ("lock_version" > 0),
+    "created_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (length("created_by_user_public_id") = 36 AND "created_by_user_public_id" = lower("created_by_user_public_id")),
+    "updated_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (length("updated_by_user_public_id") = 36 AND "updated_by_user_public_id" = lower("updated_by_user_public_id")),
+    "created_at" TEXT NOT NULL,
+    "updated_at" TEXT NOT NULL CHECK ("updated_at" >= "created_at")
+)
+SQL,
+            'CREATE UNIQUE INDEX IF NOT EXISTS {{table:ux_bt_public}} ON {{table:tags}} ("public_id")',
+            'CREATE UNIQUE INDEX IF NOT EXISTS {{table:ux_bt_locale_slug}} ON {{table:tags}} ("locale", "slug")',
+            'CREATE UNIQUE INDEX IF NOT EXISTS {{table:ux_bt_locale_hash}} ON {{table:tags}} ("locale", "normalized_sha256")',
+            'CREATE INDEX IF NOT EXISTS {{table:ix_bt_locale_name}} ON {{table:tags}} ("locale", "name")',
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlLocalizationTagStatements(): array
+    {
+        return [<<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:localization_tags}} (
+    `localization_id` BIGINT UNSIGNED NOT NULL,
+    `tag_id` BIGINT UNSIGNED NOT NULL,
+    `assigned_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `created_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`localization_id`, `tag_id`),
+    KEY {{table:ix_blt_tag}} (`tag_id`, `localization_id`),
+    CONSTRAINT {{table:f_blt_localization}} FOREIGN KEY (`localization_id`) REFERENCES {{table:post_localizations}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:f_blt_tag}} FOREIGN KEY (`tag_id`) REFERENCES {{table:tags}} (`id`) ON DELETE RESTRICT,
+    CONSTRAINT {{table:c_blt_actor}} CHECK (`assigned_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL];
+    }
+
+    /** @return list<string> */
+    private static function sqliteLocalizationTagStatements(): array
+    {
+        return [<<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:localization_tags}} (
+    "localization_id" INTEGER NOT NULL REFERENCES {{table:post_localizations}} ("id") ON DELETE CASCADE,
+    "tag_id" INTEGER NOT NULL REFERENCES {{table:tags}} ("id") ON DELETE RESTRICT,
+    "assigned_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (length("assigned_by_user_public_id") = 36 AND "assigned_by_user_public_id" = lower("assigned_by_user_public_id")),
+    "created_at" TEXT NOT NULL,
+    PRIMARY KEY ("localization_id", "tag_id")
+) WITHOUT ROWID
+SQL,
+            'CREATE INDEX IF NOT EXISTS {{table:ix_blt_tag}} ON {{table:localization_tags}} ("tag_id", "localization_id")',
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlTagAssignmentHeadStatements(): array
+    {
+        return [<<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:tag_assignment_heads}} (
+    `localization_id` BIGINT UNSIGNED NOT NULL,
+    `assignment_version` BIGINT UNSIGNED NOT NULL,
+    `updated_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `updated_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`localization_id`),
+    CONSTRAINT {{table:f_btah_localization}} FOREIGN KEY (`localization_id`) REFERENCES {{table:post_localizations}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:c_btah_version}} CHECK (`assignment_version` > 0),
+    CONSTRAINT {{table:c_btah_actor}} CHECK (`updated_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL];
+    }
+
+    /** @return list<string> */
+    private static function sqliteTagAssignmentHeadStatements(): array
+    {
+        return [<<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:tag_assignment_heads}} (
+    "localization_id" INTEGER NOT NULL PRIMARY KEY REFERENCES {{table:post_localizations}} ("id") ON DELETE CASCADE,
+    "assignment_version" INTEGER NOT NULL CHECK ("assignment_version" > 0),
+    "updated_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (length("updated_by_user_public_id") = 36 AND "updated_by_user_public_id" = lower("updated_by_user_public_id")),
+    "updated_at" TEXT NOT NULL
+) WITHOUT ROWID
+SQL];
+    }
+
+    /** @return list<string> */
+    private static function mysqlTagAssignmentWorkspaceStatements(): array
+    {
+        return [<<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:tag_assignment_workspaces}} (
+    `localization_id` BIGINT UNSIGNED NOT NULL,
+    `base_assignment_version` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    `workspace_version` BIGINT UNSIGNED NOT NULL,
+    `created_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `updated_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `created_at` DATETIME(6) NOT NULL,
+    `updated_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`localization_id`),
+    CONSTRAINT {{table:f_btaw_localization}} FOREIGN KEY (`localization_id`) REFERENCES {{table:post_localizations}} (`id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:c_btaw_base}} CHECK (`base_assignment_version` >= 0),
+    CONSTRAINT {{table:c_btaw_workspace}} CHECK (`workspace_version` > 0),
+    CONSTRAINT {{table:c_btaw_created_actor}} CHECK (`created_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'),
+    CONSTRAINT {{table:c_btaw_updated_actor}} CHECK (`updated_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'),
+    CONSTRAINT {{table:c_btaw_time}} CHECK (`updated_at` >= `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL];
+    }
+
+    /** @return list<string> */
+    private static function sqliteTagAssignmentWorkspaceStatements(): array
+    {
+        return [<<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:tag_assignment_workspaces}} (
+    "localization_id" INTEGER NOT NULL PRIMARY KEY REFERENCES {{table:post_localizations}} ("id") ON DELETE CASCADE,
+    "base_assignment_version" INTEGER NOT NULL DEFAULT 0 CHECK ("base_assignment_version" >= 0),
+    "workspace_version" INTEGER NOT NULL CHECK ("workspace_version" > 0),
+    "created_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (length("created_by_user_public_id") = 36 AND "created_by_user_public_id" = lower("created_by_user_public_id")),
+    "updated_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (length("updated_by_user_public_id") = 36 AND "updated_by_user_public_id" = lower("updated_by_user_public_id")),
+    "created_at" TEXT NOT NULL,
+    "updated_at" TEXT NOT NULL CHECK ("updated_at" >= "created_at")
+) WITHOUT ROWID
+SQL];
+    }
+
+    /** @return list<string> */
+    private static function mysqlTagAssignmentWorkspaceItemStatements(): array
+    {
+        return [<<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:tag_assignment_workspace_items}} (
+    `localization_id` BIGINT UNSIGNED NOT NULL,
+    `tag_id` BIGINT UNSIGNED NOT NULL,
+    `assigned_by_user_public_id` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `created_at` DATETIME(6) NOT NULL,
+    PRIMARY KEY (`localization_id`, `tag_id`),
+    KEY {{table:ix_btawi_tag}} (`tag_id`, `localization_id`),
+    CONSTRAINT {{table:f_btawi_workspace}} FOREIGN KEY (`localization_id`) REFERENCES {{table:tag_assignment_workspaces}} (`localization_id`) ON DELETE CASCADE,
+    CONSTRAINT {{table:f_btawi_tag}} FOREIGN KEY (`tag_id`) REFERENCES {{table:tags}} (`id`) ON DELETE RESTRICT,
+    CONSTRAINT {{table:c_btawi_actor}} CHECK (`assigned_by_user_public_id` REGEXP '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+SQL];
+    }
+
+    /** @return list<string> */
+    private static function sqliteTagAssignmentWorkspaceItemStatements(): array
+    {
+        return [<<<'SQL'
+CREATE TABLE IF NOT EXISTS {{table:tag_assignment_workspace_items}} (
+    "localization_id" INTEGER NOT NULL REFERENCES {{table:tag_assignment_workspaces}} ("localization_id") ON DELETE CASCADE,
+    "tag_id" INTEGER NOT NULL REFERENCES {{table:tags}} ("id") ON DELETE RESTRICT,
+    "assigned_by_user_public_id" TEXT COLLATE BINARY NOT NULL CHECK (length("assigned_by_user_public_id") = 36 AND "assigned_by_user_public_id" = lower("assigned_by_user_public_id")),
+    "created_at" TEXT NOT NULL,
+    PRIMARY KEY ("localization_id", "tag_id")
+) WITHOUT ROWID
+SQL,
+            'CREATE INDEX IF NOT EXISTS {{table:ix_btawi_tag}} ON {{table:tag_assignment_workspace_items}} ("tag_id", "localization_id")',
+        ];
+    }
+
+    /** @return list<string> */
+    private static function mysqlTagCapabilityStatements(): array
+    {
+        return [<<<'SQL'
+INSERT IGNORE INTO {{table:capabilities}} (`module_id`, `code`, `label_key`, `is_delegable`) VALUES
+    ('blog', 'blog.tags.view', 'blog.capabilities.tags_view', 1),
+    ('blog', 'blog.tags.edit', 'blog.capabilities.tags_edit', 1)
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:role_capabilities}} (`role_id`, `capability_id`)
+SELECT `r`.`id`, `c`.`id` FROM {{table:roles}} AS `r`
+CROSS JOIN {{table:capabilities}} AS `c`
+WHERE `r`.`code` IN ('system_superadmin', 'site_admin')
+    AND `r`.`is_protected` = 1
+    AND `c`.`module_id` = 'blog'
+    AND `c`.`code` IN ('blog.tags.view', 'blog.tags.edit')
+    AND `c`.`is_delegable` = 1
+ON DUPLICATE KEY UPDATE `capability_id` = VALUES(`capability_id`)
+SQL];
+    }
+
+    /** @return list<string> */
+    private static function sqliteTagCapabilityStatements(): array
+    {
+        return [<<<'SQL'
+INSERT INTO {{table:capabilities}} ("module_id", "code", "label_key", "is_delegable") VALUES
+    ('blog', 'blog.tags.view', 'blog.capabilities.tags_view', 1),
+    ('blog', 'blog.tags.edit', 'blog.capabilities.tags_edit', 1)
+ON CONFLICT("code") DO NOTHING
+SQL,
+            <<<'SQL'
+INSERT INTO {{table:role_capabilities}} ("role_id", "capability_id")
+SELECT "r"."id", "c"."id" FROM {{table:roles}} AS "r"
+CROSS JOIN {{table:capabilities}} AS "c"
+WHERE "r"."code" IN ('system_superadmin', 'site_admin')
+    AND "r"."is_protected" = 1
+    AND "c"."module_id" = 'blog'
+    AND "c"."code" IN ('blog.tags.view', 'blog.tags.edit')
+    AND "c"."is_delegable" = 1
+ON CONFLICT("role_id", "capability_id") DO NOTHING
+SQL];
     }
 
     /** @return list<string> */

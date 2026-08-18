@@ -13,8 +13,9 @@ final class BlogConfig
     public const DEFAULT_SITEMAP_PATH = '/blog-sitemap.xml';
     public const DEFAULT_TABLE_PREFIX = 'ls_blog_';
     public const MYSQL_IDENTIFIER_MAX_LENGTH = 64;
-    public const LONGEST_TABLE_SUFFIX = 'post_localizations';
-    public const LONGEST_TABLE_SUFFIX_LENGTH = 18;
+    public const LONGEST_TABLE_SUFFIX =
+        'category_assignment_workspace_items';
+    public const LONGEST_TABLE_SUFFIX_LENGTH = 35;
     public const MAX_TABLE_PREFIX_LENGTH =
         self::MYSQL_IDENTIFIER_MAX_LENGTH
         - self::LONGEST_TABLE_SUFFIX_LENGTH;

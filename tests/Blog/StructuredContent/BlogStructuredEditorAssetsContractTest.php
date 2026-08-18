@@ -1000,7 +1000,7 @@ JS;
     {
         foreach ([
             'function v2SaveDraft(context)',
-            'function v2PrepareSavedPreview(context)',
+            'function v2PrepareSavedPreview(context, forceDocumentSave)',
             'function v2CreatePreview(context, trigger)',
             'function v2BindImmersivePreview(context)',
             "document.createElement('dialog')",
@@ -1191,10 +1191,16 @@ JS;
             'function v2SyncCategoryWorkspaceVersion(context, workspaceVersion)',
             '!Number.isInteger(payload.category_workspace_version)',
             'v2SyncCategoryWorkspaceVersion(',
-            'submittedEditorFingerprint = editorialFormFingerprint(',
-            'var editorWasDirty = submittedEditorFingerprint',
-            'var editorStayedUnchanged = editorialFormFingerprint(',
-            'if (!editorWasDirty && editorStayedUnchanged)',
+            'function v2SyncTagWorkspaceVersion(context, workspaceVersion)',
+            '!Number.isInteger(payload.tag_workspace_version)',
+            'v2SyncTagWorkspaceVersion(',
+            'function categorySelectionFingerprint(form)',
+            'state.cleanFingerprint = submittedFingerprint;',
+            'state.assignmentPending',
+            'function saveTagAssignment(state, commitPendingInput)',
+            'function editorialFacetsHaveChanges(context)',
+            'waitEditorialFacets(context).then(',
+            'saveEditorialFacets(context)',
             'function v2BindPublish(context)',
             'publishForm.addEventListener(\'submit\'',
             'context.publishPending',
@@ -1234,7 +1240,8 @@ const marker = '}());';
 const markerIndex = source.lastIndexOf(marker);
 if (markerIndex < 0) throw new Error('Unable to expose editor test hooks.');
 source = source.slice(0, markerIndex)
-    + 'globalThis.__blogLockHooks = { v2SyncEditorialLockVersion };\n'
+            + 'globalThis.__blogLockHooks = { '
+            + 'v2SyncEditorialLockVersion, v2SyncTagWorkspaceVersion };\n'
     + source.slice(markerIndex);
 
 class FakeInput {
@@ -1251,15 +1258,18 @@ class FakeForm {
 
 const editor = new FakeForm({
   post: 'post-a', locale: 'es', lock_version: '3',
+  tag_workspace_version: '2',
 });
 const category = new FakeForm({
   post: 'post-a', locale: 'es', lock_version: '3',
 });
 const publication = new FakeForm({
   post: 'post-a', locale: 'es', lock_version: '3',
+  tag_workspace_version: '2',
 });
 const anotherLocale = new FakeForm({
   post: 'post-a', locale: 'eu', lock_version: '8',
+  tag_workspace_version: '8',
 });
 
 globalThis.HTMLInputElement = FakeInput;
@@ -1279,12 +1289,20 @@ const synced = globalThis.__blogLockHooks.v2SyncEditorialLockVersion(
   { form: editor },
   4
 );
+const tagsSynced = globalThis.__blogLockHooks.v2SyncTagWorkspaceVersion(
+  { form: editor },
+  0
+);
 process.stdout.write(JSON.stringify({
   synced,
+  tagsSynced,
   editor: editor.controls.lock_version.value,
   category: category.controls.lock_version.value,
   publication: publication.controls.lock_version.value,
   anotherLocale: anotherLocale.controls.lock_version.value,
+  editorTags: editor.controls.tag_workspace_version.value,
+  publicationTags: publication.controls.tag_workspace_version.value,
+  anotherLocaleTags: anotherLocale.controls.tag_workspace_version.value,
 }));
 JS;
 
@@ -1304,10 +1322,14 @@ JS;
         );
 
         self::assertTrue($result['synced']);
+        self::assertTrue($result['tagsSynced']);
         self::assertSame('4', $result['editor']);
         self::assertSame('4', $result['category']);
         self::assertSame('4', $result['publication']);
         self::assertSame('8', $result['anotherLocale']);
+        self::assertSame('0', $result['editorTags']);
+        self::assertSame('0', $result['publicationTags']);
+        self::assertSame('8', $result['anotherLocaleTags']);
     }
 
     public function testAsyncDraftSavePreservesUnsavedWorkAndRecoversCsrf(): void

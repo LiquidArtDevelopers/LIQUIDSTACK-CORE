@@ -57,14 +57,19 @@ Implementada mediante `0002_webadmin_media_library`, con
 Blog consume esta biblioteca sin apropiarse de ella. DB y storage forman una
 unidad de backup y restauración.
 
-### 3. Blog editorial y categorías
+### 3. Blog editorial, categorías y etiquetas
 
-Implementado desde `0001` a `0019` del scope Blog mediante fronteras aditivas:
+El catálogo del scope Blog llega de `0001` a `0025` mediante fronteras
+aditivas:
 
 - artículos con variantes por idioma, slug, H1, title SEO, description,
   extracto, estado, preview y publicación independientes;
 - categorías localizadas, lock optimista, asignación a artículos y proyección
   pública para filtros y cards;
+- etiquetas localizadas por variante: `0020`–`0024` separan vocabulario,
+  asignación live, head y workspace privado con CAS, y `0025` aporta
+  `blog.tags.view`/`blog.tags.edit` en WebAdmin. Una frontera pendiente conserva
+  el Blog anterior y una aplicada pero incompleta falla cerrada;
 - índice project-owned por idioma y recursos Blog reutilizables, con diez
   fixtures Matrix solo en showroom para probar rejillas, listado centrado,
   destacados, sliders, filtros combinables y paginación sin insertar fallback
@@ -83,6 +88,11 @@ Implementado desde `0001` a `0019` del scope Blog mediante fronteras aditivas:
   coherentes entre el HTML público y el sitemap, limitados siempre a variantes
   publicadas.
 
+El sufijo `category_assignment_workspace_items` fija en 29 bytes el máximo del
+prefijo Blog. Un proyecto configurado con una versión hasta v1.23.0 que hubiera
+usado 30–46 bytes debe migrar el namespace explícitamente antes de actualizar;
+el runtime no trunca ni renombra tablas MySQL/MariaDB.
+
 ### 4. Editor estructurado v1 y constructor V2
 
 Implementado mediante `0005_blog_structured_content` y la biblioteca Media:
@@ -100,6 +110,10 @@ Implementado mediante `0005_blog_structured_content` y la biblioteca Media:
   a su `public_paths` y estable durante toda la edición;
 - asignación contextual de categorías del mismo idioma y catálogo Media que
   suma a los recientes cualquier asset ya referenciado por el documento;
+- input CSV SSR de etiquetas (0–30) con pastillas progresivas y guardado
+  single-flight: coma, Intro, pegado y blur confirman términos, los cambios
+  durante una petición se reencolan y la edición exige conjuntamente
+  `blog.tags.view` y `blog.tags.edit`;
 - guardado progresivo que conserva campos y bloques ante conflictos,
   validación, pérdida de autorización o red, valida estrictamente la
   redirección de éxito y protege cambios pendientes al abandonar la página;
@@ -144,8 +158,11 @@ legacy. Este corte incorpora además:
   adoptado el shell visual;
 - separación SSR compatible: `bodyHtml()` conserva la salida histórica con
   portada, mientras las vistas nuevas requieren
-  `_moduleBlogPublicArticle.php` y componen `headerHtml()` antes de
+  `_moduleBlogPublicArticle.php` y componen `headerMediaHtml()` antes de
   `mainHtml()` sin duplicar el medio destacado ni el H1;
+- taxonomías públicas tipadas mediante `$articleCategories`, `$articleTags` y
+  `$articleTaxonomiesHtml`, con grupos informativos separados y sin enlaces a
+  rutas o archivos de etiquetas inexistentes;
 - una proyección pública unificada y acotada para relacionados por categorías,
   archivo anual/mensual y periodos con recuento, reutilizando el mismo PDO y
   sin exponer borradores;
@@ -198,6 +215,12 @@ los filtros localizados fallan cerrados si superan el máximo público de 100.
 El orden admite exclusivamente `newest`, `oldest` y `updated`, siempre con
 desempate estable. `moduleBlogFilters01` añade `fetch` abortable, debounce,
 historial y región viva sin convertir JavaScript en requisito.
+
+La misma `q` incluye nombre y slug de etiquetas live del locale mediante
+`EXISTS`; nunca lee el workspace privado ni duplica cards. Categorías y
+etiquetas se proyectan juntas por lote, sin IDs ni N+1. Este corte no añade
+`tag[]`, un selector, archivo, ruta, canonical, hreflang o sitemap de etiquetas:
+siguen siendo metadatos informativos y señal de la búsqueda textual existente.
 
 El corte RESOURCE-001 amplía ese contrato en CORE. Search01 separa
 búsqueda y orden; CategoryBar01 separa las categorías `any|all`; ambos pueden

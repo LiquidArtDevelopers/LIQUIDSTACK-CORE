@@ -6,6 +6,9 @@ use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Diagnostics\BlogDiagnosticService;
 use App\Core\Blog\Sitemap\Cache\PrivateBlogSitemapCacheStorage;
 use App\Core\Modules\Migrations\MigrationDatabasePlan;
+use App\Core\Modules\Blog\BlogMigrationProvider;
+use App\Core\Modules\Migrations\MigrationScope;
+use App\Core\Modules\WebAdmin\WebAdminMigrationProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -53,6 +56,8 @@ final class BlogDiagnosticServiceTest extends TestCase
             'status' => 'ready',
         ], $data['runtime']['dom_extension']);
         self::assertSame('applied', $data['database']['status']);
+        self::assertSame('pending', $data['tags']['status']);
+        self::assertNull($data['tags']['blocker']);
         self::assertSame(
             BlogPublicOrigin::SOURCE_LEGACY,
             $data['environment']['public_origin']['source']
@@ -86,6 +91,71 @@ final class BlogDiagnosticServiceTest extends TestCase
         self::assertSame(
             ['runtime.dom_extension_missing'],
             $data['readiness']['blockers']
+        );
+    }
+
+    public function testAppliedTagSchemaAndCapabilityDriftAreVisibleBlockers(): void
+    {
+        $pdo = $this->tagDatabase();
+        $plan = $this->tagPlan();
+        $service = new BlogDiagnosticService();
+        $ready = $service->inspect(
+            $this->root,
+            ['es', 'en'],
+            [BlogPublicOrigin::ENV => 'https://example.test'],
+            '/admin',
+            true,
+            $plan,
+            true,
+            [],
+            $pdo
+        )->toArray();
+        self::assertSame('ready', $ready['tags']['status']);
+        self::assertTrue($ready['readiness']['blog_ready']);
+
+        $pdo->exec(
+            'DELETE FROM ls_webadmin_role_capabilities WHERE role_id = '
+                . '(SELECT id FROM ls_webadmin_roles WHERE code = '
+                . "'site_admin') AND capability_id = (SELECT id FROM "
+                . "ls_webadmin_capabilities WHERE code = 'blog.tags.edit')"
+        );
+        $capabilityDrift = $service->inspect(
+            $this->root,
+            ['es', 'en'],
+            [BlogPublicOrigin::ENV => 'https://example.test'],
+            '/admin',
+            true,
+            $plan,
+            true,
+            [],
+            $pdo
+        )->toArray();
+        self::assertSame(
+            'administration_not_ready',
+            $capabilityDrift['tags']['status']
+        );
+        self::assertContains(
+            'tags.administration_not_ready',
+            $capabilityDrift['readiness']['blockers']
+        );
+
+        $pdo = $this->tagDatabase();
+        $pdo->exec('DROP TABLE ls_blog_localization_tags');
+        $schemaDrift = $service->inspect(
+            $this->root,
+            ['es', 'en'],
+            [BlogPublicOrigin::ENV => 'https://example.test'],
+            '/admin',
+            true,
+            $plan,
+            true,
+            [],
+            $pdo
+        )->toArray();
+        self::assertSame('schema_not_ready', $schemaDrift['tags']['status']);
+        self::assertContains(
+            'tags.schema_not_ready',
+            $schemaDrift['readiness']['blockers']
         );
     }
 
@@ -394,7 +464,7 @@ SQL);
             true,
             [
                 ...$this->runtimeEntries('applied', 'applied'),
-                $this->entry('0020_future_feature', 'pending', null),
+                $this->entry('0030_future_feature', 'pending', null),
             ],
             []
         );
@@ -406,7 +476,7 @@ SQL);
         self::assertTrue($data['database']['administration']['ready']);
         self::assertFalse($data['database']['features']['ready']);
         self::assertSame(
-            ['0020_future_feature'],
+            ['0030_future_feature'],
             $data['database']['features']['pending']
         );
     }
@@ -521,6 +591,61 @@ SQL);
     private function appliedPlan(): MigrationDatabasePlan
     {
         return $this->plan('applied', 'applied');
+    }
+
+    private function tagPlan(): MigrationDatabasePlan
+    {
+        $entries = $this->runtimeEntries('applied', 'applied');
+        foreach ([
+            '0020_blog_tags' => null,
+            '0021_blog_localization_tags' => null,
+            '0022_blog_tag_assignment_heads' => null,
+            '0023_blog_tag_assignment_workspaces' => null,
+            '0024_blog_tag_assignment_workspace_items' => null,
+            '0025_blog_tag_capabilities' => 'webadmin',
+        ] as $id => $target) {
+            $entries[] = $this->entry($id, 'applied', $target);
+        }
+
+        return new MigrationDatabasePlan('sqlite', true, $entries, []);
+    }
+
+    private function tagDatabase(): PDO
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $pdo->exec('PRAGMA foreign_keys = ON');
+        $blogScope = MigrationScope::forTablePrefix('blog', 'ls_blog_');
+        $webAdminScope = MigrationScope::forTablePrefix(
+            'webadmin',
+            'ls_webadmin_'
+        );
+        $webAdminMigration = iterator_to_array(
+            WebAdminMigrationProvider::migrations(),
+            false
+        )[0];
+        foreach ($webAdminMigration->statementsFor(
+            'sqlite',
+            $webAdminScope
+        ) as $sql) {
+            $pdo->exec($sql);
+        }
+        foreach (BlogMigrationProvider::migrations() as $migration) {
+            $scope = $migration->targetScopeModuleId() === 'webadmin'
+                ? $webAdminScope : $blogScope;
+            if (
+                $migration->targetScopeModuleId() !== null
+                && $migration->id() !== '0025_blog_tag_capabilities'
+            ) {
+                continue;
+            }
+            foreach ($migration->statementsFor('sqlite', $scope) as $sql) {
+                $pdo->exec($sql);
+            }
+        }
+
+        return $pdo;
     }
 
     private function sitemapPlan(): MigrationDatabasePlan

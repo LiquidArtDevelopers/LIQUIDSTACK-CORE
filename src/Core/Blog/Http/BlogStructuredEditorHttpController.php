@@ -20,6 +20,7 @@ use App\Core\Blog\StructuredContent\Media\BlogEditorReferencedMediaCatalogInterf
 use App\Core\Blog\StructuredContent\Rendering\BlogDocumentHtmlRenderer;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorPreviewSandboxPolicy;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorCategoryOption;
+use App\Core\Blog\StructuredContent\Rendering\BlogEditorTagOption;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorMediaOption;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorRevisionSummary;
 use App\Core\Blog\StructuredContent\Rendering\BlogRenderingException;
@@ -35,6 +36,7 @@ use App\Core\Blog\Seo\BlogSeoAnalyzer;
 use App\Core\Blog\Seo\BlogSeoHttpRuntimeInterface;
 use App\Core\Blog\Seo\BlogSeoStaticPageInventory;
 use App\Core\Blog\Seo\BlogRobotsPreferences;
+use App\Core\Blog\Tags\BlogTagCapabilities;
 use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
@@ -305,7 +307,8 @@ final class BlogStructuredEditorHttpController
                         $guardLocale,
                         $slug
                     );
-                }
+                },
+                (int) $request->form('tag_workspace_version')
             );
             if ($this->isAsyncEditorRequest($request)) {
                 return $this->responses->json(200, [
@@ -313,6 +316,7 @@ final class BlogStructuredEditorHttpController
                     'status' => $stored->status(),
                     'lock_version' => $stored->lockVersion(),
                     'category_workspace_version' => 0,
+                    'tag_workspace_version' => 0,
                 ]);
             }
 
@@ -579,6 +583,11 @@ final class BlogStructuredEditorHttpController
             $postPublicId,
             $locale
         );
+        $tagPresentation = $this->tagPresentation(
+            $sessionToken,
+            $postPublicId,
+            $locale
+        );
         $headingDefaults = $this->headingDefaults();
 
         return $this->editorRenderer->render(
@@ -613,7 +622,11 @@ final class BlogStructuredEditorHttpController
                 MediaService::UPLOAD_CAPABILITY
             ),
             previewSandbox: $previewSandbox,
-            editorStylesheets: $editorStylesheets
+            editorStylesheets: $editorStylesheets,
+            canAssignTags: $tagPresentation['enabled'],
+            tagOptions: $tagPresentation['options'],
+            tagWorkspaceVersion: $tagPresentation['workspace_version'],
+            canViewTags: $tagPresentation['visible']
         );
     }
 
@@ -649,6 +662,7 @@ final class BlogStructuredEditorHttpController
 
     /**
      * @return array{
+     *   visible: bool,
      *   enabled: bool,
      *   options: list<BlogEditorCategoryOption>,
      *   workspace_version: int,
@@ -710,6 +724,77 @@ final class BlogStructuredEditorHttpController
                 'workspace_version' => 0,
                 'dummy_assigned' => false,
             ];
+        }
+    }
+
+    /**
+     * @return array{
+     *   visible: bool,
+     *   enabled: bool,
+     *   options: list<BlogEditorTagOption>,
+     *   workspace_version: int
+     * }
+     */
+    private function tagPresentation(
+        #[\SensitiveParameter] string $sessionToken,
+        string $postPublicId,
+        string $locale
+    ): array {
+        $disabled = [
+            'visible' => false,
+            'enabled' => false,
+            'options' => [],
+            'workspace_version' => 0,
+        ];
+        if (
+            !$this->runtime instanceof BlogTagAdminHttpRuntimeInterface
+            || !$this->runtime->tagsReady()
+        ) {
+            return $disabled;
+        }
+
+        try {
+            $service = $this->runtime->tagService();
+            if ($service === null) {
+                return $disabled;
+            }
+            $workspaceVersion = $service->workspaceVersion(
+                $postPublicId,
+                $locale
+            );
+            $canView = $this->runtime->authorization()->hasCapability(
+                $sessionToken,
+                BlogTagCapabilities::VIEW
+            );
+            if (!$canView) {
+                return [
+                    'visible' => false,
+                    'enabled' => false,
+                    'options' => [],
+                    'workspace_version' => $workspaceVersion,
+                ];
+            }
+            $canAssign = $this->runtime->authorization()->hasCapability(
+                $sessionToken,
+                BlogTagCapabilities::EDIT
+            );
+            $options = [];
+            foreach ($service->assignedToVariant($postPublicId, $locale) as $tag) {
+                $options[] = new BlogEditorTagOption(
+                    $tag->name(),
+                    $tag->slug()
+                );
+            }
+
+            return [
+                'visible' => true,
+                'enabled' => $canAssign,
+                'options' => $options,
+                'workspace_version' => $workspaceVersion,
+            ];
+        } catch (Throwable) {
+            // Tags are additive: their projection never takes down editing.
+            return $disabled;
         }
     }
 

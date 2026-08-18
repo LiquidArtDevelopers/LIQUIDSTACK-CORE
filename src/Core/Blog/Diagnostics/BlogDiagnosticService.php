@@ -15,6 +15,8 @@ use App\Core\Modules\Migrations\MigrationDatabasePlan;
 use App\Core\Modules\Migrations\MigrationFeatureReadiness;
 use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\Blog\BlogMigrationRequirements;
+use App\Core\Modules\Blog\BlogTagCapabilitySeedPostcondition;
+use App\Core\Modules\Blog\BlogTagSchemaMigrationPostconditionVerifier;
 use App\Core\Modules\Diagnostics\ProjectAssetInspector;
 use App\Core\WebAdmin\Configuration\WebAdminConfigException;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
@@ -71,6 +73,7 @@ final class BlogDiagnosticService
         $analyticsEnabled = false;
         $analyticsCollectInDevelopment = false;
         $sitemapTablePrefix = null;
+        $webAdminTablePrefix = null;
 
         try {
             $config = $this->configLoader->load($projectRoot, $languages);
@@ -104,6 +107,7 @@ final class BlogDiagnosticService
                 $webAdminConfig = $this->webAdminConfigLoader->load(
                     $projectRoot
                 );
+                $webAdminTablePrefix = $webAdminConfig->tablePrefix();
                 if (
                     $webAdminConfig->databaseConnection()
                         !== $config->databaseConnection()
@@ -156,6 +160,13 @@ final class BlogDiagnosticService
             $databasePlan,
             $inspectDatabase
         );
+        $tags = $this->tagStatus(
+            $databasePlan,
+            $inspectDatabase,
+            $databaseConnection,
+            $sitemapTablePrefix,
+            $webAdminTablePrefix
+        );
         $sitemapCache = $this->sitemapCacheStatus(
             $projectRoot,
             $environment,
@@ -200,6 +211,9 @@ final class BlogDiagnosticService
             $blockers[] = $inspectDatabase
                 ? 'database.migrations_not_ready'
                 : 'database.not_checked';
+        }
+        if (is_string($tags['blocker'] ?? null)) {
+            $blockers[] = $tags['blocker'];
         }
         if (
             ($sitemapCache['enabled'] ?? false) === true
@@ -261,11 +275,119 @@ final class BlogDiagnosticService
             'database' => $database,
             'sitemap_cache' => $sitemapCache,
             'analytics' => $analytics,
+            'tags' => $tags,
             'readiness' => [
                 'blog_ready' => $blockers === [],
                 'blockers' => array_values(array_unique($blockers)),
             ],
         ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function tagStatus(
+        ?MigrationDatabasePlan $plan,
+        bool $inspectDatabase,
+        ?PDO $pdo,
+        ?string $blogTablePrefix,
+        ?string $webAdminTablePrefix
+    ): array {
+        if (!$inspectDatabase || !$plan instanceof MigrationDatabasePlan) {
+            return [
+                'ready' => false,
+                'status' => 'not_checked',
+                'public' => 'not_checked',
+                'administration' => 'not_checked',
+                'schema' => 'not_checked',
+                'capabilities' => 'not_checked',
+                'blocker' => null,
+            ];
+        }
+        $public = MigrationFeatureReadiness::fromPlan(
+            $plan,
+            BlogMigrationRequirements::tagsPublic()
+        );
+        $administration = MigrationFeatureReadiness::fromPlan(
+            $plan,
+            BlogMigrationRequirements::tagsAdministration()
+        );
+        if (!$public->baseReady()) {
+            $blocked = $public->baseStatus() === 'blocked';
+            return [
+                'ready' => false,
+                'status' => $blocked ? 'schema_not_ready' : 'pending',
+                'public' => $public->baseStatus(),
+                'administration' => $administration->baseStatus(),
+                'schema' => $blocked ? 'not_ready' : 'not_applicable',
+                'capabilities' => 'not_applicable',
+                'blocker' => $blocked ? 'tags.schema_not_ready' : null,
+            ];
+        }
+        if (
+            !$pdo instanceof PDO
+            || !is_string($blogTablePrefix)
+            || $blogTablePrefix === ''
+        ) {
+            return [
+                'ready' => false,
+                'status' => 'not_checked',
+                'public' => $public->baseStatus(),
+                'administration' => $administration->baseStatus(),
+                'schema' => 'not_checked',
+                'capabilities' => 'not_checked',
+                'blocker' => null,
+            ];
+        }
+        $schemaReady = (new BlogTagSchemaMigrationPostconditionVerifier(5))
+            ->verify(
+                $pdo,
+                MigrationScope::forTablePrefix('blog', $blogTablePrefix)
+            );
+        if (!$schemaReady) {
+            return [
+                'ready' => false,
+                'status' => 'schema_not_ready',
+                'public' => $public->baseStatus(),
+                'administration' => $administration->baseStatus(),
+                'schema' => 'not_ready',
+                'capabilities' => 'not_checked',
+                'blocker' => 'tags.schema_not_ready',
+            ];
+        }
+        if (!$administration->baseReady()) {
+            $blocked = $administration->baseStatus() === 'blocked';
+            return [
+                'ready' => false,
+                'status' => $blocked
+                    ? 'administration_not_ready' : 'public_ready',
+                'public' => $public->baseStatus(),
+                'administration' => $administration->baseStatus(),
+                'schema' => 'ready',
+                'capabilities' => $blocked ? 'not_ready' : 'pending',
+                'blocker' => $blocked
+                    ? 'tags.administration_not_ready' : null,
+            ];
+        }
+        $capabilitiesReady = is_string($webAdminTablePrefix)
+            && $webAdminTablePrefix !== ''
+            && (new BlogTagCapabilitySeedPostcondition())->verify(
+                $pdo,
+                MigrationScope::forTablePrefix(
+                    'webadmin',
+                    $webAdminTablePrefix
+                )
+            );
+
+        return [
+            'ready' => $capabilitiesReady,
+            'status' => $capabilitiesReady
+                ? 'ready' : 'administration_not_ready',
+            'public' => $public->baseStatus(),
+            'administration' => $administration->baseStatus(),
+            'schema' => 'ready',
+            'capabilities' => $capabilitiesReady ? 'ready' : 'not_ready',
+            'blocker' => $capabilitiesReady
+                ? null : 'tags.administration_not_ready',
+        ];
     }
 
     /**

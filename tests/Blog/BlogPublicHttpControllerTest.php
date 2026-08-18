@@ -15,6 +15,12 @@ use App\Core\Blog\Http\BlogPublicHtmlRenderer;
 use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Blog\PublicFeed\BlogPublicArchivePeriodsQuery;
 use App\Core\Blog\PublicFeed\BlogPublicArchiveQuery;
+use App\Core\Blog\PublicFeed\BlogPublicCardCategory;
+use App\Core\Blog\PublicFeed\BlogPublicCardCategoryQuery;
+use App\Core\Blog\PublicFeed\BlogPublicCardTag;
+use App\Core\Blog\PublicFeed\BlogPublicCardTaxonomyBatch;
+use App\Core\Blog\PublicFeed\BlogPublicCardTaxonomyQuery;
+use App\Core\Blog\PublicFeed\BlogPublicCardTaxonomyRepositoryInterface;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogRepositoryInterface;
 use App\Core\Blog\PublicFeed\BlogPublicDiscoveryRepositoryInterface;
@@ -459,6 +465,74 @@ PHP);
             '<h1 class="moduleH1Type04-title">Matrix &amp; sistemas</h1>',
             $response->body()
         );
+    }
+
+    public function testArticleProjectsLiveTaxonomiesWithoutIdentifiers(): void
+    {
+        $created = $this->service->createPost(
+            $this->actorGate(),
+            'es',
+            $this->draft()
+        );
+        $this->service->publish(
+            $this->actorGate(),
+            $created->postPublicId(),
+            'es',
+            $created->lockVersion()
+        );
+        $repository = new class implements
+            BlogPublicCatalogRepositoryInterface,
+            BlogPublicCardTaxonomyRepositoryInterface {
+            public int $calls = 0;
+
+            public function search(BlogPublicCatalogQuery $query): array
+            {
+                return [];
+            }
+
+            public function categoriesForCards(
+                BlogPublicCardCategoryQuery $query
+            ): array {
+                throw new RuntimeException('Legacy batch must not run.');
+            }
+
+            public function taxonomiesForCards(
+                BlogPublicCardTaxonomyQuery $query
+            ): BlogPublicCardTaxonomyBatch {
+                ++$this->calls;
+
+                return new BlogPublicCardTaxonomyBatch(
+                    ['matrix' => [new BlogPublicCardCategory(
+                        'es',
+                        'actualidad',
+                        'Actualidad'
+                    )]],
+                    ['matrix' => [new BlogPublicCardTag(
+                        'es',
+                        'inteligencia-artificial',
+                        'Inteligencia artificial'
+                    )]]
+                );
+            }
+        };
+        $runtime = new BlogPublicHttpRuntime(
+            $this->runtime->config(),
+            $this->runtime->origin(),
+            $this->service,
+            catalogRepository: $repository
+        );
+        $response = (new BlogPublicHttpController($runtime))
+            ->article('es', 'matrix');
+
+        self::assertNotNull($response);
+        self::assertSame(1, $repository->calls);
+        self::assertStringContainsString('Actualidad', $response->body());
+        self::assertStringContainsString(
+            'Inteligencia artificial',
+            $response->body()
+        );
+        self::assertStringNotContainsString('public_id', $response->body());
+        self::assertStringNotContainsString('tag_id', $response->body());
     }
 
     public function testSitemapUsesAStrongConditionalEtagAndSafeHeaders(): void

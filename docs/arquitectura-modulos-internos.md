@@ -223,6 +223,14 @@ perfil: las migraciones cross-scope, las capabilities, la autorización y la
 auditoría requieren el mismo PDO. Una discrepancia o un perfil dedicado
 incompleto falla cerrado antes de abrir PDO y nunca cae de vuelta a `shared`.
 
+El prefijo de tablas Blog admite como máximo 29 bytes. El presupuesto se
+deriva del sufijo gestionado más largo,
+`category_assignment_workspace_items`, para respetar el límite de 64 bytes de
+MySQL/MariaDB. Los proyectos configurados con versiones hasta v1.23.0 que
+usaron un prefijo de 30–46 bytes requieren una migración explícita del namespace
+antes de actualizar; CORE responde con `config.invalid_table_prefix` y nunca
+trunca o renombra tablas automáticamente.
+
 Composer no crea, fusiona ni sobrescribe `.env` o esos ficheros de
 configuración. Tampoco copia datos al cambiar de perfil. Un proyecto que ya
 tenga tablas o contenido en `shared` debe preparar y verificar manualmente un
@@ -585,21 +593,32 @@ activación y recuperación, el outbox SMTP, el diagnóstico operativo, el motor
 de migraciones, la gestión delegada de editores, la biblioteca de medios y su
 inicialización explícita constituyen el corte actual de WebAdmin.
 
-Blog 0001 a 0019 están implementados sobre esa base: migraciones propias y
+El catálogo Blog 0001 a 0025 está definido sobre esa base: migraciones propias y
 cross-scope, capacidades delegables, artículos con variantes localizadas,
-categorías, documentos estructurados y revisiones, borrador/publicación,
+categorías post-wide, etiquetas localizadas por variante, documentos
+estructurados y revisiones, borrador/publicación,
 bloqueo optimista, duplicación completa, papelera recuperable por tombstones,
 UI privada, auditoría atómica, consumo de Media, analítica propia opcional,
 resolución pública tardía sin sesión legacy, medios por prefijo pre-bootstrap
 y sitemap DB-backed pre-bootstrap exacto. Las lecturas editoriales y públicas
-excluyen tombstones; no existe purga editorial y publicar exige restaurar y publicar de
-forma explícita.
+excluyen tombstones; no existe purga editorial y una variante eliminada exige
+restauración y publicación explícitas.
+
+Las fronteras aditivas `0020`–`0025` separan vocabulario de etiquetas,
+asignación live, head y workspace privado localizado, items pendientes y
+capacidades WebAdmin. El workspace usa su propio
+`tag_workspace_version`: guardar etiquetas no modifica la relación pública y
+`Publicar` consume su CAS exacto en la misma transacción que documento, medios,
+categorías y cabecera. Una frontera pendiente mantiene operativo el contrato
+anterior; una frontera registrada pero incompleta falla cerrada.
 
 La duplicación independiente y el alta de locale no clonan la publicación ni
 el historial fuente: una copia estructurada crea su documento actual y revisión
 inicial `1`. El duplicado toma categorías del workspace post-wide privado o de
-la relación live; el nuevo locale comparte la asignación del agregado. Un
-workspace editorial que no corresponda a la cabecera pública actual falla
+la relación live; también copia las etiquetas efectivas del mismo locale cuando
+su frontera está lista. El nuevo locale comparte la asignación de categorías
+del agregado y comienza sin etiquetas. Un workspace editorial que no
+corresponda a la cabecera pública actual falla
 cerrado. `0019_blog_copy_operation_idempotency` persiste una clave ligada al
 actor, operación, fuente, locales, lock y payload para que replays idénticos
 devuelvan el primer destino y una reutilización incompatible no pueda crear otra
@@ -616,16 +635,23 @@ La identidad localizada también forma parte del agregado. Al crear una
 variante solo se ofrecen locales activos todavía no usados y se muestra el path
 público configurado; al editar, el locale queda inmutable y la URL procede de
 `public_paths` más el slug, nunca de un prefijo convencional inferido. El
-inspector del editor puede asignar categorías de ese mismo locale y consultar
-medios recientes junto a todos los assets ya referenciados por el documento,
-de modo que una referencia antigua no desaparece de la UI.
+inspector del editor puede asignar categorías y etiquetas de ese mismo locale,
+además de consultar medios recientes junto a todos los assets ya referenciados
+por el documento, de modo que una referencia antigua no desaparece de la UI.
 
 El guardado conserva el POST SSR como fallback y lo mejora con una petición
 asíncrona. Solo una redirección canónica al mismo origen, post y locale confirma
 el éxito. Conflictos de lock, validación, pérdida de autorización o red dejan
 intactos los campos y el documento; mientras existan diferencias frente al
 estado inicial, la navegación accidental se advierte. Categorías usan el mismo
-principio progresivo y mantienen su formulario nativo como fallback.
+principio progresivo y mantienen su formulario nativo como fallback. La edición
+de etiquetas conserva un input CSV SSR de 0–30 términos; la mejora crea
+pastillas con coma, Intro, pegado o blur y serializa el guardado mediante un
+único request en vuelo.
+Los cambios que llegan durante esa petición se reencolan, actualizan el CAS y
+no se pierden. Consultarlas exige `blog.tags.view`; mutarlas exige conjuntamente
+`blog.tags.view` y `blog.tags.edit` tanto en la UI como dentro de la transacción
+de `POST /admin/blog/tags/assign`.
 
 El detalle público conserva un renderer standalone compatible, semántico y
 seguro, con CSS responsive publicado únicamente al activar Blog. Como punto de
@@ -637,14 +663,20 @@ assets y layout. La seguridad del índice y el artículo se configura de forma
 compartida en `App/config/modules/blog-public.php`; el controlador crea el
 nonce y aplica CSP y cabeceras defensivas sobre la `Response`. La vista solo
 consume ese nonce y no emite cabeceras ni requiere seguridad local. CORE falla
-cerrado si la vista emite una salida vacía o lanza una excepción. Omitir la clave no cambia la salida
-standalone de consumidores existentes. Las claves `article-basic-01` y
+cerrado si la vista emite una salida vacía o lanza una excepción. Omitir la
+clave no cambia la salida standalone de consumidores existentes. Las claves
+`article-basic-01` y
 `article-cover-01` siguen siendo contratos de documento y portada; nuevas
 composiciones visuales mediante recursos LiquidStack permanecen aditivas.
 El view model conserva `bodyHtml()` como cuerpo histórico completo, incluida la
 portada, para no romper shells existentes. Las vistas nuevas deben componer
 `headerMediaHtml()` en el `header` y `mainHtml()` dentro del `main`; ambos son
 fragmentos saneados y separan el medio destacado del contenido sin duplicarlo.
+El hook añade `$articleCategories`, `$articleTags` y
+`$articleTaxonomiesHtml`; el shell coloca este último dentro del artículo, antes
+de `$articleMain`. El copy integrado usa «Categorías»/«Etiquetas» en español,
+«Kategoriak»/«Etiketak» en euskera y «Categories»/«Tags» como fallback; omite
+cada grupo vacío y no inventa enlaces a archivos inexistentes.
 
 El bloque YouTube conserva un enlace externo accesible y el asset module-owned
 `blog-public.js` lo mejora progresivamente. Solo un clic primario sin
@@ -691,8 +723,13 @@ relacionados están implementados sobre un mismo `BlogPublicFeed`. El contrato
 para recursos usa `BlogPublicResourceQuery`, incluida la allowlist de orden
 `newest|oldest|updated`, y `BlogPublicResourceBatch` como proyección inmutable
 de `items`, `has_next`, `next_offset` y `next_url`. Las categorías localizadas
-de todas las cards se obtienen en una consulta batch acotada, excluyen Dummy y
-no exponen IDs. El loader compartido vive en el namespace module-owned
+de todas las cards se obtienen junto a las etiquetas live en un batch compuesto
+y acotado. Las categorías excluyen Dummy y ninguna taxonomía expone IDs. La API
+enriquecida añade `tags`, mientras `BlogPublicFeed::cards()` conserva su shape
+histórico. La query `q` busca también nombre y slug de etiquetas mediante
+`EXISTS`, sin leer workspaces, duplicar cards ni añadir `tag[]`, filtros, rutas,
+archivos, URLs canonical o entradas de sitemap. El loader compartido vive en
+el namespace module-owned
 con origen en
 `modules/blog/resources/project/src/js/modules/blog/blogCollectionLoader.js` y
 destino `src/js/modules/blog/blogCollectionLoader.js`: mejora el siguiente

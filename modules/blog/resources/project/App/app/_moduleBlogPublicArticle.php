@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Core\Blog\Http\BlogPublicArticleShellContext;
+use App\Core\Blog\Http\BlogPublicArticleTaxonomyRenderer;
 use App\Core\Blog\Http\BlogPublicArticleViewModel;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
 use App\Core\Environment\ProjectEnvironmentLoader;
@@ -220,6 +221,35 @@ $articleModifier = BlogDocumentTemplateRegistry::hasCover($articleTemplate)
 $articleMain = $blogArticle->mainHtml();
 $articleHero = $blogArticle->headerHtml();
 $articleCustomCss = $blogArticle->customCss();
+$articleCategories = $blogArticle->categories();
+$articleTags = $blogArticle->tags();
+$articleTaxonomyLabels = match (strtolower(explode('-', $lang, 2)[0])) {
+    'es' => ['categories' => 'Categorías', 'tags' => 'Etiquetas'],
+    'eu' => ['categories' => 'Kategoriak', 'tags' => 'Etiketak'],
+    default => ['categories' => 'Categories', 'tags' => 'Tags'],
+};
+foreach ([
+    'categories' => 'blog_article_categories_label',
+    'tags' => 'blog_article_tags_label',
+] as $taxonomyKind => $catalogKey) {
+    $catalogEntry = $GLOBALS[$catalogKey] ?? null;
+    $catalogValue = is_object($catalogEntry)
+        ? ($catalogEntry->text ?? null)
+        : (is_array($catalogEntry)
+            ? ($catalogEntry['text'] ?? null)
+            : null);
+    if (is_string($catalogValue) && trim($catalogValue) !== '') {
+        $articleTaxonomyLabels[$taxonomyKind] = trim($catalogValue);
+    }
+}
+$articleTaxonomies = [
+    'categories' => $articleCategories,
+    'tags' => $articleTags,
+];
+$articleTaxonomiesHtml = (new BlogPublicArticleTaxonomyRenderer())->render(
+    $blogArticle,
+    $articleTaxonomyLabels
+);
 $relatedArticles = $blogArticle->relatedArticles();
 
 unset(
@@ -231,5 +261,9 @@ unset(
     $runtimeProfile,
     $canonicalPath,
     $lastPathSeparator,
-    $articleTemplate
+    $articleTemplate,
+    $taxonomyKind,
+    $catalogKey,
+    $catalogEntry,
+    $catalogValue
 );

@@ -28,6 +28,10 @@ use App\Core\Blog\StructuredContent\Persistence\BlogStructuredRevisionSummary;
 use App\Core\Blog\Sitemap\BlogSitemapPublicationCoordinator;
 use App\Core\Blog\Sitemap\BlogSitemapPublicationFence;
 use App\Core\Blog\Seo\BlogUrlHistoryRepositoryInterface;
+use App\Core\Blog\Tags\BlogTag;
+use App\Core\Blog\Tags\BlogTagInput;
+use App\Core\Blog\Tags\Persistence\BlogTagPersistenceConflict;
+use App\Core\Blog\Tags\Persistence\BlogTagRepositoryInterface;
 use App\Core\WebAdmin\Support\ClockInterface;
 use App\Core\WebAdmin\Support\RandomUuidV4Generator;
 use App\Core\WebAdmin\Support\SystemClock;
@@ -68,7 +72,8 @@ final class BlogStructuredEditorService
             $sitemapPublicationCoordinator = null,
         private readonly BlogDocumentValidator $publicationDocumentValidator =
             new BlogDocumentValidator(),
-        private readonly ?BlogUrlHistoryRepositoryInterface $urlHistory = null
+        private readonly ?BlogUrlHistoryRepositoryInterface $urlHistory = null,
+        private readonly ?BlogTagRepositoryInterface $tagRepository = null
     ) {
         $this->coordinator = $coordinator
             ?? new BlogDraftMutationCoordinator(
@@ -529,12 +534,17 @@ final class BlogStructuredEditorService
         string $locale,
         int $expectedLockVersion,
         int $expectedCategoryWorkspaceVersion,
-        #[\SensitiveParameter] ?callable $publicationRouteGate = null
+        #[\SensitiveParameter] ?callable $publicationRouteGate = null,
+        int $expectedTagWorkspaceVersion = 0
     ): BlogPostVariant {
         $postPublicId = BlogInput::publicId($postPublicId);
         $locale = BlogInput::locale($locale);
         BlogInput::expectedLockVersion($expectedLockVersion);
         if ($expectedCategoryWorkspaceVersion < 0) {
+            throw new BlogException(BlogException::INVALID_INPUT);
+        }
+        BlogTagInput::workspaceVersion($expectedTagWorkspaceVersion);
+        if ($this->tagRepository === null && $expectedTagWorkspaceVersion !== 0) {
             throw new BlogException(BlogException::INVALID_INPUT);
         }
         $workflow = $this->requiredWorkflowRepository();
@@ -547,6 +557,7 @@ final class BlogStructuredEditorService
                 $locale,
                 $expectedLockVersion,
                 $expectedCategoryWorkspaceVersion,
+                $expectedTagWorkspaceVersion,
                 $workflow,
                 $publicationRouteGate,
                 &$sitemapFence
@@ -587,6 +598,25 @@ final class BlogStructuredEditorService
                 }
                 $categoryAssignmentVersion = $workflow
                     ->categoryAssignmentVersion($postPublicId, true);
+                $tagWorkspace = $this->tagRepository?->workspaceState(
+                    $state->localizationPublicId(),
+                    true
+                );
+                $tagWorkspaceVersion = $tagWorkspace?->workspaceVersion() ?? 0;
+                if ($tagWorkspaceVersion !== $expectedTagWorkspaceVersion) {
+                    throw new BlogException(BlogException::LOCK_CONFLICT);
+                }
+                $tagAssignmentVersion = $this->tagRepository?->assignmentVersion(
+                    $state->localizationPublicId(),
+                    true
+                ) ?? 0;
+                if (
+                    $tagWorkspace !== null
+                    && $tagWorkspace->baseAssignmentVersion()
+                        !== $tagAssignmentVersion
+                ) {
+                    throw new BlogException(BlogException::LOCK_CONFLICT);
+                }
                 $draft = $this->workingSnapshot(
                     $state->localizationPublicId(),
                     $workspace
@@ -640,6 +670,16 @@ final class BlogStructuredEditorService
                         );
                     }
                 }
+                $tagPublicIds = null;
+                if ($tagWorkspace !== null) {
+                    $tagPublicIds = $this->tagPublicIds(
+                        $this->tagRepository?->workspaceTags(
+                            $state->localizationPublicId()
+                        ) ?? throw new BlogStructuredContentException(
+                            BlogStructuredContentException::STORAGE_UNAVAILABLE
+                        )
+                    );
+                }
                 $contentChanged = $state->status()
                         !== BlogPostVariant::PUBLISHED
                     || $current === null
@@ -647,9 +687,16 @@ final class BlogStructuredEditorService
                 $categoriesChanged = $categoryPublicIds !== null
                     && $categoryPublicIds
                         !== $workflow->liveCategoryPublicIds($postPublicId);
-                if (!$contentChanged && !$categoriesChanged) {
+                $tagsChanged = $tagPublicIds !== null
+                    && $tagPublicIds !== $this->tagPublicIds(
+                        $this->tagRepository?->liveTags(
+                            $state->localizationPublicId()
+                        ) ?? []
+                    );
+                if (!$contentChanged && !$categoriesChanged && !$tagsChanged) {
                     $consumedWorkspace = $workspace !== null
-                        || $categoryPublicIds !== null;
+                        || $categoryPublicIds !== null
+                        || $tagPublicIds !== null;
                     if ($workspace !== null) {
                         $workflow->clearWorkspace(
                             $state->localizationPublicId()
@@ -657,6 +704,11 @@ final class BlogStructuredEditorService
                     }
                     if ($categoryPublicIds !== null) {
                         $workflow->clearCategoryWorkspace($postPublicId);
+                    }
+                    if ($tagPublicIds !== null) {
+                        $this->tagRepository?->clearWorkspace(
+                            $state->localizationPublicId()
+                        );
                     }
                     if ($consumedWorkspace) {
                         $this->auditMutation(
@@ -740,6 +792,25 @@ final class BlogStructuredEditorService
                     }
                     $workflow->clearCategoryWorkspace($postPublicId);
                 }
+                if ($tagPublicIds !== null) {
+                    if ($tagsChanged) {
+                        $this->tagRepository?->replaceLiveTags(
+                            $state->localizationPublicId(),
+                            $tagPublicIds,
+                            $actorPublicId,
+                            $now
+                        );
+                        $this->tagRepository?->promoteAssignments(
+                            $state->localizationPublicId(),
+                            $tagAssignmentVersion,
+                            $actorPublicId,
+                            $now
+                        );
+                    }
+                    $this->tagRepository?->clearWorkspace(
+                        $state->localizationPublicId()
+                    );
+                }
                 $workflow->promotePublicationHead(
                     $state->localizationPublicId(),
                     $revisionPublicId,
@@ -794,6 +865,29 @@ final class BlogStructuredEditorService
         return $this->contentRepository->current(
             $localizationPublicId
         )?->snapshot();
+    }
+
+    /** @param list<BlogTag> $tags @return list<string> */
+    private function tagPublicIds(array $tags): array
+    {
+        if (!array_is_list($tags) || count($tags) > 30) {
+            throw new BlogStructuredContentException(
+                BlogStructuredContentException::STORAGE_UNAVAILABLE
+            );
+        }
+        $ids = [];
+        foreach ($tags as $tag) {
+            if (!$tag instanceof BlogTag || isset($ids[$tag->publicId()])) {
+                throw new BlogStructuredContentException(
+                    BlogStructuredContentException::STORAGE_UNAVAILABLE
+                );
+            }
+            $ids[$tag->publicId()] = true;
+        }
+        $result = array_keys($ids);
+        sort($result, SORT_STRING);
+
+        return $result;
     }
 
     private function assertWorkspaceBase(
@@ -940,6 +1034,8 @@ final class BlogStructuredEditorService
     {
         try {
             return $this->blogRepository->transactional($operation);
+        } catch (BlogTagPersistenceConflict) {
+            throw new BlogException(BlogException::LOCK_CONFLICT);
         } catch (BlogPersistenceConflict $exception) {
             throw new BlogException(
                 $exception->kind() === BlogPersistenceConflict::SLUG

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Core\Blog\Http;
 
+use App\Core\Blog\BlogException;
+use App\Core\Blog\PublicFeed\BlogPublicCardCategory;
+use App\Core\Blog\PublicFeed\BlogPublicCardTag;
+use App\Core\Blog\PublicFeed\BlogPublicCardTaxonomyBatch;
 use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Blog\StructuredContent\Presentation\BlogHeaderSelection;
 use App\Core\Blog\StructuredContent\Rendering\BlogArticleHeaderMedia;
@@ -23,6 +27,10 @@ use DateTimeImmutable;
 final class BlogPublicArticleViewModel
 {
     private readonly BlogRobotsPreferences $robotsPreferences;
+    /** @var list<array{locale:string,slug:string,name:string}> */
+    private readonly array $categories;
+    /** @var list<array{locale:string,slug:string,name:string}> */
+    private readonly array $tags;
 
     /**
      * @param array<string, string> $alternateUrls
@@ -36,6 +44,10 @@ final class BlogPublicArticleViewModel
      *     published_at: string,
      *     updated_at: string
      * }> $relatedArticles
+     * @param array{
+     *     categories?:list<array{locale:string,slug:string,name:string}>,
+     *     tags?:list<array{locale:string,slug:string,name:string}>
+     * } $taxonomies
      */
     public function __construct(
         private readonly string $locale,
@@ -67,12 +79,36 @@ final class BlogPublicArticleViewModel
         private readonly ?string $authorDisplayName = null,
         private readonly ?string $authorRoleLabel = null,
         private readonly ?string $localizedPublicationDate = null,
-        private readonly string $customCss = ''
+        private readonly string $customCss = '',
+        array $taxonomies = []
     ) {
         $this->robotsPreferences = $robotsPreferences
             ?? BlogRobotsPreferences::defaults();
         $this->headerSelection = $headerSelection
             ?? BlogHeaderSelection::forTemplate($template);
+        if (
+            $taxonomies !== []
+            && (
+                array_is_list($taxonomies)
+                || array_diff(
+                    array_keys($taxonomies),
+                    ['categories', 'tags']
+                ) !== []
+            )
+        ) {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+        $categories = $taxonomies['categories'] ?? [];
+        $tags = $taxonomies['tags'] ?? [];
+        if (!is_array($categories) || !is_array($tags)) {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+        $this->categories = $this->normalizeTaxonomyTerms(
+            $categories,
+            $locale,
+            false
+        );
+        $this->tags = $this->normalizeTaxonomyTerms($tags, $locale, true);
     }
 
     private readonly BlogHeaderSelection $headerSelection;
@@ -205,6 +241,18 @@ final class BlogPublicArticleViewModel
         return $this->relatedArticles;
     }
 
+    /** @return list<array{locale:string,slug:string,name:string}> */
+    public function categories(): array
+    {
+        return $this->categories;
+    }
+
+    /** @return list<array{locale:string,slug:string,name:string}> */
+    public function tags(): array
+    {
+        return $this->tags;
+    }
+
     public function analyticsEnabled(): bool
     {
         return $this->analyticsEnabled;
@@ -247,5 +295,67 @@ final class BlogPublicArticleViewModel
                 : '[redacted]',
             'robots' => $this->robotsDirective(),
         ];
+    }
+
+    /**
+     * @param array<mixed> $terms
+     * @return list<array{locale:string,slug:string,name:string}>
+     */
+    private function normalizeTaxonomyTerms(
+        array $terms,
+        string $expectedLocale,
+        bool $tags
+    ): array {
+        $maximum = $tags
+            ? BlogPublicCardTaxonomyBatch::MAX_TAGS_PER_CARD
+            : BlogPublicCardTaxonomyBatch::MAX_CATEGORIES_PER_CARD;
+        if (!array_is_list($terms) || count($terms) > $maximum) {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+
+        $normalized = [];
+        $seenSlugs = [];
+        try {
+            foreach ($terms as $term) {
+                if (
+                    !is_array($term)
+                    || !is_string($term['locale'] ?? null)
+                    || !is_string($term['slug'] ?? null)
+                    || !is_string($term['name'] ?? null)
+                ) {
+                    throw new BlogException(BlogException::INVALID_STATE);
+                }
+                $projection = $tags
+                    ? new BlogPublicCardTag(
+                        $term['locale'],
+                        $term['slug'],
+                        $term['name']
+                    )
+                    : new BlogPublicCardCategory(
+                        $term['locale'],
+                        $term['slug'],
+                        $term['name']
+                    );
+                if (
+                    $projection->locale() !== $expectedLocale
+                    || isset($seenSlugs[$projection->slug()])
+                ) {
+                    throw new BlogException(BlogException::INVALID_STATE);
+                }
+                $seenSlugs[$projection->slug()] = true;
+                $normalized[] = $projection->toResourceData();
+            }
+        } catch (BlogException $exception) {
+            throw $exception;
+        } catch (\Throwable) {
+            throw new BlogException(BlogException::INVALID_STATE);
+        }
+        usort(
+            $normalized,
+            static fn (array $left, array $right): int =>
+                strcmp($left['slug'], $right['slug'])
+        );
+
+        return $normalized;
     }
 }

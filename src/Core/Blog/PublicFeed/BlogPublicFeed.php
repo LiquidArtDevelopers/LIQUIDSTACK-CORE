@@ -114,6 +114,7 @@ final class BlogPublicFeed
      *     published_at: string,
      *     updated_at: string,
      *     categories: list<array{locale:string,slug:string,name:string}>,
+     *     tags: list<array{locale:string,slug:string,name:string}>,
      *     thumbnail?: array{src:string,srcset:string,alt:string,width:int,height:int}
      * }>
      */
@@ -149,6 +150,7 @@ final class BlogPublicFeed
      *     published_at: string,
      *     updated_at: string,
      *     categories: list<array{locale:string,slug:string,name:string}>,
+     *     tags: list<array{locale:string,slug:string,name:string}>,
      *     thumbnail?: array{src:string,srcset:string,alt:string,width:int,height:int}
      * }>
      */
@@ -171,6 +173,7 @@ final class BlogPublicFeed
      *     published_at: string,
      *     updated_at: string,
      *     categories: list<array{locale:string,slug:string,name:string}>,
+     *     tags: list<array{locale:string,slug:string,name:string}>,
      *     thumbnail?: array{src:string,srcset:string,alt:string,width:int,height:int}
      * }>
      */
@@ -201,6 +204,45 @@ final class BlogPublicFeed
     }
 
     /**
+     * @return array{
+     *     categories:list<array{locale:string,slug:string,name:string}>,
+     *     tags:list<array{locale:string,slug:string,name:string}>
+     * }
+     */
+    public function taxonomiesForArticle(string $locale, string $slug): array
+    {
+        if ($this->config->publicPath($locale) === null) {
+            throw new BlogException(BlogException::INVALID_INPUT);
+        }
+        $query = new BlogPublicCardTaxonomyQuery($locale, [$slug]);
+        $cardSlug = $query->cardSlugs()[0] ?? throw new BlogException(
+            BlogException::INVALID_INPUT
+        );
+        $repository = $this->catalogRepository;
+        if (!$repository instanceof BlogPublicCardCategoryRepositoryInterface) {
+            return ['categories' => [], 'tags' => []];
+        }
+        [$categoriesBySlug, $tagsBySlug] = $this->taxonomyMaps(
+            $query->locale(),
+            [$cardSlug],
+            $repository
+        );
+
+        return [
+            'categories' => array_map(
+                static fn (BlogPublicCardCategory $category): array =>
+                    $category->toResourceData(),
+                $categoriesBySlug[$cardSlug] ?? []
+            ),
+            'tags' => array_map(
+                static fn (BlogPublicCardTag $tag): array =>
+                    $tag->toResourceData(),
+                $tagsBySlug[$cardSlug] ?? []
+            ),
+        ];
+    }
+
+    /**
      * @param callable(BlogPublicDiscoveryRepositoryInterface):list<PublishedPostCard>
      *     $load
      * @return list<array{
@@ -212,6 +254,7 @@ final class BlogPublicFeed
      *     published_at: string,
      *     updated_at: string,
      *     categories: list<array{locale:string,slug:string,name:string}>,
+     *     tags: list<array{locale:string,slug:string,name:string}>,
      *     thumbnail?: array{src:string,srcset:string,alt:string,width:int,height:int}
      * }>
      */
@@ -248,14 +291,10 @@ final class BlogPublicFeed
             static fn (PublishedPostCard $card): string => $card->slug(),
             $cards
         );
-        $categoriesBySlug = $categoryRepository === null || $cards === []
-            ? []
-            : $categoryRepository->categoriesForCards(
-                new BlogPublicCardCategoryQuery(
-                    $locale,
-                    $slugs
-                )
-            );
+        [$categoriesBySlug, $tagsBySlug] =
+            $categoryRepository === null || $cards === []
+                ? [[], []]
+                : $this->taxonomyMaps($locale, $slugs, $categoryRepository);
         $thumbnailsBySlug = [];
         if ($this->mediaRepository !== null && $cards !== []) {
             try {
@@ -273,9 +312,11 @@ final class BlogPublicFeed
             static function (PublishedPostCard $card) use (
                 $basePath,
                 $categoriesBySlug,
+                $tagsBySlug,
                 $thumbnailsBySlug
             ): array {
                 $categories = $categoriesBySlug[$card->slug()] ?? [];
+                $tags = $tagsBySlug[$card->slug()] ?? [];
                 $item = [
                     'locale' => $card->locale(),
                     'slug' => $card->slug(),
@@ -289,6 +330,11 @@ final class BlogPublicFeed
                             $category->toResourceData(),
                         $categories
                     ),
+                    'tags' => array_map(
+                        static fn (BlogPublicCardTag $tag): array =>
+                            $tag->toResourceData(),
+                        $tags
+                    ),
                 ];
                 $thumbnail = $thumbnailsBySlug[$card->slug()] ?? null;
                 if ($thumbnail instanceof BlogPublicCardThumbnail) {
@@ -299,6 +345,66 @@ final class BlogPublicFeed
             },
             $cards
         );
+    }
+
+    /**
+     * @param list<string> $slugs
+     * @return array{
+     *     array<string,list<BlogPublicCardCategory>>,
+     *     array<string,list<BlogPublicCardTag>>
+     * }
+     */
+    private function taxonomyMaps(
+        string $locale,
+        array $slugs,
+        BlogPublicCardCategoryRepositoryInterface $repository
+    ): array {
+        if ($repository instanceof BlogPublicCardTaxonomyRepositoryInterface) {
+            $batch = $repository->taxonomiesForCards(
+                new BlogPublicCardTaxonomyQuery($locale, $slugs)
+            );
+            $categories = $batch->categoriesBySlug();
+            $tags = $batch->tagsBySlug();
+            if (array_keys($categories) !== $slugs
+                || array_keys($tags) !== $slugs) {
+                throw new BlogException(BlogException::STORAGE_UNAVAILABLE);
+            }
+            foreach ($slugs as $slug) {
+                $seenCategories = [];
+                foreach ($categories[$slug] as $category) {
+                    if (
+                        $category->locale() !== $locale
+                        || isset($seenCategories[$category->slug()])
+                    ) {
+                        throw new BlogException(
+                            BlogException::STORAGE_UNAVAILABLE
+                        );
+                    }
+                    $seenCategories[$category->slug()] = true;
+                }
+                $seenTags = [];
+                foreach ($tags[$slug] as $tag) {
+                    if (
+                        $tag->locale() !== $locale
+                        || isset($seenTags[$tag->slug()])
+                    ) {
+                        throw new BlogException(
+                            BlogException::STORAGE_UNAVAILABLE
+                        );
+                    }
+                    $seenTags[$tag->slug()] = true;
+                }
+            }
+
+            return [$categories, $tags];
+        }
+
+        return [
+            $repository->categoriesForCards(
+                new BlogPublicCardCategoryQuery($locale, $slugs)
+            ),
+            array_fill_keys($slugs, []),
+        ];
     }
 
     private function requiredDiscoveryRepository(

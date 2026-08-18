@@ -32,8 +32,12 @@ final class BlogMigrationPostconditionVerifier implements
         private readonly bool $expectPrivateDraftPublicationExtension = false,
         private readonly bool $expectRobotsPreferencesExtension = false,
         private readonly bool $expectUrlHistoryExtension = false,
-        private readonly bool $expectCopyOperationExtension = false
+        private readonly bool $expectCopyOperationExtension = false,
+        private readonly int $expectTagExtensionStage = 0
     ) {
+        if ($expectTagExtensionStage < 0 || $expectTagExtensionStage > 5) {
+            throw new \InvalidArgumentException('Invalid Blog tag schema stage.');
+        }
     }
 
     public function contractVersion(): string
@@ -221,6 +225,12 @@ final class BlogMigrationPostconditionVerifier implements
             $expected[] = 'table:' . strtolower(
                 $scope->tableName('copy_operations')
             );
+        }
+        foreach ($this->tagTableSuffixes() as $suffix) {
+            $expected[] = 'table:' . strtolower($scope->tableName($suffix));
+        }
+        foreach ($this->tagIndexSuffixes() as $suffix) {
+            $expected[] = 'index:' . strtolower($scope->tableName($suffix));
         }
         sort($expected, SORT_STRING);
 
@@ -602,6 +612,13 @@ final class BlogMigrationPostconditionVerifier implements
         }
         if ($this->expectCopyOperationExtension) {
             $expected[strtolower($scope->tableName('copy_operations'))] = [
+                'BASE TABLE',
+                'INNODB',
+                'utf8mb4_unicode_ci',
+            ];
+        }
+        foreach ($this->tagTableSuffixes() as $suffix) {
+            $expected[strtolower($scope->tableName($suffix))] = [
                 'BASE TABLE',
                 'INNODB',
                 'utf8mb4_unicode_ci',
@@ -1092,6 +1109,41 @@ final class BlogMigrationPostconditionVerifier implements
             'ux_pc_pair',
             'ix_pc_category',
         ];
+    }
+
+    /** @return list<string> */
+    private function tagTableSuffixes(): array
+    {
+        return array_slice([
+            'tags',
+            'localization_tags',
+            'tag_assignment_heads',
+            'tag_assignment_workspaces',
+            'tag_assignment_workspace_items',
+        ], 0, $this->expectTagExtensionStage);
+    }
+
+    /** @return list<string> */
+    private function tagIndexSuffixes(): array
+    {
+        $indexes = [];
+        if ($this->expectTagExtensionStage >= 1) {
+            array_push(
+                $indexes,
+                'ux_bt_public',
+                'ux_bt_locale_slug',
+                'ux_bt_locale_hash',
+                'ix_bt_locale_name'
+            );
+        }
+        if ($this->expectTagExtensionStage >= 2) {
+            $indexes[] = 'ix_blt_tag';
+        }
+        if ($this->expectTagExtensionStage >= 5) {
+            $indexes[] = 'ix_btawi_tag';
+        }
+
+        return $indexes;
     }
 
     /** @return list<string> */

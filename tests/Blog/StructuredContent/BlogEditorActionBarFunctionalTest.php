@@ -46,6 +46,14 @@ final class BlogEditorActionBarFunctionalTest extends TestCase
             'thrownValidationCannotEscapeSubmit' => true,
             'noFetchSubmitKeepsSsrFallback' => true,
             'successBaselineClean' => true,
+            'successfulSaveKeepsDraftPublicationStatus' => true,
+            'publicationStatusHookToleratesMissingNodes' => true,
+            'successfulPublishUpdatesAllPublicationStatuses' => true,
+            'publicationAriaLabelUpdatesOnlyWhenPresent' => true,
+            'missingPublicationStatusesDoNotBlockPublish' => true,
+            'conflictedPublishKeepsDraftPublicationStatus' => true,
+            'networkFailureKeepsDraftPublicationStatus' => true,
+            'invalidPublishJsonKeepsDraftPublicationStatus' => true,
             'previewUsesSavedSnapshot' => true,
             'dirtyPreviewOpensBeforeSaveAndWaitsFor200' => true,
             'validPreviewRequiresMarker' => true,
@@ -65,11 +73,15 @@ final class BlogEditorActionBarFunctionalTest extends TestCase
             'keyboardNavigationSavesFirst' => true,
             'noFetchNavigationOffersCustomChoice' => true,
             'discardNavigationLeavesWithoutSaving' => true,
+            'discardNavigationAwaitsFacetAutosave' => true,
+            'failedFacetAutosaveBlocksNavigation' => true,
             'cleanLogoutKeepsNativePost' => true,
             'dirtyLogoutCanSaveThenPostOnce' => true,
             'failedLogoutStaysInEditor' => true,
             'dirtyLogoutCanStay' => true,
             'dirtyLogoutCanDiscardThenPostOnce' => true,
+            'discardLogoutAwaitsFacetAutosave' => true,
+            'failedFacetAutosaveBlocksLogout' => true,
             'unrelatedPostFormsStayNative' => true,
             'excludedLinksStayNative' => true,
         ], $result);
@@ -133,7 +145,15 @@ final class BlogEditorActionBarFunctionalTest extends TestCase
             $asset
         );
         self::assertStringContainsString('Guardar y salir', $asset);
-        self::assertStringContainsString('Salir sin guardar', $asset);
+        self::assertStringContainsString(
+            'Salir sin guardar el contenido',
+            $asset
+        );
+        self::assertStringContainsString(
+            'Las categor\\u00edas y etiquetas confirmadas se guardan aparte '
+                . 'en el borrador privado.',
+            $asset
+        );
         self::assertStringContainsString('Seguir editando', $asset);
     }
 
@@ -161,6 +181,52 @@ final class BlogEditorActionBarFunctionalTest extends TestCase
             '/\.blogEditor__immersivePreviewDevices button,\s*'
                 . '\.webadmin \.blogEditor__immersivePreviewActions button\s*'
                 . '\{[^}]*min-height:\s*2\.75rem;/s',
+            $stylesheet
+        );
+    }
+
+    public function testPersistentPublicationStatusUsesAccessibleStateColorsAndResponsiveAlignment(): void
+    {
+        $stylesheet = file_get_contents(
+            dirname(__DIR__, 3)
+                . '/modules/blog/published/assets/blog-admin.css'
+        );
+
+        self::assertIsString($stylesheet);
+        self::assertMatchesRegularExpression(
+            '/\.webadmin\s+\.blogEditor__publicationStatus\s*\{[^}]*'
+                . 'margin-inline-start:\s*auto\s*;/s',
+            $stylesheet
+        );
+        self::assertMatchesRegularExpression(
+            '/\.webadmin\s+\.blogEditor__publicationStatus::before\s*\{'
+                . '(?=[^}]*content:\s*(["\'])\1\s*;)'
+                . '(?=[^}]*border-radius:\s*50%\s*;)'
+                . '(?=[^}]*background(?:-color)?:\s*currentColor\s*;)'
+                . '[^}]*\}/s',
+            $stylesheet
+        );
+        self::assertMatchesRegularExpression(
+            '/\.webadmin\s+\.blogEditor__publicationStatus'
+                . '\[data-blog-editor-publication-status=(["\'])draft\1\]'
+                . '\s*\{[^}]*color:\s*'
+                . 'var\(--ls-blog-editor-basic-text-orange\)\s*;/s',
+            $stylesheet
+        );
+        self::assertMatchesRegularExpression(
+            '/\.webadmin\s+\.blogEditor__publicationStatus'
+                . '\[data-blog-editor-publication-status=(["\'])published\1\]'
+                . '\s*\{[^}]*color:\s*'
+                . 'var\(--ls-webadmin-success\)\s*;/s',
+            $stylesheet
+        );
+        self::assertMatchesRegularExpression(
+            '/@media\s*\(max-width:\s*36rem\)\s*\{'
+                . '(?:(?!@media)[\s\S])*?'
+                . '\.webadmin(?:\s+\.blogEditor__actionBar)?'
+                . '\s+\.blogEditor__publicationStatus\s*\{'
+                . '(?=[^}]*grid-column:\s*1\s*\/\s*-1\s*;)'
+                . '(?=[^}]*justify-self:\s*end\s*;)[^}]*\}/s',
             $stylesheet
         );
     }

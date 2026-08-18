@@ -35,16 +35,26 @@ WebAdmin y Blog contra un servidor MySQL/MariaDB real. El arnés WebAdmin:
 El arnés Blog usa la misma conexión aislada y, además:
 
 1. genera prefijos efímeros aleatorios y validados para WebAdmin y Blog;
-2. aplica WebAdmin `0001` y Blog `0001` + `0002`, verificando que la migración
-   de capacidades Blog queda registrada contra el scope WebAdmin;
-3. comprueba postcondiciones, capacidades, idempotencia y gate HTTP reales;
+2. aplica el catálogo requerido de WebAdmin y Blog `0001`–`0025`, verificando
+   que `0002`, `0004` y `0025` registran sus capacidades Blog contra el scope
+   WebAdmin;
+3. comprueba postcondiciones, capacidades, idempotencia y gates HTTP reales,
+   incluidas las tablas de etiquetas, su relación live, heads y workspaces;
 4. autentica un actor WebAdmin y recorre alta, idioma adicional, guardado,
-   publicación, resolución pública, sitemap y retirada;
+   etiquetas privadas, publicación atómica, resolución pública, sitemap y
+   retirada;
 5. enfrenta dos conexiones a una versión editorial obsoleta y exige un
    conflicto optimista sin pérdida de datos;
 6. verifica que cada mutación genera auditoría WebAdmin mínima dentro de la
    misma transacción y que un fallo de auditoría revierte el alta completa;
-7. elimina solo el registro y las tablas pertenecientes a sus dos prefijos.
+7. enfrenta dos procesos y conexiones al alta de la misma identidad Unicode de
+   etiqueta y exige un único término canónico; repite la carrera con dos nombres
+   distintos que colisionan en slug y conserva ambas identidades con resolución
+   determinista, sin error de almacenamiento;
+8. vuelve a verificar la postcondición de esquema y las versiones de workspace
+   resultantes después de las carreras;
+9. elimina solo el registro, las tablas y los marcadores efímeros pertenecientes
+   a sus dos prefijos y workers.
 
 La suite normal no abre ninguna conexión y muestra esta prueba como omitida.
 Solo se habilita cuando
@@ -69,6 +79,9 @@ Solo se habilita cuando
   contratos. El arnés Blog usa prefijos `lsit_web_<token>_` y
   `lsit_blog_<token>_` nuevos en cada ejecución; no elimina otros objetos ni
   usa comodines.
+- Los workers de la carrera de etiquetas validan tanto el nombre de la base y
+  el prefijo como cada ruta de barrera temporal; no aceptan paths libres ni
+  pueden apuntar a un stack consumidor.
 - Si la comprobación inicial detecta contenido, la prueba falla sin borrar
   nada.
 

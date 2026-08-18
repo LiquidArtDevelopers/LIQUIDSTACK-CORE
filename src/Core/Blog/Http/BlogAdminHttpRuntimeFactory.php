@@ -31,6 +31,8 @@ use App\Core\Blog\StructuredContent\Media\PdoBlogEditorImageResolver;
 use App\Core\Blog\StructuredContent\Media\WebAdminMediaCatalogAdapter;
 use App\Core\Blog\StructuredContent\Persistence\BlogStructuredPlainDraftWriteGuard;
 use App\Core\Blog\StructuredContent\Persistence\PdoBlogStructuredContentRepository;
+use App\Core\Blog\Tags\BlogTagService;
+use App\Core\Blog\Tags\Persistence\PdoBlogTagRepository;
 use App\Core\Database\PdoConnectionFactoryInterface;
 use App\Core\Database\ConfiguredPdoConnectionFactoryResolver;
 use App\Core\Modules\Blog\BlogHttpSchemaGate;
@@ -42,6 +44,7 @@ use App\Core\Modules\Blog\BlogLayoutEditorSchemaGate;
 use App\Core\Modules\Blog\BlogPrivateDraftPublicationSchemaGate;
 use App\Core\Modules\Blog\BlogRobotsPreferencesSchemaGate;
 use App\Core\Modules\Blog\BlogUrlHistorySchemaGate;
+use App\Core\Modules\Blog\BlogTagSchemaGate;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationFeatureGate;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
@@ -98,6 +101,7 @@ final class BlogAdminHttpRuntimeFactory implements
         $editorPreferencesSchemaGate;
     private readonly BlogRobotsPreferencesSchemaGate
         $robotsPreferencesSchemaGate;
+    private readonly BlogTagSchemaGate $tagSchemaGate;
 
     /**
      * @param null|callable(array<string, mixed>, string): PdoConnectionFactoryInterface $connectionFactoryResolver
@@ -120,7 +124,8 @@ final class BlogAdminHttpRuntimeFactory implements
         ?BlogPostTombstoneSchemaGate $postTombstoneSchemaGate = null,
         ?MigrationFeatureGate $migrationFeatureGate = null,
         ?BlogEditorPreferencesSchemaGate $editorPreferencesSchemaGate = null,
-        ?BlogRobotsPreferencesSchemaGate $robotsPreferencesSchemaGate = null
+        ?BlogRobotsPreferencesSchemaGate $robotsPreferencesSchemaGate = null,
+        ?BlogTagSchemaGate $tagSchemaGate = null
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
             ? static fn (
@@ -164,6 +169,7 @@ final class BlogAdminHttpRuntimeFactory implements
             ?? new BlogEditorPreferencesSchemaGate();
         $this->robotsPreferencesSchemaGate = $robotsPreferencesSchemaGate
             ?? new BlogRobotsPreferencesSchemaGate();
+        $this->tagSchemaGate = $tagSchemaGate ?? new BlogTagSchemaGate();
     }
 
     public function create(
@@ -340,6 +346,42 @@ final class BlogAdminHttpRuntimeFactory implements
                 ->isReady($pdo, $registry, $scopes);
             $categoryAdministrationReady = $this->categorySchemaGate
                 ->isAdministrationReady($pdo, $registry, $scopes);
+            $tagsPublicReady = $this->migrationFeatureGate->isReady(
+                $pdo,
+                $registry,
+                $scopes,
+                BlogMigrationRequirements::tagsPublic()
+            );
+            if (
+                $tagsPublicReady
+                && !$this->tagSchemaGate->isPublicReady(
+                    $pdo,
+                    $registry,
+                    $scopes
+                )
+            ) {
+                throw new BlogAdminHttpRuntimeException(
+                    'blog.tags_schema_not_ready'
+                );
+            }
+            $tagsAdministrationReady = $this->migrationFeatureGate->isReady(
+                $pdo,
+                $registry,
+                $scopes,
+                BlogMigrationRequirements::tagsAdministration()
+            );
+            if (
+                $tagsAdministrationReady
+                && !$this->tagSchemaGate->isAdministrationReady(
+                    $pdo,
+                    $registry,
+                    $scopes
+                )
+            ) {
+                throw new BlogAdminHttpRuntimeException(
+                    'blog.tags_administration_not_ready'
+                );
+            }
             $urlHistory = (new BlogUrlHistorySchemaGate())->isReady(
                 $pdo,
                 $registry,
@@ -369,6 +411,9 @@ final class BlogAdminHttpRuntimeFactory implements
                 $tables,
                 $this->uuidGenerator
             );
+            $tagRepository = $tagsPublicReady
+                ? new PdoBlogTagRepository($pdo, $blogScope)
+                : null;
             $workflowRepository = $privateDraftPublicationReady
                 ? new PdoBlogEditorialWorkspaceRepository(
                     $pdo,
@@ -422,6 +467,9 @@ final class BlogAdminHttpRuntimeFactory implements
                 urlHistory: $urlHistory,
                 layoutProjector: $layoutEditorReady
                     ? new BlogDocumentV2Projector($this->uuidGenerator)
+                    : null,
+                tagRepository: $tagsAdministrationReady
+                    ? $tagRepository
                     : null
             );
             $structuredEditor = new BlogStructuredEditorService(
@@ -434,7 +482,8 @@ final class BlogAdminHttpRuntimeFactory implements
                 layoutReady: $layoutEditorReady,
                 workflowRepository: $workflowRepository,
                 sitemapPublicationCoordinator: $sitemapCoordinator,
-                urlHistory: $urlHistory
+                urlHistory: $urlHistory,
+                tagRepository: $tagRepository
             );
             $editorMediaCatalog = new WebAdminMediaCatalogAdapter(
                 new PdoMediaRepository(
@@ -458,6 +507,15 @@ final class BlogAdminHttpRuntimeFactory implements
                     )
                 )
                 : null;
+            $tagService = $tagsAdministrationReady
+                && $tagRepository !== null
+                    ? new BlogTagService(
+                        $tagRepository,
+                        $this->uuidGenerator,
+                        $this->clock,
+                        $audit
+                    )
+                    : null;
 
             $analyticsReport = $this->migrationFeatureGate->isReady(
                 $pdo,
@@ -503,7 +561,8 @@ final class BlogAdminHttpRuntimeFactory implements
                 $layoutEditorReady,
                 $editorPreferences,
                 $privateDraftPublicationReady,
-                $profileRepository
+                $profileRepository,
+                $tagService
             );
         } catch (BlogAdminHttpRuntimeException $exception) {
             throw $exception;

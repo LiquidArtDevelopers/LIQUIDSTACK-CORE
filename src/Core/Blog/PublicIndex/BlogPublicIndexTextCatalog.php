@@ -207,7 +207,7 @@ final class BlogPublicIndexTextCatalog
             'blog_index_results_heading' => 'Articles',
             'blog_index_card_cta' => 'Read more',
             'blog_index_search_label' => 'Search articles',
-            'blog_index_search_placeholder' => 'Title or keywords',
+            'blog_index_search_placeholder' => 'Title, content or tag',
             'blog_index_search_minimum' =>
                 'Enter at least 2 characters.',
             'blog_index_order_label' => 'Sort articles',

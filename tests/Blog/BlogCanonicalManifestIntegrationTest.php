@@ -10,6 +10,7 @@ use App\Core\Modules\Blog\BlogEditorPreferencesWebAdminNavigationProvider;
 use App\Core\Modules\Blog\BlogCategoryRouteProvider;
 use App\Core\Modules\Blog\BlogPublicRouteProvider;
 use App\Core\Modules\Blog\BlogRouteProvider;
+use App\Core\Modules\Blog\BlogTagRouteProvider;
 use App\Core\Modules\Blog\BlogWebAdminNavigationProvider;
 use App\Core\Modules\Migrations\MigrationCatalog;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
@@ -100,6 +101,10 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
             [
                 'module' => 'blog',
                 'class' => BlogCategoryRouteProvider::class,
+            ],
+            [
+                'module' => 'blog',
+                'class' => BlogTagRouteProvider::class,
             ],
             [
                 'module' => 'blog',
@@ -336,6 +341,36 @@ final class BlogCanonicalManifestIntegrationTest extends TestCase
                 'module' => 'blog',
                 'provider' => BlogMigrationProvider::class,
                 'migration' => '0019_blog_copy_operation_idempotency',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0020_blog_tags',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0021_blog_localization_tags',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0022_blog_tag_assignment_heads',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0023_blog_tag_assignment_workspaces',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0024_blog_tag_assignment_workspace_items',
+            ],
+            [
+                'module' => 'blog',
+                'provider' => BlogMigrationProvider::class,
+                'migration' => '0025_blog_tag_capabilities',
             ],
         ], array_map(
             static fn (array $entry): array => [

@@ -40,6 +40,8 @@ source = source.slice(0, markerIndex)
     validV2DraftDocument,
     v2ReadSaveResponse,
     v2SaveDraft,
+    v2SetPublicationStatus,
+    v2PublishSaved,
     v2BindSave,
     v2PrepareSavedPreview,
     v2LoadPreview,
@@ -437,6 +439,87 @@ function savedPayload(document, lockVersion) {
   };
 }
 
+function publishedPayload(
+  lockVersion = 4,
+  categoryWorkspaceVersion = 0,
+  tagWorkspaceVersion = 0,
+) {
+  return {
+    ok: true,
+    status: 'published',
+    lock_version: lockVersion,
+    category_workspace_version: categoryWorkspaceVersion,
+    tag_workspace_version: tagWorkspaceVersion,
+  };
+}
+
+function invalidJsonResponse() {
+  const result = response(null);
+  result.json = () => Promise.reject(new SyntaxError('invalid-json'));
+  return result;
+}
+
+function draftPublicationStatuses() {
+  const labelled = new FakeElement();
+  labelled.textContent = 'Borrador';
+  labelled.dataset.blogEditorPublicationStatus = 'draft';
+  labelled.setAttribute('aria-label', 'Estado del artículo: Borrador');
+
+  const unlabelled = new FakeElement();
+  unlabelled.textContent = 'Borrador';
+  unlabelled.dataset.blogEditorPublicationStatus = 'draft';
+
+  return [labelled, unlabelled];
+}
+
+function assertDraftPublicationStatuses(statuses) {
+  statuses.forEach((status) => {
+    assert.equal(status.textContent, 'Borrador');
+    assert.equal(status.dataset.blogEditorPublicationStatus, 'draft');
+  });
+  assert.equal(
+    statuses[0].getAttribute('aria-label'),
+    'Estado del artículo: Borrador',
+  );
+  assert.equal(statuses[1].getAttribute('aria-label'), null);
+}
+
+function publishFormFor(context) {
+  const submit = new FakeButton();
+  const form = new FakeForm([
+    new FakeInput(
+      'csrf',
+      context.form.elements.namedItem('csrf').value,
+    ),
+    new FakeInput('post', context.form.elements.namedItem('post').value),
+    new FakeInput('locale', context.form.elements.namedItem('locale').value),
+    new FakeInput(
+      'lock_version',
+      context.form.elements.namedItem('lock_version').value,
+    ),
+    new FakeInput('category_workspace_version', '2'),
+    new FakeInput('tag_workspace_version', '0'),
+    submit,
+  ]);
+  form.id = 'blog-editor-publish-form';
+  form.action = 'http://localhost/admin/blog/editor/publish';
+  form.shell = context.shell;
+  submit.setAttribute('form', form.id);
+  forms.push(form);
+  return form;
+}
+
+async function failedPublish(fetchImplementation) {
+  const context = contextFor(documentValue('Publish failure'));
+  const statuses = draftPublicationStatuses();
+  context.publicationStatuses = statuses;
+  const publishForm = publishFormFor(context);
+  window.fetch = fetchImplementation;
+
+  assert.equal(await hooks.v2PublishSaved(context, publishForm), false);
+  assertDraftPublicationStatuses(statuses);
+}
+
 function contextFor(document) {
   const saveButton = new FakeButton();
   const layoutRadio = new FakeInput(
@@ -692,6 +775,7 @@ assert.equal(fallbackSubmit.allowNavigation, true);
 
 fetchCount = 0;
 const success = contextFor(documentValue('Initial'));
+success.publicationStatuses = draftPublicationStatuses();
 success.documentValue.blocks[0].children[0].content = richText('Saved');
 hooks.sync(success);
 let successRequestBody = '';
@@ -715,8 +799,49 @@ assert.equal(
   success.initialFingerprint,
 );
 assert.equal(success.form.elements.namedItem('lock_version').value, '4');
+assertDraftPublicationStatuses(success.publicationStatuses);
 assert.equal(await hooks.v2PrepareSavedPreview(success), true);
 assert.equal(fetchCount, 1, 'a clean preview must not save a second time');
+
+assert.doesNotThrow(() => {
+  hooks.v2SetPublicationStatus({}, 'published');
+});
+
+const publishedContext = contextFor(documentValue('Publish success'));
+publishedContext.publicationStatuses = draftPublicationStatuses();
+const publishForm = publishFormFor(publishedContext);
+window.fetch = () => Promise.resolve(response(publishedPayload()));
+assert.equal(
+  await hooks.v2PublishSaved(publishedContext, publishForm),
+  true,
+);
+publishedContext.publicationStatuses.forEach((status) => {
+  assert.equal(status.textContent, 'Publicado');
+  assert.equal(status.dataset.blogEditorPublicationStatus, 'published');
+});
+assert.equal(
+  publishedContext.publicationStatuses[0].getAttribute('aria-label'),
+  'Estado del artículo: Publicado',
+);
+assert.equal(
+  publishedContext.publicationStatuses[1].getAttribute('aria-label'),
+  null,
+);
+
+const statuslessContext = contextFor(documentValue('Publish without status'));
+const statuslessPublishForm = publishFormFor(statuslessContext);
+window.fetch = () => Promise.resolve(response(publishedPayload()));
+assert.equal(
+  await hooks.v2PublishSaved(statuslessContext, statuslessPublishForm),
+  true,
+);
+
+await failedPublish(() => Promise.resolve(response({
+  ok: false,
+  error: 'lock_conflict',
+}, 409)));
+await failedPublish(() => Promise.reject(new Error('offline')));
+await failedPublish(() => Promise.resolve(invalidJsonResponse()));
 
 const previewState = {
   loaded: false,
@@ -1035,6 +1160,73 @@ assert.equal(discardEvent.defaultPrevented, true);
 await flush();
 assert.deepEqual(navigations, [revisionUrl]);
 
+navigations.length = 0;
+const pendingFacetNavigation = contextFor(documentValue('Initial'));
+edit(pendingFacetNavigation, 'Discard content, keep facet autosave');
+let resolveNavigationFacet;
+let navigationFacetPersisted = false;
+const navigationFacetRequest = new Promise((resolve) => {
+  resolveNavigationFacet = () => {
+    navigationFacetPersisted = true;
+    resolve(true);
+  };
+});
+pendingFacetNavigation.editorialFacets = [{
+  dirty: () => true,
+  pending: () => true,
+  discard: () => navigationFacetRequest,
+}];
+let discardedDocumentFetches = 0;
+window.fetch = () => {
+  discardedDocumentFetches += 1;
+  throw new Error('discard must not save the document');
+};
+__blogNavigationChoice = 'discard';
+hooks.v2BindInternalNavigation(pendingFacetNavigation);
+const pendingFacetNavigationEvent = eventFor(new FakeAnchor(revisionUrl));
+pendingFacetNavigation.shell.dispatch('click', pendingFacetNavigationEvent);
+assert.equal(pendingFacetNavigationEvent.defaultPrevented, true);
+await flush();
+assert.deepEqual(navigations, []);
+assert.equal(navigationFacetPersisted, false);
+assert.equal(discardedDocumentFetches, 0);
+resolveNavigationFacet();
+await flush();
+assert.equal(navigationFacetPersisted, true);
+assert.deepEqual(navigations, [revisionUrl]);
+assert.equal(
+  hooks.v2HasUnsavedChanges(pendingFacetNavigation),
+  true,
+  'discard navigation must not rewrite the document baseline',
+);
+
+navigations.length = 0;
+const failedFacetNavigation = contextFor(documentValue('Failed facet nav'));
+edit(failedFacetNavigation, 'Keep content after failed facet autosave');
+let rejectNavigationFacet;
+const failedNavigationFacetRequest = new Promise((resolve) => {
+  rejectNavigationFacet = () => resolve(false);
+});
+failedFacetNavigation.editorialFacets = [{
+  dirty: () => true,
+  pending: () => true,
+  discard: () => failedNavigationFacetRequest,
+}];
+__blogNavigationChoice = 'discard';
+hooks.v2BindInternalNavigation(failedFacetNavigation);
+const failedFacetNavigationEvent = eventFor(new FakeAnchor(revisionUrl));
+failedFacetNavigation.shell.dispatch('click', failedFacetNavigationEvent);
+await flush();
+assert.deepEqual(navigations, []);
+rejectNavigationFacet();
+await flush();
+assert.deepEqual(navigations, []);
+assert.equal(failedFacetNavigation.navigationPending, false);
+assert.match(
+  __blogActionAnnouncements.at(-1).message,
+  /guardado pendiente de categorías o etiquetas/u,
+);
+
 const cleanLogout = contextFor(documentValue('Clean logout'));
 const cleanLogoutForm = logoutFormFor(cleanLogout);
 __blogNavigationChoice = 'save';
@@ -1104,6 +1296,67 @@ assert.equal(
   'logout-csrf',
 );
 
+const pendingFacetLogout = contextFor(documentValue('Pending facet logout'));
+edit(pendingFacetLogout, 'Discard content before logout');
+const pendingFacetLogoutForm = logoutFormFor(pendingFacetLogout);
+let resolveLogoutFacet;
+let logoutFacetPersisted = false;
+const logoutFacetRequest = new Promise((resolve) => {
+  resolveLogoutFacet = () => {
+    logoutFacetPersisted = true;
+    resolve(true);
+  };
+});
+pendingFacetLogout.editorialFacets = [{
+  dirty: () => true,
+  pending: () => true,
+  discard: () => logoutFacetRequest,
+}];
+let discardedLogoutDocumentFetches = 0;
+window.fetch = () => {
+  discardedLogoutDocumentFetches += 1;
+  throw new Error('discard logout must not save the document');
+};
+__blogNavigationChoice = 'discard';
+hooks.v2BindInternalNavigation(pendingFacetLogout);
+const pendingFacetLogoutEvent = pendingFacetLogoutForm.submit.click();
+assert.equal(pendingFacetLogoutEvent.defaultPrevented, true);
+await flush();
+assert.equal(pendingFacetLogoutForm.form.nativeSubmitCount, 0);
+assert.equal(logoutFacetPersisted, false);
+assert.equal(discardedLogoutDocumentFetches, 0);
+resolveLogoutFacet();
+await flush();
+assert.equal(logoutFacetPersisted, true);
+assert.equal(pendingFacetLogoutForm.form.nativeSubmitCount, 1);
+assert.equal(discardedLogoutDocumentFetches, 0);
+
+const failedFacetLogout = contextFor(documentValue('Failed facet logout'));
+edit(failedFacetLogout, 'Keep content after failed logout autosave');
+const failedFacetLogoutForm = logoutFormFor(failedFacetLogout);
+let rejectLogoutFacet;
+const failedLogoutFacetRequest = new Promise((resolve) => {
+  rejectLogoutFacet = () => resolve(false);
+});
+failedFacetLogout.editorialFacets = [{
+  dirty: () => true,
+  pending: () => true,
+  discard: () => failedLogoutFacetRequest,
+}];
+__blogNavigationChoice = 'discard';
+hooks.v2BindInternalNavigation(failedFacetLogout);
+const failedFacetLogoutEvent = failedFacetLogoutForm.submit.click();
+await flush();
+assert.equal(failedFacetLogoutForm.form.nativeSubmitCount, 0);
+rejectLogoutFacet();
+await flush();
+assert.equal(failedFacetLogoutForm.form.nativeSubmitCount, 0);
+assert.equal(failedFacetLogout.navigationPending, false);
+assert.match(
+  __blogActionAnnouncements.at(-1).message,
+  /sesión sigue abierta para reintentarlo/u,
+);
+
 const unrelatedPost = contextFor(documentValue('Unrelated POST'));
 edit(unrelatedPost, 'Unrelated POST changed');
 const unrelatedSubmit = new FakeButton();
@@ -1158,6 +1411,14 @@ process.stdout.write(JSON.stringify({
   thrownValidationCannotEscapeSubmit: true,
   noFetchSubmitKeepsSsrFallback: true,
   successBaselineClean: true,
+  successfulSaveKeepsDraftPublicationStatus: true,
+  publicationStatusHookToleratesMissingNodes: true,
+  successfulPublishUpdatesAllPublicationStatuses: true,
+  publicationAriaLabelUpdatesOnlyWhenPresent: true,
+  missingPublicationStatusesDoNotBlockPublish: true,
+  conflictedPublishKeepsDraftPublicationStatus: true,
+  networkFailureKeepsDraftPublicationStatus: true,
+  invalidPublishJsonKeepsDraftPublicationStatus: true,
   previewUsesSavedSnapshot: true,
   dirtyPreviewOpensBeforeSaveAndWaitsFor200: true,
   validPreviewRequiresMarker: true,
@@ -1177,11 +1438,15 @@ process.stdout.write(JSON.stringify({
   keyboardNavigationSavesFirst: true,
   noFetchNavigationOffersCustomChoice: true,
   discardNavigationLeavesWithoutSaving: true,
+  discardNavigationAwaitsFacetAutosave: true,
+  failedFacetAutosaveBlocksNavigation: true,
   cleanLogoutKeepsNativePost: true,
   dirtyLogoutCanSaveThenPostOnce: true,
   failedLogoutStaysInEditor: true,
   dirtyLogoutCanStay: true,
   dirtyLogoutCanDiscardThenPostOnce: true,
+  discardLogoutAwaitsFacetAutosave: true,
+  failedFacetAutosaveBlocksLogout: true,
   unrelatedPostFormsStayNative: true,
   excludedLinksStayNative: true,
 }));

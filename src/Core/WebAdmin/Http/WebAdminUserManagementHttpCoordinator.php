@@ -479,6 +479,10 @@ final class WebAdminUserManagementHttpCoordinator
                 'Consultar categorías del Blog',
             'blog.capabilities.categories_edit' =>
                 'Crear y editar categorías del Blog',
+            'blog.capabilities.tags_view' =>
+                'Consultar etiquetas del Blog',
+            'blog.capabilities.tags_edit' =>
+                'Crear y asignar etiquetas del Blog',
             default => $capability->code(),
         };
     }

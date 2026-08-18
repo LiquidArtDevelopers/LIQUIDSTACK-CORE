@@ -944,6 +944,24 @@ final class ModuleDoctor
             ),
         };
 
+        $tagStatus = is_string($payload['tags']['status'] ?? null)
+            ? $payload['tags']['status'] : 'not_checked';
+        $checks[] = match ($tagStatus) {
+            'ready' => DiagnosticCheck::ok(
+                'blog.tags',
+                'Etiquetas Blog preparadas para lectura y administracion.'
+            ),
+            'pending', 'public_ready', 'not_checked' =>
+                DiagnosticCheck::warning(
+                    'blog.tags',
+                    'La ampliacion opcional de etiquetas Blog sigue pendiente o no comprobada; el Blog base permanece disponible.'
+                ),
+            default => DiagnosticCheck::error(
+                'blog.tags',
+                'Las migraciones de etiquetas constan aplicadas, pero su esquema o capacidades presentan deriva.'
+            ),
+        };
+
         $cacheEnabled = ($payload['sitemap_cache']['enabled'] ?? false)
             === true;
         $cacheReady = ($payload['sitemap_cache']['ready'] ?? false) === true;

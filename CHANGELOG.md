@@ -4,6 +4,31 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Cambiado
+- Blog incorpora etiquetas localizadas por variante, independientes de las
+  categorías post-wide. El editor admite de cero a treinta nombres mediante un
+  campo CSV funcional sin JavaScript y una mejora progresiva de pastillas con
+  coma, Intro, pegado, IME, guardado single-flight y CAS propio; los cambios de
+  categorías y etiquetas que llegan durante una petición se reencolan sin
+  pérdida y `Publicar` espera y promociona atómicamente documento, categorías y
+  etiquetas. Las migraciones aditivas `0020`–`0025` separan vocabulario,
+  asignación live, heads, workspace privado y capacidades `blog.tags.view` /
+  `blog.tags.edit`; mientras estén pendientes el Blog anterior sigue operativo,
+  y una frontera aplicada pero corrupta falla cerrada en runtime y doctor.
+  Nombres y respuestas se canonizan en NFC mediante un polyfill portable,
+  rechazan controles invisibles peligrosos y conservan ZWJ para emoji.
+- La búsqueda pública `q` encuentra también el nombre o slug de etiquetas live
+  sin añadir parámetros, filtros, archivos ni URLs nuevas. Cards y artículo
+  reciben una proyección tipada sin IDs y en una consulta batch, pero las APIs
+  legacy conservan su shape; el detalle presenta categorías y etiquetas como
+  grupos informativos separados y no interactivos. Duplicar una variante copia
+  las etiquetas efectivas del mismo locale, añadir un locale comienza vacío y
+  borrador, papelera y retirada nunca filtran un workspace privado al público.
+- El prefijo de tablas Blog queda limitado a 29 bytes para que
+  `category_assignment_workspace_items` respete el máximo de 64 bytes de
+  MySQL/MariaDB. Los proyectos configurados con versiones hasta v1.23.0 que
+  adoptaron prefijos de 30–46 bytes necesitan una migración explícita del
+  namespace antes de actualizar; CORE falla temprano y no trunca ni renombra
+  tablas.
 - WebAdmin incorpora el cierre explícito `liquidstack:webadmin:onboard`: valida
   la configuración local de correo y las migraciones antes de crear las dos
   identidades protegidas, entrega
@@ -12,6 +37,18 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   es idempotente, no se ejecuta como efecto lateral de Composer, no publica
   identidades privadas en CORE y mantiene el reenvío de enlaces caducados o
   fallidos como una operación separada y confirmada.
+- `art11` expone cada cifra animada y su sufijo como dos claves `data-lang`
+  agrupadas solo en desarrollo, de modo que el editor inline permite modificar
+  conjuntamente `target.value` y `suffix.text`. El contador anima únicamente
+  el nodo numérico, relee el objetivo vigente, refleja los guardados sin
+  destruir el sufijo y limpia tweens, `ScrollTrigger` y observadores al
+  reinicializarse o durante HMR.
+- El editor visual de Blog muestra al final de su barra inferior el estado
+  oficial `Borrador` o `Publicado`, con texto, indicador y color accesibles. El
+  estado se deriva de la variante persistida, permanece `Publicado` al guardar
+  un workspace privado y solo cambia en cliente después de validar una
+  publicación asíncrona correcta; el inspector se sincroniza en la misma
+  operación.
 - `moduleBlogGrid02` omite la limpieza GSAP cuando la rejilla no contiene
   tarjetas. Los estados vacíos, los reemplazos reactivos, reduced motion y el
   cleanup/HMR dejan de invocar `gsap.set([])` y ya no generan el aviso

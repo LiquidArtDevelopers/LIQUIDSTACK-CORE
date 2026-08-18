@@ -32,6 +32,9 @@ use App\Core\Modules\Blog\BlogHttpSchemaGate;
 use App\Core\Modules\Blog\BlogInitialSchemaContract;
 use App\Core\Modules\Blog\BlogStructuredContentMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogStructuredContentSchemaGate;
+use App\Core\Modules\Blog\BlogTagCapabilitySeedPostcondition;
+use App\Core\Modules\Blog\BlogTagSchemaGate;
+use App\Core\Modules\Blog\BlogTagSchemaMigrationPostconditionVerifier;
 use App\Core\Modules\Migrations\MigrationCatalog;
 use App\Core\Modules\Migrations\MigrationApplyOptions;
 use App\Core\Modules\Migrations\MigrationDatabasePlanner;
@@ -120,6 +123,14 @@ final class BlogMySqlIntegrationTest extends TestCase
         '99999999-9999-4999-8999-999999999999';
     private const CONCURRENT_LOCALE_OPERATION_PUBLIC_ID =
         '12121212-1212-4212-8212-121212121212';
+    private const TAG_RACE_POST_A =
+        'abababab-abab-4bab-8bab-abababababab';
+    private const TAG_RACE_POST_B =
+        'cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd';
+    private const TAG_RACE_LOCALIZATION_A =
+        '10101010-1010-4010-8010-101010101010';
+    private const TAG_RACE_LOCALIZATION_B =
+        '20202020-2020-4020-8020-202020202020';
 
     public function testRealMySqlBlogLifecycle(): void
     {
@@ -235,6 +246,12 @@ final class BlogMySqlIntegrationTest extends TestCase
                 'blog:0017_blog_dummy_category',
                 'blog:0018_blog_dummy_category_normalization',
                 'blog:0019_blog_copy_operation_idempotency',
+                'blog:0020_blog_tags',
+                'blog:0021_blog_localization_tags',
+                'blog:0022_blog_tag_assignment_heads',
+                'blog:0023_blog_tag_assignment_workspaces',
+                'blog:0024_blog_tag_assignment_workspace_items',
+                'blog:0025_blog_tag_capabilities',
                 'webadmin:0001_webadmin_identity_and_access',
                 'webadmin:0002_webadmin_media_library',
                 'webadmin:0003_webadmin_media_avif_source',
@@ -261,9 +278,25 @@ final class BlogMySqlIntegrationTest extends TestCase
                     $webAdminScope
                 )
             );
-            self::assertTrue(
+            self::assertFalse(
                 (new BlogCopyOperationMigrationPostconditionVerifier())
+                    ->verify($connection, $blogScope),
+                'La frontera exacta 0019 debe quedar supersedida por tags.'
+            );
+            self::assertTrue(
+                (new BlogTagSchemaMigrationPostconditionVerifier(5))
                     ->verify($connection, $blogScope)
+            );
+            self::assertTrue(
+                (new BlogTagCapabilitySeedPostcondition())
+                    ->verify($connection, $webAdminScope)
+            );
+            self::assertTrue(
+                (new BlogTagSchemaGate())->isAdministrationReady(
+                    $connection,
+                    $registry,
+                    $scopes
+                )
             );
             self::assertTrue(
                 (new BlogCapabilitySeedPostcondition())->verify(
@@ -646,6 +679,12 @@ final class BlogMySqlIntegrationTest extends TestCase
                 $winner,
                 $clock->now()
             );
+            $this->seedTagRaceVariants($connection, $blogScope);
+            $this->assertConcurrentTagIdentityAgainstRealMySql(
+                $connection,
+                $configuration,
+                $blogScope
+            );
             self::assertTrue(
                 (new WebAdminMediaMigrationPostconditionVerifier(
                     acceptAvifSource: true
@@ -655,7 +694,7 @@ final class BlogMySqlIntegrationTest extends TestCase
                 )
             );
             self::assertTrue(
-                (new BlogCopyOperationMigrationPostconditionVerifier())
+                (new BlogTagSchemaMigrationPostconditionVerifier(5))
                     ->verify($connection, $blogScope)
             );
             $this->assertBlogAudit(
@@ -1553,6 +1592,356 @@ final class BlogMySqlIntegrationTest extends TestCase
         return $process;
     }
 
+    private function seedTagRaceVariants(
+        PDO $connection,
+        MigrationScope $blogScope
+    ): void {
+        $posts = $blogScope->quotedTable('posts', 'mysql');
+        $localizations = $blogScope->quotedTable(
+            'post_localizations',
+            'mysql'
+        );
+        $insertPost = $connection->prepare(
+            'INSERT INTO ' . $posts
+                . ' (public_id, created_by_user_public_id) '
+                . 'VALUES (:public, :actor)'
+        );
+        $insertLocalization = $connection->prepare(
+            'INSERT INTO ' . $localizations
+                . ' (public_id, post_id, locale, slug, h1, seo_title, '
+                . 'meta_description, excerpt, body_text, status, '
+                . 'published_at, created_by_user_public_id, '
+                . 'updated_by_user_public_id) VALUES (:public, :post, '
+                . "'es', NULL, 'Tag race', NULL, NULL, NULL, 'Contenido', "
+                . "'draft', NULL, :created_actor, :updated_actor)"
+        );
+        foreach ([
+            [self::TAG_RACE_POST_A, self::TAG_RACE_LOCALIZATION_A],
+            [self::TAG_RACE_POST_B, self::TAG_RACE_LOCALIZATION_B],
+        ] as [$post, $localization]) {
+            $insertPost->execute([
+                'public' => $post,
+                'actor' => self::ACTOR_PUBLIC_ID,
+            ]);
+            $postId = (int) $connection->lastInsertId();
+            self::assertGreaterThan(0, $postId);
+            $insertLocalization->execute([
+                'public' => $localization,
+                'post' => $postId,
+                'created_actor' => self::ACTOR_PUBLIC_ID,
+                'updated_actor' => self::ACTOR_PUBLIC_ID,
+            ]);
+        }
+    }
+
+    private function assertConcurrentTagIdentityAgainstRealMySql(
+        PDO $connection,
+        BlogMySqlTestConfiguration $configuration,
+        MigrationScope $blogScope
+    ): void {
+        $sameIdentity = $this->runConcurrentTagWorkers(
+            $configuration,
+            $blogScope,
+            [
+                [
+                    'post' => self::TAG_RACE_POST_A,
+                    'csv' => 'Fiscal',
+                    'workspace_version' => 0,
+                ],
+                [
+                    'post' => self::TAG_RACE_POST_B,
+                    'csv' => 'FISCAL',
+                    'workspace_version' => 0,
+                ],
+            ]
+        );
+        foreach ($sameIdentity as $result) {
+            self::assertSame(
+                0,
+                $result['exit_code'],
+                'Same-identity tag worker failed: ' . json_encode(
+                    $result['payload'],
+                    JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+                )
+            );
+            self::assertSame('success', $result['payload']['status'] ?? null);
+            self::assertSame(
+                1,
+                $result['payload']['workspace_version'] ?? null
+            );
+            self::assertCount(
+                1,
+                $result['payload']['tag_public_ids'] ?? []
+            );
+        }
+        self::assertIsString(
+            $sameIdentity[0]['payload']['tag_public_ids'][0] ?? null
+        );
+        self::assertSame(
+            $sameIdentity[0]['payload']['tag_public_ids'][0] ?? null,
+            $sameIdentity[1]['payload']['tag_public_ids'][0] ?? null,
+            'Both transactions must resolve the same first-writer identity.'
+        );
+
+        $slugCollision = $this->runConcurrentTagWorkers(
+            $configuration,
+            $blogScope,
+            [
+                [
+                    'post' => self::TAG_RACE_POST_A,
+                    'csv' => 'C++',
+                    'workspace_version' => 1,
+                ],
+                [
+                    'post' => self::TAG_RACE_POST_B,
+                    'csv' => 'C#',
+                    'workspace_version' => 1,
+                ],
+            ]
+        );
+        foreach ($slugCollision as $result) {
+            self::assertSame(
+                0,
+                $result['exit_code'],
+                'Slug-collision tag worker failed: ' . json_encode(
+                    $result['payload'],
+                    JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+                )
+            );
+            self::assertSame('success', $result['payload']['status'] ?? null);
+            self::assertSame(
+                2,
+                $result['payload']['workspace_version'] ?? null
+            );
+            self::assertCount(1, $result['payload']['tags'] ?? []);
+        }
+
+        $statement = $connection->prepare(
+            'SELECT slug, normalized_sha256 FROM '
+                . $blogScope->quotedTable('tags', 'mysql')
+                . " WHERE locale = 'es' AND normalized_sha256 IN (:cpp, :csharp)"
+        );
+        $statement->execute([
+            'cpp' => hash('sha256', 'c++'),
+            'csharp' => hash('sha256', 'c#'),
+        ]);
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        self::assertCount(2, $rows);
+        $base = array_values(array_filter(
+            $rows,
+            static fn (array $row): bool => ($row['slug'] ?? null) === 'c'
+        ));
+        self::assertCount(1, $base);
+        $collision = array_values(array_filter(
+            $rows,
+            static fn (array $row): bool => ($row['slug'] ?? null) !== 'c'
+        ));
+        self::assertCount(1, $collision);
+        self::assertSame(
+            'c-' . substr((string) $collision[0]['normalized_sha256'], 0, 16),
+            $collision[0]['slug']
+        );
+    }
+
+    /**
+     * @param list<array{post: string, csv: string, workspace_version: int}> $requests
+     * @return list<array{exit_code: int, payload: array<string, mixed>}>
+     */
+    private function runConcurrentTagWorkers(
+        BlogMySqlTestConfiguration $configuration,
+        MigrationScope $blogScope,
+        array $requests
+    ): array {
+        self::assertCount(2, $requests);
+        $worker = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'Integration'
+            . DIRECTORY_SEPARATOR . 'fixtures' . DIRECTORY_SEPARATOR
+            . 'blog_mysql_tag_worker.php';
+        self::assertFileExists($worker);
+        $ready = [
+            $this->unusedTagWorkerPath('ready-a'),
+            $this->unusedTagWorkerPath('ready-b'),
+        ];
+        $insert = [
+            $this->unusedTagWorkerPath('insert-a'),
+            $this->unusedTagWorkerPath('insert-b'),
+        ];
+        $start = $this->unusedTagWorkerPath('start');
+        $insertStart = $this->unusedTagWorkerPath('insert-go');
+        $processes = [];
+        foreach ($requests as $position => $request) {
+            $processes[] = $this->tagWorkerProcess(
+                $worker,
+                $configuration,
+                $blogScope,
+                $ready[$position],
+                $start,
+                $insert[$position],
+                $insertStart,
+                $request
+            );
+        }
+
+        try {
+            foreach ($processes as $process) {
+                $process->start();
+            }
+            foreach ($ready as $marker) {
+                $this->waitForTagWorkerMarker($marker, $processes);
+            }
+            self::assertSame(2, file_put_contents($start, 'go', LOCK_EX));
+            foreach ($insert as $marker) {
+                $this->waitForTagWorkerMarker($marker, $processes);
+            }
+            self::assertSame(
+                2,
+                file_put_contents($insertStart, 'go', LOCK_EX)
+            );
+
+            $results = [];
+            foreach ($processes as $process) {
+                $exitCode = $process->wait();
+                $output = trim($process->getOutput());
+                try {
+                    $payload = json_decode(
+                        $output,
+                        true,
+                        32,
+                        JSON_THROW_ON_ERROR
+                    );
+                } catch (JsonException) {
+                    self::fail(sprintf(
+                        'Tag worker exited %d without valid JSON: %s (%s)',
+                        $exitCode,
+                        $output,
+                        trim($process->getErrorOutput())
+                    ));
+                }
+                self::assertIsArray($payload);
+                $results[] = [
+                    'exit_code' => $exitCode,
+                    'payload' => $payload,
+                ];
+            }
+
+            return $results;
+        } finally {
+            foreach ($processes as $process) {
+                if ($process->isRunning()) {
+                    $process->stop(1.0);
+                }
+            }
+            foreach (
+                array_merge($ready, $insert, [$start, $insertStart])
+                as $path
+            ) {
+                $this->removeTagWorkerPath($path);
+            }
+        }
+    }
+
+    /** @param array{post: string, csv: string, workspace_version: int} $request */
+    private function tagWorkerProcess(
+        string $worker,
+        BlogMySqlTestConfiguration $configuration,
+        MigrationScope $blogScope,
+        string $ready,
+        string $start,
+        string $insert,
+        string $insertStart,
+        array $request
+    ): Process {
+        $process = new Process(
+            [PHP_BINARY, $worker],
+            dirname(__DIR__, 2),
+            [
+                'LIQUIDSTACK_TEST_WORKER_AUTOLOAD' => dirname(__DIR__, 2)
+                    . DIRECTORY_SEPARATOR . 'vendor'
+                    . DIRECTORY_SEPARATOR . 'autoload.php',
+                'LIQUIDSTACK_TEST_WORKER_HOST' => $configuration->host()
+                    . ':' . $configuration->port(),
+                'LIQUIDSTACK_TEST_WORKER_USERNAME' =>
+                    $configuration->username(),
+                'LIQUIDSTACK_TEST_WORKER_PASSWORD' =>
+                    $configuration->password(),
+                'LIQUIDSTACK_TEST_WORKER_DATABASE' =>
+                    $configuration->database(),
+                'LIQUIDSTACK_TEST_WORKER_BLOG_PREFIX' =>
+                    $blogScope->tablePrefix(),
+                'LIQUIDSTACK_TEST_WORKER_ACTOR' => self::ACTOR_PUBLIC_ID,
+                'LIQUIDSTACK_TEST_TAG_READY' => $ready,
+                'LIQUIDSTACK_TEST_TAG_START' => $start,
+                'LIQUIDSTACK_TEST_TAG_INSERT' => $insert,
+                'LIQUIDSTACK_TEST_TAG_INSERT_START' => $insertStart,
+                'LIQUIDSTACK_TEST_TAG_POST' => $request['post'],
+                'LIQUIDSTACK_TEST_TAG_LOCALE' => 'es',
+                'LIQUIDSTACK_TEST_TAG_LOCK' => '1',
+                'LIQUIDSTACK_TEST_TAG_WORKSPACE' =>
+                    (string) $request['workspace_version'],
+                'LIQUIDSTACK_TEST_TAG_CSV' => $request['csv'],
+            ]
+        );
+        $process->setTimeout(25.0);
+
+        return $process;
+    }
+
+    /** @param list<Process> $processes */
+    private function waitForTagWorkerMarker(
+        string $marker,
+        array $processes
+    ): void {
+        $deadline = microtime(true) + 6.0;
+        while (!is_file($marker) && microtime(true) < $deadline) {
+            foreach ($processes as $process) {
+                if (!$process->isRunning()) {
+                    break 2;
+                }
+            }
+            usleep(10_000);
+        }
+        self::assertFileExists(
+            $marker,
+            'An isolated Blog tag worker did not reach its race barrier.'
+        );
+    }
+
+    private function unusedTagWorkerPath(string $role): string
+    {
+        if (!in_array($role, [
+            'ready-a', 'ready-b', 'insert-a', 'insert-b', 'start', 'insert-go',
+        ], true)) {
+            throw new RuntimeException('Unsafe Blog tag worker marker role.');
+        }
+        $path = rtrim(sys_get_temp_dir(), '\\/') . DIRECTORY_SEPARATOR
+            . 'ls-blog-tag-' . $role . '-' . bin2hex(random_bytes(8))
+            . '.tmp';
+        if (file_exists($path)) {
+            throw new RuntimeException('Blog tag worker path already exists.');
+        }
+
+        return $path;
+    }
+
+    private function removeTagWorkerPath(string $path): void
+    {
+        $temporaryRoot = realpath(sys_get_temp_dir());
+        $parent = realpath(dirname($path));
+        if (
+            $temporaryRoot === false
+            || $parent !== $temporaryRoot
+            || preg_match(
+                '/\Als-blog-tag-(?:(?:ready|insert)-(?:a|b)|start|insert-go)'
+                    . '-[a-f0-9]{16}\.tmp\z/D',
+                basename($path)
+            ) !== 1
+        ) {
+            throw new RuntimeException('Refusing unsafe tag worker cleanup.');
+        }
+        if (is_file($path) && !unlink($path)) {
+            throw new RuntimeException('Could not remove tag worker marker.');
+        }
+    }
+
     /** @param list<Process> $processes */
     private function waitForCopyWorkerMarker(
         string $marker,
@@ -2069,6 +2458,37 @@ final class BlogMySqlIntegrationTest extends TestCase
                 'scope_hash' => $blogScope->hash(),
             ],
             [
+                'module_id' => 'blog',
+                'migration_id' => '0020_blog_tags',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0021_blog_localization_tags',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0022_blog_tag_assignment_heads',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0023_blog_tag_assignment_workspaces',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' =>
+                    '0024_blog_tag_assignment_workspace_items',
+                'scope_hash' => $blogScope->hash(),
+            ],
+            [
+                'module_id' => 'blog',
+                'migration_id' => '0025_blog_tag_capabilities',
+                'scope_hash' => $webAdminScope->hash(),
+            ],
+            [
                 'module_id' => 'webadmin',
                 'migration_id' => '0001_webadmin_identity_and_access',
                 'scope_hash' => $webAdminScope->hash(),
@@ -2353,6 +2773,11 @@ final class BlogMySqlIntegrationTest extends TestCase
             'revision_robots',
             'url_history',
             'copy_operations',
+            'tags',
+            'localization_tags',
+            'tag_assignment_heads',
+            'tag_assignment_workspaces',
+            'tag_assignment_workspace_items',
         ] as $suffix) {
             $tables[] = $blogPrefix . $suffix;
         }

@@ -124,6 +124,102 @@ final class BlogArticleResourceContractTest extends TestCase
         self::assertStringNotContainsString('moduleButtonType04', $html);
     }
 
+    public function testTaxonomiesAreNeutralInsideTheArticleBeforeTheBody(): void
+    {
+        $empty = controller('artBlogArticle01', 0, [
+            'article_data' => $this->articleData('article-basic-01'),
+        ]);
+        self::assertStringNotContainsString(
+            'blogPublicArticleTaxonomies',
+            $empty
+        );
+
+        foreach ([
+            'categories' => [
+                'categories' => [[
+                    'locale' => 'en',
+                    'slug' => 'strategy',
+                    'name' => 'Strategy',
+                ]],
+            ],
+            'tags' => [
+                'tags' => [[
+                    'locale' => 'en',
+                    'slug' => 'artificial-intelligence',
+                    'name' => 'AI <script>alert(1)</script>',
+                ]],
+            ],
+            'both' => [
+                'categories' => [
+                    [
+                        'locale' => 'en',
+                        'slug' => 'z-strategy',
+                        'name' => 'Strategy',
+                    ],
+                    [
+                        'locale' => 'en',
+                        'slug' => 'a-advisory',
+                        'name' => 'Advisory',
+                    ],
+                ],
+                'tags' => [
+                    [
+                        'locale' => 'en',
+                        'slug' => 'z-artificial-intelligence',
+                        'name' => 'Artificial intelligence',
+                    ],
+                    [
+                        'locale' => 'en',
+                        'slug' => 'a-automation',
+                        'name' => 'Automation',
+                    ],
+                ],
+            ],
+        ] as $state => $taxonomies) {
+            $data = array_replace(
+                $this->articleData('article-basic-01'),
+                $taxonomies
+            );
+            $html = controller('artBlogArticle01', 0, [
+                'article_data' => $data,
+            ]);
+            $xpath = $this->createXpath($html);
+            $root = '/html/body/article';
+            self::assertCount(1, $xpath->query(
+                $root . '/div[contains(@class, '
+                    . '"blogPublicArticleTaxonomies")]'
+            ), $state);
+            self::assertCount(0, $xpath->query(
+                $root . '//div[contains(@class, '
+                    . '"blogPublicArticleTaxonomies")]//a'
+            ), $state);
+            self::assertGreaterThanOrEqual(1, $xpath->query(
+                $root . '//div[contains(@class, '
+                    . '"blogPublicArticleTaxonomies")]'
+                    . '//li/span[@dir="auto"]'
+            )->count(), $state);
+            self::assertCount(1, $xpath->query(
+                $root . '/div[contains(@class, '
+                    . '"blogPublicArticleTaxonomies")]'
+                    . '/following-sibling::div[contains(@class, '
+                    . '"artBlogArticle01-body")]'
+            ), $state);
+            self::assertStringNotContainsString('<script>alert(1)</script>', $html);
+            if ($state === 'both') {
+                self::assertSame('Advisory', $xpath->evaluate(
+                    'string((' . $root . '//div[contains(@class, '
+                        . '"blogPublicArticleTaxonomies__group--categories")]'
+                        . '//li/span)[1])'
+                ));
+                self::assertSame('Automation', $xpath->evaluate(
+                    'string((' . $root . '//div[contains(@class, '
+                        . '"blogPublicArticleTaxonomies__group--tags")]'
+                        . '//li/span)[1])'
+                ));
+            }
+        }
+    }
+
     public function testHeaderMediaIsAcceptedOnlyByTheCoverTemplate(): void
     {
         $data = $this->articleData('article-basic-01');
@@ -139,6 +235,7 @@ final class BlogArticleResourceContractTest extends TestCase
             'article_data' => $this->articleData('article-basic-01'),
             '{article-body}' => '<script id="override">alert(1)</script>',
             '{article-header-media}' => '<script id="media-override">alert(1)</script>',
+            '{article-taxonomies}' => '<a id="taxonomy-override">Override</a>',
             '{article-id}' => 'attacker-id',
             '{template}' => 'attacker-template',
             '{modifier}' => 'attacker-modifier',
@@ -215,6 +312,7 @@ final class BlogArticleResourceContractTest extends TestCase
     {
         return [
             'template' => $template,
+            'locale' => 'en',
             'h1' => 'Matrix article',
             'excerpt' => 'A structured Matrix article excerpt.',
             'published_label' => 'Published',

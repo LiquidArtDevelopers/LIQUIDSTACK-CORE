@@ -317,7 +317,7 @@ try {
         );
     }
 
-    $publishedAssets = [
+    $managedModuleFiles = [
         'modules/webadmin/published/assets/webadmin.css'
             => 'public/assets/modules/webadmin/webadmin.css',
         'modules/webadmin/published/assets/webadmin.js'
@@ -330,8 +330,22 @@ try {
             => 'public/assets/modules/blog/blog-admin.css',
         'modules/blog/published/assets/blog-editor.js'
             => 'public/assets/modules/blog/blog-editor.js',
+        'modules/blog/published/assets/blog-public.css'
+            => 'public/assets/modules/blog/blog-public.css',
+        'modules/blog/resources/project/App/app/'
+            . '_moduleBlogPublicArticle.php'
+            => 'App/app/_moduleBlogPublicArticle.php',
+        'modules/blog/resources/project/App/controllers/'
+            . 'artBlogArticle01.php'
+            => 'App/controllers/artBlogArticle01.php',
+        'modules/blog/resources/project/App/templates/'
+            . '_artBlogArticle01.html'
+            => 'App/templates/_artBlogArticle01.html',
+        'modules/blog/resources/project/src/scss/resources/'
+            . '_artBlogArticle01.scss'
+            => 'src/scss/resources/_artBlogArticle01.scss',
     ];
-    foreach ($publishedAssets as $source => $target) {
+    foreach ($managedModuleFiles as $source => $target) {
         $sourcePath = $coreRoot . '/' . $source;
         $targetPath = $temporaryRoot . '/' . $target;
         if (
@@ -345,6 +359,23 @@ try {
                 $target
             ));
         }
+    }
+
+    $normalizerProbe = new Process(
+        [
+            PHP_BINARY,
+            '-r',
+            "require 'vendor/autoload.php'; "
+                . "exit(function_exists('normalizer_normalize') ? 0 : 1);",
+        ],
+        $temporaryRoot
+    );
+    $normalizerProbe->setTimeout(30);
+    $normalizerProbe->run();
+    if (!$normalizerProbe->isSuccessful()) {
+        throw new RuntimeException(
+            'El consumidor Blog no recibio el normalizador Unicode.'
+        );
     }
 
     $commandList = json_decode(
@@ -585,6 +616,36 @@ try {
             'target_scope_module' => 'blog',
             'id' => '0019_blog_copy_operation_idempotency',
         ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0020_blog_tags',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0021_blog_localization_tags',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0022_blog_tag_assignment_heads',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0023_blog_tag_assignment_workspaces',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'blog',
+            'id' => '0024_blog_tag_assignment_workspace_items',
+        ],
+        [
+            'module' => 'blog',
+            'target_scope_module' => 'webadmin',
+            'id' => '0025_blog_tag_capabilities',
+        ],
     ];
     $plannedMigrations = array_map(
         static fn (array $entry): array => [
@@ -769,7 +830,7 @@ try {
             'Retirar Blog no conservó el contrato de CORE.'
         );
     }
-    foreach ($publishedAssets as $source => $target) {
+    foreach ($managedModuleFiles as $source => $target) {
         $sourcePath = $coreRoot . '/' . $source;
         $targetPath = $temporaryRoot . '/' . $target;
         if (

@@ -270,6 +270,10 @@ PHP
         self::assertSame([], $runtime->catalogRepository()?->search(
             new BlogPublicCatalogQuery('es')
         ));
+        self::assertSame([
+            'categories' => [],
+            'tags' => [],
+        ], $runtime->publicFeed()->taxonomiesForArticle('es', 'missing'));
         $productionCsp = $runtime->publicShellSecurityPolicy()
             ->context()
             ->headers()['Content-Security-Policy'];
@@ -333,6 +337,58 @@ PHP
                 $blogScope
             ),
             'migrate/doctor must retain trigger auditing outside HTTP.'
+        );
+
+        $pdo->exec(
+            'ALTER TABLE ls_blog_tag_assignment_workspace_items RENAME TO '
+            . 'ls_blog_tag_assignment_workspace_items_hold'
+        );
+        try {
+            $factory->create(new ModuleRuntimeContext($this->root, [
+                BlogPublicOrigin::ENV => 'https://example.test',
+            ]));
+            self::fail('An applied but corrupt tag schema must fail closed.');
+        } catch (BlogPublicHttpRuntimeException $exception) {
+            self::assertSame(
+                'blog.tags_schema_not_ready',
+                $exception->issueCode()
+            );
+        } finally {
+            $pdo->exec(
+                'ALTER TABLE ls_blog_tag_assignment_workspace_items_hold '
+                . 'RENAME TO ls_blog_tag_assignment_workspace_items'
+            );
+        }
+
+        $pdo->exec(
+            "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
+            . "AND migration_id IN ('0020_blog_tags', "
+            . "'0021_blog_localization_tags', "
+            . "'0022_blog_tag_assignment_heads', "
+            . "'0023_blog_tag_assignment_workspaces', "
+            . "'0024_blog_tag_assignment_workspace_items', "
+            . "'0025_blog_tag_capabilities')"
+        );
+        $pdo->clearSqlLog();
+        $pendingTagsRuntime = $factory->create(new ModuleRuntimeContext(
+            $this->root,
+            [BlogPublicOrigin::ENV => 'https://example.test']
+        ));
+        self::assertSame([
+            'categories' => [],
+            'tags' => [],
+        ], $pendingTagsRuntime->publicFeed()->taxonomiesForArticle(
+            'es',
+            'missing'
+        ));
+        $pendingTagsSql = strtolower(implode("\n", $pdo->sqlLog()));
+        self::assertStringNotContainsString(
+            'ls_blog_localization_tags',
+            $pendingTagsSql
+        );
+        self::assertStringNotContainsString(
+            'from "ls_blog_tags"',
+            $pendingTagsSql
         );
 
         $pdo->exec('DROP TRIGGER ls_blog_corrupt_structured_gate');

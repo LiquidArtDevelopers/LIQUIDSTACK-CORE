@@ -258,9 +258,19 @@ final class BlogHttpSchemaGateTest extends TestCase
     {
         $this->pdo->exec(
             "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
-                . "AND migration_id = "
-                . "'0019_blog_copy_operation_idempotency'"
+                . "AND migration_id IN ("
+                . "'0019_blog_copy_operation_idempotency', "
+                . "'0020_blog_tags', '0021_blog_localization_tags', "
+                . "'0022_blog_tag_assignment_heads', "
+                . "'0023_blog_tag_assignment_workspaces', "
+                . "'0024_blog_tag_assignment_workspace_items', "
+                . "'0025_blog_tag_capabilities')"
         );
+        $this->pdo->exec('DROP TABLE ls_blog_tag_assignment_workspace_items');
+        $this->pdo->exec('DROP TABLE ls_blog_tag_assignment_workspaces');
+        $this->pdo->exec('DROP TABLE ls_blog_tag_assignment_heads');
+        $this->pdo->exec('DROP TABLE ls_blog_localization_tags');
+        $this->pdo->exec('DROP TABLE ls_blog_tags');
         $this->pdo->exec('DROP TABLE ls_blog_copy_operations');
         self::assertTrue((new BlogHttpSchemaGate())->isPublicReady(
             $this->pdo,
@@ -346,7 +356,12 @@ final class BlogHttpSchemaGateTest extends TestCase
                 . "'0016_blog_url_history', "
                 . "'0017_blog_dummy_category', "
                 . "'0018_blog_dummy_category_normalization', "
-                . "'0019_blog_copy_operation_idempotency')"
+                . "'0019_blog_copy_operation_idempotency', "
+                . "'0020_blog_tags', '0021_blog_localization_tags', "
+                . "'0022_blog_tag_assignment_heads', "
+                . "'0023_blog_tag_assignment_workspaces', "
+                . "'0024_blog_tag_assignment_workspace_items', "
+                . "'0025_blog_tag_capabilities')"
         );
 
         self::assertFalse($preferences->isReady(
@@ -418,7 +433,12 @@ final class BlogHttpSchemaGateTest extends TestCase
                 . "'0016_blog_url_history', "
                 . "'0017_blog_dummy_category', "
                 . "'0018_blog_dummy_category_normalization', "
-                . "'0019_blog_copy_operation_idempotency')"
+                . "'0019_blog_copy_operation_idempotency', "
+                . "'0020_blog_tags', '0021_blog_localization_tags', "
+                . "'0022_blog_tag_assignment_heads', "
+                . "'0023_blog_tag_assignment_workspaces', "
+                . "'0024_blog_tag_assignment_workspace_items', "
+                . "'0025_blog_tag_capabilities')"
         );
 
         self::assertFalse((new BlogLayoutEditorSchemaGate())->isReady(

@@ -11,11 +11,59 @@ function controller_art11(int $i = 0, array $params = []): string
     $letters    = range('a', 'z');
     $itemsCount = max(0, (int) ($params['items'] ?? 3));
 
+    $devMode = filter_var(
+        $_ENV['DEV_MODE'] ?? getenv('DEV_MODE') ?? false,
+        FILTER_VALIDATE_BOOLEAN
+    );
+    $inlineAttributeTargets = htmlspecialchars(
+        json_encode(
+            ['value' => 'data-target'],
+            JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE
+        ),
+        ENT_QUOTES | ENT_SUBSTITUTE,
+        'UTF-8'
+    );
+    $targetFieldMeta = htmlspecialchars(
+        json_encode(
+            [
+                'value' => [
+                    'label' => 'Valor objetivo',
+                    'helpText' => 'Cifra final que alcanza el contador.',
+                ],
+            ],
+            JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE
+        ),
+        ENT_QUOTES | ENT_SUBSTITUTE,
+        'UTF-8'
+    );
+    $suffixFieldMeta = htmlspecialchars(
+        json_encode(
+            [
+                'text' => [
+                    'label' => 'Sufijo',
+                    'helpText' => 'Texto que aparece inmediatamente después de la cifra.',
+                ],
+            ],
+            JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE
+        ),
+        ENT_QUOTES | ENT_SUBSTITUTE,
+        'UTF-8'
+    );
+    $inlineTargetAttributes = $devMode
+        ? ' data-inline-group data-inline-attribute-targets="' . $inlineAttributeTargets
+            . '" data-inline-field-meta="' . $targetFieldMeta . '"'
+        : '';
+    $inlineSuffixAttributes = $devMode
+        ? ' data-inline-field-meta="' . $suffixFieldMeta . '"'
+        : '';
+
     $itemTpl = <<<HTML
         <div>
             <span class="stat-number"
-                  data-target="%s"
-                  data-suffix="%s">0</span>
+                  data-lang="%s"
+                  data-target="%s"%s><span class="stat-number-value"
+                  data-art11-counter-value>0</span><span class="stat-number-suffix"
+                  data-lang="%s"%s>%s</span></span>
             <span class="stat-label"
                   data-lang="%s">%s</span>
         </div>
@@ -44,9 +92,13 @@ function controller_art11(int $i = 0, array $params = []): string
 
         $itemsHtml .= sprintf(
             $itemTpl,
+            htmlspecialchars($targetKey, ENT_QUOTES, 'UTF-8'),
             htmlspecialchars($targetValue, ENT_QUOTES, 'UTF-8'),
+            $inlineTargetAttributes,
+            htmlspecialchars($suffixKey, ENT_QUOTES, 'UTF-8'),
+            $inlineSuffixAttributes,
             htmlspecialchars($suffixText, ENT_QUOTES, 'UTF-8'),
-            $labelKey,
+            htmlspecialchars($labelKey, ENT_QUOTES, 'UTF-8'),
             $labelText
         ) . PHP_EOL;
     }

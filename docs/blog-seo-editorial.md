@@ -40,11 +40,13 @@ petición anterior mediante `AbortController`. El endpoint exige sesión,
 capacidad `blog.articles.edit`, acceso a medios y CSRF válido. Sus respuestas
 son `no-store` y nunca contienen el documento completo.
 
-`Guardar borrador` y el guardado privado de categorías no cambian el artículo
-público ni sus asignaciones visibles. El análisis de canibalización continúa
-comparando solo publicaciones del mismo idioma y excluye siempre el artículo
-actual; `Publicar` es una acción separada y la única que promociona la
-instantánea guardada a las proyecciones públicas.
+`Guardar borrador` y los guardados privados de categorías o etiquetas no
+cambian el artículo público ni sus asignaciones visibles. El análisis de
+canibalización continúa comparando solo publicaciones del mismo idioma y
+excluye siempre el artículo actual; `Publicar` es una acción separada y la única
+que promociona la instantánea guardada a las proyecciones públicas. Las
+etiquetas live amplían la búsqueda textual `q`, pero no crean por sí mismas una
+URL, canonical, archivo indexable ni una puntuación nueva del medidor.
 
 Si el medidor falla, el editor continúa disponible. El panel muestra un estado
 pendiente o temporalmente no disponible; guardar y publicar conservan sus

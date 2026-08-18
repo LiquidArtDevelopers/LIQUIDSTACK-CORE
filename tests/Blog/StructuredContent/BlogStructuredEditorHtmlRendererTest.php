@@ -13,6 +13,7 @@ use App\Core\Blog\StructuredContent\Rendering\BlogEditorCategoryOption;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorPreviewSandboxPolicy;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorMediaOption;
 use App\Core\Blog\StructuredContent\Rendering\BlogEditorRevisionSummary;
+use App\Core\Blog\StructuredContent\Rendering\BlogEditorTagOption;
 use App\Core\Blog\StructuredContent\Rendering\BlogStructuredEditorHtmlRenderer;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -269,6 +270,11 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
                 . 'data-blog-editor-form="blog-editor-form"',
             $html
         );
+        $this->assertPublicationStatusPresentation(
+            $html,
+            BlogPostVariant::DRAFT,
+            'Borrador'
+        );
         self::assertStringNotContainsString('>Volver al Blog</a>', $html);
         self::assertStringNotContainsString('/categories/assign', $html);
         self::assertStringNotContainsString('/posts/publish', $html);
@@ -391,6 +397,11 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             'name="lock_version" value="7"',
             $draftHtml
         );
+        $this->assertPublicationStatusPresentation(
+            $draftHtml,
+            BlogPostVariant::DRAFT,
+            'Borrador'
+        );
 
         $published = $this->variant(
             $document,
@@ -413,6 +424,11 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             $publishedHtml
         );
         self::assertStringNotContainsString('/categories/assign', $publishedHtml);
+        $this->assertPublicationStatusPresentation(
+            $publishedHtml,
+            BlogPostVariant::PUBLISHED,
+            'Publicado'
+        );
 
         $privateWorkflowHtml = $renderer->render(
             '/admin/blog',
@@ -433,6 +449,11 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
             '<button class="webadminAction webadminAction--primary" '
                 . 'type="submit">Publicar</button>',
             $privateWorkflowHtml
+        );
+        $this->assertPublicationStatusPresentation(
+            $privateWorkflowHtml,
+            BlogPostVariant::PUBLISHED,
+            'Publicado'
         );
     }
 
@@ -538,6 +559,97 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
         self::assertStringNotContainsString(
             'name="locale"',
             $categoryForm[0]
+        );
+    }
+
+    public function testTagAssignmentIsLocalizedNeutralAndKeepsSsrFallback(): void
+    {
+        $document = $this->document();
+        $variant = $this->variant($document);
+        $html = (new BlogStructuredEditorHtmlRenderer())->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $variant,
+            $document,
+            (new BlogDocumentCodec())->encode($document),
+            canAssignCategories: true,
+            categoryOptions: [new BlogEditorCategoryOption(
+                $this->id(700_001),
+                'Actualidad',
+                true
+            )],
+            privateDraftPublicationReady: true,
+            categoryWorkspaceVersion: 2,
+            canAssignTags: true,
+            tagOptions: [
+                new BlogEditorTagOption('Ahorro & inversión', 'ahorro'),
+                new BlogEditorTagOption('Fiscalidad', 'fiscalidad'),
+            ],
+            tagWorkspaceVersion: 3
+        );
+
+        self::assertStringContainsString(
+            '<div class="blogEditor__tags" '
+                . 'aria-labelledby="blog-editor-tags-title">',
+            $html
+        );
+        self::assertStringContainsString(
+            '<form method="post" action="/admin/blog/tags/assign" '
+                . 'data-blog-tag-assignment-form>',
+            $html
+        );
+        foreach ([
+            'name="post" value="' . $variant->postPublicId() . '"',
+            'name="locale" value="es"',
+            'name="lock_version" value="7"',
+            'name="tag_workspace_version" value="3"',
+            'name="tags" type="text" dir="auto" '
+                . 'value="Ahorro &amp; inversión, Fiscalidad"',
+            'data-blog-tag data-blog-tag-slug="ahorro"',
+            'data-blog-tag-assignment-status role="status" '
+                . 'aria-live="polite"',
+        ] as $contract) {
+            self::assertStringContainsString($contract, $html);
+        }
+        self::assertLessThan(
+            strpos($html, 'class="blogEditor__tags"'),
+            strpos($html, 'class="blogEditor__categories"')
+        );
+        self::assertLessThan(
+            strpos($html, 'class="blogEditor__metadata"'),
+            strpos($html, 'class="blogEditor__tags"')
+        );
+        self::assertStringNotContainsString('name="tag_public_id"', $html);
+        self::assertStringContainsString(
+            'name="tag_workspace_version" value="3"',
+            $html
+        );
+
+        $readOnly = (new BlogStructuredEditorHtmlRenderer())->render(
+            '/admin/blog',
+            'csrf-token-safe',
+            $variant,
+            $document,
+            (new BlogDocumentCodec())->encode($document),
+            canViewTags: true,
+            tagOptions: [
+                new BlogEditorTagOption('Ahorro', 'ahorro'),
+                new BlogEditorTagOption('Fiscalidad', 'fiscalidad'),
+            ]
+        );
+        self::assertStringContainsString(
+            'data-blog-tag-readonly',
+            $readOnly
+        );
+        self::assertStringContainsString('Vista de solo lectura.', $readOnly);
+        self::assertStringContainsString('>Ahorro</span>', $readOnly);
+        self::assertStringNotContainsString(
+            'data-blog-tag-assignment-form',
+            $readOnly
+        );
+        self::assertStringNotContainsString(
+            'action="/admin/blog/tags/assign"',
+            $readOnly
         );
     }
 
@@ -1143,6 +1255,46 @@ final class BlogStructuredEditorHtmlRendererTest extends TestCase
     private function id(int $number): string
     {
         return sprintf('00000000-0000-4000-8000-%012d', $number);
+    }
+
+    private function assertPublicationStatusPresentation(
+        string $html,
+        string $status,
+        string $label
+    ): void {
+        $transientStatus = '<p data-blog-editor-status '
+            . 'data-blog-editor-form="blog-editor-form" role="status" '
+            . 'aria-live="polite"></p>';
+        $publicationStatus = '<p class="blogEditor__publicationStatus" '
+            . 'data-blog-editor-publication-status="' . $status . '" '
+            . 'data-blog-editor-form="blog-editor-form" '
+            . 'aria-label="Estado del artículo: ' . $label . '">'
+            . $label . '</p>';
+
+        self::assertStringContainsString(
+            $transientStatus . $publicationStatus . '</div>',
+            $html,
+            'El estado persistente debe cerrar la barra sin sustituir el '
+                . 'feedback transitorio accesible.'
+        );
+        self::assertMatchesRegularExpression(
+            '/<dt>Estado<\/dt><dd'
+                . '(?=[^>]*\sdata-blog-editor-publication-status="'
+                . preg_quote($status, '/') . '")'
+                . '(?=[^>]*\sdata-blog-editor-form="blog-editor-form")'
+                . '[^>]*>' . preg_quote($label, '/') . '<\/dd>/u',
+            $html,
+            'El inspector debe compartir el estado oficial y su asociación '
+                . 'con el formulario del editor.'
+        );
+        self::assertSame(
+            2,
+            substr_count(
+                $html,
+                'data-blog-editor-publication-status="' . $status . '"'
+            ),
+            'Solo la barra y el inspector deben proyectar el estado oficial.'
+        );
     }
 
     /** @param callable(): mixed $operation */

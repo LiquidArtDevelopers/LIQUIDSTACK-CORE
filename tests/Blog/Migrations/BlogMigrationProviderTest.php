@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Blog\Migrations;
 
+use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Modules\Blog\BlogCapabilitySeedPostcondition;
 use App\Core\Modules\Blog\BlogAnalyticsCapabilitySeedPostcondition;
 use App\Core\Modules\Blog\BlogAnalyticsMigrationPostconditionVerifier;
@@ -22,6 +23,8 @@ use App\Core\Modules\Blog\BlogUrlHistoryMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogStructuredContentMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogSitemapStateMigrationPostconditionVerifier;
 use App\Core\Modules\Blog\BlogPostTombstoneMigrationPostconditionVerifier;
+use App\Core\Modules\Blog\BlogTagCapabilitySeedPostcondition;
+use App\Core\Modules\Blog\BlogTagSchemaMigrationPostconditionVerifier;
 use App\Core\Modules\Migrations\MigrationDefinition;
 use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\Migrations\MigrationScopeCollection;
@@ -33,12 +36,47 @@ use RuntimeException;
 
 final class BlogMigrationProviderTest extends TestCase
 {
+    public function testConfiguredPrefixBudgetCoversEveryMigrationIdentifier(): void
+    {
+        $source = file_get_contents(
+            dirname(__DIR__, 3)
+                . '/src/Core/Modules/Blog/BlogMigrationProvider.php'
+        );
+        self::assertIsString($source);
+        self::assertGreaterThan(0, preg_match_all(
+            '/\{\{table:([a-z0-9_]+)\}\}/',
+            $source,
+            $matches
+        ));
+        $identifiers = array_values(array_unique($matches[1]));
+        usort(
+            $identifiers,
+            static fn (string $left, string $right): int =>
+                strlen($right) <=> strlen($left)
+                    ?: strcmp($left, $right)
+        );
+
+        self::assertSame(
+            BlogConfig::LONGEST_TABLE_SUFFIX,
+            $identifiers[0] ?? null
+        );
+        self::assertSame(
+            strlen(BlogConfig::LONGEST_TABLE_SUFFIX),
+            BlogConfig::LONGEST_TABLE_SUFFIX_LENGTH
+        );
+        self::assertSame(
+            BlogConfig::MYSQL_IDENTIFIER_MAX_LENGTH
+                - BlogConfig::LONGEST_TABLE_SUFFIX_LENGTH,
+            BlogConfig::MAX_TABLE_PREFIX_LENGTH
+        );
+    }
+
     public function testCatalogExposesSchemaThenCrossScopeCapabilities(): void
     {
         self::assertSame('blog', BlogMigrationProvider::moduleId());
         $migrations = $this->migrations();
 
-        self::assertCount(19, $migrations);
+        self::assertCount(25, $migrations);
         self::assertSame(
             [
                 '0001_blog_posts',
@@ -60,6 +98,12 @@ final class BlogMigrationProviderTest extends TestCase
                 '0017_blog_dummy_category',
                 '0018_blog_dummy_category_normalization',
                 '0019_blog_copy_operation_idempotency',
+                '0020_blog_tags',
+                '0021_blog_localization_tags',
+                '0022_blog_tag_assignment_heads',
+                '0023_blog_tag_assignment_workspaces',
+                '0024_blog_tag_assignment_workspace_items',
+                '0025_blog_tag_capabilities',
             ],
             array_map(
                 static fn (MigrationDefinition $migration): string =>
@@ -102,6 +146,12 @@ final class BlogMigrationProviderTest extends TestCase
         self::assertNull($migrations[16]->targetScopeModuleId());
         self::assertNull($migrations[17]->targetScopeModuleId());
         self::assertNull($migrations[18]->targetScopeModuleId());
+        self::assertNull($migrations[19]->targetScopeModuleId());
+        self::assertNull($migrations[20]->targetScopeModuleId());
+        self::assertNull($migrations[21]->targetScopeModuleId());
+        self::assertNull($migrations[22]->targetScopeModuleId());
+        self::assertNull($migrations[23]->targetScopeModuleId());
+        self::assertSame('webadmin', $migrations[24]->targetScopeModuleId());
         $scopes = MigrationScopeCollection::fromTablePrefixes([
             'blog' => 'ls_blog_',
             'webadmin' => 'ls_webadmin_',
@@ -198,6 +248,39 @@ final class BlogMigrationProviderTest extends TestCase
         self::assertInstanceOf(
             BlogCopyOperationMigrationPostconditionVerifier::class,
             $migrations[18]->postconditionVerifier()
+        );
+        foreach (range(19, 23) as $index) {
+            self::assertInstanceOf(
+                BlogTagSchemaMigrationPostconditionVerifier::class,
+                $migrations[$index]->postconditionVerifier()
+            );
+        }
+        self::assertInstanceOf(
+            BlogTagCapabilitySeedPostcondition::class,
+            $migrations[24]->postconditionVerifier()
+        );
+        self::assertSame(
+            [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0005_blog_structured_content',
+                '0006_blog_sitemap_publication_state',
+                '0007_blog_post_tombstones',
+                '0009_blog_analytics',
+                '0011_blog_layout_editor_v2',
+                '0012_blog_editor_preferences',
+                '0014_blog_private_draft_publication',
+                '0015_blog_robots_preferences',
+                '0016_blog_url_history',
+                '0017_blog_dummy_category',
+                '0018_blog_dummy_category_normalization',
+                '0019_blog_copy_operation_idempotency',
+                '0020_blog_tags',
+                '0021_blog_localization_tags',
+                '0022_blog_tag_assignment_heads',
+                '0023_blog_tag_assignment_workspaces',
+            ],
+            $migrations[23]->supersededPostconditionIds()
         );
         self::assertSame(
             [

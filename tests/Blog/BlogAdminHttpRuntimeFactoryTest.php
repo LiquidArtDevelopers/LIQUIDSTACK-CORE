@@ -206,6 +206,8 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             $runtime->webAdminConfig()->basePath()
         );
         self::assertInstanceOf(BlogService::class, $runtime->service());
+        self::assertTrue($runtime->tagsReady());
+        self::assertNotNull($runtime->tagService());
         self::assertInstanceOf(
             WebAdminAuthenticationService::class,
             $runtime->authentication()
@@ -667,6 +669,67 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
             );
         }
         self::assertSame(1, $this->connectionCount);
+    }
+
+    public function testPendingTagMigrationsRemainAdditive(): void
+    {
+        $this->applyMigrations();
+        $this->pdo->exec(
+            "DELETE FROM ls_module_migrations WHERE module_id = 'blog' "
+                . "AND migration_id LIKE '002%'"
+        );
+
+        $runtime = $this->factory()->create(
+            $this->context(),
+            WebAdminConfig::defaults()
+        );
+
+        self::assertFalse($runtime->tagsReady());
+        self::assertNull($runtime->tagService());
+        self::assertInstanceOf(BlogService::class, $runtime->service());
+    }
+
+    public function testAppliedTagSchemaDriftFailsClosedWithStableIssue(): void
+    {
+        $this->applyMigrations();
+        $this->pdo->exec('DROP TABLE ls_blog_localization_tags');
+
+        try {
+            $this->factory()->create(
+                $this->context(),
+                WebAdminConfig::defaults()
+            );
+            self::fail('Applied corrupt tag schema must fail closed.');
+        } catch (BlogAdminHttpRuntimeException $exception) {
+            self::assertSame(
+                'blog.tags_schema_not_ready',
+                $exception->issueCode()
+            );
+        }
+    }
+
+    public function testAppliedTagCapabilityDriftFailsClosedWithStableIssue(): void
+    {
+        $this->applyMigrations();
+        $this->pdo->exec(
+            'DELETE FROM ls_webadmin_role_capabilities WHERE capability_id = '
+                . '(SELECT id FROM ls_webadmin_capabilities WHERE code = '
+                . "'blog.tags.edit') AND role_id = (SELECT id FROM "
+                . "ls_webadmin_roles WHERE code = 'site_admin')"
+        );
+
+        try {
+            $this->factory()->create(
+                $this->context(),
+                WebAdminConfig::defaults()
+            );
+            self::fail('Applied corrupt tag capabilities must fail closed.');
+        } catch (BlogAdminHttpRuntimeException $exception) {
+            self::assertSame(
+                'blog.tags_administration_not_ready',
+                $exception->issueCode()
+            );
+        }
     }
 
     public function testPendingPreNormalizationCatalogBlocksAdminRuntime(): void

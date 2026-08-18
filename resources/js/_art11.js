@@ -1,61 +1,123 @@
 import gsap from 'gsap';
 import ScrollTrigger from 'gsap/ScrollTrigger';
 
-/* statsCounter.js — cuenta ascendente con reinicio al volver al viewport
-   Requiere GSAP v3 + ScrollTrigger (gsap.registerPlugin(ScrollTrigger)).
-   Uso en HTML:
-      <span class="stat-number" data-target="998" data-suffix="k+">0</span>
-      <span class="stat-label">POSTS</span>
-*/
+const COUNTER_STATE_KEY = Symbol.for('liquidstack.art11.counterState');
+const COUNTER_SELECTOR = '.art11 .stat-number';
+const VALUE_SELECTOR = '[data-art11-counter-value]';
+const EASING = 'power1.out';
+const DURATION = 1.5;
+const START_POINT = 'top 90%';
+
+let cleanupActiveCounters = () => {};
+
+const readTarget = (counter) => {
+  const target = Number.parseFloat(counter.dataset.target ?? '');
+
+  return Number.isFinite(target) ? target : 0;
+};
+
+const formatNumber = (value) => Math.floor(value).toLocaleString('es-ES');
+
+const renderValue = (valueElement, value) => {
+  valueElement.textContent = formatNumber(value);
+};
+
+const cleanupCounter = (counter) => {
+  const state = counter[COUNTER_STATE_KEY];
+  if (!state) return;
+
+  state.tween?.kill();
+  state.scrollTrigger?.kill();
+  state.targetObserver?.disconnect();
+  delete counter[COUNTER_STATE_KEY];
+};
+
+const animateCounter = (counter, valueElement) => {
+  const state = counter[COUNTER_STATE_KEY];
+  if (!state) return;
+
+  state.tween?.kill();
+
+  const proxy = { value: 0 };
+  state.tween = gsap.to(proxy, {
+    value: readTarget(counter),
+    duration: DURATION,
+    ease: EASING,
+    snap: { value: 1 },
+    onUpdate () {
+      renderValue(valueElement, proxy.value);
+    }
+  });
+};
+
+const resetCounter = (counter, valueElement) => {
+  const state = counter[COUNTER_STATE_KEY];
+  state?.tween?.kill();
+
+  if (state) {
+    state.tween = null;
+  }
+  renderValue(valueElement, 0);
+};
 
 export default function initStatsCounter () {
-  const EASING      = 'power1.out'; // curva de aceleración
-  const DURATION    = 1.5;          // segundos por animación
-  const START_POINT = 'top 90%';    // posición de disparo
-
+  cleanupActiveCounters();
   gsap.registerPlugin(ScrollTrigger);
 
-  const counters = document.querySelectorAll('.stat-number');
-  if (!counters.length) return;
+  const counters = Array.from(document.querySelectorAll(COUNTER_SELECTOR));
 
-  counters.forEach(counter => {
-    const target = parseFloat(counter.dataset.target);
-    const suffix = counter.dataset.suffix || '';
+  counters.forEach((counter) => {
+    cleanupCounter(counter);
 
-    // ScrollTrigger autónomo por contador
-    ScrollTrigger.create({
+    const valueElement = counter.querySelector(VALUE_SELECTOR);
+    if (!valueElement) return;
+
+    const state = {
+      scrollTrigger: null,
+      targetObserver: null,
+      tween: null
+    };
+    counter[COUNTER_STATE_KEY] = state;
+
+    state.scrollTrigger = ScrollTrigger.create({
       trigger: counter.parentElement,
-      start  : START_POINT,
-      onEnter: () => animateCounter(counter, target, suffix),   // entrando desde arriba
-      onEnterBack: () => animateCounter(counter, target, suffix), // volviendo desde abajo
-      onLeave: () => resetCounter(counter, suffix),              // sale por abajo
-      onLeaveBack: () => resetCounter(counter, suffix)           // sale por arriba
+      start: START_POINT,
+      onEnter: () => animateCounter(counter, valueElement),
+      onEnterBack: () => animateCounter(counter, valueElement),
+      onLeave: () => resetCounter(counter, valueElement),
+      onLeaveBack: () => resetCounter(counter, valueElement)
     });
+
+    if (typeof MutationObserver === 'function') {
+      state.targetObserver = new MutationObserver((mutations) => {
+        const targetChanged = mutations.some(
+          (mutation) => mutation.attributeName === 'data-target'
+        );
+        if (!targetChanged) return;
+
+        state.tween?.kill();
+        state.tween = null;
+        renderValue(valueElement, readTarget(counter));
+      });
+      state.targetObserver.observe(counter, {
+        attributes: true,
+        attributeFilter: ['data-target']
+      });
+    }
   });
 
-  /* ---------- helpers ---------- */
-  function animateCounter (el, endValue, suffix) {
-    // si ya hay un tween activo lo matamos para reiniciar limpio
-    if (el._tween) el._tween.kill();
+  const cleanup = () => {
+    counters.forEach(cleanupCounter);
+    if (cleanupActiveCounters === cleanup) {
+      cleanupActiveCounters = () => {};
+    }
+  };
 
-    const proxy = { val: 0 };
-    el._tween = gsap.to(proxy, {
-      val      : endValue,
-      duration : DURATION,
-      ease     : EASING,
-      snap     : { val: 1 },
-      onUpdate () {
-        el.textContent = formatNumber(proxy.val) + suffix;
-      }
-    });
-  }
+  cleanupActiveCounters = cleanup;
 
-  function resetCounter (el, suffix) {
-    if (el._tween) el._tween.kill();
-    el.textContent = '0' + suffix;
-  }
+  return cleanup;
+}
 
-  function formatNumber (value) {
-    return Math.floor(value).toLocaleString('es-ES');
-  }
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => cleanupActiveCounters());
 }

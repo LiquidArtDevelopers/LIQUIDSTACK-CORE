@@ -19,6 +19,7 @@ use App\Core\Blog\StructuredContent\Presentation\BlogH1ModuleCatalog;
 use App\Core\Blog\StructuredContent\Presentation\BlogHeaderSelection;
 use App\Core\Blog\StructuredContent\Presentation\BlogHeroCatalog;
 use App\Core\Blog\Seo\BlogSeoAnalysis;
+use App\Core\Blog\Tags\BlogTagService;
 use App\Core\WebAdmin\Http\WebAdminPageAssets;
 use App\Core\WebAdmin\Http\WebAdminShellContext;
 use App\Core\WebAdmin\Http\WebAdminShellContextFactory;
@@ -34,6 +35,7 @@ final class BlogStructuredEditorHtmlRenderer
     public const SCRIPT_PATH = '/assets/modules/blog/blog-editor.js';
     public const MAX_MEDIA_OPTIONS = 248;
     public const MAX_CATEGORY_OPTIONS = 100;
+    public const MAX_TAG_OPTIONS = BlogTagService::MAX_TAGS_PER_VARIANT;
     public const MAX_REVISION_SUMMARIES = 100;
 
     private const BLOCK_LABELS = [
@@ -86,6 +88,7 @@ final class BlogStructuredEditorHtmlRenderer
      * @param list<BlogEditorMediaOption> $mediaOptions
      * @param list<BlogEditorRevisionSummary> $revisionSummaries
      * @param list<BlogEditorCategoryOption> $categoryOptions
+     * @param list<BlogEditorTagOption> $tagOptions
      * @param list<string> $editorStylesheets
      */
     public function render(
@@ -112,7 +115,11 @@ final class BlogStructuredEditorHtmlRenderer
         bool $dummyCategoryAssigned = false,
         bool $canUploadMedia = false,
         ?BlogEditorPreviewSandboxPolicy $previewSandbox = null,
-        array $editorStylesheets = []
+        array $editorStylesheets = [],
+        bool $canAssignTags = false,
+        array $tagOptions = [],
+        int $tagWorkspaceVersion = 0,
+        bool $canViewTags = false
     ): string {
         $basePath = $this->basePath($basePath);
         $this->assertCsrfPresentation($csrf);
@@ -125,12 +132,18 @@ final class BlogStructuredEditorHtmlRenderer
         $this->assertOptions(
             $mediaOptions,
             $revisionSummaries,
-            $categoryOptions
+            $categoryOptions,
+            $tagOptions
         );
         $headingDefaults = $this->headingDefaults($headingDefaults);
         if ($categoryWorkspaceVersion < 0) {
             throw new InvalidArgumentException(
                 'Invalid Blog editor category workspace version.'
+            );
+        }
+        if ($tagWorkspaceVersion < 0) {
+            throw new InvalidArgumentException(
+                'Invalid Blog editor tag workspace version.'
             );
         }
 
@@ -223,7 +236,8 @@ final class BlogStructuredEditorHtmlRenderer
                 $readOnly,
                 $canPublish,
                 $privateDraftPublicationReady,
-                $categoryWorkspaceVersion
+                $categoryWorkspaceVersion,
+                $tagWorkspaceVersion
             )
             . '</article>';
 
@@ -242,7 +256,11 @@ final class BlogStructuredEditorHtmlRenderer
             $presentationDraft,
             $privateDraftPublicationReady,
             $categoryWorkspaceVersion,
-            $dummyCategoryAssigned
+            $dummyCategoryAssigned,
+            $canAssignTags,
+            $tagOptions,
+            $tagWorkspaceVersion,
+            $canViewTags
         );
         $assets = new WebAdminPageAssets(
             array_merge([
@@ -289,8 +307,10 @@ final class BlogStructuredEditorHtmlRenderer
         bool $readOnly,
         bool $canPublish,
         bool $privateDraftPublicationReady,
-        int $categoryWorkspaceVersion
+        int $categoryWorkspaceVersion,
+        int $tagWorkspaceVersion
     ): string {
+        $publicationStatus = $this->publicationStatus($variant);
         $html = '<div class="blogEditor__save blogEditor__actionBar '
             . 'webadminActionGroup" '
             . 'role="group" aria-label="Acciones del art&iacute;culo">'
@@ -325,6 +345,9 @@ final class BlogStructuredEditorHtmlRenderer
                         ? $this->hidden(
                             'category_workspace_version',
                             (string) $categoryWorkspaceVersion
+                        ) . $this->hidden(
+                            'tag_workspace_version',
+                            (string) $tagWorkspaceVersion
                         )
                         : '')
                     . '<button class="webadminAction '
@@ -334,7 +357,13 @@ final class BlogStructuredEditorHtmlRenderer
         }
 
         return $html . '<p data-blog-editor-status data-blog-editor-form="'
-            . $formId . '" role="status" aria-live="polite"></p></div>';
+            . $formId . '" role="status" aria-live="polite"></p>'
+            . '<p class="blogEditor__publicationStatus" '
+            . 'data-blog-editor-publication-status="'
+            . $publicationStatus['value'] . '" data-blog-editor-form="'
+            . $formId . '" aria-label="Estado del artículo: '
+            . $publicationStatus['label'] . '">'
+            . $publicationStatus['label'] . '</p></div>';
     }
 
     private function inspector(
@@ -352,7 +381,11 @@ final class BlogStructuredEditorHtmlRenderer
         BlogDraft $presentationDraft,
         bool $privateDraftPublicationReady,
         int $categoryWorkspaceVersion,
-        bool $dummyCategoryAssigned
+        bool $dummyCategoryAssigned,
+        bool $canAssignTags,
+        array $tagOptions,
+        int $tagWorkspaceVersion,
+        bool $canViewTags
     ): string {
         return '<div class="blogEditor__inspector" data-blog-inspector '
             . 'data-blog-editor-form="' . $formId . '">'
@@ -375,7 +408,8 @@ final class BlogStructuredEditorHtmlRenderer
             . $this->entryIdentity(
                 $variant,
                 $presentationDraft,
-                $publicPath
+                $publicPath,
+                $formId
             )
             . ($canAssignCategories
                 ? $this->categoryAssignment(
@@ -386,6 +420,17 @@ final class BlogStructuredEditorHtmlRenderer
                     $privateDraftPublicationReady,
                     $categoryWorkspaceVersion
                 )
+                : '')
+            . (($canAssignTags || $canViewTags)
+                ? ($canAssignTags
+                    ? $this->tagAssignment(
+                        $basePath,
+                        $csrf,
+                        $variant,
+                        $tagOptions,
+                        $tagWorkspaceVersion
+                    )
+                    : $this->tagReadOnly($variant, $tagOptions))
                 : '')
             . $this->metadata(
                 $presentationDraft,
@@ -417,11 +462,99 @@ final class BlogStructuredEditorHtmlRenderer
             . '</section></div>';
     }
 
+    /** @param list<BlogEditorTagOption> $tagOptions */
+    private function tagAssignment(
+        string $basePath,
+        string $csrf,
+        BlogPostVariant $variant,
+        array $tagOptions,
+        int $tagWorkspaceVersion
+    ): string {
+        [$items, $names] = $this->tagItems($tagOptions);
+        $inputId = 'blog-editor-tags-csv';
+        $helpId = 'blog-editor-tags-help';
+        $statusId = 'blog-editor-tags-status';
+
+        return '<div class="blogEditor__tags" '
+            . 'aria-labelledby="blog-editor-tags-title">'
+            . '<h3 id="blog-editor-tags-title">Etiquetas</h3>'
+            . '<p>Se guardan para <strong>'
+            . $this->escape(strtoupper($variant->locale()))
+            . '</strong>. Quitar una etiqueta solo la desasigna de este '
+            . 'art&iacute;culo.</p><form method="post" action="'
+            . $this->path($basePath . '/tags/assign') . '" '
+            . 'data-blog-tag-assignment-form>'
+            . $this->hidden('csrf', $csrf)
+            . $this->hidden('post', $variant->postPublicId())
+            . $this->hidden('locale', $variant->locale())
+            . $this->hidden('lock_version', (string) $variant->lockVersion())
+            . $this->hidden(
+                'tag_workspace_version',
+                (string) $tagWorkspaceVersion
+            )
+            . '<label for="' . $inputId . '">A&ntilde;adir etiquetas</label>'
+            . '<input id="' . $inputId . '" name="tags" type="text" '
+            . 'dir="auto" '
+            . 'value="' . $this->escape(implode(', ', $names)) . '" '
+            . 'maxlength="' . BlogTagService::MAX_CSV_BYTES . '" '
+            . 'autocomplete="off" aria-describedby="' . $helpId . ' '
+            . $statusId . '" data-blog-tag-csv>'
+            . '<p id="' . $helpId . '" class="blogEditor__fieldHelp">'
+            . 'Hasta ' . BlogTagService::MAX_TAGS_PER_VARIANT
+            . ' etiquetas separadas por comas. Con JavaScript, pulsa Intro '
+            . 'o escribe una coma para a&ntilde;adirlas.</p>'
+            . '<ul class="blogEditor__tagList" data-blog-tag-list '
+            . 'aria-label="Etiquetas asignadas">' . $items . '</ul>'
+            . '<button type="submit">Guardar etiquetas</button>'
+            . '<p id="' . $statusId . '" data-blog-tag-assignment-status '
+            . 'role="status" aria-live="polite"></p></form></div>';
+    }
+
+    /** @param list<BlogEditorTagOption> $tagOptions */
+    private function tagReadOnly(
+        BlogPostVariant $variant,
+        array $tagOptions
+    ): string {
+        [$items] = $this->tagItems($tagOptions);
+
+        return '<div class="blogEditor__tags" data-blog-tag-readonly '
+            . 'aria-labelledby="blog-editor-tags-title">'
+            . '<h3 id="blog-editor-tags-title">Etiquetas</h3>'
+            . '<p>Asignadas para <strong>'
+            . $this->escape(strtoupper($variant->locale()))
+            . '</strong>. Vista de solo lectura.</p>'
+            . '<ul class="blogEditor__tagList" '
+            . 'aria-label="Etiquetas asignadas">' . $items . '</ul></div>';
+    }
+
+    /**
+     * @param list<BlogEditorTagOption> $tagOptions
+     * @return array{string, list<string>}
+     */
+    private function tagItems(array $tagOptions): array
+    {
+        $items = '';
+        $names = [];
+        foreach ($tagOptions as $option) {
+            $names[] = $option->name();
+            $items .= '<li data-blog-tag data-blog-tag-slug="'
+                . $this->escape($option->slug()) . '"><span dir="auto">'
+                . $this->escape($option->name()) . '</span></li>';
+        }
+        if ($items === '') {
+            $items = '<li data-blog-tag-empty>No hay etiquetas asignadas.</li>';
+        }
+
+        return [$items, $names];
+    }
+
     private function entryIdentity(
         BlogPostVariant $variant,
         BlogDraft $draft,
-        ?string $publicPath
+        ?string $publicPath,
+        string $formId
     ): string {
+        $publicationStatus = $this->publicationStatus($variant);
         $path = $publicPath === null ? '' : rtrim($publicPath, '/');
         $slug = $draft->slug();
         $url = $path === ''
@@ -432,10 +565,10 @@ final class BlogStructuredEditorHtmlRenderer
             . 'data-blog-public-base="' . $this->escape($path) . '">'
             . '<div><dt>Idioma</dt>'
             . '<dd>' . $this->entryLocale($variant->locale())
-            . '</dd></div><div><dt>Estado</dt><dd>'
-            . ($variant->status() === BlogPostVariant::DRAFT
-                ? 'Borrador'
-                : 'Publicado')
+            . '</dd></div><div><dt>Estado</dt><dd '
+            . 'data-blog-editor-publication-status="'
+            . $publicationStatus['value'] . '" data-blog-editor-form="'
+            . $formId . '">' . $publicationStatus['label']
             . '</dd></div><div><dt>Ruta p&uacute;blica</dt><dd><code '
             . 'data-blog-public-url>' . $this->escape($url)
             . '</code></dd></div></dl>';
@@ -452,6 +585,21 @@ final class BlogStructuredEditorHtmlRenderer
 
         return '<span class="blogEditor__entryLocale">' . $visual . '<span>'
             . $this->escape(strtoupper($locale)) . '</span></span>';
+    }
+
+    /** @return array{value: string, label: string} */
+    private function publicationStatus(BlogPostVariant $variant): array
+    {
+        return match ($variant->status()) {
+            BlogPostVariant::DRAFT => [
+                'value' => BlogPostVariant::DRAFT,
+                'label' => 'Borrador',
+            ],
+            BlogPostVariant::PUBLISHED => [
+                'value' => BlogPostVariant::PUBLISHED,
+                'label' => 'Publicado',
+            ],
+        };
     }
 
     /** @param list<BlogEditorCategoryOption> $categoryOptions */
@@ -1025,11 +1173,13 @@ final class BlogStructuredEditorHtmlRenderer
      * @param list<BlogEditorMediaOption> $mediaOptions
      * @param list<BlogEditorRevisionSummary> $revisionSummaries
      * @param list<BlogEditorCategoryOption> $categoryOptions
+     * @param list<BlogEditorTagOption> $tagOptions
      */
     private function assertOptions(
         array $mediaOptions,
         array $revisionSummaries,
-        array $categoryOptions
+        array $categoryOptions,
+        array $tagOptions
     ): void {
         if (
             !array_is_list($mediaOptions)
@@ -1038,6 +1188,8 @@ final class BlogStructuredEditorHtmlRenderer
             || count($revisionSummaries) > self::MAX_REVISION_SUMMARIES
             || !array_is_list($categoryOptions)
             || count($categoryOptions) > self::MAX_CATEGORY_OPTIONS
+            || !array_is_list($tagOptions)
+            || count($tagOptions) > self::MAX_TAG_OPTIONS
         ) {
             throw new InvalidArgumentException(
                 'Invalid Blog editor presentation options.'
@@ -1084,6 +1236,23 @@ final class BlogStructuredEditorHtmlRenderer
                 );
             }
             $categoryIds[$option->publicId()] = true;
+        }
+
+        $tagSlugs = [];
+        $previousSlug = null;
+        foreach ($tagOptions as $option) {
+            if (
+                !$option instanceof BlogEditorTagOption
+                || isset($tagSlugs[$option->slug()])
+                || ($previousSlug !== null
+                    && strcmp($previousSlug, $option->slug()) >= 0)
+            ) {
+                throw new InvalidArgumentException(
+                    'Invalid Blog editor presentation options.'
+                );
+            }
+            $tagSlugs[$option->slug()] = true;
+            $previousSlug = $option->slug();
         }
     }
 

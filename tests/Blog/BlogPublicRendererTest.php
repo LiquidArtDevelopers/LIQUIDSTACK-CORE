@@ -150,6 +150,106 @@ PHP);
         );
     }
 
+    public function testStandaloneTaxonomiesAreNeutralAndPrecedeArticleBody(): void
+    {
+        $renderer = new BlogPublicHtmlRenderer();
+        $empty = $renderer->render(
+            $this->variant('Matrix body'),
+            'https://example.test/news/matrix'
+        );
+        self::assertStringNotContainsString(
+            'blogPublicArticleTaxonomies',
+            $empty
+        );
+        $emptyXpath = $this->xpath($empty);
+        self::assertCount(1, $emptyXpath->query('/html/body/main'));
+        self::assertCount(0, $emptyXpath->query('/html/body/main/article'));
+        self::assertCount(
+            1,
+            $emptyXpath->query('/html/body/main/p[text()="Matrix body"]')
+        );
+
+        foreach ([
+            'categories' => [
+                'categories' => [[
+                    'locale' => 'en',
+                    'slug' => 'strategy',
+                    'name' => 'Strategy',
+                ]],
+            ],
+            'tags' => [
+                'tags' => [[
+                    'locale' => 'en',
+                    'slug' => 'artificial-intelligence',
+                    'name' => 'AI <script>alert(1)</script>',
+                ]],
+            ],
+            'both' => [
+                'categories' => [
+                    [
+                        'locale' => 'en',
+                        'slug' => 'z-strategy',
+                        'name' => 'Strategy',
+                    ],
+                    [
+                        'locale' => 'en',
+                        'slug' => 'a-advisory',
+                        'name' => 'Advisory',
+                    ],
+                ],
+                'tags' => [
+                    [
+                        'locale' => 'en',
+                        'slug' => 'z-artificial-intelligence',
+                        'name' => 'Artificial intelligence',
+                    ],
+                    [
+                        'locale' => 'en',
+                        'slug' => 'a-automation',
+                        'name' => 'Automation',
+                    ],
+                ],
+            ],
+        ] as $state => $taxonomies) {
+            $html = $renderer->render(
+                $this->variant('Matrix body'),
+                'https://example.test/news/matrix',
+                taxonomies: $taxonomies
+            );
+            $xpath = $this->xpath($html);
+            self::assertCount(1, $xpath->query(
+                '//main/div[contains(@class, '
+                    . '"blogPublicArticleTaxonomies")]'
+            ), $state);
+            self::assertCount(0, $xpath->query(
+                '//div[contains(@class, '
+                    . '"blogPublicArticleTaxonomies")]//a'
+            ), $state);
+            self::assertGreaterThanOrEqual(1, $xpath->query(
+                '//div[contains(@class, '
+                    . '"blogPublicArticleTaxonomies")]//li/span[@dir="auto"]'
+            )->count(), $state);
+            self::assertCount(1, $xpath->query(
+                '//main/div[contains(@class, '
+                    . '"blogPublicArticleTaxonomies")]'
+                    . '/following-sibling::p[text()="Matrix body"]'
+            ), $state);
+            self::assertStringNotContainsString('<script>alert(1)</script>', $html);
+            if ($state === 'both') {
+                self::assertSame('Advisory', $xpath->evaluate(
+                    'string((//div[contains(@class, '
+                        . '"blogPublicArticleTaxonomies__group--categories")]'
+                        . '//li/span)[1])'
+                ));
+                self::assertSame('Automation', $xpath->evaluate(
+                    'string((//div[contains(@class, '
+                        . '"blogPublicArticleTaxonomies__group--tags")]'
+                        . '//li/span)[1])'
+                ));
+            }
+        }
+    }
+
     public function testProjectViewReceivesTypedArticleAndShellProjections(): void
     {
         $view = tempnam(sys_get_temp_dir(), 'liquidstack-blog-view-');

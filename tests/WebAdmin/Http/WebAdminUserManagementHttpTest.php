@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Core\Http\Request;
 use App\Core\Http\Response;
+use App\Core\Modules\Blog\BlogMigrationProvider;
 use App\Core\Modules\Migrations\MigrationScope;
 use App\Core\Modules\WebAdmin\WebAdminMigrationProvider;
 use App\Core\WebAdmin\Authentication\WebAdminAuthenticationRepository;
@@ -461,6 +462,18 @@ final class WebAdminUserManagementHttpTest extends TestCase
                 'blog.capabilities.categories_edit',
                 'Crear y editar categorías del Blog',
             ],
+            [
+                'blog',
+                'blog.tags.view',
+                'blog.capabilities.tags_view',
+                'Consultar etiquetas del Blog',
+            ],
+            [
+                'blog',
+                'blog.tags.edit',
+                'blog.capabilities.tags_edit',
+                'Crear y asignar etiquetas del Blog',
+            ],
         ];
         $insert = $this->pdo->prepare(
             'INSERT INTO ls_webadmin_capabilities '
@@ -516,6 +529,48 @@ final class WebAdminUserManagementHttpTest extends TestCase
             }
             $this->assertHtmlResponse($response);
         }
+    }
+
+    public function testRealTagCapabilityCatalogUsesHumanLabels(): void
+    {
+        $migration = null;
+        foreach (BlogMigrationProvider::migrations() as $candidate) {
+            if ($candidate->id() === '0025_blog_tag_capabilities') {
+                $migration = $candidate;
+                break;
+            }
+        }
+        self::assertNotNull($migration);
+        $scope = MigrationScope::forTablePrefix(
+            'webadmin',
+            'ls_webadmin_'
+        );
+        foreach ($migration->statementsFor('sqlite', $scope) as $sql) {
+            self::assertNotFalse($this->pdo->exec($sql));
+        }
+
+        $admin = $this->seedAdmin();
+        [$token] = $this->seedSession($admin['id']);
+        $response = $this->controller->inviteEditorForm(
+            $this->get('/admin/users/invite', $token)
+        );
+
+        self::assertSame(200, $response->status());
+        foreach ([
+            'blog.tags.view' => 'Consultar etiquetas del Blog',
+            'blog.tags.edit' => 'Crear y asignar etiquetas del Blog',
+        ] as $code => $label) {
+            self::assertStringContainsString(
+                'value="' . $code . '"',
+                $response->body()
+            );
+            self::assertStringContainsString($label, $response->body());
+        }
+        self::assertStringNotContainsString(
+            'blog.capabilities.tags_',
+            $response->body()
+        );
+        $this->assertHtmlResponse($response);
     }
 
     public function testInvitationUsesPrgAndCreatesACompletePendingIdentity(): void

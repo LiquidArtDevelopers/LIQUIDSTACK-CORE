@@ -13,6 +13,7 @@
             "sha256:32067c01e2efb15e4f3742fdce8c56ddbbd9c40adb9e86a795c8ef49dbca5b1f",
             "sha256:335d7e95960ceec56e47ec06d50b8c42a106086d73fc777b8d925a268be55dce",
             "sha256:3bcd7c2d9f3f2f6cbcc22d04b5985f7c2cd38a133f120acc78e5a21cd3158dda",
+            "sha256:3df4678b3c32e70a6ef2440b74ca6bfd17687d95e35ce7b5f51f7f9837605426",
             "sha256:4428ade23ed73ad06fb0c348998976eaab146bb61a85ca4530ed7a86cae95b85",
             "sha256:6b53ff1720edf44b4af7c574b8e38a43f71ad91e26d8125708ba84ce6d376670",
             "sha256:7bc4b30a678c219d583d0cfb25e3868347e7b1fa6db518b0ec4773158e8c3123",
@@ -29,6 +30,7 @@
             "sha256:040555fa754a9e6a7ecc29be65cf9a9b7128aa04a5a2958b58092705d3da2ece",
             "sha256:05e22b69348b9cb5f69075379c09e40441d81d26f147da7a3e9f5a17875793c2",
             "sha256:12ff3f7e700b59a29ae31c018f40ba6072fc08b827df8348e3ef9d17ef0793bd",
+            "sha256:20d568be908b7c3f6c9c1c7fc5980c0cd4d6ebcc28556e2b3bbca705024b9264",
             "sha256:31a74473ca4c76d32603c10a35f2799658763675340362876c5ee430afc01c70",
             "sha256:56619bb9e6d39b88e36a60d9715f09b98f6612ce304ec17da0dde24aa8b95187",
             "sha256:9c9e24f13769b4c3dee66f877b3938f0bb1f296e8f8e37668a7628542ceb246d",
@@ -44,7 +46,8 @@
             "sha256:2b368f0fa584c817afcc3987a5fdd31051146d16bb00c97f1e4d7520cc401362",
             "sha256:4e5b4551a096baea8c16fbb2b947c7c8e2722a66aa6823267d7bb07ee25af891",
             "sha256:6c596d1575965db994d00e2fdb97d087cae7cf5af69be51452c9447f6900f85d",
-            "sha256:af4e43bf33fc453ec61812415bfbfbfc513331f76d607a58a1331a63c9ad6bec"
+            "sha256:af4e43bf33fc453ec61812415bfbfbfc513331f76d607a58a1331a63c9ad6bec",
+            "sha256:c4406c85d35479fc7ba0b77bb2f98d5cc7c427b43fd19bb57eabbc6eff2ad55b"
         ],
         "modules/blog/published/assets/blog-public.js": [
             "sha256:0a98db292b9c4efcf7b38a624bff1af30aacfc4de63084112ddc8e9c20b1180a",
@@ -73,7 +76,8 @@
             "sha256:23e75cc99b040d549d053f993adc363a17e46287e9311e340e8e55ff67ccc331"
         ],
         "modules/blog/resources/project/App/app/_moduleBlogPublicArticle.php": [
-            "sha256:5fa8a22e45f4112805f03414d94ea999c619cf57e67d5b49c3992331718abbc8"
+            "sha256:5fa8a22e45f4112805f03414d94ea999c619cf57e67d5b49c3992331718abbc8",
+            "sha256:7b89f11eecfe49aa65139c30ee9c3b088754ddc4fbf8d729564f9f21caad657e"
         ],
         "modules/blog/resources/project/App/app/_moduleBlogPublicCollections.php": [
             "sha256:18814fe5b41c88cb0b54e8230c9e946d0d5de8e80f5fa1c9a303f8d7dec85a65"
@@ -88,6 +92,7 @@
         "modules/blog/resources/project/App/controllers/artBlogArticle01.php": [
             "sha256:49eb33a37c0f6871d9d353de9a159f5b874d5060c1ce9452cba440d268782102",
             "sha256:859ded7fea8558a261c81865c4b2f45c6d5484ebc21070b854a04aaace9e3ce2",
+            "sha256:f08cc0e21e57553a298cb064acaad7b6e14039c9772a133533b8b8613c3da700",
             "sha256:f3c5e114c631751eacd687786d58440329fda62a85c7d4bc7d84a157c562b3dc"
         ],
         "modules/blog/resources/project/App/controllers/moduleBlogArchive01.php": [
@@ -141,6 +146,7 @@
             "sha256:ec9a07bf9c57d8823f5e57ba38c676649cd49c6ed73d951bc4693f9ae2c94eb1"
         ],
         "modules/blog/resources/project/App/templates/_artBlogArticle01.html": [
+            "sha256:170046792b00807a96abeb6dd1f23ca13042563e31917d5b699d5b4bd1bdea9e",
             "sha256:72724277224ab93256f8e75e440622ca26f8b517c6807bf1c3b891b9dfd2cdb1",
             "sha256:c381f1f79596208ce9629f822678c19cc90f2063a3b453eecd2d3ac6a36d4257"
         ],
@@ -236,6 +242,7 @@
             "sha256:6f6d341185e093e5c93d353ec3745128a22a2fa5960bdd28c46533082a7fa77b",
             "sha256:8ee6157aff7c8a487aacb5be416d5cc09a338a0037ab276ea3213dddc58eb549",
             "sha256:961ff478b3adafd119576e71196004b74348704601d1cad298732fd9decfef16",
+            "sha256:bf751d2cfe40bf1144dbb5458171e3bcb75a5768fc86af512425224819579328",
             "sha256:efca379d2822c9220dfd4b378a525045a04e6c5cfbd9cdecfbf0b98684cb3659"
         ],
         "modules/blog/resources/project/src/scss/resources/_moduleBlogArchive01.scss": [
@@ -642,6 +649,7 @@
             "sha256:d8c9db8c66cdd39c9d8969cef9beb5d36d4753f1da4d5a5907d38b27e00fd43f"
         ],
         "resources/js/_art11.js": [
+            "sha256:0ba629b21de858f62f14231c3f3e0f3934b81d75f7dcfebe10c3026103775e2b",
             "sha256:cd1b1e8ff035d64bd466cfd83cd73a0f0454db9d227c62e8ac9c109bd78aee3f"
         ],
         "resources/js/_art18.js": [
@@ -1501,6 +1509,7 @@
             "sha256:f6cd8353232bc1a51f517cd3a9dd728a0100890e80f0c763089798b3a01c7ac7"
         ],
         "stubs/App/controllers/art11.php": [
+            "sha256:0c4cc912c0d7502d0285c357f49c13134553fb3108818dffdbb91bcdfb29d8b3",
             "sha256:48c3804b1fa3c453b45fc713aab51e566131ec4aca1db511011d0c7a862dbc32",
             "sha256:58d2159097f9da0878f723fb97cc3c93bb3781cf00e6fb9c7cafaf7f633aaeb3"
         ],

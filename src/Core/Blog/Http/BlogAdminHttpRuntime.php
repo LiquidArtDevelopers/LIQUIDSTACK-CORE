@@ -15,6 +15,7 @@ use App\Core\Blog\StructuredContent\Categories\BlogEditorCategoryCatalogInterfac
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredEditorService;
 use App\Core\Blog\StructuredContent\Media\BlogEditorMediaCatalogInterface;
 use App\Core\Blog\StructuredContent\Rendering\BlogImageResolverInterface;
+use App\Core\Blog\Tags\BlogTagService;
 use App\Core\WebAdmin\Authentication\WebAdminAuthenticationService;
 use App\Core\WebAdmin\Authorization\WebAdminAuthorizationService;
 use App\Core\WebAdmin\Authorization\WebAdminMutationActorGate;
@@ -33,7 +34,8 @@ class BlogAdminHttpRuntime implements
     BlogStructuredEditorCategoryHttpRuntimeInterface,
     BlogSeoHttpRuntimeInterface,
     BlogEditorPreferencesHttpRuntimeInterface,
-    BlogAdminProfileHttpRuntimeInterface
+    BlogAdminProfileHttpRuntimeInterface,
+    BlogTagAdminHttpRuntimeInterface
 {
     private readonly WebAdminNavigationCatalog $navigation;
 
@@ -66,7 +68,8 @@ class BlogAdminHttpRuntime implements
         private readonly ?BlogEditorPreferencesService
             $optionalEditorPreferences = null,
         private readonly bool $privateDraftPublicationReady = false,
-        private readonly ?PdoWebAdminProfileRepository $profiles = null
+        private readonly ?PdoWebAdminProfileRepository $profiles = null,
+        private readonly ?BlogTagService $optionalTagService = null
     ) {
         $this->navigation = $navigation ?? new WebAdminNavigationCatalog();
     }
@@ -106,6 +109,16 @@ class BlogAdminHttpRuntime implements
     public function service(): BlogService
     {
         return $this->service;
+    }
+
+    public function tagService(): ?BlogTagService
+    {
+        return $this->optionalTagService;
+    }
+
+    public function tagsReady(): bool
+    {
+        return $this->optionalTagService !== null;
     }
 
     public function authentication(): WebAdminAuthenticationService
@@ -311,6 +324,7 @@ class BlogAdminHttpRuntime implements
                 $this->optionalEditorPreferences !== null,
             'private_draft_publication_ready' =>
                 $this->privateDraftPublicationReady,
+            'tags_ready' => $this->optionalTagService !== null,
         ];
     }
 }

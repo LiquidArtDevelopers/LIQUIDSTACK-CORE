@@ -15,8 +15,12 @@ use App\Core\Blog\Http\BlogAdminHttpRuntime;
 use App\Core\Blog\Http\BlogAdminHttpRuntimeInterface;
 use App\Core\Blog\Http\BlogAnalyticsAdminHttpRuntimeInterface;
 use App\Core\Blog\Http\BlogStructuredEditorHttpRuntimeInterface;
+use App\Core\Blog\Http\BlogTagAdminHttpRuntimeInterface;
 use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Blog\Seo\PdoBlogUrlHistoryRepository;
+use App\Core\Blog\Tags\BlogTagCapabilities;
+use App\Core\Blog\Tags\BlogTagService;
+use App\Core\Blog\Tags\Persistence\PdoBlogTagRepository;
 use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
 use App\Core\Modules\Blog\BlogMigrationProvider;
@@ -198,6 +202,51 @@ final class PreTombstoneBlogAdminRuntimeAdapter implements
             $capability
         );
     }
+}
+
+final class TagsReadyBlogAdminRuntimeAdapter implements
+    BlogTagAdminHttpRuntimeInterface
+{
+    /** @var list<string> */
+    public array $requestedGateCapabilities = [];
+
+    public function __construct(
+        private readonly BlogAdminHttpRuntime $inner,
+        private readonly BlogTagService $tags
+    ) {
+    }
+
+    public function projectRoot(): string { return $this->inner->projectRoot(); }
+    public function languages(): array { return $this->inner->languages(); }
+    public function blogConfig(): BlogConfig { return $this->inner->blogConfig(); }
+    public function webAdminConfig(): WebAdminConfig
+    {
+        return $this->inner->webAdminConfig();
+    }
+    public function service(): BlogService { return $this->inner->service(); }
+    public function authentication(): WebAdminAuthenticationService
+    {
+        return $this->inner->authentication();
+    }
+    public function authorization(): WebAdminAuthorizationService
+    {
+        return $this->inner->authorization();
+    }
+    public function mutationGate(
+        #[\SensitiveParameter] string $sessionToken,
+        #[\SensitiveParameter] string $csrfToken,
+        string $capability
+    ): Closure {
+        $this->requestedGateCapabilities[] = $capability;
+
+        return $this->inner->mutationGate(
+            $sessionToken,
+            $csrfToken,
+            $capability
+        );
+    }
+    public function tagService(): ?BlogTagService { return $this->tags; }
+    public function tagsReady(): bool { return true; }
 }
 
 final class BlogAdminHttpControllerTest extends TestCase
@@ -801,6 +850,100 @@ final class BlogAdminHttpControllerTest extends TestCase
         self::assertSame(0, (int) $this->pdo->query(
             'SELECT COUNT(*) FROM ls_blog_publication_heads'
         )->fetchColumn());
+    }
+
+    public function testIndependentDuplicateRequiresTagEditWhenTagsAreReady(): void
+    {
+        self::assertSame(303, $this->controller->create($this->post(
+            '/admin/blog/posts/create',
+            ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
+                + $this->editorial('tag-protected-copy')
+        ))->status());
+        $source = (string) $this->pdo->query(
+            'SELECT public_id FROM ls_blog_posts'
+        )->fetchColumn();
+        $runtime = new TagsReadyBlogAdminRuntimeAdapter(
+            $this->runtime,
+            new BlogTagService(new PdoBlogTagRepository(
+                $this->pdo,
+                MigrationScope::forTablePrefix('blog', 'ls_blog_')
+            ))
+        );
+        $controller = new BlogAdminHttpController($runtime);
+
+        $index = $controller->index($this->get('/admin/blog'));
+        self::assertSame(200, $index->status());
+        self::assertMatchesRegularExpression(
+            '/name="destination_locale" value="es"[^>]* disabled>/',
+            $index->body()
+        );
+        self::assertMatchesRegularExpression(
+            '/name="destination_locale" value="eu"(?![^>]* disabled)[^>]*>/',
+            $index->body()
+        );
+
+        $denied = $controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'destination_locale' => 'es',
+                'lock_version' => '1',
+                'operation_id' => '92500000-0000-4000-8000-000000000001',
+            ]
+        ));
+        self::assertSame(403, $denied->status());
+        self::assertSame(1, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+        self::assertSame(0, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_copy_operations'
+        )->fetchColumn());
+        self::assertSame([], $runtime->requestedGateCapabilities);
+
+        $this->addCapability(BlogTagCapabilities::EDIT);
+        $editOnly = $controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'destination_locale' => 'es',
+                'lock_version' => '1',
+                'operation_id' => '92500000-0000-4000-8000-000000000002',
+            ]
+        ));
+        self::assertSame(403, $editOnly->status());
+        self::assertSame(1, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+        self::assertSame([], $runtime->requestedGateCapabilities);
+
+        $this->addCapability(BlogTagCapabilities::VIEW);
+        $allowed = $controller->duplicate($this->post(
+            '/admin/blog/posts/duplicate',
+            [
+                'csrf' => $this->csrfToken,
+                'post' => $source,
+                'locale' => 'es',
+                'destination_locale' => 'es',
+                'lock_version' => '1',
+                'operation_id' => '92500000-0000-4000-8000-000000000003',
+            ]
+        ));
+        self::assertSame(303, $allowed->status());
+        self::assertSame(2, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+        self::assertContains(
+            BlogTagCapabilities::EDIT,
+            $runtime->requestedGateCapabilities
+        );
+        self::assertContains(
+            BlogTagCapabilities::VIEW,
+            $runtime->requestedGateCapabilities
+        );
     }
 
     public function testPreTombstoneRuntimeKeepsDuplicateAndHidesTrashSurface(): void
@@ -1846,6 +1989,22 @@ final class BlogAdminHttpControllerTest extends TestCase
         );
         self::assertNotFalse($statement);
         self::assertTrue($statement->execute(['code' => $capability]));
+        self::assertSame(1, $statement->rowCount(), $capability);
+    }
+
+    private function addCapability(string $capability): void
+    {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_user_capabilities '
+            . '(user_id, capability_id) SELECT u.id, c.id FROM '
+            . 'ls_webadmin_users u CROSS JOIN ls_webadmin_capabilities c '
+            . 'WHERE u.public_id = :user AND c.code = :code'
+        );
+        self::assertNotFalse($statement);
+        self::assertTrue($statement->execute([
+            'user' => '10000000-0000-4000-8000-000000000001',
+            'code' => $capability,
+        ]));
         self::assertSame(1, $statement->rowCount(), $capability);
     }
 

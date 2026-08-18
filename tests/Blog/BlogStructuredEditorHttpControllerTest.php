@@ -28,6 +28,9 @@ use App\Core\Blog\StructuredContent\Media\WebAdminMediaCatalogAdapter;
 use App\Core\Blog\StructuredContent\Persistence\BlogStructuredPlainDraftWriteGuard;
 use App\Core\Blog\StructuredContent\Persistence\PdoBlogStructuredContentRepository;
 use App\Core\Blog\StructuredContent\Rendering\BlogImageResolverInterface;
+use App\Core\Blog\Tags\BlogTagCapabilities;
+use App\Core\Blog\Tags\BlogTagService;
+use App\Core\Blog\Tags\Persistence\PdoBlogTagRepository;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
 use App\Core\Modules\Blog\BlogMigrationProvider;
@@ -170,6 +173,7 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
     private PDO $pdo;
     private BlogAdminHttpRuntime $runtime;
     private BlogStructuredEditorHttpController $controller;
+    private BlogTagService $tagService;
     private string $sessionToken;
     private string $csrfToken;
     private int $actorId;
@@ -276,6 +280,12 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
             $audit,
             layoutReady: true
         );
+        $this->tagService = new BlogTagService(
+            new PdoBlogTagRepository($this->pdo, $blogScope),
+            new RandomUuidV4Generator(),
+            $clock,
+            $audit
+        );
         $this->runtime = new BlogAdminHttpRuntime(
             __DIR__,
             ['es'],
@@ -308,7 +318,8 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
                     new PdoBlogCategoryRepository($this->pdo, $blogScope)
                 )
             ),
-            layoutEditorReady: true
+            layoutEditorReady: true,
+            optionalTagService: $this->tagService
         );
         $this->controller = new BlogStructuredEditorHttpController(
             $this->runtime
@@ -522,6 +533,96 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
             "default-src 'none'",
             $anonymous->headers()['Content-Security-Policy']
         );
+    }
+
+    public function testTagPanelFollowsViewAndEditCapabilityMatrix(): void
+    {
+        $this->addCapability(BlogTagCapabilities::VIEW);
+        $this->addCapability(BlogTagCapabilities::EDIT);
+        $assigned = $this->tagService->assignToVariant(
+            $this->runtime->mutationGateAll(
+                $this->sessionToken,
+                $this->csrfToken,
+                [BlogTagCapabilities::VIEW, BlogTagCapabilities::EDIT]
+            ),
+            self::POST,
+            'es',
+            1,
+            0,
+            'Ahorro'
+        );
+        self::assertSame(1, $assigned->workspaceVersion());
+        $query = ['post' => self::POST, 'locale' => 'es'];
+
+        $editable = $this->controller->edit($this->get(
+            '/admin/blog/editor',
+            $query
+        ));
+        self::assertSame(200, $editable->status());
+        self::assertStringContainsString(
+            'data-blog-tag-assignment-form',
+            $editable->body()
+        );
+        self::assertStringContainsString('>Ahorro</span>', $editable->body());
+
+        $this->removeCapability(BlogTagCapabilities::EDIT);
+        $viewOnly = $this->controller->edit($this->get(
+            '/admin/blog/editor',
+            $query
+        ));
+        self::assertStringContainsString(
+            'data-blog-tag-readonly',
+            $viewOnly->body()
+        );
+        self::assertStringContainsString('>Ahorro</span>', $viewOnly->body());
+        self::assertStringNotContainsString(
+            'data-blog-tag-assignment-form',
+            $viewOnly->body()
+        );
+
+        $this->removeCapability(BlogTagCapabilities::VIEW);
+        $this->addCapability(BlogTagCapabilities::EDIT);
+        $editOnly = $this->controller->edit($this->get(
+            '/admin/blog/editor',
+            $query
+        ));
+        self::assertStringNotContainsString(
+            'class="blogEditor__tags"',
+            $editOnly->body()
+        );
+
+        $this->removeCapability(BlogTagCapabilities::EDIT);
+        $neither = $this->controller->edit($this->get(
+            '/admin/blog/editor',
+            $query
+        ));
+        self::assertStringNotContainsString(
+            'class="blogEditor__tags"',
+            $neither->body()
+        );
+    }
+
+    public function testProtectedAdminRolesReceiveEditableTagPanel(): void
+    {
+        $query = ['post' => self::POST, 'locale' => 'es'];
+        foreach (['site_admin', 'system_superadmin'] as $role) {
+            self::assertNotFalse($this->pdo->exec(
+                'DELETE FROM ls_webadmin_user_roles WHERE user_id = '
+                    . $this->actorId
+            ));
+            $this->assignRole($role);
+            $response = $this->controller->edit($this->get(
+                '/admin/blog/editor',
+                $query
+            ));
+
+            self::assertSame(200, $response->status(), $role);
+            self::assertStringContainsString(
+                'data-blog-tag-assignment-form',
+                $response->body(),
+                $role
+            );
+        }
     }
 
     public function testDraftEditorRemainsAvailableWithoutPublishCapability(): void
@@ -1739,6 +1840,21 @@ final class BlogStructuredEditorHttpControllerTest extends TestCase
                 ]],
             ]],
         ]));
+    }
+
+    private function assignRole(string $role): void
+    {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_user_roles '
+                . '(user_id, role_id, source) SELECT :user, id, :source '
+                . 'FROM ls_webadmin_roles WHERE code = :role'
+        );
+        self::assertTrue($statement->execute([
+            'user' => $this->actorId,
+            'source' => 'system',
+            'role' => $role,
+        ]));
+        self::assertSame(1, $statement->rowCount(), $role);
     }
 
     private function addCapability(string $capability): void

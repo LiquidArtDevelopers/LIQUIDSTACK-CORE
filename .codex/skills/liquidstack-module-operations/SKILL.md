@@ -465,7 +465,11 @@ composer liquidstack:migrate --dry-run
   `bodyHtml()` conserva por compatibilidad el cuerpo histórico
   completo, incluida la portada; las vistas nuevas deben colocar
   `headerMediaHtml()` en su `header` y `mainHtml()` dentro de su `main`, sin
-  duplicar el medio destacado.
+  duplicar el medio destacado. El hook expone además `$articleCategories`,
+  `$articleTags` y `$articleTaxonomiesHtml`; colocar el último dentro del
+  artículo, antes de `$articleMain`. Mantener el copy localizado de
+  categorías/etiquetas, omitir cada grupo vacío y no inventar enlaces a
+  archivos o rutas de etiquetas.
   Si `analyticsEnabled()` es verdadero, una vista project-owned debe emitir
   los atributos `data-blog-analytics-enabled`,
   `data-blog-analytics-retention-days` y
@@ -484,6 +488,13 @@ composer liquidstack:migrate --dry-run
   y su CSS gestionado. `shared` permanece como default; si se declara
   `liquidstack`, WebAdmin debe declararlo también. Composer no debe crear,
   fusionar ni sobrescribir estos ficheros project-owned.
+- Limitar `database.table_prefix` de Blog a 29 bytes, presupuesto derivado de
+  `category_assignment_workspace_items` y del máximo de 64 bytes de
+  MySQL/MariaDB. Un proyecto configurado con una versión hasta v1.23.0 que
+  adoptó un prefijo de 30–46 bytes necesita una migración explícita del
+  namespace antes de actualizar.
+  No truncar, renombrar ni adoptar sus tablas automáticamente: esperar
+  `config.invalid_table_prefix` hasta completar y verificar ese traslado.
 - Cuando el shell público reutilice `.btn_idioma`, activar
   `bindLanguageNavigation(window, document)` desde
   `_languagePreference.mjs` y limpiar el binding en HMR. Los enlaces deben usar
@@ -528,16 +539,19 @@ composer liquidstack:migrate --dry-run
   identidades y su acceso. Una identidad activa o una invitación válida ya
   entregada no se vuelve a enviar.
 - Mantener separados `blog.articles.view`, `blog.articles.edit`,
-  `blog.articles.publish`, `blog.articles.delete` y `blog.analytics.view`.
+  `blog.articles.publish`, `blog.articles.delete`, `blog.tags.view`,
+  `blog.tags.edit` y `blog.analytics.view`.
   Ocultar botones no sustituye el gate transaccional:
   SID, CSRF, lifecycle, `auth_version` y capability deben revalidarse con el
   mismo PDO y dentro de la transacción Blog.
-- Duplicar un artículo conserva sus categorías, por lo que debe revalidar
-  juntos `blog.articles.edit`, `blog.categories.edit` y
-  `webadmin.media.view`. No permitir que la clonación eluda la capacidad de
-  asignar categorías. Tomar primero la selección del workspace post-wide
-  privado y solo en su ausencia la relación live; al añadir un locale al mismo
-  post no duplicar esa asignación compartida.
+- Duplicar un artículo conserva sus categorías y, cuando la frontera está
+  lista, las etiquetas efectivas de la variante origen. Debe revalidar juntos
+  `blog.articles.edit`, `blog.categories.edit`, `webadmin.media.view`,
+  `blog.tags.view` y `blog.tags.edit`; no permitir que la clonación eluda las
+  capacidades de taxonomía. Tomar categorías primero del workspace post-wide
+  privado y solo en su ausencia de la relación live. Tomar etiquetas del
+  workspace localizado efectivo o de live; al añadir un locale al mismo post
+  no duplicar categorías y comenzar con cero etiquetas.
 - Una copia estructurada crea documento actual, referencias y revisión propia
   inicial `1`, pero no clona publicación, historial, cabecera o workspace de la
   fuente. Usar una instantánea privada solo si la fuente está publicada, su
@@ -602,6 +616,38 @@ composer liquidstack:migrate --dry-run
   exige UUID público, locale y `lock_version`, elimina solo esa traducción y
   falla con conflicto si el agregado aparece en asignaciones live o privadas;
   el agregado desaparece únicamente al borrar su última traducción.
+- Tratar `0020_blog_tags`, `0021_blog_localization_tags`,
+  `0022_blog_tag_assignment_heads`,
+  `0023_blog_tag_assignment_workspaces`,
+  `0024_blog_tag_assignment_workspace_items` y
+  `0025_blog_tag_capabilities` como una frontera aditiva localizada por
+  variante. Separar vocabulario canónico, relación live, head, workspace e
+  items pendientes; `0025` compone las capacidades en el scope WebAdmin. Una
+  cola pendiente conserva el Blog anterior; si figura aplicada pero su esquema
+  o semillas no cumplen, runtime y `doctor` fallan cerrados.
+- Mantener de cero a treinta etiquetas por variante. Canonizar nombres en NFC,
+  deduplicar por identidad Unicode casefold, generar slugs deterministas y
+  rechazar UTF-8 inválido, límites o controles invisibles peligrosos sin
+  truncar. Conservar ZWJ para emoji. Guardar siempre en el workspace localizado
+  con CAS `tag_workspace_version`; una selección vacía es una intención válida
+  de retirar todas las etiquetas en la siguiente publicación.
+- Servir la única mutación desde `POST /admin/blog/tags/assign`, form-urlencoded,
+  sin query y con SID, CSRF, lifecycle, `auth_version`, lock editorial y CAS
+  revalidados dentro de la transacción. Mantener el input CSV sin JavaScript:
+  éxito por PRG y errores 409/422/503 en una vista HTML que conserva el texto
+  enviado. Solo el header exacto
+  `X-LiquidStack-Tag-Editor: async` junto a `Accept: application/json` pide JSON
+  `no-store`; no aceptar claves de formulario adicionales.
+- Exponer etiquetas en el editor solo con `blog.tags.view`; exigir además
+  `blog.tags.edit` para habilitar o ejecutar la mutación. Mostrar solo lectura
+  con VIEW, ocultar y bloquear con EDIT sin VIEW y permitir edición únicamente
+  con VIEW+EDIT. Con JavaScript, crear pastillas mediante DOM seguro al confirmar
+  con coma, Intro, pegado o blur; una pausa no parte el término y la composición
+  IME permanece intacta.
+  Usar un único request en vuelo: si el usuario modifica durante la petición,
+  reencolar el estado más reciente, avanzar el CAS y no perder la cola al salir
+  o cerrar sesión. Si ese guardado falla, cancelar la navegación y conservar el
+  texto para reintento.
 - Tratar `0005_blog_structured_content` como la frontera ya implementada del
   editor `/admin/blog/editor`: documento actual, referencias de medios y
   revisiones inmutables. Exige las postcondiciones combinadas de
@@ -722,16 +768,20 @@ composer liquidstack:migrate --dry-run
   frontera post-wide independiente mediante `category_assignment_heads`,
   `category_assignment_workspaces` y `category_assignment_workspace_items`, con
   CAS propio de `category_workspace_version`; no asociarlas al workspace de un
-  locale. Guardar categorías nunca toca la asignación live. Guardar una variante
-  publicada crea una revisión privada y avanza su lock editorial sin tocar
-  metadatos, documento, medios ni cabecera públicos. `Publicar` consume
-  atómicamente la versión global exacta, promociona la última instantánea,
-  actualiza proyecciones y categorías, avanza la cabecera, aplica el fencing del
+  locale. Guardar categorías nunca toca la asignación live. Cuando `0020`–`0024`
+  están listas, mantener además el head y workspace de etiquetas por
+  localización, con CAS `tag_workspace_version`; guardarlas tampoco toca live.
+  Guardar una variante publicada crea una revisión privada y avanza su lock
+  editorial sin tocar metadatos, documento, medios ni cabecera públicos.
+  `Publicar` consume atómicamente las versiones global exacta de categorías y
+  localizada exacta de etiquetas, promociona la última instantánea, actualiza
+  proyecciones y ambas taxonomías, avanza la cabecera, aplica el fencing del
   sitemap, audita y limpia los workspaces consumidos. Al retirar, adoptar
   el snapshot editorial privado como borrador antes de jubilar su workspace y
   cabecera; retirar o enviar un locale a la papelera preserva el head y workspace
-  global de categorías. Sin el gate, conservar el flujo anterior y la variante
-  publicada de solo lectura hasta su retirada.
+  global de categorías y las relaciones live/privadas de etiquetas. Sin el
+  gate, conservar el flujo anterior y la variante publicada de solo lectura
+  hasta su retirada.
 - Resolver la firma pública del artículo en vivo desde la identidad de autor y
   su perfil actual. No congelar apodo o rol dentro de revisiones o snapshots de
   publicación: una modificación posterior del perfil se refleja también en
@@ -933,7 +983,11 @@ composer liquidstack:migrate --dry-run
   `any|all`, un máximo de diez categorías simultáneas y los límites de
   búsqueda,
   paginación y exclusión del value object; no pasar arrays o SQL construidos
-  desde el request al repositorio.
+  desde el request al repositorio. Hacer que `q` busque también nombre y slug
+  de etiquetas live del locale mediante `EXISTS`; no consultar workspaces ni
+  duplicar cards. No añadir `tag[]`, selector, archivo, ruta, canonical,
+  hreflang o sitemap de etiquetas: siguen siendo señal de la búsqueda textual
+  y metadatos informativos.
 - Para composiciones visuales dinámicas, construir un
   `BlogPublicResourceQuery` y mantener `order` en la allowlist cerrada
   `newest|oldest|updated`. Usar `BlogPublicResourceFeed::batch()` cuando haya
@@ -948,9 +1002,13 @@ composer liquidstack:migrate --dry-run
   distingue `ready`, `empty` y `unavailable`; el hook no emite headers ni HTML.
   No instanciar `BlogPublicResourceFeed`, factories ni queries dentro de la
   vista; una selección avanzada debe encapsularse en soporte backend propio.
-- Resolver las categorías de todas las cards de un lote en una consulta batch,
-  con un máximo de 50 slugs, exclusión obligatoria de Dummy y proyección sin
-  IDs. Enriquecer su media mediante el repositorio batch opcional Blog+WebAdmin:
+- Resolver categorías y etiquetas live de todas las cards de un lote en un
+  batch compuesto, con un máximo de 50 slugs de categoría, 30 etiquetas por
+  variante, exclusión obligatoria de Dummy y proyección sin IDs. Añadir `tags`
+  solo a las APIs enriquecidas y conservar exactamente el shape histórico de
+  `BlogPublicFeed::cards()`. Un gate pendiente devuelve `tags=[]` sin consultar
+  tablas ausentes; un registro aplicado con esquema corrupto falla cerrado.
+  Enriquecer su media mediante el repositorio batch opcional Blog+WebAdmin:
   para cada lote no vacío debe ejecutar como máximo dos `SELECT` constantes. El
   primero lee el documento `CURRENT` publicado y sus referencias; solo cuando
   de esa fase resulte algún medio elegible, el segundo carga sus variantes.
@@ -1119,8 +1177,9 @@ composer liquidstack:migrate --dry-run
   verificar el scheduler externo de cada producción antes de activar la
   colección.
 - Probar SQLite aislado y, ante cambios de DDL, repositorio, locks o auditoría,
-  la integración opt-in MySQL/MariaDB. Cubrir create/add-locale/save/publish/
-  unpublish, categorías, documento canónico, adopción legacy, revisiones,
+  la integración opt-in MySQL/MariaDB. Cubrir el catálogo exacto `0020`–`0025`
+  y create/add-locale/save/publish/unpublish, categorías, etiquetas privadas y
+  live, documento canónico, adopción legacy, revisiones,
   restauración, medios, stale writes con dos PDO, rollback conjunto de
   contenido y auditoría, prioridad estática, sitemap y ausencia de mutaciones
   en `HEAD`. Con `0014`, demostrar además separación privada/pública, promoción
@@ -1137,10 +1196,17 @@ composer liquidstack:migrate --dry-run
   tablas, usuarios ni datos QA del entorno aislado. Verificar que la fuente
   queda idéntica y que cancelar, GET, HEAD o abrir cualquiera de las dos
   lecturas privadas no escribe.
+- Para etiquetas, forzar con dos procesos y dos conexiones la carrera de alta
+  de una misma identidad Unicode: ambos resultados deben converger en un único
+  término canónico. Repetir con dos identidades distintas que colisionen en el
+  mismo slug y exigir que ambas sobrevivan con resolución determinista, sin
+  deadlock ni error de almacenamiento. Volver a verificar esquema,
+  capabilities, CAS y cleanup exacto de tablas y marcadores; nunca ejecutar el
+  arnés contra la DB de ningún consumidor o proyecto real.
 - Consultar `docs/liquid-blog.md` y `docs/blog-seo-editorial.md` como contratos
-  completos antes de ampliar el módulo. No presentar categorías, AVIF, el
-  editor V1/V2, el workspace privado, la preview inmersiva ni el medidor SEO
-  editorial v1 como pendientes. La integración en CORE principal no sustituye
+  completos antes de ampliar el módulo. No presentar categorías, etiquetas,
+  AVIF, el editor V1/V2, el workspace privado, la preview inmersiva ni el
+  medidor SEO editorial v1 como pendientes. La integración técnica no sustituye
   la validación de adopción previa a la release; siguen pendientes traducción
   IA, Search Console o Indexing API, vídeo local y el maquetador libre.
 

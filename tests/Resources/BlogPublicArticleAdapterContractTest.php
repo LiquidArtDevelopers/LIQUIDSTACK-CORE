@@ -26,6 +26,11 @@ final class BlogPublicArticleAdapterContractTest extends TestCase
             '$articleMain = $blogArticle->mainHtml()',
             '$articleHero = $blogArticle->headerHtml()',
             '$articleCustomCss = $blogArticle->customCss()',
+            '$articleCategories = $blogArticle->categories()',
+            '$articleTags = $blogArticle->tags()',
+            '$articleTaxonomiesHtml = (new BlogPublicArticleTaxonomyRenderer())',
+            "'blog_article_categories_label'",
+            "'blog_article_tags_label'",
             '$relatedArticles = $blogArticle->relatedArticles()',
         ] as $contract) {
             self::assertStringContainsString($contract, $source);

@@ -31,6 +31,7 @@ use App\Core\Modules\Blog\BlogLayoutEditorSchemaGate;
 use App\Core\Modules\Blog\BlogStructuredContentSchemaGate;
 use App\Core\Modules\Blog\BlogPostTombstoneSchemaGate;
 use App\Core\Modules\Blog\BlogRobotsPreferencesSchemaGate;
+use App\Core\Modules\Blog\BlogTagSchemaGate;
 use App\Core\Modules\Blog\BlogUrlHistorySchemaGate;
 use App\Core\Modules\Migrations\ConfiguredMigrationScopeFactory;
 use App\Core\Modules\Migrations\MigrationFeatureGate;
@@ -83,7 +84,9 @@ final class BlogPublicHttpRuntimeFactory implements
             $robotsPreferencesSchemaGate =
                 new BlogRobotsPreferencesSchemaGate(),
         private readonly BlogUrlHistorySchemaGate $urlHistorySchemaGate =
-            new BlogUrlHistorySchemaGate()
+            new BlogUrlHistorySchemaGate(),
+        private readonly BlogTagSchemaGate $tagSchemaGate =
+            new BlogTagSchemaGate()
     ) {
         $this->connectionFactoryResolver = $connectionFactoryResolver === null
             ? static fn (
@@ -188,8 +191,30 @@ final class BlogPublicHttpRuntimeFactory implements
                     new PdoBlogCategoryRepository($pdo, $blogScope)
                 )
                 : null;
+            $tagsReady = $this->migrationFeatureGate->isReady(
+                $pdo,
+                $registry,
+                $scopes,
+                BlogMigrationRequirements::tagsPublic()
+            );
+            if (
+                $tagsReady
+                && !$this->tagSchemaGate->isPublicReady(
+                    $pdo,
+                    $registry,
+                    $scopes
+                )
+            ) {
+                throw new BlogPublicHttpRuntimeException(
+                    'blog.tags_schema_not_ready'
+                );
+            }
             $catalogRepository = $categorySchemaReady
-                ? new PdoBlogPublicCatalogRepository($pdo, $blogScope)
+                ? new PdoBlogPublicCatalogRepository(
+                    $pdo,
+                    $blogScope,
+                    $tagsReady
+                )
                 : null;
             $structuredMigrationApplied = $this->migrationFeatureGate->isReady(
                 $pdo,

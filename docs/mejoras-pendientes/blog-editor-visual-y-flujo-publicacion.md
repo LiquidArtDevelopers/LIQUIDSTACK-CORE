@@ -1,8 +1,8 @@
 # Evolución visual y flujo editorial del constructor Blog
 
-Estado: implementado y cubierto en el corte funcional V2, integrado en CORE
-principal dentro de `Unreleased`. Este documento registra la frontera que debe
-validarse de forma íntegra antes de publicar una versión.
+Estado: contrato funcional V2 definido en el corte de trabajo. Este documento
+registra la frontera que debe validarse de forma íntegra en un consumidor antes
+de publicar una versión.
 
 ## Andamiaje implementado
 
@@ -52,19 +52,31 @@ validarse de forma íntegra antes de publicar una versión.
   por post y un `category_workspace_version` propio para impedir sobrescrituras
   silenciosas entre variantes localizadas. No pertenecen al workspace de un
   locale.
+- `0020_blog_tags` a `0024_blog_tag_assignment_workspace_items` añaden una
+  frontera localizada independiente: vocabulario, relación live, head,
+  workspace e items de etiquetas. `0025_blog_tag_capabilities` aporta
+  `blog.tags.view` y `blog.tags.edit` en WebAdmin. El CAS
+  `tag_workspace_version` pertenece a la variante, no al agregado post-wide.
 - En una variante publicada, `Guardar borrador` persiste metadatos, documento y
   medios en el plano privado; el guardado de categorías alimenta su workspace
-  post-wide separado. Ninguna de las dos acciones altera la publicación ni sus
-  categorías visibles.
+  post-wide separado y el guardado de etiquetas alimenta su workspace
+  localizado. Ninguna de estas acciones altera la publicación ni las
+  taxonomías visibles.
 - `Publicar` promociona de forma atómica la última instantánea guardada, consume
-  la versión exacta del workspace global de categorías, avanza la cabecera
-  pública, actualiza las proyecciones compatibles, aplica el fencing del
-  sitemap, registra auditoría y limpia los workspaces consumidos.
+  las versiones exactas del workspace global de categorías y del workspace
+  localizado de etiquetas, avanza la cabecera pública, actualiza las
+  proyecciones compatibles, aplica el fencing del sitemap, registra auditoría y
+  limpia los workspaces consumidos.
 - `Retirar` adopta primero la instantánea editorial privada como estado del
   nuevo borrador; si no existe, conserva la última publicación. Después retira
   el workspace localizado y la cabecera pública. Retirar o enviar una
   localización a la papelera no cambia ni elimina las categorías post-wide,
-  públicas o pendientes.
+  públicas o pendientes, ni sus etiquetas live o privadas.
+- La UI conserva un input CSV SSR para 0–30 etiquetas. La mejora progresiva
+  crea pastillas con coma, Intro, pegado o blur y usa un guardado single-flight:
+  una edición posterior se reencola en vez de perderse. La lectura requiere
+  `blog.tags.view` y tanto el endpoint como la UI exigen además
+  `blog.tags.edit` para mutar.
 - La interfaz mantiene acciones distintas: `Guardar borrador`, `Publicar
   borrador guardado` en el formulario y `Publicar` en la preview inmersiva. La
   promoción exige capacidades de edición, publicación y consulta de medios.
@@ -103,7 +115,9 @@ validarse de forma íntegra antes de publicar una versión.
 - Publicar una versión del corte solo después de revisar compatibilidad,
   migración explícita, `doctor`, rollback y QA HTTP.
 - Ejecutar la matriz de integración MySQL/MariaDB del entorno de adopción real,
-  además de la cobertura aislada del LAB, antes de recomendar producción.
+  además de la cobertura aislada del LAB, antes de recomendar producción. Debe
+  incluir la carrera de creación de una misma identidad Unicode y la colisión
+  concurrente de slugs, verificando un único término canónico, CAS y cleanup.
 - Diseñar aprobación por roles, publicación programada y borrado permanente.
 - Añadir crop y focal point, vídeo local, audio, reemplazo y garbage collection
   de medios.

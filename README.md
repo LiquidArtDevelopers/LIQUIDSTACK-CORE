@@ -481,7 +481,7 @@ directorios, no procesan imágenes, no cambian `.env` ni mueven medios. El
 contrato completo está en
 [biblioteca de medios WebAdmin](docs/mejoras-pendientes/webadmin-media-library.md).
 
-### Liquid Blog: categorías y editor estructurado
+### Liquid Blog: categorías, etiquetas y editor estructurado
 
 El selector `liquidstack/blog` habilita el flujo editorial y activa WebAdmin
 como dependencia. Cada artículo conserva un UUID estable y variantes
@@ -493,6 +493,15 @@ capacidades separadas. La UI vive bajo el prefijo WebAdmin efectivo
 papelera recuperable bajo `blog.articles.delete`. No existe borrado permanente
 de artículos: una variante publicada debe retirarse explícitamente antes de
 enviarla a la papelera.
+
+`0020`–`0025` añaden etiquetas localizadas por variante sin sustituir las
+categorías. El editor conserva un input CSV SSR y lo mejora con pastillas
+reactivas, guardado privado single-flight y CAS; cada variante admite de cero a
+treinta etiquetas y `Publicar` las promociona atómicamente con documento,
+medios y categorías. La búsqueda `q` incluye nombre y slug de etiquetas live
+sin crear filtros, archivos o URLs nuevas, y el detalle las presenta como
+metadatos informativos separados. La frontera es opcional: pendiente conserva
+el Blog anterior; aplicada pero corrupta falla cerrada.
 
 La analítica opcional del Blog es first-party, depende del consentimiento y no
 persiste IP, User-Agent ni referrer. Cada evento parte de un grant efímero
@@ -526,10 +535,10 @@ en servidor.
 Al crear una variante se elige expresamente uno de los locales activos que el
 artículo todavía no utiliza, mostrando la ruta configurada en `public_paths`.
 El locale queda estable durante la edición y la URL se compone exclusivamente
-con ese path y el slug; el panel nunca inventa un prefijo como `/es`. Categorías
-del mismo idioma y medios se gestionan desde el inspector: el catálogo conserva
-visibles todos los assets ya referenciados por el documento aunque hayan
-quedado fuera del tramo de medios recientes.
+con ese path y el slug; el panel nunca inventa un prefijo como `/es`. Categorías,
+etiquetas del mismo idioma y medios se gestionan desde el inspector: el catálogo
+conserva visibles todos los assets ya referenciados por el documento aunque
+hayan quedado fuera del tramo de medios recientes.
 
 El formulario SSR sigue siendo el fallback. La mejora progresiva guarda con
 `fetch`, pero solo acepta como éxito la redirección esperada al mismo editor y
@@ -581,6 +590,13 @@ return [
 ];
 ```
 
+El prefijo Blog admite como máximo 29 bytes: el límite se deriva de todos los
+identificadores gestionados y reserva espacio para
+`category_assignment_workspace_items` dentro de los 64 bytes de MySQL/MariaDB.
+Los proyectos configurados con versiones hasta v1.23.0 que usaron un prefijo
+de 30–46 bytes deben migrar explícitamente su namespace antes de actualizar;
+CORE falla temprano y nunca trunca o renombra tablas en automático.
+
 `public_index` configura el lote SSR y las rutas limpias de continuación;
 esas rutas siguen declarándose en el router project-owned. El backend
 reutilizable vive en `src/Core/Blog/PublicIndex` y Composer instala el soporte
@@ -621,6 +637,13 @@ llama `header()` ni requiere seguridad local. Sus alternates SEO
 incluyen solo traducciones publicadas; la navegación de idioma separada cae al
 índice localizado cuando falta una variante. Si se omite, CORE conserva el HTML
 standalone y carga su CSS neutral responsive gestionado.
+
+El hook expone también `$articleCategories`, `$articleTags` y el fragmento
+saneado `$articleTaxonomiesHtml`. Una vista project-owned lo coloca dentro del
+artículo, antes de `$articleMain`; `artBlogArticle01` realiza la misma
+composición cuando se usa el recurso gestionado. Categorías y etiquetas se
+omiten por separado cuando están vacías y nunca se convierten en enlaces a una
+ruta que el proyecto no haya declarado.
 
 `bodyHtml()` conserva por compatibilidad el cuerpo histórico completo, incluida
 la portada. Las vistas nuevas deben colocar `headerMediaHtml()` en el `header`

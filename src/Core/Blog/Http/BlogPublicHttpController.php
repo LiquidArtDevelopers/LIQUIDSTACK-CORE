@@ -62,6 +62,8 @@ final class BlogPublicHttpController
                 throw new BlogPublicHttpRuntimeException();
             }
             $canonicalPath = $base . '/' . $canonicalSlug;
+            $articleTaxonomies = $this->runtime->publicFeed()
+                ->taxonomiesForArticle($locale, $canonicalSlug);
             $analyticsPageGrant = $this->runtime->analyticsPageGrant(
                 $variant->localizationPublicId(),
                 $canonicalPath
@@ -115,7 +117,8 @@ final class BlogPublicHttpController
                     $analyticsPageGrant,
                     $robotsPreferences,
                     $authorProfile,
-                    $shellContext
+                    $shellContext,
+                    $articleTaxonomies
                 )
                 : $this->articleRenderer->renderStructuredFromOrigin(
                     $variant,
@@ -134,7 +137,8 @@ final class BlogPublicHttpController
                     $robotsPreferences,
                     $authorProfile,
                     $styleNonce,
-                    $shellContext
+                    $shellContext,
+                    $articleTaxonomies
                 );
 
             return new Response(

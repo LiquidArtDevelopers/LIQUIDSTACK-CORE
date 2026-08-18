@@ -8,6 +8,7 @@ use App\Core\Blog\Persistence\BlogPersistenceException;
 use App\Core\Blog\PublicFeed\BlogPublicArchivePeriodsQuery;
 use App\Core\Blog\PublicFeed\BlogPublicArchiveQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCardCategoryQuery;
+use App\Core\Blog\PublicFeed\BlogPublicCardTaxonomyQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogQuery;
 use App\Core\Blog\PublicFeed\BlogPublicCatalogRepositoryInterface;
 use App\Core\Blog\PublicFeed\BlogPublicRelatedQuery;
@@ -16,7 +17,27 @@ use App\Core\Blog\PublishedPostCard;
 use App\Core\Modules\Blog\BlogMigrationProvider;
 use App\Core\Modules\Migrations\MigrationScope;
 use PDO;
+use PDOStatement;
 use PHPUnit\Framework\TestCase;
+
+final class BlogPublicCatalogCountingPdo extends PDO
+{
+    public int $prepareCalls = 0;
+
+    public function __construct()
+    {
+        parent::__construct('sqlite::memory:');
+    }
+
+    public function prepare(
+        string $query,
+        array $options = []
+    ): PDOStatement|false {
+        ++$this->prepareCalls;
+
+        return parent::prepare($query, $options);
+    }
+}
 
 final class BlogPublicCatalogRepositoryTest extends TestCase
 {
@@ -379,6 +400,117 @@ final class BlogPublicCatalogRepositoryTest extends TestCase
         self::assertSame([], $categories['sin-categoria']);
     }
 
+    public function testLiveTagsExtendSearchAndTheCombinedTaxonomyBatch(): void
+    {
+        $this->insertTag(
+            'es',
+            'zeta-ia',
+            'Estrategia algorítmica',
+            'matrix-reloaded'
+        );
+        $this->insertTag(
+            'es',
+            'alpha-ia',
+            'Automatización responsable',
+            'matrix-reloaded'
+        );
+        $this->insertTag(
+            'en',
+            'hidden-english',
+            'Cross locale secret',
+            'matrix-reloaded'
+        );
+        $this->insertTag(
+            'es',
+            'borrador-secreto',
+            'Contenido todavía privado',
+            'matrix-draft'
+        );
+        $repository = new PdoBlogPublicCatalogRepository(
+            $this->pdo,
+            $this->scope,
+            true
+        );
+
+        self::assertSame(
+            ['matrix-reloaded'],
+            $this->slugs($repository->search(
+                new BlogPublicCatalogQuery('es', 'algorítmica')
+            ))
+        );
+        self::assertSame(
+            ['matrix-reloaded'],
+            $this->slugs($repository->search(
+                new BlogPublicCatalogQuery('es', 'zeta-ia')
+            ))
+        );
+        self::assertSame([], $repository->search(
+            new BlogPublicCatalogQuery('es', 'Cross locale secret')
+        ));
+        self::assertSame([], $repository->search(
+            new BlogPublicCatalogQuery('es', 'todavía privado')
+        ));
+
+        self::assertInstanceOf(BlogPublicCatalogCountingPdo::class, $this->pdo);
+        $preparesBeforeBatch = $this->pdo->prepareCalls;
+        $batch = $repository->taxonomiesForCards(
+            new BlogPublicCardTaxonomyQuery('es', [
+                'matrix-reloaded',
+                'sin-categoria',
+            ])
+        );
+        self::assertSame($preparesBeforeBatch + 1, $this->pdo->prepareCalls);
+        self::assertSame([
+            ['locale' => 'es', 'slug' => 'cine', 'name' => 'Cine'],
+            ['locale' => 'es', 'slug' => 'noticias', 'name' => 'Noticias'],
+        ], array_map(
+            static fn ($category): array => $category->toResourceData(),
+            $batch->categoriesBySlug()['matrix-reloaded']
+        ));
+        self::assertSame([
+            [
+                'locale' => 'es',
+                'slug' => 'alpha-ia',
+                'name' => 'Automatización responsable',
+            ],
+            [
+                'locale' => 'es',
+                'slug' => 'zeta-ia',
+                'name' => 'Estrategia algorítmica',
+            ],
+        ], array_map(
+            static fn ($tag): array => $tag->toResourceData(),
+            $batch->tagsBySlug()['matrix-reloaded']
+        ));
+        self::assertSame([], $batch->tagsBySlug()['sin-categoria']);
+    }
+
+    public function testPendingTagGateNeverTouchesAbsentTagTables(): void
+    {
+        $this->pdo->exec('DROP TABLE ls_blog_localization_tags');
+        $this->pdo->exec('DROP TABLE ls_blog_tags');
+        $repository = new PdoBlogPublicCatalogRepository(
+            $this->pdo,
+            $this->scope,
+            false
+        );
+
+        self::assertSame(
+            ['matrix-reloaded'],
+            $this->slugs($repository->search(
+                new BlogPublicCatalogQuery('es', 'Matrix Reloaded')
+            ))
+        );
+        $batch = $repository->taxonomiesForCards(
+            new BlogPublicCardTaxonomyQuery('es', ['matrix-reloaded'])
+        );
+        self::assertSame([], $batch->tagsBySlug()['matrix-reloaded']);
+        self::assertCount(
+            2,
+            $batch->categoriesBySlug()['matrix-reloaded']
+        );
+    }
+
     public function testRelatedPostsRequireAPublishedSourceAndRankSharedCategories(
     ): void {
         $this->insertPost(8, [
@@ -590,7 +722,7 @@ final class BlogPublicCatalogRepositoryTest extends TestCase
 
     private function sqlite(): PDO
     {
-        $pdo = new PDO('sqlite::memory:');
+        $pdo = new BlogPublicCatalogCountingPdo();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         $pdo->exec('PRAGMA foreign_keys = ON');
@@ -604,13 +736,70 @@ final class BlogPublicCatalogRepositoryTest extends TestCase
             BlogMigrationProvider::migrations(),
             false
         );
-        foreach ([$migrations[0], $migrations[2]] as $migration) {
+        foreach ($migrations as $migration) {
+            if (!in_array($migration->id(), [
+                '0001_blog_posts',
+                '0003_blog_categories',
+                '0020_blog_tags',
+                '0021_blog_localization_tags',
+            ], true)) {
+                continue;
+            }
             foreach (
                 $migration->statementsFor('sqlite', $this->scope) as $sql
             ) {
                 $this->pdo->exec($sql);
             }
         }
+    }
+
+    private function insertTag(
+        string $locale,
+        string $slug,
+        string $name,
+        string $localizationSlug
+    ): void {
+        $tagCount = (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_tags'
+        )->fetchColumn();
+        $statement = $this->pdo->prepare(
+            'INSERT INTO ls_blog_tags (public_id, locale, slug, name, '
+            . 'normalized_sha256, lock_version, '
+            . 'created_by_user_public_id, updated_by_user_public_id, '
+            . 'created_at, updated_at) VALUES (:public_id, :locale, :slug, '
+            . ':name, :normalized_sha256, 1, :created_actor, '
+            . ':updated_actor, :created_at, :updated_at)'
+        );
+        $statement->execute([
+            'public_id' => $this->uuid(70_000 + $tagCount),
+            'locale' => $locale,
+            'slug' => $slug,
+            'name' => $name,
+            'normalized_sha256' => hash('sha256', $locale . ':' . $slug),
+            'created_actor' => self::ACTOR,
+            'updated_actor' => self::ACTOR,
+            'created_at' => '2029-01-01 00:00:00.000000',
+            'updated_at' => '2029-01-01 00:00:00.000000',
+        ]);
+        $tagId = (int) $this->pdo->lastInsertId();
+        $localization = $this->pdo->prepare(
+            'SELECT id FROM ls_blog_post_localizations WHERE slug = :slug'
+        );
+        $localization->execute(['slug' => $localizationSlug]);
+        $localizationId = $localization->fetchColumn();
+        self::assertIsNumeric($localizationId);
+        $relation = $this->pdo->prepare(
+            'INSERT INTO ls_blog_localization_tags '
+            . '(localization_id, tag_id, assigned_by_user_public_id, '
+            . 'created_at) VALUES (:localization_id, :tag_id, :actor, '
+            . ':created_at)'
+        );
+        $relation->execute([
+            'localization_id' => (int) $localizationId,
+            'tag_id' => $tagId,
+            'actor' => self::ACTOR,
+            'created_at' => '2029-01-01 00:00:00.000000',
+        ]);
     }
 
     private function seedCatalog(): void

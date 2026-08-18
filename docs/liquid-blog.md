@@ -14,9 +14,10 @@ iframes inertes. `liquidstack:doctor` informa su disponibilidad en
 
 El módulo mantiene el contrato editorial inicial —artículos, variantes por
 idioma, publicación, resolución pública y sitemap dinámico— y lo amplía con
-categorías localizadas y un editor estructurado. El cuerpo canónico nuevo es
-un documento JSON validado; `body_text` se deriva siempre en servidor para
-conservar la compatibilidad con las consultas y artículos anteriores.
+categorías localizadas, etiquetas por variante y un editor estructurado. El
+cuerpo canónico nuevo es un documento JSON validado; `body_text` se deriva
+siempre en servidor para conservar la compatibilidad con las consultas y
+artículos anteriores.
 
 Las migraciones Blog se aplican de forma aditiva y explícita:
 
@@ -41,6 +42,12 @@ Las migraciones Blog se aplican de forma aditiva y explícita:
 | `0017_blog_dummy_category` | Identidad canónica de la categoría interna Dummy y exclusión privada/pública fail-closed. |
 | `0018_blog_dummy_category_normalization` | Normalización aditiva de asignaciones live y workspace ligadas al slug legacy exacto `dummy`. |
 | `0019_blog_copy_operation_idempotency` | Registro transaccional de intenciones para hacer idempotentes la duplicación y el alta de locale. |
+| `0020_blog_tags` | Vocabulario de etiquetas localizado y con identidad canónica estable. |
+| `0021_blog_localization_tags` | Asignaciones live de etiquetas por variante localizada. |
+| `0022_blog_tag_assignment_heads` | Versión pública independiente del conjunto de etiquetas. |
+| `0023_blog_tag_assignment_workspaces` | Workspace privado y CAS de etiquetas por variante. |
+| `0024_blog_tag_assignment_workspace_items` | Conjunto de etiquetas pendiente de promoción. |
+| `0025_blog_tag_capabilities` | Capacidades delegables de consulta y edición en el scope WebAdmin. |
 
 Cada frontera tiene su propio gate de disponibilidad. Una migración nueva
 pendiente no autoriza a CORE a completar tablas por intuición. Cuando una
@@ -160,7 +167,15 @@ los dos ficheros de módulo y sus prefijos son project-owned; Composer no los
 crea, fusiona ni sobrescribe.
 
 El prefijo puede personalizarse, pero no se infiere ni se copia desde
-WebAdmin. Las URLs absolutas usan `RAIZ` como origen canónico del proyecto:
+WebAdmin. Su máximo es 29 bytes, calculado sobre el identificador gestionado más
+largo (`category_assignment_workspace_items`) y el límite MySQL/MariaDB de 64;
+el test del provider vuelve a derivarlo de todos los placeholders para evitar
+que una migración futura lo desborde. Los proyectos configurados con versiones
+hasta v1.23.0 que adoptaron un prefijo de 30–46 bytes deben migrar de forma
+explícita su namespace antes de actualizar: CORE falla temprano con
+`config.invalid_table_prefix` y nunca trunca ni renombra tablas por intuición.
+Las URLs absolutas usan `RAIZ`
+como origen canónico del proyecto:
 debe ser un origen HTTPS sin path, query ni credenciales en producción. El
 laboratorio admite `http://localhost:1309` —o el loopback canónico
 equivalente— exclusivamente con `DEV_MODE=1`. El alias anterior
@@ -225,13 +240,16 @@ versión pública de la que partió. Este workspace es post-wide e independiente
 del workspace localizado: una edición concurrente desde otra variante no puede
 sobrescribir categorías en silencio. Guardar una variante publicada avanza su
 lock editorial y crea una revisión privada, pero no modifica sus metadatos,
-documento, medios, categorías ni cabecera públicos.
+documento, medios, categorías, etiquetas ni cabecera públicos. Las etiquetas
+añaden un segundo CAS localizado por variante cuando la frontera `0020`–`0024`
+está lista; mantenerla pendiente no altera este flujo anterior.
 
 `Publicar` promociona de forma atómica la instantánea privada ya guardada y
-consume la versión exacta del workspace global de categorías: actualiza la
-proyección pública compatible, el documento y los medios actuales, las
-categorías, la cabecera de publicación y sus versiones; después limpia los
-workspaces consumidos. La misma transacción aplica el fencing del
+consume las versiones exactas de los workspaces global de categorías y
+localizado de etiquetas. Actualiza la proyección pública compatible, el
+documento y los medios actuales, las categorías, las etiquetas, la cabecera de
+publicación y sus versiones; después limpia los workspaces consumidos. La misma
+transacción aplica el fencing del
 sitemap y la auditoría. Retirar una variante con trabajo editorial privado
 adopta primero esa instantánea como el nuevo borrador actual; solo después
 retira su workspace localizado y la cabecera pública. Si no existe ese trabajo,
@@ -293,6 +311,33 @@ El CAS de asignaciones y de `category_workspace_version` rechaza bases
 obsoletas. Retirar o enviar una variante a la papelera conserva tanto la
 asignación global pública como cualquier selección privada pendiente. Una
 operación admite hasta 100 categorías y nunca expone IDs numéricos de DB.
+
+Las etiquetas son una taxonomía secundaria localizada por variante, no una
+segunda categoría post-wide. Cada término pertenece a un locale y se identifica
+por nombre canónico NFC y slug ASCII; una variante admite de cero a treinta.
+El CSV de entrada acepta hasta 4096 bytes, cada nombre hasta 64 code points y
+255 bytes UTF-8, y la operación completa falla sin escribir ante límites,
+UTF-8 inválido o controles invisibles peligrosos. La canonicalización conserva
+ZWJ para secuencias emoji, deduplica por identidad Unicode casefold y nunca
+trunca ni renombra en silencio. `tags`, `localization_tags`,
+`tag_assignment_heads`, `tag_assignment_workspaces` y
+`tag_assignment_workspace_items` separan vocabulario, relación live y workspace
+privado; una fila de workspace sin items expresa de forma inequívoca «quitar
+todas».
+
+El editor presenta un campo CSV SSR y, cuando JavaScript está disponible,
+pastillas creadas con DOM seguro. Coma, Intro, pegado o pérdida de foco confirman
+un nombre; una pausa al escribir no parte la palabra. El guardado reactivo usa
+un solo request en vuelo, reencola cambios posteriores y sincroniza
+`tag_workspace_version`. Las facetas confirmadas se guardan aparte en el
+borrador privado: por eso la salida sin guardar se refiere al contenido y espera
+cualquier guardado de categorías o etiquetas; si falla, la navegación o logout
+se cancelan y el estado local queda disponible para reintentar. Publicar exige
+el CAS exacto y promociona las etiquetas live en la misma transacción que el
+documento, medios y categorías. Duplicar un artículo copia el conjunto efectivo
+del mismo locale; añadir un locale empieza sin etiquetas. Retirar, restaurar o
+enviar a Papelera conserva los conjuntos live y privados; el borrado físico de
+la variante aplica las cascadas declaradas sin eliminar términos reutilizables.
 
 El contenido estructurado usa el esquema exacto
 `liquidstack.blog.document`. La versión canónica actual es `2`, con un máximo
@@ -728,6 +773,8 @@ El contrato registra capacidades delegables por frontera:
 | `blog.articles.delete` | Enviar borradores a la papelera y restaurarlos. |
 | `blog.categories.view` | Consultar categorías localizadas. |
 | `blog.categories.edit` | Crear, traducir, editar y asignar categorías. |
+| `blog.tags.view` | Consultar las etiquetas de una variante en modo de solo lectura. |
+| `blog.tags.edit` | Crear y asignar etiquetas cuando también se conserva `blog.tags.view`. |
 | `blog.analytics.view` | Consultar las métricas propias del Blog. |
 | `blog.settings.manage` | Administrar los defaults globales de presentación del editor; no es delegable. |
 
@@ -735,6 +782,9 @@ Las cuentas protegidas de WebAdmin reciben todas. Un `site_admin` puede
 delegar a editores las capacidades editoriales ordinarias mediante la gestión
 existente. `blog.settings.manage` queda reservada a `site_admin` y
 `system_superadmin`: no se delega ni se asigna a otros roles.
+La edición de etiquetas exige conjuntamente `blog.tags.view` y
+`blog.tags.edit`; conceder solo lectura no habilita mutaciones y conceder solo
+edición tampoco permite descubrir contenido privado.
 
 La migración de capacidades pertenece a Blog, pero usa explícitamente el scope
 de su dependencia WebAdmin. El motor valida esa relación y resuelve el prefijo
@@ -776,6 +826,7 @@ Rutas privadas:
 | `GET`/`HEAD` | `/admin/blog/categories/assign` | Selección para un artículo. |
 | `POST` | `/admin/blog/categories/assign` | Sustitución transaccional de asignaciones. |
 | `GET`/`HEAD` | `/admin/blog/categories/updated` | Destino PRG sin datos editoriales. |
+| `POST` | `/admin/blog/tags/assign` | Sustitución localizada del workspace de etiquetas mediante HTML/PRG o JSON estricto. |
 | `GET`/`HEAD` | `/admin/blog/editor` | Editor estructurado de una variante. |
 | `POST` | `/admin/blog/editor/save` | `Guardar borrador`: persistencia atómica de metadatos, documento y revisión de trabajo. |
 | `POST` | `/admin/blog/editor/publish` | `Publicar`: promoción atómica de la instantánea privada ya guardada. |
@@ -797,8 +848,11 @@ metadatos, correo, SID, CSRF ni IP.
 
 Duplicar revalida `blog.articles.edit`, `blog.categories.edit` y
 `webadmin.media.view` dentro de la misma transacción porque conserva las
-asignaciones de categoría. Papelera y restauración revalidan
-`blog.articles.view` y `blog.articles.delete`. Las tres operaciones exigen el
+asignaciones de categoría. Cuando la frontera de etiquetas está lista exige
+además `blog.tags.view` y `blog.tags.edit`, porque copia el conjunto efectivo
+de la variante; el alta de un locale no los requiere y empieza vacío. Papelera
+y restauración revalidan `blog.articles.view` y `blog.articles.delete`. Las tres
+operaciones exigen el
 `lock_version` recibido, bloquean antes de copiar o cambiar visibilidad y
 revocan todos sus cambios si falla la auditoría. Duplicar sigue disponible en
 el corte anterior a `0007`; la UI y las rutas de papelera permanecen ocultas y
@@ -1065,6 +1119,15 @@ instantánea confirmada, no de estado exclusivo del navegador. Sin el gate de
 `0014`, se conserva el flujo anterior y una variante publicada permanece de
 solo lectura hasta retirarla.
 
+La barra inferior del editor mantiene visible a la derecha el estado oficial
+`Borrador` o `Publicado`, separado de los mensajes transitorios de guardado y
+publicación. Ese indicador y el resumen del inspector proceden siempre de la
+variante persistida: guardar un workspace privado de una variante publicada no
+los convierte en borrador. La mejora progresiva los actualiza únicamente
+después de validar una respuesta de publicación correcta; cualquier fallo
+conserva el estado anterior y el fallback SSR lo vuelve a proyectar tras el
+redirect nativo.
+
 El formulario completo continúa siendo la fuente de verdad. La mejora
 progresiva sincroniza el documento canónico y guarda con `fetch` y el header
 `X-LiquidStack-Editor: async`. Solo acepta como éxito una respuesta `200` JSON
@@ -1311,6 +1374,16 @@ acotada a 50 slugs, sin N+1; excluyen siempre `Dummy` y solo proyectan locale,
 slug y nombre. PDO, prefijos, IDs numéricos y UUIDs no cruzan hacia los
 recursos.
 
+Con `0020`–`0024` aplicadas, ese batch compuesto incorpora también las
+etiquetas live de cada variante, con un máximo de treinta y la misma proyección
+sin IDs. La API enriquecida añade siempre `tags`, mientras
+`BlogPublicFeed::cards()` conserva su shape histórico. El artículo público
+expone categorías y etiquetas al shell y a `artBlogArticle01` como dos listas
+informativas separadas, sin enlaces ni controles que aparenten un archivo
+inexistente. Un stack que aún no aplicó la frontera obtiene `tags=[]` y no
+ejecuta SQL contra sus tablas; si el registro afirma que está aplicada pero el
+esquema no cumple, el runtime falla cerrado.
+
 El índice público reutilizable se resuelve mediante
 `BlogPublicIndex::current()->resolve()`. El soporte gestionado
 `App/app/_moduleBlogPublicIndex.php` es el único require previo al `DOCTYPE`:
@@ -1369,6 +1442,11 @@ orden también es cerrado: `newest` ordena por publicación descendente,
 `oldest` por publicación ascendente y `updated` por actualización descendente;
 los tres usan un desempate estable y nunca interpolan una expresión recibida
 del request. El repositorio aplica todos los filtros en una consulta preparada.
+`q` busca también por nombre y slug de etiquetas live del locale mediante
+`EXISTS`, por lo que no duplica cards ni cambia paginación; el workspace privado
+nunca entra en resultados. No se añade `tag[]`, ruta, archivo, canonical,
+hreflang ni sitemap de etiquetas: la búsqueda conserva la URL y las reglas
+`noindex,follow` existentes.
 Cuando una vista necesita detectar la página siguiente, solicita expresamente
 una fila adicional dentro de ese límite y no la expone como card. SQLite
 registra una función determinista de
@@ -1779,6 +1857,13 @@ opcional y nunca condiciona la disponibilidad del editor ni del Blog anterior.
 El workspace privado, sus categorías pendientes y la cabecera de publicación
 requieren `0014`; esta frontera también es opcional y, mientras no esté lista,
 mantiene intacto el flujo editorial previo.
+Las etiquetas públicas requieren `0020`–`0024`; la administración suma la
+capacidad cross-scope `0025`. Mientras esa cola esté pendiente, doctor informa
+el estado opcional y los artículos/categorías anteriores permanecen listos. Si
+los registros están aplicados pero el esquema o las capacidades protegidas
+derivan, los blockers estables `tags.schema_not_ready` y
+`tags.administration_not_ready` impiden ocultar la corrupción como una mera
+ausencia de la feature.
 La selección de imágenes necesita además `0002_webadmin_media_library` en el
 scope WebAdmin. `0003_webadmin_media_avif_source` solo amplía el formulario y
 el procesador para aceptar originales AVIF; si está pendiente no bloquea Blog
@@ -1790,16 +1875,25 @@ migración compuesta
 registrada solo retira la postcondición anterior mientras su propio contrato
 completo continúe siendo válido.
 
-La adopción de `0019` en un consumidor de referencia se verificó con backup y
-restauración reales antes del `--apply`; el catálogo final quedó en `24/24`
-migraciones y
-cero pendientes. La regresión combinada del corte ejecutó `97` pruebas y
+La evidencia que sigue pertenece exclusivamente al corte histórico `0019`; no
+demuestra la adopción de `0020`–`0025` y no debe convertirse por inferencia en
+un recuento nuevo. La adopción de `0019` en un consumidor de referencia se
+verificó con backup y restauración reales antes del `--apply`; el catálogo de
+aquella ejecución quedó en `24/24` migraciones y cero pendientes. La regresión
+combinada de aquel corte ejecutó `97` pruebas y
 `7.027` aserciones. La prueba MariaDB aislada abrió dos procesos y dos
 conexiones para las carreras de replay idéntico y payload incompatible; tres
 pasadas consecutivas cerraron `1` prueba/`300` aserciones cada una y el teardown
 dejó cero tablas y cero usuarios QA. Esta evidencia técnica no sustituye las
 filas visuales de restauración, fallback sin JavaScript y limpieza recuperable
 que deben completarse en navegador antes de cerrar la matriz E2E del consumidor.
+
+El gate de `0020`–`0025` exige además una ejecución MySQL/MariaDB aislada de las
+carreras de etiquetas: dos conexiones deben converger en una sola identidad
+Unicode canónica y dos nombres distintos que colisionen en slug deben conservar
+ambos términos con resolución determinista. Después se verifican el CAS, las
+postcondiciones y el teardown exacto. Solo se documenta un resultado cuando esa
+ejecución real ha terminado; no se deduce del catálogo ni de la suite SQLite.
 
 Cambiar un proyecto con artículos o identidades existentes desde `shared` a
 `liquidstack` no traslada ni adopta datos. Requiere una migración y verificación
@@ -1824,7 +1918,7 @@ mensajes PDO.
 
 Quedan expresamente para cortes posteriores:
 
-- etiquetas, RSS y comentarios; relacionados y archivo ya forman parte del
+- RSS y comentarios; etiquetas, relacionados y archivo ya forman parte del
   feed público y de la familia base de recursos;
 - crop, focal point, vídeo local, audio, reemplazo y garbage collection de
   medios;

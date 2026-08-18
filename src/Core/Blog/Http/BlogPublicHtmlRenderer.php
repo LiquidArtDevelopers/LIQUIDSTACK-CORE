@@ -34,7 +34,9 @@ final class BlogPublicHtmlRenderer
     public function __construct(
         ?string $projectArticleView = null,
         private readonly BlogPublicationDateFormatter $dateFormatter =
-            new BlogPublicationDateFormatter()
+            new BlogPublicationDateFormatter(),
+        private readonly BlogPublicArticleTaxonomyRenderer $taxonomyRenderer =
+            new BlogPublicArticleTaxonomyRenderer()
     )
     {
         if ($projectArticleView === null) {
@@ -65,6 +67,7 @@ final class BlogPublicHtmlRenderer
      * @param array<string, string> $alternateUrls
      * @param array<string, string> $languageNavigationUrls
      * @param list<array<string, mixed>> $relatedArticles
+     * @param array<string, list<array<string, string>>> $taxonomies
      */
     public function render(
         BlogPostVariant $variant,
@@ -77,7 +80,8 @@ final class BlogPublicHtmlRenderer
         #[\SensitiveParameter] ?string $analyticsPageGrant = null,
         ?BlogRobotsPreferences $robotsPreferences = null,
         ?WebAdminPublicProfile $authorProfile = null,
-        ?BlogPublicArticleShellContext $shellContext = null
+        ?BlogPublicArticleShellContext $shellContext = null,
+        array $taxonomies = []
     ): string {
         if (
             filter_var($canonicalUrl, FILTER_VALIDATE_URL) === false
@@ -100,7 +104,8 @@ final class BlogPublicHtmlRenderer
             $robotsPreferences,
             $authorProfile,
             null,
-            $shellContext
+            $shellContext,
+            $taxonomies
         );
     }
 
@@ -108,6 +113,7 @@ final class BlogPublicHtmlRenderer
      * @param array<string, string> $alternateUrls
      * @param array<string, string> $languageNavigationUrls
      * @param list<array<string, mixed>> $relatedArticles
+     * @param array<string, list<array<string, string>>> $taxonomies
      */
     public function renderStructured(
         BlogPostVariant $variant,
@@ -123,7 +129,8 @@ final class BlogPublicHtmlRenderer
         ?BlogRobotsPreferences $robotsPreferences = null,
         ?WebAdminPublicProfile $authorProfile = null,
         #[\SensitiveParameter] ?string $styleNonce = null,
-        ?BlogPublicArticleShellContext $shellContext = null
+        ?BlogPublicArticleShellContext $shellContext = null,
+        array $taxonomies = []
     ): string {
         if (
             filter_var($canonicalUrl, FILTER_VALIDATE_URL) === false
@@ -146,7 +153,8 @@ final class BlogPublicHtmlRenderer
             $robotsPreferences,
             $authorProfile,
             $styleNonce,
-            $shellContext
+            $shellContext,
+            $taxonomies
         );
     }
 
@@ -154,6 +162,7 @@ final class BlogPublicHtmlRenderer
      * @param array<string, string> $alternatePaths
      * @param array<string, string> $languageNavigationPaths
      * @param list<array<string, mixed>> $relatedArticles
+     * @param array<string, list<array<string, string>>> $taxonomies
      */
     public function renderFromOrigin(
         BlogPostVariant $variant,
@@ -167,7 +176,8 @@ final class BlogPublicHtmlRenderer
         #[\SensitiveParameter] ?string $analyticsPageGrant = null,
         ?BlogRobotsPreferences $robotsPreferences = null,
         ?WebAdminPublicProfile $authorProfile = null,
-        ?BlogPublicArticleShellContext $shellContext = null
+        ?BlogPublicArticleShellContext $shellContext = null,
+        array $taxonomies = []
     ): string {
         return $this->renderDocument(
             $variant,
@@ -188,7 +198,8 @@ final class BlogPublicHtmlRenderer
             $robotsPreferences,
             $authorProfile,
             null,
-            $shellContext
+            $shellContext,
+            $taxonomies
         );
     }
 
@@ -196,6 +207,7 @@ final class BlogPublicHtmlRenderer
      * @param array<string, string> $alternatePaths
      * @param array<string, string> $languageNavigationPaths
      * @param list<array<string, mixed>> $relatedArticles
+     * @param array<string, list<array<string, string>>> $taxonomies
      */
     public function renderStructuredFromOrigin(
         BlogPostVariant $variant,
@@ -212,7 +224,8 @@ final class BlogPublicHtmlRenderer
         ?BlogRobotsPreferences $robotsPreferences = null,
         ?WebAdminPublicProfile $authorProfile = null,
         #[\SensitiveParameter] ?string $styleNonce = null,
-        ?BlogPublicArticleShellContext $shellContext = null
+        ?BlogPublicArticleShellContext $shellContext = null,
+        array $taxonomies = []
     ): string {
         return $this->renderDocument(
             $variant,
@@ -233,7 +246,8 @@ final class BlogPublicHtmlRenderer
             $robotsPreferences,
             $authorProfile,
             $styleNonce,
-            $shellContext
+            $shellContext,
+            $taxonomies
         );
     }
 
@@ -241,6 +255,7 @@ final class BlogPublicHtmlRenderer
      * @param array<string, string> $alternateUrls
      * @param array<string, string> $languageNavigationUrls
      * @param list<array<string, mixed>> $relatedArticles
+     * @param array<string, list<array<string, string>>> $taxonomies
      */
     private function renderDocument(
         BlogPostVariant $variant,
@@ -256,7 +271,8 @@ final class BlogPublicHtmlRenderer
         ?BlogRobotsPreferences $robotsPreferences = null,
         ?WebAdminPublicProfile $authorProfile = null,
         #[\SensitiveParameter] ?string $styleNonce = null,
-        ?BlogPublicArticleShellContext $shellContext = null
+        ?BlogPublicArticleShellContext $shellContext = null,
+        array $taxonomies = []
     ): string {
         if (
             $variant->status() !== BlogPostVariant::PUBLISHED
@@ -369,7 +385,8 @@ final class BlogPublicHtmlRenderer
             $authorProfile?->displayName(),
             $authorProfile?->roleLabel(),
             $localizedPublicationDate,
-            $customCss
+            $customCss,
+            $taxonomies
         );
 
         return $this->projectArticleView === null
@@ -456,7 +473,8 @@ final class BlogPublicHtmlRenderer
             . '<script src="' . self::STANDALONE_SCRIPT
             . '" defer></script>'
             . '</head><body>' . $header
-            . '<main>' . $article->mainHtml() . '</main>'
+            . '<main>' . $this->taxonomyRenderer->render($article)
+            . $article->mainHtml() . '</main>'
             . '</body></html>';
     }
 
