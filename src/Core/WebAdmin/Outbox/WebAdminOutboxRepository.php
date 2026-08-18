@@ -11,6 +11,7 @@ use App\Core\WebAdmin\Security\SecureTokenGenerator;
 use App\Core\WebAdmin\Support\WebAdminLocale;
 use DateTimeImmutable;
 use DateTimeZone;
+use InvalidArgumentException;
 use PDO;
 use PDOException;
 use PDOStatement;
@@ -44,6 +45,8 @@ final class WebAdminOutboxRepository
     private const ERROR_MESSAGE_INVALID = 'outbox.message_invalid';
     private const ERROR_LEASE_EXPIRED = 'outbox.lease_expired';
     private const ERROR_MAX_ATTEMPTS = 'outbox.max_attempts';
+    private const ERROR_DUPLICATE_OPEN_INVITATION =
+        'outbox.duplicate_open_invitation';
     private const ERROR_RECIPIENT_UNAVAILABLE =
         'outbox.recipient_unavailable';
     private const ERROR_LOCALE_UNSUPPORTED = 'outbox.locale_unsupported';
@@ -90,8 +93,77 @@ final class WebAdminOutboxRepository
     public function claimNext(
         DateTimeImmutable $now
     ): WebAdminOutboxClaimResult {
-        return $this->transaction(function () use ($now): WebAdminOutboxClaimResult {
-            $candidate = $this->findCandidateForUpdate($now);
+        return $this->claimNextMatching($now, null);
+    }
+
+    /** Claims at most one open invitation for one exact recipient. */
+    public function claimInvitationForRecipient(
+        DateTimeImmutable $now,
+        int $recipientId
+    ): WebAdminOutboxClaimResult {
+        if ($recipientId < 1) {
+            throw new InvalidArgumentException(
+                'The WebAdmin invitation recipient ID must be positive.'
+            );
+        }
+
+        return $this->claimNextMatching($now, $recipientId);
+    }
+
+    private function claimNextMatching(
+        DateTimeImmutable $now,
+        ?int $invitationRecipientId
+    ): WebAdminOutboxClaimResult {
+        return $this->transaction(function () use (
+            $now,
+            $invitationRecipientId
+        ): WebAdminOutboxClaimResult {
+            if ($invitationRecipientId === null) {
+                $candidate = $this->findCandidateForUpdate($now);
+            } else {
+                $openInvitations = $this
+                    ->findOpenInvitationsForRecipientForUpdate(
+                        $invitationRecipientId
+                    );
+                if (count($openInvitations) > 1) {
+                    // Close every ambiguous row while preserving the global
+                    // outbox -> user -> token lock order. A later generic
+                    // worker must not deliver either duplicate invitation.
+                    $this->findUserForUpdate($invitationRecipientId);
+                    foreach ($openInvitations as $openInvitation) {
+                        $outboxId = $this->positiveInteger(
+                            $openInvitation['id'] ?? null
+                        );
+                        $userId = $this->positiveInteger(
+                            $openInvitation['user_id'] ?? null
+                        );
+                        if (
+                            $outboxId === null
+                            || $userId !== $invitationRecipientId
+                            || ($openInvitation['kind'] ?? null) !== 'invite'
+                        ) {
+                            throw new WebAdminOutboxStorageException();
+                        }
+                        $this->terminalCandidate(
+                            $outboxId,
+                            $this->nullablePositiveInteger(
+                                $openInvitation['action_token_id'] ?? null
+                            ),
+                            $now,
+                            self::ERROR_DUPLICATE_OPEN_INVITATION
+                        );
+                    }
+
+                    return WebAdminOutboxClaimResult::terminalFailure();
+                }
+                $candidate = $openInvitations[0] ?? null;
+                if (
+                    $candidate !== null
+                    && !$this->isCandidateAvailable($candidate, $now)
+                ) {
+                    return WebAdminOutboxClaimResult::none();
+                }
+            }
             if ($candidate === null) {
                 return WebAdminOutboxClaimResult::none();
             }
@@ -354,6 +426,53 @@ final class WebAdminOutboxRepository
         ]);
 
         return $this->oneOrNull($statement->fetch(PDO::FETCH_ASSOC));
+    }
+
+    /**
+     * Locks the complete open invitation set before deciding whether one row
+     * can be claimed. The query intentionally contains no JOIN or subquery.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function findOpenInvitationsForRecipientForUpdate(
+        int $recipientId
+    ): array {
+        $statement = $this->prepare(
+            'SELECT id, kind, user_id, locale, status, attempts, '
+            . 'available_at, locked_at, action_token_id FROM '
+            . $this->tables->table('outbox')
+            . " WHERE kind = 'invite' AND user_id = :user_id "
+            . "AND status IN ('pending', 'processing') ORDER BY id"
+            . $this->forUpdate()
+        );
+        $this->execute($statement, ['user_id' => $recipientId]);
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+        if (!is_array($rows)) {
+            throw new WebAdminOutboxStorageException();
+        }
+
+        return $rows;
+    }
+
+    /** @param array<string, mixed> $candidate */
+    private function isCandidateAvailable(
+        array $candidate,
+        DateTimeImmutable $now
+    ): bool {
+        if (($candidate['status'] ?? null) === 'pending') {
+            return $this->parseTimestamp($candidate['available_at'] ?? null)
+                <= $now;
+        }
+        if (($candidate['status'] ?? null) !== 'processing') {
+            throw new WebAdminOutboxStorageException();
+        }
+        $lockedAt = $candidate['locked_at'] ?? null;
+        if ($lockedAt === null) {
+            return false;
+        }
+
+        return $this->parseTimestamp($lockedAt)
+            <= $now->modify('-' . self::LEASE_SECONDS . ' seconds');
     }
 
     /** @return array<string, mixed>|null */

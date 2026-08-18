@@ -52,11 +52,17 @@ DB o credenciales obligue a modificar PHP, rutas, controladores o migraciones.
    `doctor`.
 4. Ejecutar `migrate --plan` y `migrate --dry-run`.
 5. Obtener backup o snapshot recuperable de la DB vacía y autorización.
-6. Aplicar las migraciones, ejecutar el bootstrap y volver a pasar `doctor`.
+6. Aplicar las migraciones y completar
+   `composer liquidstack:webadmin:onboard --yes`; un bootstrap que solo encola
+   no prepara el acceso inicial.
 7. Validar `/admin`, Blog, sitemap, correo y rutas públicas antes de abrir el
    servicio.
 
 En este modo los usuarios y artículos de prueba locales no se copian.
+Las dos identidades protegidas se suministran desde el entorno project-owned o
+gestor de secretos del destino y su onboarding debe cumplir el
+[runbook canónico](../webadmin-bootstrap.md). Composer no copia esos valores ni
+ejecuta el envío durante install/update.
 
 ### Producción con datos procedentes de local u otro servidor
 

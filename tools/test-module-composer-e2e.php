@@ -245,6 +245,31 @@ try {
             'Doctor no representó correctamente el consumidor WebAdmin-only.'
         );
     }
+    $webAdminOnlyCommandList = json_decode(
+        trim($runComposer([
+            'list',
+            '--format=json',
+            '--no-interaction',
+        ])),
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    $webAdminOnlyCommandNames = array_map(
+        static fn (array $command): mixed => $command['name'] ?? null,
+        is_array($webAdminOnlyCommandList['commands'] ?? null)
+            ? $webAdminOnlyCommandList['commands']
+            : []
+    );
+    if (!in_array(
+        'liquidstack:webadmin:onboard',
+        $webAdminOnlyCommandNames,
+        true
+    )) {
+        throw new RuntimeException(
+            'WebAdmin-only no recibió el comando de onboarding inicial.'
+        );
+    }
     $runComposer([
         'remove',
         'liquidstack/webadmin',
@@ -345,6 +370,15 @@ try {
     )) {
         throw new RuntimeException(
             'El consumidor no recibió el comando de bootstrap WebAdmin.'
+        );
+    }
+    if (!in_array(
+        'liquidstack:webadmin:onboard',
+        $commandNames,
+        true
+    )) {
+        throw new RuntimeException(
+            'El consumidor Blog no recibió el comando de onboarding WebAdmin.'
         );
     }
     if (!in_array('liquidstack:media:init', $commandNames, true)) {
@@ -606,6 +640,39 @@ try {
         );
     }
 
+    $onboardWithoutConfirmationOutput = trim(
+        $runComposerExpectingFailure([
+            'liquidstack:webadmin:onboard',
+            '--format=json',
+            '--no-interaction',
+        ])
+    );
+    $onboardWithoutConfirmation = json_decode(
+        $onboardWithoutConfirmationOutput,
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    if (
+        ($onboardWithoutConfirmation['ok'] ?? null) !== false
+        || ($onboardWithoutConfirmation['operation'] ?? null)
+            !== 'webadmin-onboard'
+        || ($onboardWithoutConfirmation['error']['code'] ?? null)
+            !== 'webadmin.onboard.json_requires_yes'
+        || str_contains(
+            $onboardWithoutConfirmationOutput,
+            'module-e2e-secret'
+        )
+        || str_contains(
+            $onboardWithoutConfirmationOutput,
+            $e2eSecurityKey
+        )
+    ) {
+        throw new RuntimeException(
+            'El onboarding no respetó su gate de confirmación seguro.'
+        );
+    }
+
     $mediaWithoutConfirmationOutput = trim(
         $runComposerExpectingFailure([
             'liquidstack:media:init',
@@ -734,6 +801,33 @@ try {
     ) {
         throw new RuntimeException(
             'Doctor no volvió al estado Core-only tras retirar Blog.'
+        );
+    }
+
+    $beforeCoreOnlyOnboard = $snapshotProject($temporaryRoot);
+    $coreOnlyOnboardOutput = trim($runComposerExpectingFailure([
+        'liquidstack:webadmin:onboard',
+        '--yes',
+        '--format=json',
+        '--no-interaction',
+    ]));
+    $coreOnlyOnboard = json_decode(
+        $coreOnlyOnboardOutput,
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    if (
+        ($coreOnlyOnboard['ok'] ?? null) !== false
+        || ($coreOnlyOnboard['operation'] ?? null) !== 'webadmin-onboard'
+        || ($coreOnlyOnboard['error']['code'] ?? null)
+            !== 'webadmin.mail.module_not_enabled'
+        || str_contains($coreOnlyOnboardOutput, 'module-e2e-secret')
+        || str_contains($coreOnlyOnboardOutput, $e2eSecurityKey)
+        || $beforeCoreOnlyOnboard !== $snapshotProject($temporaryRoot)
+    ) {
+        throw new RuntimeException(
+            'Core-only permitió ejecutar o mutar el onboarding WebAdmin.'
         );
     }
 

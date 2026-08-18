@@ -237,9 +237,16 @@ storage privado y responde `404` uniforme ante cualquier fallo.
 2. Crear y verificar un backup recuperable y coordinado de DB y storage.
 3. Aplicar las migraciones con autorización expresa.
 4. Ejecutar `composer liquidstack:media:init`.
-5. Ejecutar o repetir `composer liquidstack:webadmin:bootstrap`.
+5. Ejecutar o repetir `composer liquidstack:webadmin:onboard --yes`; el
+   bootstrap que solo encola no completa una instalación nueva.
 6. Repetir `doctor` y completar el QA HTTP de `/admin`, `/admin/media` y, si
-   está activo, Blog; después se puede despachar el outbox.
+   está activo, Blog. El dispatcher general queda reservado al outbox
+   ordinario.
+
+El onboarding protegido, su idempotencia y la recuperación explícita de una
+invitación terminal se definen en
+[Bootstrap inicial de WebAdmin](../webadmin-bootstrap.md). Composer nunca lo
+ejecuta durante install/update.
 
 ## Pendientes reales
 

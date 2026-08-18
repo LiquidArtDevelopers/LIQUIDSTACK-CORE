@@ -22,9 +22,30 @@ final class WebAdminOutboxDispatcher
 
     public function dispatchBatch(int $limit): WebAdminOutboxDispatchReport
     {
+        return $this->dispatch($limit, null);
+    }
+
+    /** @param list<int> $recipientIds */
+    public function dispatchInvitationsForRecipients(
+        array $recipientIds,
+        int $limit = 2
+    ): WebAdminOutboxDispatchReport {
+        return $this->dispatch($limit, $recipientIds);
+    }
+
+    /** @param list<int>|null $invitationRecipientIds */
+    private function dispatch(
+        int $limit,
+        ?array $invitationRecipientIds
+    ): WebAdminOutboxDispatchReport {
         if ($limit < 1 || $limit > 100) {
             throw new InvalidArgumentException(
                 'The WebAdmin outbox batch limit must be between 1 and 100.'
+            );
+        }
+        if ($invitationRecipientIds !== null) {
+            $invitationRecipientIds = $this->normalizeRecipientIds(
+                $invitationRecipientIds
             );
         }
         // PHP 8.1 lacks #[SensitiveParameter]. Fail closed before any raw
@@ -37,11 +58,29 @@ final class WebAdminOutboxDispatcher
         $retryScheduled = 0;
         $permanentlyFailed = 0;
         $fenced = 0;
+        $recipientIndex = 0;
 
         while ($examined < $limit) {
-            $candidate = $this->repository->claimNext($this->clock->now());
+            if ($invitationRecipientIds === null) {
+                $candidate = $this->repository->claimNext(
+                    $this->clock->now()
+                );
+            } else {
+                if (!isset($invitationRecipientIds[$recipientIndex])) {
+                    break;
+                }
+                $candidate = $this->repository
+                    ->claimInvitationForRecipient(
+                        $this->clock->now(),
+                        $invitationRecipientIds[$recipientIndex]
+                    );
+                $recipientIndex++;
+            }
             if ($candidate->isNone()) {
-                break;
+                if ($invitationRecipientIds === null) {
+                    break;
+                }
+                continue;
             }
             $examined++;
             if ($candidate->isTerminalFailure()) {
@@ -106,6 +145,38 @@ final class WebAdminOutboxDispatcher
             $permanentlyFailed,
             $fenced
         );
+    }
+
+    /**
+     * @param array<array-key, mixed> $recipientIds
+     * @return list<int>
+     */
+    private function normalizeRecipientIds(array $recipientIds): array
+    {
+        if ($recipientIds === [] || count($recipientIds) > 100) {
+            throw new InvalidArgumentException(
+                'The WebAdmin invitation recipient list must contain '
+                . 'between 1 and 100 IDs.'
+            );
+        }
+
+        $normalized = [];
+        foreach ($recipientIds as $recipientId) {
+            if (!is_int($recipientId) || $recipientId < 1) {
+                throw new InvalidArgumentException(
+                    'Every WebAdmin invitation recipient ID must be a '
+                    . 'positive integer.'
+                );
+            }
+            if (isset($normalized[$recipientId])) {
+                throw new InvalidArgumentException(
+                    'WebAdmin invitation recipient IDs must be distinct.'
+                );
+            }
+            $normalized[$recipientId] = $recipientId;
+        }
+
+        return array_values($normalized);
     }
 
     private function countFailure(

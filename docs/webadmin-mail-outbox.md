@@ -166,7 +166,7 @@ composer liquidstack:doctor --format=json
 
 El informe separa `mail_ready` y `mail_blockers` de `runtime_ready` y
 `bootstrap_ready`. Una configuración de correo ausente no debe abrir el
-dispatcher ni permite confirmar una recuperación síncrona, pero tampoco
+dispatcher ni permitir confirmar una recuperación síncrona, pero tampoco
 bloquea por sí sola el login o un bootstrap que solo encola invitaciones.
 `mail_ready` valida el transporte, no sustituye el preflight completo: el
 comando exige además selector activo, entorno legible,
@@ -174,6 +174,35 @@ comando exige además selector activo, entorno legible,
 WebAdmin aplicado. Tampoco prueba que el proceso SMTP local o remoto esté
 escuchando; esa disponibilidad se verifica antes de consumir intentos del
 outbox.
+
+## Entrega protegida durante el onboarding
+
+Una instalación nueva no debe terminar en el bootstrap que solo encola. Tras
+las migraciones se ejecuta el flujo explícito y confirmado:
+
+```console
+composer liquidstack:webadmin:onboard --yes
+composer liquidstack:webadmin:onboard --yes --format=json
+```
+
+Esta operación no equivale a despachar el siguiente lote global. Selecciona
+únicamente las invitaciones abiertas de los propietarios exactos de
+`system_superadmin` y `site_admin` con asignación de origen `bootstrap`; nunca
+consume trabajo de editores u otros destinatarios. El resultado solo es
+correcto cuando cada cuenta está activa o su invitación fue aceptada por SMTP
+y el token ligado quedó marcado como entregado, vigente, sin uso y sin
+revocación.
+
+La operación es idempotente: no reenvía una entrega válida ni toca una cuenta
+activa. Tampoco resucita de forma implícita invitaciones expiradas, enviadas sin
+activar o fallidas de forma terminal. Esos casos requieren el reenvío bootstrap
+confirmado y un onboarding posterior. Un retry o backoff pendiente, un fallo o
+un resultado cercado mantienen el onboarding incompleto; no se adelantan fechas
+ni se corrigen estados manualmente.
+
+`composer install` y `composer update` no ejecutan este flujo. Distribuyen el
+código, pero no disponen necesariamente del esquema, backup, configuración,
+conectividad ni autorización necesarios para escribir en DB y enviar SMTP.
 
 ## Comando de despacho
 
@@ -187,7 +216,9 @@ composer liquidstack:webadmin:mail:dispatch --limit=20 --format=json
 valor permitido es 1–100 y el default es 20. El comando es deliberadamente
 one-shot: procesa un lote y termina; no implementa un daemon ni espera entre
 reintentos. Una recuperación de contraseña nueva no entra en este lote y
-nunca debe resolverse invocando el comando.
+nunca debe resolverse invocando el comando. Este dispatcher general permanece
+separado del onboarding y puede procesar cualquier invitación elegible del
+outbox según su orden normal.
 
 Los códigos de salida son:
 

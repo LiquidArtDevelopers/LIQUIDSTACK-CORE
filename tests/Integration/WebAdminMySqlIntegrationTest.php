@@ -26,7 +26,11 @@ use App\Core\WebAdmin\CredentialAction\CredentialActionRepository;
 use App\Core\WebAdmin\CredentialAction\CredentialActionService;
 use App\Core\WebAdmin\CredentialAction\PasswordResetDelivery;
 use App\Core\WebAdmin\Mail\PasswordResetMailSenderInterface;
+use App\Core\WebAdmin\Mail\WebAdminMailMessage;
+use App\Core\WebAdmin\Mail\WebAdminMailTransportInterface;
 use App\Core\WebAdmin\Media\MediaService;
+use App\Core\WebAdmin\Outbox\WebAdminOutboxDispatcher;
+use App\Core\WebAdmin\Outbox\WebAdminOutboxMessageFactoryInterface;
 use App\Core\WebAdmin\Outbox\WebAdminOutboxRepository;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Security\PasswordHasher;
@@ -200,7 +204,10 @@ final class WebAdminMySqlIntegrationTest extends TestCase
             self::assertSame(2, $this->tableCount($connection, 'users'));
             self::assertSame(2, $this->tableCount($connection, 'outbox'));
 
-            $siteInvitation = $this->deliverBootstrapInvitations($connection);
+            $siteInvitation = $this->deliverBootstrapInvitations(
+                $connection,
+                $configuration
+            );
             $this->completeSiteInvitation($connection, $siteInvitation);
             [$authentication, $authenticatedToken] =
                 $this->assertBasicLoginAndSession($connection);
@@ -521,14 +528,36 @@ final class WebAdminMySqlIntegrationTest extends TestCase
         array $entries,
         MigrationScopeCollection $scopes
     ): void {
+        $superseded = [];
+        foreach ($entries as $entry) {
+            foreach (
+                $entry['migration']->supersededPostconditionIds()
+                as $supersededId
+            ) {
+                $superseded[$entry['module']][$supersededId] = true;
+            }
+        }
+
         foreach ($entries as $entry) {
             $verifier = $entry['migration']->postconditionVerifier();
-            if ($verifier === null) {
+            if (
+                $verifier === null
+                || isset($superseded[$entry['module']][
+                    $entry['migration']->id()
+                ])
+            ) {
                 continue;
             }
             $scope = $scopes->get($entry['module']);
             self::assertNotNull($scope);
-            self::assertTrue($verifier->verify($connection, $scope));
+            self::assertTrue(
+                $verifier->verify($connection, $scope),
+                sprintf(
+                    'MySQL postcondition failed for %s:%s.',
+                    $entry['module'],
+                    $entry['migration']->id()
+                )
+            );
         }
     }
 
@@ -951,30 +980,180 @@ final class WebAdminMySqlIntegrationTest extends TestCase
         return 'other';
     }
 
-    private function deliverBootstrapInvitations(PDO $connection): string
-    {
+    private function deliverBootstrapInvitations(
+        PDO $connection,
+        WebAdminMySqlTestConfiguration $configuration
+    ): string {
+        $recipientIds = [];
+        $recipient = $connection->prepare(
+            'SELECT id FROM ls_webadmin_users '
+            . 'WHERE email_canonical = :email'
+        );
+        self::assertNotFalse($recipient);
+        foreach ([self::SYSTEM_EMAIL, self::SITE_EMAIL] as $email) {
+            self::assertTrue($recipient->execute(['email' => $email]));
+            $recipientId = $recipient->fetchColumn();
+            self::assertNotFalse($recipientId);
+            self::assertGreaterThan(0, (int) $recipientId);
+            self::assertFalse($recipient->fetchColumn());
+            $recipientIds[$email] = (int) $recipientId;
+            $recipient->closeCursor();
+        }
+
+        $this->assertDirectedDispatchLocksAndIsIdempotent(
+            $connection,
+            $configuration,
+            $recipientIds[self::SYSTEM_EMAIL]
+        );
+
         $repository = new WebAdminOutboxRepository(
             $connection,
             WebAdminTableNames::fromPdo($connection, self::TABLE_PREFIX)
         );
-        $delivered = [];
-        for ($index = 0; $index < 2; $index++) {
-            $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-            $claim = $repository->claimNext($now);
-            self::assertFalse($claim->isNone());
-            $lease = $claim->lease();
-            self::assertTrue($repository->acknowledge($lease, $now));
-            $delivered[$lease->recipientEmail()] =
-                $lease->revealActionToken();
-        }
-
-        self::assertSame(2, count($delivered));
-        self::assertArrayHasKey(self::SITE_EMAIL, $delivered);
+        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        $claim = $repository->claimInvitationForRecipient(
+            $now,
+            $recipientIds[self::SITE_EMAIL]
+        );
+        self::assertFalse($claim->isNone());
+        $lease = $claim->lease();
+        self::assertSame(self::SITE_EMAIL, $lease->recipientEmail());
+        self::assertTrue($repository->acknowledge($lease, $now));
+        self::assertTrue($repository->claimInvitationForRecipient(
+            $now,
+            $recipientIds[self::SITE_EMAIL]
+        )->isNone());
         self::assertSame(2, (int) $connection->query(
-            "SELECT COUNT(*) FROM ls_webadmin_outbox WHERE status = 'sent'"
+            'SELECT COUNT(*) FROM ls_webadmin_outbox '
+            . "WHERE kind = 'invite' AND status = 'sent' AND attempts = 1"
+        )->fetchColumn());
+        self::assertSame(2, (int) $connection->query(
+            'SELECT COUNT(*) FROM ls_webadmin_action_tokens '
+            . "WHERE purpose = 'invite' AND delivered_at IS NOT NULL "
+            . 'AND used_at IS NULL AND revoked_at IS NULL'
         )->fetchColumn());
 
-        return $delivered[self::SITE_EMAIL];
+        return $lease->revealActionToken();
+    }
+
+    private function assertDirectedDispatchLocksAndIsIdempotent(
+        PDO $connection,
+        WebAdminMySqlTestConfiguration $configuration,
+        int $recipientId
+    ): void {
+        $worker = dirname(__DIR__)
+            . DIRECTORY_SEPARATOR . 'Integration'
+            . DIRECTORY_SEPARATOR . 'fixtures'
+            . DIRECTORY_SEPARATOR . 'webadmin_mysql_lock_worker.php';
+        self::assertFileExists($worker);
+        $marker = $this->unusedTemporaryPath('ls-wa-outbox-lock-');
+        $process = $this->directedOutboxWorker(
+            $worker,
+            $configuration,
+            $recipientId,
+            $marker
+        );
+
+        try {
+            self::assertTrue($connection->beginTransaction());
+            $outboxLock = $connection->prepare(
+                'SELECT id FROM ls_webadmin_outbox '
+                . "WHERE kind = 'invite' AND user_id = :user_id "
+                . "AND status IN ('pending', 'processing') "
+                . 'ORDER BY id FOR UPDATE'
+            );
+            self::assertNotFalse($outboxLock);
+            self::assertTrue($outboxLock->execute([
+                'user_id' => $recipientId,
+            ]));
+            self::assertGreaterThan(0, (int) $outboxLock->fetchColumn());
+            self::assertFalse($outboxLock->fetchColumn());
+            $outboxLock->closeCursor();
+
+            $process->start();
+            $this->waitForWorkerMarker($marker, [$process]);
+            usleep(250_000);
+            self::assertTrue(
+                $process->isRunning(),
+                'Directed dispatch must wait at the recipient outbox lock.'
+            );
+
+            $userLock = $connection->prepare(
+                'SELECT id FROM ls_webadmin_users '
+                . 'WHERE id = :id FOR UPDATE'
+            );
+            self::assertNotFalse($userLock);
+            self::assertTrue($userLock->execute(['id' => $recipientId]));
+            self::assertSame($recipientId, (int) $userLock->fetchColumn());
+            self::assertTrue($connection->commit());
+            self::assertSame(0, $process->wait());
+        } finally {
+            if ($connection->inTransaction()) {
+                $connection->rollBack();
+            }
+            if ($process->isRunning()) {
+                $process->stop(1.0);
+            }
+            $this->removeTemporaryMarker($marker);
+        }
+
+        $idempotentMarker = $this->unusedTemporaryPath(
+            'ls-wa-outbox-idempotent-'
+        );
+        $idempotent = $this->directedOutboxWorker(
+            $worker,
+            $configuration,
+            $recipientId,
+            $idempotentMarker
+        );
+        try {
+            $idempotent->start();
+            $this->waitForWorkerMarker($idempotentMarker, [$idempotent]);
+            self::assertSame(
+                3,
+                $idempotent->wait(),
+                'A delivered directed invitation must be a no-op on rerun.'
+            );
+        } finally {
+            if ($idempotent->isRunning()) {
+                $idempotent->stop(1.0);
+            }
+            $this->removeTemporaryMarker($idempotentMarker);
+        }
+    }
+
+    private function directedOutboxWorker(
+        string $worker,
+        WebAdminMySqlTestConfiguration $configuration,
+        int $recipientId,
+        string $marker
+    ): Process {
+        $process = new Process(
+            [PHP_BINARY, $worker],
+            dirname(__DIR__, 2),
+            [
+                'LIQUIDSTACK_TEST_WORKER_AUTOLOAD' => dirname(__DIR__, 2)
+                    . DIRECTORY_SEPARATOR . 'vendor'
+                    . DIRECTORY_SEPARATOR . 'autoload.php',
+                'LIQUIDSTACK_TEST_WORKER_MARKER' => $marker,
+                'LIQUIDSTACK_TEST_WORKER_OPERATION' =>
+                    'dispatch_invitation',
+                'LIQUIDSTACK_TEST_WORKER_TOKEN' => 'unused',
+                'LIQUIDSTACK_TEST_WORKER_TARGET' => (string) $recipientId,
+                'LIQUIDSTACK_TEST_WORKER_HOST' => $configuration->host()
+                    . ':' . $configuration->port(),
+                'LIQUIDSTACK_TEST_WORKER_USERNAME' =>
+                    $configuration->username(),
+                'LIQUIDSTACK_TEST_WORKER_PASSWORD' =>
+                    $configuration->password(),
+                'LIQUIDSTACK_TEST_WORKER_DATABASE' =>
+                    $configuration->database(),
+            ]
+        );
+        $process->setTimeout(12.0);
+        $process->disableOutput();
+
+        return $process;
     }
 
     private function completeSiteInvitation(
@@ -1183,6 +1362,7 @@ final class WebAdminMySqlIntegrationTest extends TestCase
         self::assertNotNull($catalog);
         self::assertSame(
             [
+                MediaService::DELETE_CAPABILITY,
                 MediaService::UPLOAD_CAPABILITY,
                 MediaService::VIEW_CAPABILITY,
                 'webadmin.users.view',

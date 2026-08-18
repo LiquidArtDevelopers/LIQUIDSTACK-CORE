@@ -144,7 +144,8 @@ se sigue usando `composer update liquidstack/core`.
 
 El plugin expone los comandos operativos en los proyectos consumidores.
 `doctor`, `migrate --plan` y `migrate --dry-run` son de solo lectura;
-bootstrap, `migrate --apply` y `media:init` requieren confirmación explícita.
+bootstrap, onboarding, `migrate --apply` y `media:init` requieren confirmación
+explícita.
 La recuperación de contraseña intenta entregar su mensaje de forma síncrona y
 no usa el outbox. El dispatcher de correo procesa únicamente un lote finito ya
 encolado por los flujos de invitación:
@@ -159,6 +160,8 @@ composer liquidstack:media:init
 composer liquidstack:media:init --yes --format=json
 composer liquidstack:webadmin:bootstrap
 composer liquidstack:webadmin:bootstrap --resend-invites
+composer liquidstack:webadmin:onboard --yes
+composer liquidstack:webadmin:onboard --yes --format=json
 composer liquidstack:webadmin:mail:dispatch
 composer liquidstack:webadmin:mail:dispatch --limit=20 --format=json
 composer liquidstack:blog:analytics:purge --yes
@@ -203,12 +206,19 @@ El orden de una instalación nueva es: activar el selector, actualizar CORE,
 configurar entorno, ejecutar `doctor`, revisar `migrate --plan` y
 `migrate --dry-run`, crear y comprobar un backup recuperable de DB y storage y,
 tras autorización explícita, aplicar las migraciones; después se inicializa el
-storage con `liquidstack:media:init`, se ejecuta el bootstrap, se repiten
-`doctor` y el QA HTTP y, cuando corresponda, se despacha el outbox.
-El bootstrap solo encola las
-dos invitaciones iniciales. `--resend-invites` es una recuperación confirmada
-para invitaciones bootstrap ya enviadas o fallidas de forma terminal; no
-duplica filas `pending`/`processing` y tampoco envía el correo directamente.
+storage con `liquidstack:media:init` y se ejecuta obligatoriamente
+`liquidstack:webadmin:onboard --yes`. Este último paso compone el bootstrap
+idempotente con la entrega acotada de las dos invitaciones protegidas y verifica
+que cada identidad esté activa o tenga una invitación aceptada por el
+transporte y un token entregado. Solo entonces se repiten `doctor` y el QA HTTP.
+
+El onboarding nunca forma parte de `composer install` o `composer update`, no
+despacha otras filas del outbox y no reenvía implícitamente invitaciones
+expiradas o fallidas de forma terminal. El bootstrap de bajo nivel continúa
+limitándose a encolar. `--resend-invites` sigue siendo una recuperación
+confirmada para invitaciones bootstrap ya enviadas o fallidas de forma
+terminal; no duplica filas `pending`/`processing` y debe ir seguido de un nuevo
+onboarding o del dispatcher explícito.
 
 ### Base de datos de los módulos
 
@@ -267,9 +277,11 @@ composer liquidstack:migrate --dry-run
 
 Solo después de revisar el dry-run, disponer de un backup recuperable y
 autorizar la mutación se ejecuta `composer liquidstack:migrate --apply`; a
-continuación se hace el bootstrap. Cambiar de `shared` a `liquidstack` cuando
-ya existen tablas o datos no los copia ni los adopta: exige un plan manual de
-backup, traslado y verificación antes de cambiar la configuración.
+continuación se completa el alta operativa con
+`composer liquidstack:webadmin:onboard --yes`. Cambiar de `shared` a
+`liquidstack` cuando ya existen tablas o datos no los copia ni los adopta:
+exige un plan manual de backup, traslado y verificación antes de cambiar la
+configuración.
 
 El perfil dedicado inicial no configura TLS para MySQL/MariaDB. Es apto para
 `localhost` o una red confiable; no debe conectarse a un host no confiable
@@ -306,6 +318,21 @@ Guárdala solo en el gestor de secretos o `.env` no versionado. La directiva
 `zend.exception_ignore_args=On` debe estar activa tanto en el PHP de consola
 como en el SAPI que sirve la web; reinicia el proceso correspondiente tras
 cambiar `php.ini`.
+
+El primer onboarding necesita además dos identidades canónicas distintas:
+
+```dotenv
+LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL=
+LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL=
+```
+
+Sus valores son configuración project-owned y pueden inyectarse de forma
+transitoria desde un perfil privado del operador o un gestor de secretos. CORE
+no contiene direcciones personales, no las añade a `.env`, manifiestos o stubs
+y no acepta contraseñas iniciales: cada destinatario establece la suya mediante
+el enlace de activación. Cuando varios proyectos deban usar el mismo par
+operativo, se reutiliza desde esa fuente privada, nunca copiándolo al paquete o
+al repositorio.
 
 La entrega de invitaciones y recuperaciones usa el bloque SMTP general del
 proyecto en el perfil `smtp`:
@@ -661,13 +688,15 @@ composer liquidstack:migrate --apply
 composer liquidstack:media:init
 # Solo si sitemap_cache.enabled=true:
 composer liquidstack:blog:sitemap-cache:init
-composer liquidstack:webadmin:bootstrap
+composer liquidstack:webadmin:onboard --yes
 composer liquidstack:doctor
 ```
 
 Después se realiza el QA HTTP de `/admin`, `/admin/media` y Blog antes de
-despachar correo. Composer no ejecuta esos pasos ni toca la DB o el storage
-durante un update. El contrato de
+rendir la adopción por completada. El onboarding solo entrega invitaciones de
+las dos cuentas protegidas; el dispatcher general continúa reservado al outbox
+ordinario y a su scheduler. Composer no ejecuta esos pasos ni toca la DB, el
+storage o SMTP durante un update. El contrato de
 rutas, categorías, editor, revisiones, medios, estados y permisos está en
 [Liquid Blog](docs/liquid-blog.md).
 

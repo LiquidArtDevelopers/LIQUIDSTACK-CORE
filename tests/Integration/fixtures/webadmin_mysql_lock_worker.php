@@ -8,6 +8,11 @@ use App\Core\WebAdmin\Authentication\WebAdminAuthenticationService;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\CredentialAction\CredentialActionRepository;
 use App\Core\WebAdmin\CredentialAction\CredentialActionService;
+use App\Core\WebAdmin\Mail\WebAdminMailMessage;
+use App\Core\WebAdmin\Mail\WebAdminMailTransportInterface;
+use App\Core\WebAdmin\Outbox\WebAdminOutboxDispatcher;
+use App\Core\WebAdmin\Outbox\WebAdminOutboxMessageFactoryInterface;
+use App\Core\WebAdmin\Outbox\WebAdminOutboxRepository;
 use App\Core\WebAdmin\Persistence\WebAdminTableNames;
 use App\Core\WebAdmin\Security\PasswordHasher;
 use App\Core\WebAdmin\Security\SecureTokenGenerator;
@@ -83,6 +88,59 @@ try {
             $token,
             CredentialActionService::PASSWORD_RESET
         ) === null ? 3 : 0);
+    }
+
+    if ($operation === 'dispatch_invitation') {
+        $recipientId = getenv('LIQUIDSTACK_TEST_WORKER_TARGET');
+        if (
+            !is_string($recipientId)
+            || preg_match('/\A[1-9][0-9]*\z/', $recipientId) !== 1
+        ) {
+            exit(64);
+        }
+
+        $factory = new class implements
+            WebAdminOutboxMessageFactoryInterface
+        {
+            public function create(
+                string $kind,
+                string $recipientEmail,
+                string $locale,
+                #[\SensitiveParameter] string $rawToken
+            ): WebAdminMailMessage {
+                return new WebAdminMailMessage(
+                    $recipientEmail,
+                    null,
+                    'WebAdmin MySQL invitation',
+                    'Invitation token: ' . $rawToken,
+                    '<p>Invitation token: ' . $rawToken . '</p>'
+                );
+            }
+        };
+        $transport = new class ($connection) implements
+            WebAdminMailTransportInterface
+        {
+            public function __construct(private readonly PDO $connection)
+            {
+            }
+
+            public function send(WebAdminMailMessage $message): void
+            {
+                if ($this->connection->inTransaction()) {
+                    throw new RuntimeException(
+                        'Directed delivery observed an open transaction.'
+                    );
+                }
+                usleep(150_000);
+            }
+        };
+        $report = (new WebAdminOutboxDispatcher(
+            new WebAdminOutboxRepository($connection, $tables),
+            $factory,
+            $transport,
+            new SystemClock()
+        ))->dispatchInvitationsForRecipients([(int) $recipientId]);
+        exit($report->sent() === 1 ? 0 : 3);
     }
 
     if (in_array($operation, ['invite_editor', 'suspend_editor'], true)) {

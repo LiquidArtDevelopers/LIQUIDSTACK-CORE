@@ -14,6 +14,7 @@ use App\Core\Modules\ConfiguredModuleDatabaseConnectionResolver;
 use App\Core\Modules\WebAdmin\WebAdminHttpSchemaGate;
 use App\Core\WebAdmin\Configuration\WebAdminConfigException;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
+use App\Core\WebAdmin\Bootstrap\WebAdminBootstrapInvitationAudience;
 use App\Core\WebAdmin\Mail\WebAdminCredentialMailMessageFactory;
 use App\Core\WebAdmin\Mail\WebAdminMailConfiguration;
 use App\Core\WebAdmin\Mail\WebAdminMailConfigurationException;
@@ -30,7 +31,8 @@ use Closure;
 use Throwable;
 
 final class WebAdminMailDispatchCommandRuntimeFactory implements
-    WebAdminMailDispatchCommandRuntimeFactoryInterface
+    WebAdminMailDispatchCommandRuntimeFactoryInterface,
+    WebAdminOnboardMailRuntimeFactoryInterface
 {
     /** @var Closure(array<string, mixed>, string): PdoConnectionFactoryInterface */
     private readonly Closure $connectionFactoryResolver;
@@ -76,6 +78,28 @@ final class WebAdminMailDispatchCommandRuntimeFactory implements
     public function create(
         string $projectRoot,
         string $coreRoot
+    ): WebAdminMailDispatchCommandRuntimeInterface {
+        return $this->createRuntime($projectRoot, $coreRoot, false);
+    }
+
+    public function createOnboard(
+        string $projectRoot,
+        string $coreRoot
+    ): WebAdminOnboardMailRuntimeInterface {
+        $runtime = $this->createRuntime($projectRoot, $coreRoot, true);
+        if (!$runtime instanceof WebAdminOnboardMailRuntimeInterface) {
+            throw new WebAdminMailDispatchCommandRuntimeException(
+                'webadmin.mail.runtime_unavailable'
+            );
+        }
+
+        return $runtime;
+    }
+
+    private function createRuntime(
+        string $projectRoot,
+        string $coreRoot,
+        bool $forOnboarding
     ): WebAdminMailDispatchCommandRuntimeInterface {
         try {
             $registry = ModuleRegistry::forProject($projectRoot, $coreRoot);
@@ -172,6 +196,7 @@ final class WebAdminMailDispatchCommandRuntimeFactory implements
                 $pdo,
                 $config->tablePrefix()
             );
+            $clock = new SystemClock();
             $dispatcher = new WebAdminOutboxDispatcher(
                 new WebAdminOutboxRepository($pdo, $tables),
                 new WebAdminCredentialMailMessageFactory(
@@ -179,8 +204,19 @@ final class WebAdminMailDispatchCommandRuntimeFactory implements
                     $effectiveBasePath
                 ),
                 $transport,
-                new SystemClock()
+                $clock
             );
+
+            if ($forOnboarding) {
+                return new WebAdminOnboardMailRuntime(
+                    $dispatcher,
+                    new WebAdminBootstrapInvitationAudience(
+                        $pdo,
+                        $tables,
+                        $clock
+                    )
+                );
+            }
 
             return new WebAdminMailDispatchCommandRuntime($dispatcher);
         } catch (WebAdminMailDispatchCommandRuntimeException $exception) {

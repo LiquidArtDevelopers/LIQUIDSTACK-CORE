@@ -1737,7 +1737,7 @@ composer liquidstack:migrate --apply
 composer liquidstack:blog:sitemap-cache:init
 # Si analytics.enabled=true, ejecutar periódicamente (cron externo):
 composer liquidstack:blog:analytics:purge --yes
-composer liquidstack:webadmin:bootstrap
+composer liquidstack:webadmin:onboard --yes
 composer liquidstack:doctor
 ```
 
@@ -1746,10 +1746,14 @@ flujo por defecto: se ejecuta únicamente después de revisar el plan, crear y
 comprobar un backup recuperable de DB y storage, y autorizar expresamente la
 mutación.
 
-El bootstrap es idempotente y debe repetirse después de añadir Blog a una
-instalación WebAdmin existente: así las cuentas protegidas reciben las nuevas
-capacidades sin reactivar, duplicar ni sustituir usuarios. Ninguno de estos
-pasos se ejecuta desde `composer update`.
+Las migraciones de Blog asignan sus capacidades. Después de añadir Blog a una
+instalación WebAdmin existente debe repetirse el onboarding idempotente para
+verificar las dos identidades y su acceso, sin reactivar, duplicar ni sustituir
+usuarios o invitaciones válidas. En una instalación nueva completa además la
+entrega acotada y verifica el estado de acceso; nunca drena el outbox ordinario.
+Ninguno de estos pasos se ejecuta desde `composer update`. El contrato completo
+de bootstrap, entrega, recuperación e identidades project-owned vive en
+[Bootstrap inicial de WebAdmin](webadmin-bootstrap.md).
 
 Los gates de readiness usados durante una petición HTTP son deliberadamente
 acotados. Verifican que los registros de migración requeridos existen con su

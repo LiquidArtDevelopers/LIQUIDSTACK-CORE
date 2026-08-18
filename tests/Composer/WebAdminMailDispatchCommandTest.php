@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Core\Composer\Command\WebAdminMailDispatchCommand;
+use App\Core\Composer\WebAdminMailDispatchCommandRuntime;
 use App\Core\Composer\WebAdminMailDispatchCommandRuntimeFactory;
 use App\Core\Composer\WebAdminMailDispatchCommandRuntimeException;
 use App\Core\Composer\WebAdminMailDispatchCommandRuntimeFactoryInterface;
@@ -706,6 +707,10 @@ final class WebAdminMailDispatchCommandTest extends TestCase
         $runtime = $factory->create($project, $coreRoot);
         $report = $runtime->dispatch(1);
 
+        self::assertInstanceOf(
+            WebAdminMailDispatchCommandRuntime::class,
+            $runtime
+        );
         self::assertSame(0, $report->examined());
         self::assertSame(1, $pdoFactory->connectCalls);
     }

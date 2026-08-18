@@ -256,6 +256,7 @@ composer liquidstack:migrate --apply
 composer liquidstack:media:init
 composer liquidstack:blog:sitemap-cache:init
 composer liquidstack:webadmin:bootstrap
+composer liquidstack:webadmin:onboard --yes
 composer liquidstack:webadmin:mail:dispatch
 ```
 
@@ -390,6 +391,30 @@ solo `connection` a `liquidstack` y se declaran fuera de Git las seis variables
 bootstrap explícito usa `LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL` y
 `LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL`; sus valores nunca forman parte del
 diagnóstico. Tras el bootstrap la base de datos será la fuente de verdad.
+
+Son entradas project-owned que pueden inyectarse transitoriamente desde el
+entorno privado del operador. CORE no incorpora direcciones personales en el
+paquete, manifests, stubs o documentación y no escribe `.env`. Las dos
+direcciones deben ser canónicas y distintas, aunque puedan pertenecer al mismo
+operador. No existe una contraseña inicial de entorno: cada identidad la fija
+mediante activación.
+
+En una instalación nueva, `liquidstack:webadmin:onboard --yes` es la frontera
+operativa posterior a las migraciones. Ejecuta de forma idempotente el
+bootstrap y limita la entrega a los dos propietarios protegidos con origen
+`bootstrap`; nunca drena invitaciones ordinarias. Solo termina correctamente si
+cada propietario está activo o conserva una invitación aceptada por SMTP cuyo
+token está entregado, vigente, sin usar y sin revocar. Una entrega válida no se
+duplica y una expiración o fallo terminal no se reenvía sin pasar antes por la
+recuperación confirmada de invitaciones bootstrap.
+
+El onboarding no es un evento de Composer. `post-install-cmd` y
+`post-update-cmd` continúan limitados a sincronizar código, assets, frontend y
+guía de agentes: nunca conectan a la DB, ejecutan migraciones, crean cuentas o
+contactan SMTP. Esta separación permite usar el mismo contrato en WebAdmin-only
+y en Blog, cuya dependencia activa WebAdmin. Las migraciones de Blog asignan
+sus capacidades; después se repite el onboarding para verificar las dos
+identidades y su acceso sin sustituirlas ni reenviar cuentas ya activas.
 
 El runtime HTTP requiere además `LIQUIDSTACK_WEBADMIN_SECURITY_KEY`, una clave
 aleatoria de 32 bytes codificada como 43 caracteres base64url canónicos, y

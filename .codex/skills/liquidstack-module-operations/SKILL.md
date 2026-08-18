@@ -114,7 +114,17 @@ return [
   perfil ni el flujo de `npm run build`. El router debe cargar el front
   controller con `public` como directorio de trabajo para conservar las rutas
   relativas legacy.
-- Reservar `LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL` y `LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL` para el bootstrap explícito. No mostrar sus valores.
+- Reservar `LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL` y
+  `LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL` para el bootstrap explícito. Exigir
+  dos direcciones canónicas distintas; pueden pertenecer al mismo operador.
+  No mostrar sus valores ni tratarlas como contraseñas.
+- Tratar ese par como configuración project-owned que puede inyectarse de
+  forma transitoria desde el entorno privado o gestor de secretos del
+  operador. Si el mismo operador usa un par aprobado en varios proyectos,
+  recuperarlo siempre de esa fuente privada; no inventarlo ni codificar PII en
+  CORE, la skill, manifests, stubs, `.env.example`, Git o argumentos CLI.
+  Composer nunca escribe `.env`. No crear una contraseña inicial: cada
+  identidad establece la suya mediante el enlace de activación.
 - En el perfil `smtp`, tomar el origen de enlaces exclusivamente del perfil
   tipado `RAIZ` + `DEV_MODE` y configurar la cuenta de correo con el bloque
   general `MAIL_HOST`, `MAIL_PORT`, `MAIL_ENCRYPTION`, `MAIL_USERNAME`,
@@ -236,28 +246,60 @@ composer liquidstack:migrate --dry-run
 ## Operar bootstrap y correo
 
 1. Ejecutar en orden `doctor`, `migrate --dry-run`, `migrate --apply`, y, cuando
-   Media esté activo, `liquidstack:media:init`; continuar con
-   `liquidstack:webadmin:bootstrap`, un segundo `doctor`/QA HTTP y
-   `liquidstack:webadmin:mail:dispatch`. `--apply`, `media:init` y bootstrap
-   exigen sus propias confirmaciones; el dispatch es una invocación explícita
-   con efecto SMTP y bootstrap únicamente encola invitaciones.
-2. Mientras no exista scheduler de producción, ejecutar el dispatcher
+   Media esté activo, `liquidstack:media:init`. En toda instalación nueva con
+   WebAdmin —directa o por la dependencia de Blog— continuar obligatoriamente
+   con `liquidstack:webadmin:onboard --yes`, un segundo `doctor` y QA HTTP. No
+   dar la adopción por terminada en `composer require`, `composer update`, las
+   migraciones o el bootstrap que solo encola.
+2. Tratar el onboarding como una composición explícita e idempotente: crea o
+   reconcilia solo `system_superadmin` y `site_admin`, entrega únicamente sus
+   invitaciones bootstrap abiertas y exige que cada identidad esté activa o
+   tenga una invitación aceptada por SMTP con token entregado, vigente, sin uso
+   y sin revocación. No usar el dispatcher global como sustituto de esta
+   postcondición ni considerar suficiente un lote vacío.
+3. Obtener el par de correos aprobado desde el entorno project-owned o perfil
+   privado del operador y comprobar la configuración local del transporte
+   antes del onboarding. La autenticación y aceptación SMTP solo pueden
+   confirmarse al intentar la entrega, ya después del bootstrap; un fallo deja
+   backoff recuperable y el comando debe terminar como incompleto. En
+   automatización usar `liquidstack:webadmin:onboard --yes`; añadir
+   `--format=json` solo junto a `--yes`. La aceptación SMTP no garantiza la
+   entrega final del proveedor o buzón y la activación sigue requiriendo que el
+   destinatario abra el enlace y establezca su contraseña.
+   Una vez verificado el onboarding, retirar esas variables one-shot del
+   entorno del proyecto; la DB pasa a ser la fuente de verdad y una repetición
+   no debe necesitarlas ni sustituir las identidades existentes. `doctor`
+   puede mantener entonces la advertencia no bloqueante
+   `bootstrap_ready=false`, porque mide la capacidad del entorno para iniciar
+   otra DB; no confundirla con el 2/2 ya verificado por `onboard`.
+4. No ejecutar onboarding desde hooks de `composer install` o
+   `composer update`: pueden faltar configuración, migraciones, backup,
+   conectividad o autorización para escribir y enviar correo. La automatización
+   segura consiste en convertir el comando en el cierre obligatorio posterior
+   a esos preflight, no en ocultar el efecto lateral dentro de Composer.
+5. Mientras no exista scheduler de producción, ejecutar el dispatcher general
    manualmente cuando haya invitaciones pendientes. El cron futuro será una
    tarea one-shot por proyecto con `--limit` entre 1 y 100; no instalarlo desde
    Composer, convertirlo en daemon ni registrar destinatarios, tokens o
    diagnósticos SMTP. Seguir
    `docs/mejoras-pendientes/webadmin-mail-scheduler-produccion.md`.
-3. Asumir entrega al menos una vez: una caída después de que SMTP acepte el
+6. Asumir entrega al menos una vez: una caída después de que SMTP acepte el
    mensaje y antes del ACK puede causar un duplicado. No alterar manualmente
    locks, hashes ni estados para simular exactly-once.
-4. Usar `liquidstack:webadmin:bootstrap --resend-invites` solo con
+7. Usar `liquidstack:webadmin:bootstrap --resend-invites` solo con
    confirmación para invitaciones bootstrap ya enviadas o en fallo terminal.
    No sirve para saltar el backoff de filas `pending`/`processing`; revoca los
-   enlaces vivos antes de reencolar y requiere otro dispatch posterior.
-5. Redaccionar el parámetro `token` de `/activate` y `/password/reset` en los
+   enlaces vivos antes de reencolar y requiere otro onboarding posterior. El
+   onboarding nunca reenvía implícitamente una invitación expirada, enviada sin
+   activar o fallida de forma terminal.
+8. Si SMTP falla y queda retry/backoff, corregir únicamente la configuración o
+   credencial externa, respetar `available_at` y repetir onboarding cuando el
+   trabajo vuelva a ser elegible. No editar intentos, fechas, locks, estados o
+   tokens ni interpretar una ejecución sin filas examinadas como acceso listo.
+9. Redaccionar el parámetro `token` de `/activate` y `/password/reset` en los
    access logs del edge, servidor web y APM. El `303` limpia la navegación
    posterior, no el log de la primera petición.
-6. La recuperación de contraseña es síncrona: crea el token, cierra la
+10. La recuperación de contraseña es síncrona: crea el token, cierra la
    transacción, intenta exactamente un envío SMTP y solo después marca el
    enlace como entregado. Nunca crea una fila de outbox. Si el transporte no
    confirma el envío, revoca el token y ofrece una pantalla genérica de
@@ -312,7 +354,8 @@ composer liquidstack:migrate --dry-run
   pendiente no bloquea lectura ni subida y nunca debe mostrar esa acción.
 - Aplicar las migraciones de medios solo mediante el flujo explícito `doctor`
   → `migrate --plan` → `migrate --dry-run` → backup verificado → `migrate
-  --apply` → `liquidstack:media:init` → bootstrap → segundo `doctor` y QA HTTP.
+  --apply` → `liquidstack:media:init` → `liquidstack:webadmin:onboard --yes`
+  → segundo `doctor` y QA HTTP.
   Al habilitar 0003, `--apply` exige además
   `--allow-destructive --backup-confirmed`: está marcada como destructiva
   aunque su reconstrucción SQLite preserve filas. Los eventos automáticos de
@@ -477,11 +520,13 @@ composer liquidstack:migrate --dry-run
 - Aplicar en orden `doctor`, `migrate --plan`, `migrate --dry-run`, backup
   recuperable de DB y storage, autorización expresa, `migrate --apply`,
   `media:init` y, solo si la caché LKG está activada,
-  `blog:sitemap-cache:init`; continuar con `webadmin:bootstrap`, un segundo
+  `blog:sitemap-cache:init`; continuar con `webadmin:onboard --yes`, un segundo
   `doctor` y QA HTTP. No confundir
-  `--backup-confirmed` con la creación del backup. Repetir el bootstrap es
-  obligatorio al añadir Blog a un WebAdmin ya inicializado para completar de
-  forma idempotente las capacidades de las cuentas protegidas.
+  `--backup-confirmed` con la creación del backup. Las migraciones de Blog
+  asignan sus capacidades; después de añadir Blog a un WebAdmin ya
+  inicializado, repetir el onboarding verifica de forma idempotente las dos
+  identidades y su acceso. Una identidad activa o una invitación válida ya
+  entregada no se vuelve a enviar.
 - Mantener separados `blog.articles.view`, `blog.articles.edit`,
   `blog.articles.publish`, `blog.articles.delete` y `blog.analytics.view`.
   Ocultar botones no sustituye el gate transaccional:
@@ -1140,9 +1185,15 @@ composer liquidstack:migrate --dry-run
    y auditable; `doctor` y `--dry-run` nunca escriben.
 7. Probar como mínimo estas matrices:
 
-   - Core-only: no reserva `/admin` ni registra diagnósticos opcionales.
-   - WebAdmin: reclama solo su prefijo y no inicia la sesión legacy.
-   - Blog: activa primero WebAdmin.
+   - Core-only: no reserva `/admin`, no registra diagnósticos opcionales y el
+     onboarding falla antes de leer entorno, DB o SMTP.
+   - WebAdmin: reclama solo su prefijo, no inicia la sesión legacy y el
+     onboarding verifica exactamente las dos identidades protegidas.
+   - Blog: activa primero WebAdmin, sus migraciones asignan las capacidades y
+     repetir onboarding verifica las identidades y el acceso sin duplicar
+     usuarios ni entregas válidas.
+   - `composer install`/`update`: no mutan DB, cuentas, outbox o SMTP; el
+     onboarding sin confirmación tampoco lo hace.
    - GET/HEAD modulares: no abren la sesión legacy; un miss sí la recupera antes
      del 404.
    - GET estáticos, showroom, ficheros y POST: conservan prioridad y bootstrap;
@@ -1160,6 +1211,9 @@ composer liquidstack:migrate --dry-run
 - Para una instalación nueva con DB dedicada, crear primero una DB vacía y un
   usuario acotado, declarar las seis variables `LIQUIDSTACK_DB_*` fuera de Git
   y seleccionar `connection => liquidstack` en los dos configs project-owned.
+- Antes del primer onboarding, obtener desde la fuente privada del operador las
+  dos variables bootstrap distintas y preparar el transporte. No copiar sus
+  valores a documentación, `.env.example`, commits, salidas o informes.
 - Registrar el entorno real antes de operar. El consumidor de referencia usa
   actualmente una DB modular local de XAMPP; otros consumidores pueden usar
   local, staging o
@@ -1174,6 +1228,10 @@ composer liquidstack:migrate --dry-run
   `docs/mejoras-pendientes/promocion-db-modulos-local-produccion.md`.
 - Ejecutar `doctor`, `migrate --plan` y `migrate --dry-run` antes de pedir
   autorización. No presentar `--apply` como parte automática de la adopción.
+- Después de aplicar las migraciones e inicializar Media cuando corresponda,
+  ejecutar `liquidstack:webadmin:onboard --yes`. No cerrar una instalación
+  nueva hasta que su salida verifique las dos cuentas protegidas y el usuario
+  sepa que aún debe activar los enlaces recibidos para disponer de acceso.
 - Si el proyecto ya tiene datos bajo `shared`, no cambiar la selección hasta
   disponer de backup y un traslado manual verificado del esquema, contenido y
   registro de migraciones.

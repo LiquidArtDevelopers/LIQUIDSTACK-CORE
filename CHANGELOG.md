@@ -4,6 +4,14 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Cambiado
+- WebAdmin incorpora el cierre explícito `liquidstack:webadmin:onboard`: valida
+  la configuración local de correo y las migraciones antes de crear las dos
+  identidades protegidas, entrega
+  únicamente sus invitaciones y solo finaliza correctamente cuando ambas
+  cuentas están activas o disponen de un enlace entregado y vigente. El flujo
+  es idempotente, no se ejecuta como efecto lateral de Composer, no publica
+  identidades privadas en CORE y mantiene el reenvío de enlaces caducados o
+  fallidos como una operación separada y confirmada.
 - `moduleBlogGrid02` omite la limpieza GSAP cuando la rejilla no contiene
   tarjetas. Los estados vacíos, los reemplazos reactivos, reduced motion y el
   cleanup/HMR dejan de invocar `gsap.set([])` y ya no generan el aviso

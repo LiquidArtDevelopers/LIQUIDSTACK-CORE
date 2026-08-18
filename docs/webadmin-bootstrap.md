@@ -3,7 +3,10 @@
 El bootstrap crea exclusivamente las identidades iniciales
 `system_superadmin` y `site_admin`. Es una operación explícita posterior a las
 migraciones; no forma parte del request web, de `composer update` ni del
-instalador de recursos.
+instalador de recursos. En un stack nuevo, el punto de entrada operativo es
+`liquidstack:webadmin:onboard`: compone ese bootstrap con la entrega y
+verificación de las invitaciones protegidas sin convertir Composer en un
+provisionador de cuentas o correo.
 
 ## Contrato de ejecución
 
@@ -13,9 +16,16 @@ validada y un entorno ya cargado. Los correos proceden de:
 - `LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL`;
 - `LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL`.
 
-Se canonizan, deben ser válidos y representar a dos personas distintas. PDO
+Se canonizan, deben ser válidos y representar dos identidades o correos
+distintos. PDO
 debe usar `ERRMODE_EXCEPTION` y, en MySQL/MariaDB, prepares nativos. Los
 valores de los correos no aparecen en la salida ni en la auditoría.
+
+Ambos valores son project-owned. Pueden vivir en el gestor de secretos del
+proyecto o inyectarse de forma transitoria desde un perfil privado del
+operador, pero no se codifican en CORE, sus manifests, stubs, documentación o
+Git. No existe una contraseña bootstrap en el entorno: cada identidad establece
+su propia credencial desde su enlace de activación.
 
 La operación bloquea la fila `bootstrap.initial_accounts` dentro de una
 transacción (`SELECT … FOR UPDATE` en MySQL/MariaDB y `BEGIN IMMEDIATE` en
@@ -36,7 +46,15 @@ Nunca se reasigna un rol reservado ni se retira un permiso existente.
 Una vez que el estado es `completed`, la DB es la fuente de verdad. Cambiar los
 correos del entorno no renombra ni reemplaza cuentas. La ejecución ordinaria
 posterior devuelve `already_completed` sin recrear usuarios, credenciales,
-roles o invitaciones.
+roles o invitaciones. Tras un onboarding verificado, las dos variables de
+bootstrap pueden retirarse del entorno del proyecto: las cuentas permanecen
+en la DB y las reejecuciones validan sus propietarios sin volver a leer esos
+correos. Deben volver a declararse solo para una base realmente nueva.
+Como `doctor` valida si el entorno actual podría bootstrapear otra base y no
+relee identidades privadas, después de retirarlas puede mostrar
+`bootstrap_ready=false` como advertencia no bloqueante. La postcondición del
+stack ya inicializado es la salida 2/2 de `webadmin:onboard` y el estado de la
+DB, no la permanencia de esas variables one-shot.
 
 ## Orden operativo
 
@@ -47,20 +65,23 @@ composer liquidstack:doctor
 composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
 composer liquidstack:migrate --apply
-composer liquidstack:webadmin:bootstrap
-composer liquidstack:webadmin:mail:dispatch
+composer liquidstack:webadmin:onboard --yes
+composer liquidstack:doctor
 ```
 
 `migrate --plan` permanece offline y `migrate --dry-run` abre la conexión solo
 para leer. `migrate --apply` y bootstrap son mutaciones distintas, cada una con
-su propia confirmación; `--apply` solo se ejecuta después de revisar el dry-run
-y confirmar un backup recuperable. El bootstrap nunca aplica migraciones.
+su propia confirmación; el onboarding dispone también de una autorización
+explícita para la mutación y el efecto SMTP. `--apply` solo se ejecuta después
+de revisar el dry-run y confirmar un backup recuperable. Ni bootstrap ni
+onboarding aplican migraciones.
 Antes de preguntar y antes de escribir, el comando vuelve a inspeccionar el
 esquema, exige todas las migraciones WebAdmin `applied` y compara el hash del
 plan para impedir que una espera interactiva autorice otro estado.
 
 La pregunta interactiva tiene respuesta negativa por defecto. En una
-automatización previamente autorizada:
+automatización previamente autorizada que solo necesite el bootstrap de bajo
+nivel:
 
 ```console
 composer liquidstack:webadmin:bootstrap --yes
@@ -81,6 +102,43 @@ marcarlas como entregadas hay que ejecutar después el dispatcher. En producció
 se invoca actualmente de forma explícita; su programación recurrente sigue el
 [scheduler pendiente](mejoras-pendientes/webadmin-mail-scheduler-produccion.md).
 Véase también [Correo y outbox de WebAdmin](webadmin-mail-outbox.md).
+
+## Onboarding obligatorio de un stack nuevo
+
+Después de aplicar las migraciones, una adopción nueva usa:
+
+```console
+composer liquidstack:webadmin:onboard --yes
+composer liquidstack:webadmin:onboard --yes --format=json
+```
+
+El comando es idempotente y opera únicamente sobre los propietarios exactos de
+`system_superadmin` y `site_admin` cuyo rol protegido procede de `bootstrap`.
+No consume invitaciones de editores ni otras filas del outbox. Para cada una de
+las dos identidades exige como postcondición uno de estos estados:
+
+- la cuenta ya está `active`; o
+- la invitación fue aceptada por el transporte SMTP y su token asociado consta
+  entregado, vigente, sin uso y sin revocación.
+
+La aceptación SMTP no promete la entrega final del proveedor o del buzón, pero
+sí evita declarar el onboarding correcto cuando el transporte rechazó el
+mensaje. Si queda trabajo `pending` o `processing`, backoff, fallo terminal o
+un resultado cercado, la operación no se considera completada. Una segunda
+ejecución conserva las cuentas activas y las invitaciones válidas ya enviadas,
+sin duplicarlas.
+
+El onboarding no sustituye, revive ni reenvía de forma implícita una invitación
+expirada, enviada anteriormente sin activar o fallida de forma terminal. Esos
+casos requieren la recuperación confirmada `--resend-invites` descrita a
+continuación y después una nueva ejecución de onboarding. No se deben editar a
+mano estados, intentos, tokens o fechas para eludir el backoff.
+
+Este comando nunca se registra como hook de `composer install` o
+`composer update`: en ese momento pueden faltar configuración, migraciones,
+backup, conectividad SMTP o autorización para enviar correo. La automatización
+consiste en convertirlo en el cierre obligatorio y verificable de la adopción,
+una vez preparadas esas dependencias.
 
 ## Reenvío explícito de invitaciones iniciales
 
@@ -112,10 +170,13 @@ informa solo `queued_invites` y `skipped_identities`.
 El reenvío tampoco manda correo por sí mismo. Debe seguirle:
 
 ```console
-composer liquidstack:webadmin:mail:dispatch
+composer liquidstack:webadmin:onboard --yes
 ```
 
-Si el dispatcher devuelve reintentos, se conserva su backoff; no se debe usar
+El dispatcher general continúa disponible para el scheduler y para trabajos de
+correo que no pertenezcan al par protegido.
+
+Si la entrega devuelve reintentos, se conserva su backoff; no se debe usar
 `--resend-invites` como sustituto del mecanismo normal de retry. Se reserva para
 recuperar invitaciones bootstrap enviadas pero no activadas o entregas que ya
 agotaron sus cinco intentos.

@@ -13,6 +13,7 @@ use App\Core\Composer\Command\MediaInitCommand;
 use App\Core\Composer\Command\MigrateCommand;
 use App\Core\Composer\Command\WebAdminBootstrapCommand;
 use App\Core\Composer\Command\WebAdminMailDispatchCommand;
+use App\Core\Composer\Command\WebAdminOnboardCommand;
 use Composer\Command\BaseCommand;
 use Composer\Plugin\Capability\CommandProvider;
 
@@ -41,6 +42,7 @@ final class LiquidStackCommandProvider implements CommandProvider
             new BlogAnalyticsPurgeCommand(),
             new BlogQaSeedMatrixCommand(),
             new BlogUnifiedTextAdoptionCommand(),
+            new WebAdminOnboardCommand(),
             new WebAdminBootstrapCommand(),
             new WebAdminMailDispatchCommand(),
         ];

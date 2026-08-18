@@ -33,6 +33,7 @@ final class LiquidStackCommandProviderTest extends TestCase
             'liquidstack:blog:analytics:purge',
             'liquidstack:blog:qa:seed-matrix',
             'liquidstack:blog:adopt-unified-text',
+            'liquidstack:webadmin:onboard',
             'liquidstack:webadmin:bootstrap',
             'liquidstack:webadmin:mail:dispatch',
         ], array_map(

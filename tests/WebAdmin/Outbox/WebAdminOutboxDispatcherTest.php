@@ -126,6 +126,261 @@ final class WebAdminOutboxDispatcherTest extends TestCase
         );
     }
 
+    public function testDirectedInvitationDeliveryClaimsOnlyExactRecipients(): void
+    {
+        [, $unrelatedOutboxId] = $this->queue('invite');
+        [$firstRecipientId, $firstOutboxId] = $this->queue('invite');
+        [$secondRecipientId, $secondOutboxId] = $this->queue('invite');
+        $timestamp = $this->clock->now()->format('Y-m-d H:i:s.u');
+        $statement = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_outbox '
+            . '(kind, user_id, locale, status, attempts, available_at, '
+            . 'created_at) VALUES '
+            . "('password_reset', ?, 'es', 'pending', 0, ?, ?)"
+        );
+        $statement->execute([$firstRecipientId, $timestamp, $timestamp]);
+        $targetedPasswordResetId = (int) $this->pdo->lastInsertId();
+        $recipients = [];
+        $dispatcher = $this->dispatcher(
+            $this->successfulFactory(),
+            $this->transport(static function (
+                WebAdminMailMessage $message
+            ) use (&$recipients): void {
+                $recipients[] = $message->recipientEmail();
+            })
+        );
+
+        $report = $dispatcher->dispatchInvitationsForRecipients(
+            [$firstRecipientId, $secondRecipientId],
+            10
+        );
+
+        self::assertSame([
+            'examined' => 2,
+            'claimed' => 2,
+            'sent' => 2,
+            'retry_scheduled' => 0,
+            'permanently_failed' => 0,
+            'fenced' => 0,
+        ], $report->toArray());
+        self::assertSame(
+            ['owner2@example.test', 'owner3@example.test'],
+            $recipients
+        );
+        self::assertSame('pending', $this->row(
+            'SELECT status FROM ls_webadmin_outbox WHERE id = ?',
+            [$unrelatedOutboxId]
+        )['status']);
+        self::assertSame('sent', $this->row(
+            'SELECT status FROM ls_webadmin_outbox WHERE id = ?',
+            [$firstOutboxId]
+        )['status']);
+        self::assertSame('sent', $this->row(
+            'SELECT status FROM ls_webadmin_outbox WHERE id = ?',
+            [$secondOutboxId]
+        )['status']);
+        self::assertSame('pending', $this->row(
+            'SELECT status FROM ls_webadmin_outbox WHERE id = ?',
+            [$targetedPasswordResetId]
+        )['status']);
+
+        $generic = $dispatcher->dispatchBatch(1);
+
+        self::assertSame(1, $generic->sent());
+        self::assertSame('owner1@example.test', $recipients[2]);
+        self::assertSame('sent', $this->row(
+            'SELECT status FROM ls_webadmin_outbox WHERE id = ?',
+            [$unrelatedOutboxId]
+        )['status']);
+    }
+
+    public function testDirectedInvitationDeliveryFailsClosedPerRecipientWithoutOmittingNext(): void
+    {
+        [$duplicateRecipientId, $firstDuplicateOutboxId] =
+            $this->queue('invite');
+        [$validRecipientId, $validOutboxId] = $this->queue('invite');
+        $timestamp = $this->clock->now()->format('Y-m-d H:i:s.u');
+        $futureTimestamp = $this->clock->now()->modify('+10 minutes')->format(
+            'Y-m-d H:i:s.u'
+        );
+        $statement = $this->pdo->prepare(
+            'INSERT INTO ls_webadmin_outbox '
+            . '(kind, user_id, locale, status, attempts, available_at, '
+            . 'created_at) VALUES '
+            . "('invite', ?, 'es', 'pending', 0, ?, ?)"
+        );
+        $statement->execute([
+            $duplicateRecipientId,
+            $futureTimestamp,
+            $timestamp,
+        ]);
+        $secondDuplicateOutboxId = (int) $this->pdo->lastInsertId();
+        $recipients = [];
+        $dispatcher = $this->dispatcher(
+            $this->successfulFactory(),
+            $this->transport(static function (
+                WebAdminMailMessage $message
+            ) use (&$recipients): void {
+                $recipients[] = $message->recipientEmail();
+            })
+        );
+
+        $report = $dispatcher->dispatchInvitationsForRecipients([
+            $duplicateRecipientId,
+            $validRecipientId,
+        ]);
+
+        self::assertSame([
+            'examined' => 2,
+            'claimed' => 1,
+            'sent' => 1,
+            'retry_scheduled' => 0,
+            'permanently_failed' => 1,
+            'fenced' => 0,
+        ], $report->toArray());
+        self::assertSame(['owner2@example.test'], $recipients);
+        foreach (
+            [$firstDuplicateOutboxId, $secondDuplicateOutboxId]
+            as $duplicateOutboxId
+        ) {
+            $duplicate = $this->row(
+                'SELECT status, attempts, last_error_code '
+                . 'FROM ls_webadmin_outbox WHERE id = ?',
+                [$duplicateOutboxId]
+            );
+            self::assertSame('failed', $duplicate['status']);
+            self::assertSame(0, (int) $duplicate['attempts']);
+            self::assertSame(
+                'outbox.duplicate_open_invitation',
+                $duplicate['last_error_code']
+            );
+        }
+        self::assertSame('sent', $this->row(
+            'SELECT status FROM ls_webadmin_outbox WHERE id = ?',
+            [$validOutboxId]
+        )['status']);
+        self::assertSame(
+            0,
+            (int) $this->row(
+                'SELECT COUNT(*) AS total '
+                . 'FROM ls_webadmin_action_tokens WHERE user_id = ?',
+                [$duplicateRecipientId]
+            )['total']
+        );
+    }
+
+    public function testDirectedInvitationDeliveryHonorsBackoff(): void
+    {
+        [, $unrelatedOutboxId] = $this->queue('invite');
+        [$recipientId, $recipientOutboxId] = $this->queue('invite');
+        $sendAttempts = 0;
+        $dispatcher = $this->dispatcher(
+            $this->successfulFactory(),
+            $this->transport(static function () use (&$sendAttempts): void {
+                $sendAttempts++;
+                if ($sendAttempts === 1) {
+                    throw new RuntimeException('Expected delivery failure.');
+                }
+            })
+        );
+
+        $failed = $dispatcher->dispatchInvitationsForRecipients(
+            [$recipientId]
+        );
+        $beforeRetry = $dispatcher->dispatchInvitationsForRecipients(
+            [$recipientId]
+        );
+
+        self::assertSame(1, $failed->retryScheduled());
+        self::assertSame(0, $beforeRetry->examined());
+        self::assertSame(1, $sendAttempts);
+        self::assertSame('pending', $this->row(
+            'SELECT status FROM ls_webadmin_outbox WHERE id = ?',
+            [$unrelatedOutboxId]
+        )['status']);
+        self::assertSame(
+            $this->clock->now()->modify('+60 seconds')->format(
+                'Y-m-d H:i:s.u'
+            ),
+            $this->row(
+                'SELECT available_at FROM ls_webadmin_outbox WHERE id = ?',
+                [$recipientOutboxId]
+            )['available_at']
+        );
+
+        $this->clock->set($this->clock->now()->modify('+60 seconds'));
+        $retried = $dispatcher->dispatchInvitationsForRecipients(
+            [$recipientId]
+        );
+
+        self::assertSame(1, $retried->sent());
+        self::assertSame(2, $sendAttempts);
+        self::assertSame(2, (int) $this->row(
+            'SELECT attempts FROM ls_webadmin_outbox WHERE id = ?',
+            [$recipientOutboxId]
+        )['attempts']);
+    }
+
+    public function testDirectedInvitationClaimHonorsAndReclaimsLease(): void
+    {
+        [, $unrelatedOutboxId] = $this->queue('invite');
+        [$recipientId, $recipientOutboxId] = $this->queue('invite');
+        $repository = $this->repository($this->pdo);
+        $first = $repository->claimInvitationForRecipient(
+            $this->clock->now(),
+            $recipientId
+        )->lease();
+
+        self::assertTrue($repository->claimInvitationForRecipient(
+            $this->clock->now(),
+            $recipientId
+        )->isNone());
+        self::assertSame('pending', $this->row(
+            'SELECT status FROM ls_webadmin_outbox WHERE id = ?',
+            [$unrelatedOutboxId]
+        )['status']);
+
+        $this->clock->set($this->clock->now()->modify('+301 seconds'));
+        $second = $repository->claimInvitationForRecipient(
+            $this->clock->now(),
+            $recipientId
+        )->lease();
+
+        self::assertSame($recipientOutboxId, $second->outboxId());
+        self::assertSame(2, $second->attempt());
+        self::assertFalse($repository->acknowledge(
+            $first,
+            $this->clock->now()
+        ));
+        self::assertTrue($repository->acknowledge(
+            $second,
+            $this->clock->now()
+        ));
+        self::assertSame('pending', $this->row(
+            'SELECT status FROM ls_webadmin_outbox WHERE id = ?',
+            [$unrelatedOutboxId]
+        )['status']);
+    }
+
+    public function testDirectedInvitationRecipientIdsAreValidated(): void
+    {
+        $dispatcher = $this->dispatcher(
+            $this->successfulFactory(),
+            $this->transport(static function (): void {
+                self::fail('Invalid recipients must not send mail.');
+            })
+        );
+
+        foreach ([[], [0], ['1'], [1, 1], range(1, 101)] as $invalid) {
+            try {
+                $dispatcher->dispatchInvitationsForRecipients($invalid);
+                self::fail('Invalid invitation recipient IDs should fail.');
+            } catch (InvalidArgumentException) {
+                self::addToAssertionCount(1);
+            }
+        }
+    }
+
     public function testFailuresUseAllowlistedCodeBackoffAndStopAfterFive(): void
     {
         [, $outboxId] = $this->queue('password_reset');
