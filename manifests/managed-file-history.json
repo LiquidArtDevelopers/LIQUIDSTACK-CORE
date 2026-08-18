@@ -210,7 +210,8 @@
             "sha256:d21f87987d6a092681c878fcd6c937d2d518f46330f3373a593a522275f13af6"
         ],
         "modules/blog/resources/project/src/js/resources/_moduleBlogGrid02.js": [
-            "sha256:77e013174154d304556f0365cc307e82bb6586a28c14bea1c500f9746e94cdc6"
+            "sha256:77e013174154d304556f0365cc307e82bb6586a28c14bea1c500f9746e94cdc6",
+            "sha256:bf2660b3bf6973e273e4191fe30321a7487a0c8efa5d5fee0b7bcc1ca147d8fb"
         ],
         "modules/blog/resources/project/src/js/resources/_moduleBlogPagination01.js": [
             "sha256:f73da0afb9c5091af08da528ca95e1ca200acdab80cc4c930a5195db0d6faab2"

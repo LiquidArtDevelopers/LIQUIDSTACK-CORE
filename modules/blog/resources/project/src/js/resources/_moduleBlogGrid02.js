@@ -39,6 +39,10 @@ const syncItemCountClass = (root, count) => {
 };
 
 const clearPresentation = (cards) => {
+  if (cards.length === 0) {
+    return;
+  }
+
   try {
     gsap.set(cards, { clearProps: 'opacity,visibility,transform' });
   } catch {

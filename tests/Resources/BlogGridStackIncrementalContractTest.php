@@ -9,7 +9,7 @@ use function App\Core\Support\controller;
 
 final class BlogGridStackIncrementalContractTest extends TestCase
 {
-    public function testZeroToManySynchronizesTheResourceModifier(): void
+    public function testZeroToManySynchronizesTheResourceModifierWithoutEmptyGsapTargets(): void
     {
         $root = self::coreRoot();
         $script = $root
@@ -23,7 +23,7 @@ final class BlogGridStackIncrementalContractTest extends TestCase
 
         self::assertSame(0, $exitCode, implode("\n", $output));
         self::assertSame(
-            ['grid' => 3, 'stack' => 2],
+            ['grid' => 3, 'stack' => 2, 'emptyGridGsapTargets' => 0],
             json_decode(
                 implode("\n", $output),
                 true,

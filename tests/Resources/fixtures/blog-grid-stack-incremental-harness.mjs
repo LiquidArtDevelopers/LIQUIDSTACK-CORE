@@ -88,8 +88,11 @@ const nextTick = () => new Promise((resolveTick) => {
   setTimeout(resolveTick, 5);
 });
 
+const gridSetTargetSizes = [];
 globalThis.__gridGsap = {
-  set() {},
+  set(cards) {
+    gridSetTargetSizes.push(Array.from(cards ?? []).length);
+  },
   fromTo(cards, from, to) {
     return {
       kill() {
@@ -127,6 +130,17 @@ const gridRoot = {
 gridDocument.querySelectorAll = (selector) => (
   selector === '[data-blog-grid02]' ? [gridRoot] : []
 );
+const cleanupEmptyGrid = gridModule.initModuleBlogGrid02(gridDocument);
+gridMotion.matches = true;
+gridMotion.emit('change');
+gridMotion.matches = false;
+cleanupEmptyGrid();
+assert.deepEqual(
+  gridSetTargetSizes,
+  [],
+  'An empty grid must not be passed to gsap.set during motion changes or cleanup.',
+);
+
 const cleanupGrid = gridModule.initModuleBlogGrid02(gridDocument);
 gridRoot.cards.push(
   new FakeCard('grid-a'),
@@ -140,6 +154,22 @@ gridDocument.emit('liquidstack:blog-collection-appended', {
 assert.equal(gridRoot.classList.contains('moduleBlogGrid02--items-0'), false);
 assert.equal(gridRoot.classList.contains('moduleBlogGrid02--items-3'), true);
 cleanupGrid();
+assert.equal(gridSetTargetSizes.includes(0), false);
+assert.equal(gridSetTargetSizes.includes(3), true);
+
+gridRoot.cards.length = 0;
+gridRoot.isConnected = true;
+const cleanupReactiveEmptyGrid = gridModule.initModuleBlogGrid02(gridDocument);
+gridRoot.isConnected = false;
+gridDocument.emit('liquidstack:blog-results-updated', {
+  target: gridDocument,
+});
+cleanupReactiveEmptyGrid();
+assert.equal(
+  gridSetTargetSizes.includes(0),
+  false,
+  'Replacing a disconnected empty grid must not call gsap.set with no targets.',
+);
 
 globalThis.__stackGsap = { registerPlugin() {} };
 globalThis.__stackScrollTrigger = { create() {}, refresh() {} };
@@ -198,4 +228,8 @@ assert.equal(stackRoot.classList.contains('sectionBlogStack01--items-0'), false)
 assert.equal(stackRoot.classList.contains('sectionBlogStack01--items-2'), true);
 cleanupStack();
 
-process.stdout.write(JSON.stringify({ grid: 3, stack: 2 }));
+process.stdout.write(JSON.stringify({
+  grid: 3,
+  stack: 2,
+  emptyGridGsapTargets: gridSetTargetSizes.filter((size) => size === 0).length,
+}));

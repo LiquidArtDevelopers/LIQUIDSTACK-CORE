@@ -4,6 +4,11 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 ### Cambiado
+- `moduleBlogGrid02` omite la limpieza GSAP cuando la rejilla no contiene
+  tarjetas. Los estados vacíos, los reemplazos reactivos, reduced motion y el
+  cleanup/HMR dejan de invocar `gsap.set([])` y ya no generan el aviso
+  `GSAP target not found`; una regresión cubre tanto el vacío inicial como la
+  sustitución de una rejilla vacía desconectada.
 - El índice público del Blog dispone ahora de una fachada tipada y reutilizable
   en `src/Core/Blog/PublicIndex`: valida request y rutas, reutiliza una sola
   fachada/feed por request para filtros, archivo, resultados y paginación, y proyecta
