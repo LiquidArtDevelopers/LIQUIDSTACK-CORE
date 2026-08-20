@@ -121,6 +121,13 @@ final class ManagedFileRegistry
         $sourceId = self::normalizePath($sourceId);
 
         if (in_array($sourceId, [
+            'stubs/App/tools/liquidstack-dev.mjs',
+            'stubs/App/tools/php-dev-router.php',
+        ], true)) {
+            return 'runtime:development';
+        }
+
+        if (in_array($sourceId, [
             'resources/js/_languagePreference.mjs',
             'resources/js/_traducciones.js',
         ], true)) {

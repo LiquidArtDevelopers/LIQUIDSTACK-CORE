@@ -82,6 +82,35 @@ final class BlogPublicShellSecurityTest extends TestCase
         self::assertStringNotContainsString('upgrade-insecure-requests', $csp);
     }
 
+    public function testTypedDevelopmentUsesTheIncrementedViteOrigin(): void
+    {
+        $context = BlogPublicShellDefaultSecurityPolicy::fromEnvironment([
+            'DEV_MODE' => '1',
+            'RAIZ' => 'http://localhost:1310',
+            'LIQUIDSTACK_DEV_VITE_ORIGIN' => 'http://localhost:5174',
+        ])->context();
+        $csp = $context->headers()['Content-Security-Policy'];
+
+        self::assertStringContainsString('http://localhost:5174', $csp);
+        self::assertStringContainsString('ws://localhost:5174', $csp);
+        self::assertStringNotContainsString('localhost:5173', $csp);
+        self::assertStringNotContainsString('upgrade-insecure-requests', $csp);
+    }
+
+    public function testInvalidRuntimeViteOriginFailsClosed(): void
+    {
+        $context = BlogPublicShellDefaultSecurityPolicy::fromEnvironment([
+            'DEV_MODE' => '1',
+            'RAIZ' => 'http://localhost:1310',
+            'LIQUIDSTACK_DEV_VITE_ORIGIN' => 'http://evil.example:5174',
+        ])->context();
+        $csp = $context->headers()['Content-Security-Policy'];
+
+        self::assertStringNotContainsString('evil.example', $csp);
+        self::assertStringNotContainsString('localhost:5173', $csp);
+        self::assertStringContainsString('upgrade-insecure-requests', $csp);
+    }
+
     #[DataProvider('nonDevelopmentEnvironmentProvider')]
     public function testUntrustedOrUnusableDevelopmentInputStaysProduction(
         array $environment,

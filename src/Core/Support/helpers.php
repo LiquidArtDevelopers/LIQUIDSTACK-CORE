@@ -2,6 +2,7 @@
 
 namespace App\Core\Support {
 
+use App\Core\Environment\DevelopmentServerOrigin;
 use App\Core\Routing\ShowroomCategoryRoute;
 use DateTime;
 use Exception;
@@ -90,6 +91,36 @@ function homeUrl(string $lang): string
 {
     $base = rtrim($_ENV['RAIZ'] ?? '', '/');
     return $base . homePath($lang);
+}
+
+/**
+ * Devuelve el origen Vite local elegido por el supervisor de desarrollo.
+ *
+ * La ausencia de la variable conserva el puerto histórico 5173. Una
+ * variable manipulada o no canónica nunca se proyecta al HTML.
+ */
+function liquidstack_dev_vite_origin(): string
+{
+    $value = getenv(DevelopmentServerOrigin::VITE_ORIGIN_ENV);
+    if ($value === false && array_key_exists(
+        DevelopmentServerOrigin::VITE_ORIGIN_ENV,
+        $_ENV
+    )) {
+        $value = $_ENV[DevelopmentServerOrigin::VITE_ORIGIN_ENV];
+    }
+
+    $environment = [];
+    if ($value !== false && $value !== null) {
+        $environment[DevelopmentServerOrigin::VITE_ORIGIN_ENV] = $value;
+    }
+
+    try {
+        return DevelopmentServerOrigin::viteFromEnvironment(
+            $environment
+        )->httpOrigin();
+    } catch (\Throwable) {
+        return DevelopmentServerOrigin::DEFAULT_VITE_ORIGIN;
+    }
 }
 
 
@@ -795,6 +826,7 @@ namespace {
     use function App\Core\Support\homeUrl as core_homeUrl;
     use function App\Core\Support\hreflangAlternates as core_hreflangAlternates;
     use function App\Core\Support\imgConvert as core_imgConvert;
+    use function App\Core\Support\liquidstack_dev_vite_origin as core_liquidstack_dev_vite_origin;
     use function App\Core\Support\matchQueryRoute as core_matchQueryRoute;
     use function App\Core\Support\render as core_render;
     use function App\Core\Support\resolve_header_levels as core_resolve_header_levels;
@@ -815,6 +847,11 @@ namespace {
     function homeUrl(string $lang): string
     {
         return core_homeUrl($lang);
+    }
+
+    function liquidstack_dev_vite_origin(): string
+    {
+        return core_liquidstack_dev_vite_origin();
     }
 
     function resolve_localized_href(?string $href, array $options = []): string

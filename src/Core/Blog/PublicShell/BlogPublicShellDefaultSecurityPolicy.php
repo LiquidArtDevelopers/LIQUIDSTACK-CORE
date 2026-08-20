@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Blog\PublicShell;
 
 use App\Core\Blog\StructuredContent\Document\BlogSafeIframePolicy;
+use App\Core\Environment\DevelopmentServerOrigin;
 use App\Core\Environment\ProjectRuntimeProfile;
 use InvalidArgumentException;
 use Throwable;
@@ -95,14 +96,22 @@ class BlogPublicShellDefaultSecurityPolicy implements
             return new static();
         }
 
-        $vite = 'http://localhost:5173';
+        try {
+            $viteOrigin = DevelopmentServerOrigin::viteFromEnvironment(
+                $environment
+            );
+        } catch (Throwable) {
+            return new static();
+        }
+
+        $vite = $viteOrigin->httpOrigin();
 
         return new static(
             scriptSources: [$vite],
             styleSources: [$vite],
             imageSources: [$vite],
             fontSources: [$vite],
-            connectSources: [$vite, 'ws://localhost:5173'],
+            connectSources: [$vite, $viteOrigin->webSocketOrigin()],
             upgradeInsecureRequests: false
         );
     }

@@ -19,6 +19,9 @@ final class InstallerFrontendPackageSyncTest extends TestCase
         'node scripts/swap-env.mjs development && concurrently '
         . '"php -S localhost:1309 -t public App/tools/php-dev-router.php" '
         . '"npm run dev"';
+    private const SUPERVISED_LAD =
+        'node scripts/swap-env.mjs development '
+        . '&& node App/tools/liquidstack-dev.mjs';
 
     private Filesystem $filesystem;
     private string $projectRoot;
@@ -33,10 +36,19 @@ final class InstallerFrontendPackageSyncTest extends TestCase
         $this->filesystem->mkdir([
             $this->projectRoot . '/vendor',
             $this->projectRoot . '/App/tools',
+            $this->projectRoot . '/App/includes',
         ]);
         $this->filesystem->copy(
             dirname(__DIR__, 2) . '/stubs/App/tools/php-dev-router.php',
             $this->projectRoot . '/App/tools/php-dev-router.php'
+        );
+        $this->filesystem->copy(
+            dirname(__DIR__, 2) . '/stubs/App/tools/liquidstack-dev.mjs',
+            $this->projectRoot . '/App/tools/liquidstack-dev.mjs'
+        );
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/includes/_globalHead.php',
+            $this->canonicalDevelopmentHead()
         );
     }
 
@@ -49,22 +61,31 @@ final class InstallerFrontendPackageSyncTest extends TestCase
     {
         $this->writePackage([
             'private' => true,
-            'scripts' => ['lad' => self::LEGACY_LAD],
+            'scripts' => [
+                'dev' => 'vite',
+                'lad' => self::LEGACY_LAD,
+            ],
         ]);
 
         $first = $this->sync();
         self::assertSame(
-            self::ROUTED_LAD,
+            self::SUPERVISED_LAD,
             $this->readPackage()['scripts']['lad'] ?? null
         );
         self::assertStringContainsString(
             'Updated canonical frontend scripts in package.json: lad',
             $first
         );
+        self::assertStringContainsString(
+            'liquidstack_dev_vite_origin()',
+            (string) file_get_contents(
+                $this->projectRoot . '/App/includes/_globalHead.php'
+            )
+        );
 
         $second = $this->sync();
         self::assertSame(
-            self::ROUTED_LAD,
+            self::SUPERVISED_LAD,
             $this->readPackage()['scripts']['lad'] ?? null
         );
         self::assertStringContainsString(
@@ -74,6 +95,27 @@ final class InstallerFrontendPackageSyncTest extends TestCase
         self::assertStringNotContainsString(
             'Updated canonical frontend scripts',
             $second
+        );
+    }
+
+    public function testCanonicalRoutedLadScriptMigratesToSupervisor(): void
+    {
+        $this->writePackage([
+            'scripts' => [
+                'dev' => 'vite',
+                'lad' => self::ROUTED_LAD,
+            ],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            self::SUPERVISED_LAD,
+            $this->readPackage()['scripts']['lad'] ?? null
+        );
+        self::assertStringContainsString(
+            'Updated canonical frontend scripts in package.json: lad',
+            $output
         );
     }
 
@@ -102,7 +144,10 @@ final class InstallerFrontendPackageSyncTest extends TestCase
             $this->projectRoot . '/App/tools/php-dev-router.php'
         );
         $this->writePackage([
-            'scripts' => ['lad' => self::LEGACY_LAD],
+            'scripts' => [
+                'dev' => 'vite',
+                'lad' => self::LEGACY_LAD,
+            ],
         ]);
 
         $output = $this->sync();
@@ -128,7 +173,10 @@ final class InstallerFrontendPackageSyncTest extends TestCase
             "<?php echo 'custom router';\n"
         );
         $this->writePackage([
-            'scripts' => ['lad' => self::LEGACY_LAD],
+            'scripts' => [
+                'dev' => 'vite',
+                'lad' => self::LEGACY_LAD,
+            ],
         ]);
 
         $output = $this->sync();
@@ -147,13 +195,65 @@ final class InstallerFrontendPackageSyncTest extends TestCase
         );
     }
 
+    public function testCanonicalLadScriptWaitsForItsManagedSupervisor(): void
+    {
+        $this->filesystem->remove(
+            $this->projectRoot . '/App/tools/liquidstack-dev.mjs'
+        );
+        $this->writePackage([
+            'scripts' => [
+                'dev' => 'vite',
+                'lad' => self::ROUTED_LAD,
+            ],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            self::ROUTED_LAD,
+            $this->readPackage()['scripts']['lad'] ?? null
+        );
+        self::assertStringContainsString(
+            'Deferred canonical frontend script migration',
+            $output
+        );
+    }
+
+    public function testCanonicalLadScriptWaitsWhenSupervisorIsCustomized(): void
+    {
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/tools/liquidstack-dev.mjs',
+            "console.log('custom supervisor');\n"
+        );
+        $this->writePackage([
+            'scripts' => [
+                'dev' => 'vite',
+                'lad' => self::ROUTED_LAD,
+            ],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            self::ROUTED_LAD,
+            $this->readPackage()['scripts']['lad'] ?? null
+        );
+        self::assertStringContainsString(
+            'Deferred canonical frontend script migration',
+            $output
+        );
+    }
+
     public function testAlreadyRoutedLadReportsAMissingManagedRouter(): void
     {
         $this->filesystem->remove(
             $this->projectRoot . '/App/tools/php-dev-router.php'
         );
         $this->writePackage([
-            'scripts' => ['lad' => self::ROUTED_LAD],
+            'scripts' => [
+                'dev' => 'vite',
+                'lad' => self::ROUTED_LAD,
+            ],
         ]);
 
         $output = $this->sync();
@@ -168,6 +268,109 @@ final class InstallerFrontendPackageSyncTest extends TestCase
         );
         self::assertStringNotContainsString(
             'already up to date',
+            $output
+        );
+    }
+
+    public function testCanonicalLadScriptWaitsWhenDevScriptIsMissing(): void
+    {
+        $this->writePackage([
+            'scripts' => ['lad' => self::ROUTED_LAD],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            self::ROUTED_LAD,
+            $this->readPackage()['scripts']['lad'] ?? null
+        );
+        self::assertStringContainsString(
+            'Deferred canonical frontend script migration',
+            $output
+        );
+    }
+
+    public function testCanonicalLadScriptWaitsWhenDevScriptIsCustomized(): void
+    {
+        $this->writePackage([
+            'scripts' => [
+                'dev' => 'vite --host 127.0.0.1',
+                'lad' => self::ROUTED_LAD,
+            ],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            self::ROUTED_LAD,
+            $this->readPackage()['scripts']['lad'] ?? null
+        );
+        self::assertStringContainsString(
+            'Deferred canonical frontend script migration',
+            $output
+        );
+    }
+
+    public function testCanonicalLadScriptWaitsForCanonicalHeadIntegration(): void
+    {
+        $customHead = str_replace(
+            'localhost:5173',
+            'localhost:9000',
+            $this->canonicalDevelopmentHead()
+        );
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/includes/_globalHead.php',
+            $customHead
+        );
+        $this->writePackage([
+            'scripts' => [
+                'dev' => 'vite',
+                'lad' => self::ROUTED_LAD,
+            ],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            self::ROUTED_LAD,
+            $this->readPackage()['scripts']['lad'] ?? null
+        );
+        self::assertSame(
+            $customHead,
+            file_get_contents(
+                $this->projectRoot . '/App/includes/_globalHead.php'
+            )
+        );
+        self::assertStringContainsString('Preserved custom', $output);
+        self::assertStringContainsString(
+            'Deferred canonical frontend script migration',
+            $output
+        );
+    }
+
+    public function testSupervisedLadCompletesADeferredHeadIntegration(): void
+    {
+        $this->writePackage([
+            'scripts' => [
+                'dev' => 'vite',
+                'lad' => self::SUPERVISED_LAD,
+            ],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            self::SUPERVISED_LAD,
+            $this->readPackage()['scripts']['lad'] ?? null
+        );
+        self::assertStringContainsString(
+            'liquidstack_dev_vite_origin()',
+            (string) file_get_contents(
+                $this->projectRoot . '/App/includes/_globalHead.php'
+            )
+        );
+        self::assertStringContainsString(
+            'Integrated the dynamic Vite origin',
             $output
         );
     }
@@ -226,5 +429,15 @@ final class InstallerFrontendPackageSyncTest extends TestCase
         ));
 
         return $io->getOutput();
+    }
+
+    private function canonicalDevelopmentHead(): string
+    {
+        return <<<'PHP'
+<?php if ($devMode): ?>
+<script type="module" src="http://localhost:5173/@vite/client"></script>
+<script defer src="http://localhost:5173/src/js/<?= $resources ?>.js" type="module"></script>
+<?php endif; ?>
+PHP;
     }
 }

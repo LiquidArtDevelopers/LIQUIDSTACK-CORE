@@ -82,22 +82,30 @@ una vista parcial de la configuración.
 En producción y en cualquier host no local, las rutas privadas continúan
 exigiendo HTTPS afirmado por el servidor. El laboratorio admite una única
 excepción acotada para el flujo habitual `npm run lad`: `DEV_MODE=1`,
-`RAIZ=http://localhost:1309` —o el loopback canónico equivalente— y una
-petición cuyo `Host` y puerto coincidan exactamente y cuyo `REMOTE_ADDR` sea
-una representación válida de loopback. Si falta una de esas condiciones, HTTP responde `400` antes de abrir
-PDO. `Forwarded` y `X-Forwarded-*` nunca habilitan la excepción.
+una `RAIZ` HTTP loopback canónica inyectada por el supervisor y una petición
+cuyo `Host` y puerto coincidan exactamente y cuyo `REMOTE_ADDR` sea una
+representación válida de loopback. Si falta una de esas condiciones, HTTP
+responde `400` antes de abrir PDO. `Forwarded` y `X-Forwarded-*` nunca
+habilitan la excepción.
 
-El servidor integrado debe arrancarse con el router distribuido por CORE para
-que también enrute endpoints dinámicos con extensión:
+El servidor integrado y Vite deben arrancarse conjuntamente mediante el
+supervisor distribuido por CORE:
 
 ```bash
-php -S localhost:1309 -t public App/tools/php-dev-router.php
+npm run lad
 ```
 
-El router devuelve al servidor únicamente ficheros reales dentro de `public`;
-el resto pasa por `public/index.php` con `public` como directorio de trabajo,
-preservando las rutas relativas del stack legacy. `npm run build` mantiene el
-perfil de producción y no utiliza este router.
+PHP intenta primero el puerto 1309 y Vite el 5173; si están ocupados, el
+supervisor avanza hasta encontrar puertos libres. Los overrides
+`LIQUIDSTACK_DEV_APP_PORT` y `LIQUIDSTACK_DEV_VITE_PORT` exigen exactamente el
+puerto indicado. `RAIZ` y el origen Vite efectivo se inyectan solo en los
+procesos locales y sus puertos no se persisten en los perfiles `.env*`; el
+`swap-env` previo sigue activando el perfil de desarrollo. El router devuelve
+al servidor únicamente ficheros reales dentro de `public`; el resto pasa por
+`public/index.php` con `public` como directorio de trabajo, preservando las
+rutas relativas del stack legacy. Al detener el supervisor se cierran solo su
+PHP y su Vite. `npm run build` mantiene el perfil de producción y no utiliza
+este router.
 
 ## Rutas HTTP
 

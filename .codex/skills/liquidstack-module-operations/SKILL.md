@@ -108,12 +108,18 @@ return [
   en cabeceras `Forwarded`; detrás de un proxy, configurar el servidor para
   afirmar el TLS ya verificado y reescribir `REMOTE_ADDR` solo desde proxies
   autorizados.
-- En el servidor integrado usar `php -S localhost:1309 -t public
-  App/tools/php-dev-router.php`; sin el router, rutas dinámicas con extensión
-  como `/blog-sitemap.xml` pueden no llegar a CORE. No alterar por ello el
-  perfil ni el flujo de `npm run build`. El router debe cargar el front
-  controller con `public` como directorio de trabajo para conservar las rutas
-  relativas legacy.
+- En el laboratorio usar `npm run lad`. El supervisor gestionado arranca PHP
+  con `App/tools/php-dev-router.php` desde 1309 y Vite desde 5173, avanzando
+  independientemente hasta puertos libres; sin el router, rutas dinámicas con
+  extensión como `/blog-sitemap.xml` pueden no llegar a CORE. Los overrides
+  `LIQUIDSTACK_DEV_APP_PORT` y `LIQUIDSTACK_DEV_VITE_PORT` son exactos. Usar
+  los orígenes que muestra la consola, no asumir los puertos iniciales ni
+  detener listeners ajenos. `RAIZ` y el origen Vite se inyectan en los
+  procesos sin persistir los puertos elegidos; el `swap-env` previo conserva
+  su activación habitual del perfil. Al cerrar el supervisor solo deben
+  terminar su PHP y su Vite. No alterar por ello el flujo de `npm run build`. El
+  router debe cargar el front controller con `public` como directorio de
+  trabajo para conservar las rutas relativas legacy.
 - Reservar `LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL` y
   `LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL` para el bootstrap explícito. Exigir
   dos direcciones canónicas distintas; pueden pertenecer al mismo operador.

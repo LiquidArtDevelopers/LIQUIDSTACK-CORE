@@ -7,6 +7,23 @@ use PHPUnit\Framework\TestCase;
 
 final class ManagedFileRegistryTest extends TestCase
 {
+    public function testDevelopmentRuntimeUpdatesAtomically(): void
+    {
+        foreach ([
+            'stubs/App/tools/liquidstack-dev.mjs',
+            'stubs/App/tools/php-dev-router.php',
+        ] as $sourceId) {
+            self::assertSame(
+                ManagedFileRegistry::POLICY_MANAGED,
+                ManagedFileRegistry::policyForSource($sourceId)
+            );
+            self::assertSame(
+                'runtime:development',
+                ManagedFileRegistry::groupForSource($sourceId)
+            );
+        }
+    }
+
     public function testMailRuntimeUpdatesByHashButKeepsOtherSeedsProtected(): void
     {
         foreach ([

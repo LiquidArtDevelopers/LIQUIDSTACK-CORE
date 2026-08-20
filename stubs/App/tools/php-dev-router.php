@@ -5,8 +5,8 @@ declare(strict_types=1);
 /**
  * Router exclusivo del servidor integrado de PHP durante el desarrollo.
  *
- * Uso desde la raiz del proyecto:
- * php -S localhost:1309 -t public App/tools/php-dev-router.php
+ * App/tools/liquidstack-dev.mjs lo invoca en el puerto libre elegido por
+ * `npm run lad`; no debe asumirse que 1309 sigue disponible.
  */
 if (PHP_SAPI !== 'cli-server') {
     http_response_code(404);

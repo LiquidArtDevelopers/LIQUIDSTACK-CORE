@@ -60,7 +60,17 @@ Al ejecutar `composer install` o `composer update` en un proyecto que consume es
 - `resources/video` -> `public/assets/video`.
 
 3. Se fusionan dependencias de `package.core.json` en el `package.json` del proyecto consumidor.
-4. Se instala el watcher compartido de idiomas en
+4. Se sincronizan el supervisor local `App/tools/liquidstack-dev.mjs` y el
+   router `App/tools/php-dev-router.php`. Cuando el script `lad` conserva una
+   variante canónica reconocida, CORE lo migra a un único proceso gestionado
+   que arranca PHP desde el puerto 1309 y Vite desde el 5173, avanzando hasta
+   encontrar puertos libres. Un `lad` personalizado se preserva y requiere
+   adoptar manualmente el supervisor. La adopción sustituye de forma
+   quirúrgica las dos referencias Vite legacy conocidas de
+   `App/includes/_globalHead.php` por `liquidstack_dev_vite_origin()`; un HEAD
+   personalizado o ambiguo se conserva y deja la migración de `lad` pendiente
+   hasta integrar manualmente el origen dinámico.
+5. Se instala el watcher compartido de idiomas en
    `tools/liquidstack/vite/update-languages-plugin.mjs`. Si el proyecto
    conserva el bloque Vite legacy conocido, el instalador lo sustituye por el
    import del módulo sin alterar el resto de `vite.config.js` (puerto, entradas,
@@ -68,7 +78,7 @@ Al ejecutar `composer install` o `composer update` en un proyecto que consume es
    `vite.config.ts`/`.mjs`/`.cjs` se conserva intacta y requiere añadir
    manualmente el import y `createUpdateLanguagesPlugin(env)` a `plugins`.
    CORE nunca copia un `vite.config.js` completo sobre el consumidor.
-5. Se sincroniza la guia base para agentes desde `.codex`:
+6. Se sincroniza la guia base para agentes desde `.codex`:
    - `.codex/config.toml` se copia al proyecto solo si no existe. Una configuracion local existente nunca se sobrescribe.
    - Solo se consideran skills que sean subdirectorios directos de `.codex/skills` y contengan `SKILL.md`.
    - Las skills base se escriben siempre en `.codex/skills`, tambien en proyectos nuevos.
@@ -799,10 +809,13 @@ La frontera HTTP exige HTTPS fuera del laboratorio. `npm run lad` puede usar
 HTTP únicamente con `DEV_MODE=1`, una `RAIZ` loopback, coincidencia exacta de
 `Host` y puerto y un `REMOTE_ADDR` equivalente a loopback; no confía en `Forwarded` ni
 `X-Forwarded-Proto`. Una petición insegura o malformada devuelve `400` antes
-de abrir PDO. El script canónico arranca
-`php -S localhost:1309 -t public App/tools/php-dev-router.php`, necesario para
-que `/blog-sitemap.xml` llegue a CORE y para cargar el front controller desde
-`public`, como requieren las rutas relativas legacy. `npm run build` sigue
+de abrir PDO. El supervisor canónico arranca PHP con
+`App/tools/php-dev-router.php`, necesario para que `/blog-sitemap.xml` llegue
+a CORE y para cargar el front controller desde `public`, como requieren las
+rutas relativas legacy. PHP parte de 1309 y Vite de 5173, pero ambos avanzan
+si su puerto está ocupado. Los orígenes elegidos se inyectan en los procesos
+sin persistir esos puertos en los perfiles `.env*`; el `swap-env` inicial
+mantiene su activación habitual de `.env.development`. `npm run build` sigue
 aplicando el perfil de producción. Si existe un proxy, el virtual host debe
 traducir de forma
 verificada el estado TLS y configurar `REMOTE_ADDR` con una capa de proxies
@@ -1185,7 +1198,7 @@ Reglas de fusion en proyecto cliente:
 - Probar `/showroom` y `/templates` en un consumidor enlazado, sin usar como
   fixture un proyecto que tenga cambios locales coincidentes.
 
-## Guia de trabajo local (localhost:1309)
+## Guia de trabajo local
 
 Este repositorio no trae una app completa para renderizar por si solo.
 La forma recomendada es trabajar con un proyecto laboratorio basado en `liquidstack_base` usando este core local enlazado.
@@ -1220,13 +1233,33 @@ Con `symlink: true`, los cambios que hagas en este repo se reflejan en el proyec
 npm install
 ```
 
-### Paso 3) Levantar Vite en puerto 1309
+### Paso 3) Levantar el entorno local
 
 ```bash
-npm run dev -- --host localhost --port 1309
+npm run lad
 ```
 
-Si el script `dev` del laboratorio ya fija host/port, basta con `npm run dev`.
+El supervisor gestionado inicia conjuntamente el servidor PHP y Vite. Intenta
+`http://localhost:1309` para la aplicación y `http://localhost:5173` para
+Vite; si alguno está ocupado, avanza por 1310, 1311… o 5174, 5175… sin detener
+el proceso que ya lo utiliza. La consola muestra los dos orígenes efectivos.
+
+Para exigir puertos concretos, se pueden definir
+`LIQUIDSTACK_DEV_APP_PORT` y `LIQUIDSTACK_DEV_VITE_PORT` antes de ejecutar el
+script. Un override es exacto: un valor inválido o un puerto ocupado provoca
+un error, no una búsqueda incremental.
+
+```powershell
+$env:LIQUIDSTACK_DEV_APP_PORT = '1315'
+$env:LIQUIDSTACK_DEV_VITE_PORT = '5180'
+npm run lad
+```
+
+Tras activar el perfil de desarrollo con el `swap-env` habitual, el supervisor
+inyecta `RAIZ`, `LIQUIDSTACK_DEV_APP_ORIGIN` y
+`LIQUIDSTACK_DEV_VITE_ORIGIN` únicamente en los procesos de esa ejecución; no
+persiste los puertos seleccionados. Al interrumpir `npm run lad`, cierra su
+servidor PHP y su instancia Vite sin finalizar servicios ajenos.
 
 ### Paso 4) Refrescar sincronizaciones cuando toque
 
@@ -1267,10 +1300,11 @@ simultaneamente `main` y la etiqueta. El comando:
    `origin/main`;
 3. muestra las siguientes opciones patch, minor y major;
 4. permite escribir otra version antes de continuar;
-5. ejecuta `composer validate` y `composer test`;
-6. muestra commit, remoto y etiqueta y pide confirmacion;
-7. crea un tag anotado y ejecuta un `git push --atomic`;
-8. elimina el tag local recien creado si el push falla.
+5. exige que `CHANGELOG.md` contenga la sección fechada de esa versión;
+6. ejecuta `composer validate` y `composer test`;
+7. muestra commit, remoto y etiqueta y pide confirmacion;
+8. crea un tag anotado y ejecuta un `git push --atomic`;
+9. elimina el tag local recien creado si el push falla.
 
 Una vez completado `composer release`, el commit ya forma parte de
 `origin/main` y tiene una etiqueta asociada. Para añadir cambios posteriores,

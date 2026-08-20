@@ -19,10 +19,20 @@ Localizaciones habituales en este entorno, que deben verificarse antes de usarse
 
 - BASE: `C:\xampp\htdocs\__LIQUIDSTACK\LIQUIDSTACK-BASE`
 - CORE: `C:\xampp\htdocs\__LIQUIDSTACK\LIQUIDSTACK-CORE`
-- showroom BASE: `http://localhost:1309/es/showroom` (con `/es/templates`
-  como alias compatible)
+- showroom BASE: el origen de aplicación que publique `npm run lad`, seguido
+  de `/es/showroom` (con `/es/templates` como alias compatible). Si 1309 está
+  libre será normalmente `http://localhost:1309/es/showroom`; no asumirlo si
+  hay otro stack activo.
 
 En otros entornos, localizar CORE mediante Composer, el repositorio configurado o las instrucciones del proyecto; no inventar rutas.
+
+El supervisor gestionado intenta PHP desde 1309 y Vite desde 5173 y avanza
+independientemente hasta encontrar puertos libres. Tratar
+`LIQUIDSTACK_DEV_APP_PORT` y `LIQUIDSTACK_DEV_VITE_PORT` como overrides
+exactos, no como inicios de rango. Los orígenes elegidos se inyectan al proceso
+sin persistir los puertos; el `swap-env` previo mantiene su activación habitual
+del perfil de desarrollo. Al cerrar el laboratorio, detener solo su supervisor
+y conservar los procesos de otros stacks.
 
 ## Comparación antes de migrar
 

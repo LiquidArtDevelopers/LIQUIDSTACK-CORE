@@ -113,6 +113,15 @@ LIQUIDSTACK_WEBADMIN_MAIL_FROM_ADDRESS=webadmin@example.test
 LIQUIDSTACK_WEBADMIN_MAIL_FROM_NAME="Example WebAdmin dev"
 ```
 
+La `RAIZ` del ejemplo es el fallback para comandos CLI ejecutados fuera del
+supervisor. Cuando la interfaz se levanta con `npm run lad`, el `swap-env`
+habitual activa primero el perfil de desarrollo y el supervisor inyecta
+después en el proceso PHP el origen que haya elegido desde 1309. La selección
+dinámica no persiste ese puerto en este perfil ni en `.env.development`. Si el
+puerto ha avanzado y se lanza aparte un comando Composer que genera enlaces,
+ese proceso CLI debe recibir explícitamente la misma `RAIZ` mostrada por el
+supervisor.
+
 En este perfil el origen de los enlaces procede exclusivamente de `RAIZ`.
 `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN`,
 `LIQUIDSTACK_WEBADMIN_SMTP_ENCRYPTION`,

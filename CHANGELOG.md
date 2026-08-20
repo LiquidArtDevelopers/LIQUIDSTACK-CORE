@@ -3,6 +3,24 @@
 Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://semver.org/lang/es/) a partir de la 1.0.0. Documenta cada release en esta cronología y añade instrucciones de actualización visibles para los proyectos cliente.
 
 ## [Unreleased]
+
+## [1.25.0] - 2026-08-20
+### Cambiado
+- `npm run lad` adopta un supervisor de desarrollo gestionado que inicia PHP
+  desde 1309 y Vite desde 5173, eligiendo de forma incremental el siguiente
+  puerto libre para cada servicio. Los overrides
+  `LIQUIDSTACK_DEV_APP_PORT` y `LIQUIDSTACK_DEV_VITE_PORT` son exactos y
+  fallan si no pueden utilizarse. El proceso inyecta `RAIZ` y los orígenes
+  efectivos de aplicación/Vite sin persistir los puertos elegidos en los
+  perfiles `.env*`; el `swap-env` previo conserva su activación habitual del
+  perfil de desarrollo. Mantiene el router PHP canónico y, al cerrarse,
+  detiene únicamente los dos servicios que ha creado.
+- `composer release` exige que la versión propuesta tenga una sección fechada
+  propia en `CHANGELOG.md` antes de ejecutar validaciones, crear la etiqueta o
+  publicar el push atómico. Una entrada olvidada en `Unreleased` bloquea ahora
+  el release con una instrucción explícita y sin modificar Git.
+
+## [1.24.0] - 2026-08-18
 ### Cambiado
 - Blog incorpora etiquetas localizadas por variante, independientes de las
   categorías post-wide. El editor admite de cero a treinta nombres mediante un
@@ -29,14 +47,6 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   adoptaron prefijos de 30–46 bytes necesitan una migración explícita del
   namespace antes de actualizar; CORE falla temprano y no trunca ni renombra
   tablas.
-- WebAdmin incorpora el cierre explícito `liquidstack:webadmin:onboard`: valida
-  la configuración local de correo y las migraciones antes de crear las dos
-  identidades protegidas, entrega
-  únicamente sus invitaciones y solo finaliza correctamente cuando ambas
-  cuentas están activas o disponen de un enlace entregado y vigente. El flujo
-  es idempotente, no se ejecuta como efecto lateral de Composer, no publica
-  identidades privadas en CORE y mantiene el reenvío de enlaces caducados o
-  fallidos como una operación separada y confirmada.
 - `art11` expone cada cifra animada y su sufijo como dos claves `data-lang`
   agrupadas solo en desarrollo, de modo que el editor inline permite modificar
   conjuntamente `target.value` y `suffix.text`. El contador anima únicamente
@@ -49,6 +59,22 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   un workspace privado y solo cambia en cliente después de validar una
   publicación asíncrona correcta; el inspector se sincroniza en la misma
   operación.
+
+## Historial acumulado hasta 1.23.0 (sin segmentar)
+
+Las entradas siguientes ya estaban presentes en `v1.23.0`, pero el changelog
+histórico no conserva su asignación exacta por release. Se mantienen sin
+atribuirlas a una versión concreta.
+
+### Cambiado
+- WebAdmin incorpora el cierre explícito `liquidstack:webadmin:onboard`: valida
+  la configuración local de correo y las migraciones antes de crear las dos
+  identidades protegidas, entrega
+  únicamente sus invitaciones y solo finaliza correctamente cuando ambas
+  cuentas están activas o disponen de un enlace entregado y vigente. El flujo
+  es idempotente, no se ejecuta como efecto lateral de Composer, no publica
+  identidades privadas en CORE y mantiene el reenvío de enlaces caducados o
+  fallidos como una operación separada y confirmada.
 - `moduleBlogGrid02` omite la limpieza GSAP cuando la rejilla no contiene
   tarjetas. Los estados vacíos, los reemplazos reactivos, reduced motion y el
   cleanup/HMR dejan de invocar `gsap.set([])` y ya no generan el aviso

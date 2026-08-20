@@ -235,6 +235,8 @@ final class ReleaseCommand
             }
         }
 
+        $this->assertChangelogDocuments($tag);
+
         $headOid = $this->gitOutput(['rev-parse', 'HEAD']);
         $head = $this->gitOutput(['log', '-1', '--format=%h %s']);
 
@@ -441,6 +443,34 @@ final class ReleaseCommand
                 "El árbol de trabajo no está limpio. Haz commit o guarda los cambios antes de publicar:\n" . $status
             );
         }
+    }
+
+    private function assertChangelogDocuments(string $tag): void
+    {
+        $path = $this->projectRoot . DIRECTORY_SEPARATOR . 'CHANGELOG.md';
+        $contents = @file_get_contents($path);
+
+        if (!is_string($contents)) {
+            throw new \RuntimeException('No se puede leer CHANGELOG.md.');
+        }
+
+        $version = ltrim($tag, 'v');
+        $pattern = sprintf(
+            '/\A## \[%s\] - [0-9]{4}-[0-9]{2}-[0-9]{2}\z/',
+            preg_quote($version, '/')
+        );
+        $lines = preg_split('/\R/', $contents) ?: [];
+
+        foreach ($lines as $line) {
+            if (preg_match($pattern, $line) === 1) {
+                return;
+            }
+        }
+
+        throw new \RuntimeException(sprintf(
+            'CHANGELOG.md debe incluir la sección exacta "## [%s] - AAAA-MM-DD" antes de publicar.',
+            $version
+        ));
     }
 
     /**

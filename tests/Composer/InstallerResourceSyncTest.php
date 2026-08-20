@@ -591,7 +591,7 @@ final class InstallerResourceSyncTest extends TestCase
         );
     }
 
-    public function testComposerUpdateInstallsTheDevRouterEvenWhenScssContractFails(): void
+    public function testComposerUpdateInstallsDevelopmentRuntimeEvenWhenScssContractFails(): void
     {
         $this->filesystem->remove(
             $this->projectRoot . '/src/scss/_config.scss'
@@ -600,12 +600,22 @@ final class InstallerResourceSyncTest extends TestCase
             $this->projectRoot . '/package.json',
             json_encode([
                 'scripts' => [
+                    'dev' => 'vite',
                     'lad' => 'node scripts/swap-env.mjs development '
                         . '&& concurrently "php -S localhost:1309 -t public '
                         . 'App/tools/php-dev-router.php" "npm run dev"',
                 ],
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)
                 . PHP_EOL
+        );
+        $this->writeFile(
+            $this->projectRoot . '/App/includes/_globalHead.php',
+            <<<'PHP'
+<?php if ($devMode): ?>
+<script type="module" src="http://localhost:5173/@vite/client"></script>
+<script defer src="http://localhost:5173/src/js/<?= $resources ?>.js" type="module"></script>
+<?php endif; ?>
+PHP
         );
 
         Installer::postUpdate($this->createEvent());
@@ -614,6 +624,22 @@ final class InstallerResourceSyncTest extends TestCase
             dirname(__DIR__, 2)
                 . '/stubs/App/tools/php-dev-router.php',
             $this->projectRoot . '/App/tools/php-dev-router.php'
+        );
+        self::assertFileEquals(
+            dirname(__DIR__, 2)
+                . '/stubs/App/tools/liquidstack-dev.mjs',
+            $this->projectRoot . '/App/tools/liquidstack-dev.mjs'
+        );
+        $package = json_decode(
+            (string) file_get_contents($this->projectRoot . '/package.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        self::assertSame(
+            'node scripts/swap-env.mjs development '
+                . '&& node App/tools/liquidstack-dev.mjs',
+            $package['scripts']['lad'] ?? null
         );
         self::assertStringContainsString(
             'Se omiten los recursos estándar base y modulares cuyo contrato SCSS',

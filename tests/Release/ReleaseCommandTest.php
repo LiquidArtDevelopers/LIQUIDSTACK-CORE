@@ -61,6 +61,47 @@ final class ReleaseCommandTest extends TestCase
         self::assertSame('v1.4.2', Version::fromTag('1.4.2', true)?->tag());
     }
 
+    public function testReleaseRejectsVersionMissingFromChangelog(): void
+    {
+        [$remoteRoot, $repositoryRoot] = $this->createReleaseRepository();
+
+        $this->filesystem->dumpFile(
+            $repositoryRoot . '/CHANGELOG.md',
+            "# Changelog\n\n## [Unreleased]\n"
+        );
+        $this->runChecked(['git', 'add', 'CHANGELOG.md'], $repositoryRoot);
+        $this->runChecked(
+            ['git', 'commit', '-m', 'Remove release notes'],
+            $repositoryRoot
+        );
+
+        [$exitCode, $output] = $this->runProcess([
+            PHP_BINARY,
+            'tools/release.php',
+            '--version=v1.5.0',
+            '--yes',
+            '--skip-tests',
+            '--no-fetch',
+        ], $repositoryRoot);
+
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString(
+            'CHANGELOG.md debe incluir la sección exacta',
+            $output
+        );
+        self::assertSame(
+            1,
+            $this->runProcess([
+                'git',
+                '--git-dir=' . $remoteRoot,
+                'show-ref',
+                '--verify',
+                '--quiet',
+                'refs/tags/v1.5.0',
+            ], $this->fixtureRoot)[0]
+        );
+    }
+
     public function testReleasePublishesBranchAndAnnotatedTagAtomicallyToLocalRemote(): void
     {
         [$remoteRoot, $repositoryRoot] = $this->createReleaseRepository();
@@ -339,7 +380,13 @@ final class ReleaseCommandTest extends TestCase
         $this->runChecked(['git', 'tag', '-a', 'v1.4.01', '-m', 'Release v1.4.01'], $repositoryRoot);
         $this->runChecked(['git', 'push', '-u', 'origin', 'main', '--tags'], $repositoryRoot);
 
-        $this->filesystem->dumpFile($repositoryRoot . '/CHANGELOG.md', "Release candidate\n");
+        $this->filesystem->dumpFile(
+            $repositoryRoot . '/CHANGELOG.md',
+            "# Changelog\n\n"
+                . "## [Unreleased]\n\n"
+                . "## [1.5.1] - 2026-08-20\n\n"
+                . "## [1.5.0] - 2026-08-20\n"
+        );
         $this->runChecked(['git', 'add', 'CHANGELOG.md'], $repositoryRoot);
         $this->runChecked(['git', 'commit', '-m', 'Prepare next release'], $repositoryRoot);
 

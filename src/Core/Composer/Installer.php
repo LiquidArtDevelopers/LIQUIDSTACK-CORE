@@ -17,6 +17,7 @@ class Installer
     private const SCSS_CONFIG_CONTRACT_PATH = 'manifests/scss-config-contract-v2.json';
     private const SCSS_CONFIG_TARGET_PATH = 'src/scss/_config.scss';
     private const PHP_DEV_ROUTER_PATH = 'App/tools/php-dev-router.php';
+    private const DEVELOPMENT_SUPERVISOR_PATH = 'App/tools/liquidstack-dev.mjs';
     private const VITE_LANGUAGE_PLUGIN_PATH = 'tools/liquidstack/vite/update-languages-plugin.mjs';
     private const VITE_LANGUAGE_PLUGIN_IMPORT = 'import { createUpdateLanguagesPlugin } from "./tools/liquidstack/vite/update-languages-plugin.mjs";';
     private const VITE_LANGUAGE_PLUGIN_CALL = 'createUpdateLanguagesPlugin(env)';
@@ -362,7 +363,9 @@ class Installer
                     if (!self::scriptMigrationPrerequisitesAreReady(
                         $migration,
                         $packageRoot,
-                        $projectRoot
+                        $projectRoot,
+                        $projectPackage,
+                        $io
                     )) {
                         $deferredScripts[] = $name;
                     }
@@ -382,7 +385,9 @@ class Installer
                 if (!self::scriptMigrationPrerequisitesAreReady(
                     $migration,
                     $packageRoot,
-                    $projectRoot
+                    $projectRoot,
+                    $projectPackage,
+                    $io
                 )) {
                     $deferredScripts[] = $name;
                     continue;
@@ -401,7 +406,9 @@ class Installer
         }
         foreach (array_values(array_unique($deferredScripts)) as $name) {
             $io->write(sprintf(
-                '<comment>Deferred canonical frontend script migration until its managed files are available: %s</comment>',
+                '<comment>Deferred canonical frontend script migration until '
+                . 'its managed files, scripts, and project integrations are '
+                . 'ready: %s</comment>',
                 $name
             ));
         }
@@ -437,12 +444,40 @@ class Installer
         }
     }
 
-    /** @param array<string, mixed> $migration */
+    /**
+     * @param array<string, mixed> $migration
+     * @param array<string, mixed> $projectPackage
+     */
     private static function scriptMigrationPrerequisitesAreReady(
         array $migration,
         string $packageRoot,
-        string $projectRoot
+        string $projectRoot,
+        array $projectPackage,
+        IOInterface $io
     ): bool {
+        $requiredScripts = $migration['requiresScripts'] ?? [];
+        if (!is_array($requiredScripts)) {
+            return false;
+        }
+
+        $projectScripts = $projectPackage['scripts'] ?? [];
+        if (!is_array($projectScripts)) {
+            return false;
+        }
+
+        foreach ($requiredScripts as $name => $requiredValue) {
+            if (
+                !is_string($name)
+                || $name === ''
+                || !is_string($requiredValue)
+                || $requiredValue === ''
+                || !is_string($projectScripts[$name] ?? null)
+                || !hash_equals($requiredValue, $projectScripts[$name])
+            ) {
+                return false;
+            }
+        }
+
         $requirements = $migration['requiresManagedFiles'] ?? [];
         if (!is_array($requirements)) {
             return false;
@@ -491,6 +526,28 @@ class Installer
                 $sourceFingerprints,
                 $targetFingerprints
             ) === []) {
+                return false;
+            }
+        }
+
+        $integrations = $migration['requiresProjectIntegrations'] ?? [];
+        if (!is_array($integrations) || !array_is_list($integrations)) {
+            return false;
+        }
+
+        foreach ($integrations as $integration) {
+            if ($integration !== 'dynamic-vite-head') {
+                return false;
+            }
+
+            if (
+                !DevelopmentViteHeadIntegrator::isIntegrated($projectRoot)
+                && !DevelopmentViteHeadIntegrator::integrate(
+                    $projectRoot,
+                    new Filesystem(),
+                    $io
+                )
+            ) {
                 return false;
             }
         }
@@ -748,24 +805,27 @@ class Installer
     ): void {
         $projectRoot = self::resolveProjectRoot($event);
         $packageRoot = dirname(__DIR__, 3);
-        $source = $packageRoot
-            . '/stubs/'
-            . self::PHP_DEV_ROUTER_PATH;
+        foreach ([
+            self::PHP_DEV_ROUTER_PATH,
+            self::DEVELOPMENT_SUPERVISOR_PATH,
+        ] as $relativePath) {
+            $source = $packageRoot . '/stubs/' . $relativePath;
 
-        if (!is_file($source)) {
-            $event->getIO()->writeError(sprintf(
-                '<warning>Skipping missing development router: %s</warning>',
-                $source
-            ));
-            return;
+            if (!is_file($source)) {
+                $event->getIO()->writeError(sprintf(
+                    '<warning>Skipping missing development runtime: %s</warning>',
+                    $source
+                ));
+                continue;
+            }
+
+            $synchronizer->queueFile(
+                $source,
+                $projectRoot . '/' . $relativePath,
+                'stubs/' . $relativePath,
+                $relativePath
+            );
         }
-
-        $synchronizer->queueFile(
-            $source,
-            $projectRoot . '/' . self::PHP_DEV_ROUTER_PATH,
-            'stubs/' . self::PHP_DEV_ROUTER_PATH,
-            self::PHP_DEV_ROUTER_PATH
-        );
     }
 
     private static function queueInternalModules(

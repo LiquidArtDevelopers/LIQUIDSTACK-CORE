@@ -141,7 +141,10 @@ de desarrollo— y devuelve un `BlogPreviewAssetSet` con la lista completa de
 CSS, scripts de módulo y scripts diferidos que usa el post público. El proyecto
 reutiliza aquí su resolvedor real de Vite: en desarrollo entrega el cliente HMR
 y el entry actual y, tras `build`, lee su manifiesto y entrega los nombres
-resueltos. CORE no conoce el entry, el puerto de Vite ni nombres con hash.
+resueltos. El puerto no debe codificarse: `npm run lad` publica el origen
+efectivo en `LIQUIDSTACK_DEV_VITE_ORIGIN` y el helper
+`liquidstack_dev_vite_origin()` lo valida antes de proyectarlo. CORE no conoce
+el entry ni los nombres con hash.
 
 El conjunto permite declarar de forma tipada los orígenes adicionales de
 `connect-src`, imagen, fuente, frame, media y worker. CORE valida URLs y
@@ -177,8 +180,9 @@ explícita su namespace antes de actualizar: CORE falla temprano con
 Las URLs absolutas usan `RAIZ`
 como origen canónico del proyecto:
 debe ser un origen HTTPS sin path, query ni credenciales en producción. El
-laboratorio admite `http://localhost:1309` —o el loopback canónico
-equivalente— exclusivamente con `DEV_MODE=1`. El alias anterior
+laboratorio admite exclusivamente con `DEV_MODE=1` el origen HTTP loopback que
+`npm run lad` elige desde el puerto 1309. El supervisor lo inyecta en el
+proceso sin persistir el puerto seleccionado. El alias anterior
 `LIQUIDSTACK_WEBADMIN_PUBLIC_ORIGIN` sigue siendo compatible durante la
 transición. Para no cambiar URLs canónicas en una actualización, una
 discrepancia real en producción conserva temporalmente el alias y `doctor`
@@ -1797,9 +1801,11 @@ Una ruta o fichero project-owned con el mismo path bloquea `sitemap_ready` y se
 muestra en `doctor`; no se reemplaza automáticamente. Desactivar el selector
 retira rutas, navegación y sitemap, pero conserva tablas y contenido.
 
-Durante `npm run lad`, el servidor PHP debe usar
+Durante `npm run lad`, el supervisor arranca el servidor PHP con
 `App/tools/php-dev-router.php`; sin él, `php -S` intenta resolver una ruta con
 extensión como fichero y puede devolver su propio 404 antes de llegar a CORE.
+No se debe iniciar otro PHP fijo en 1309: el supervisor selecciona el primer
+puerto libre y conserva cualquier servicio que ya lo ocupe.
 
 ## Diagnóstico y migraciones
 
