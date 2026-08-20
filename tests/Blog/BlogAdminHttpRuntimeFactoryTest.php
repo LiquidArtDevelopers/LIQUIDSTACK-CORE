@@ -9,6 +9,7 @@ use App\Core\Blog\Audit\BlogMutationAuditEvent;
 use App\Core\Blog\Audit\BlogMutationAuditStorageException;
 use App\Core\Blog\Audit\WebAdminBlogMutationAuditAdapter;
 use App\Core\Blog\Http\BlogAdminHttpRuntime;
+use App\Core\Blog\Http\BlogSeoCatalogHttpRuntimeInterface;
 use App\Core\Blog\Http\BlogAdminHttpRuntimeException;
 use App\Core\Blog\Http\BlogAdminHttpRuntimeFactory;
 use App\Core\Blog\Http\BlogAnalyticsAdminHttpRuntimeInterface;
@@ -183,6 +184,11 @@ final class BlogAdminHttpRuntimeFactoryTest extends TestCase
         );
 
         self::assertInstanceOf(BlogAdminHttpRuntime::class, $runtime);
+        self::assertInstanceOf(
+            BlogSeoCatalogHttpRuntimeInterface::class,
+            $runtime
+        );
+        self::assertSame([], $runtime->seoCatalog()->scoresFor([], []));
         self::assertInstanceOf(
             BlogAnalyticsAdminHttpRuntimeInterface::class,
             $runtime

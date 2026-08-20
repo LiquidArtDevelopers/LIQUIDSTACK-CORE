@@ -120,6 +120,12 @@ return [
   terminar su PHP y su Vite. No alterar por ello el flujo de `npm run build`. El
   router debe cargar el front controller con `public` como directorio de
   trabajo para conservar las rutas relativas legacy.
+- La identidad de desarrollo de un stack se deriva del directorio real, nunca
+  de sus puertos efímeros. El supervisor debe imponerla a sus hijos y
+  WebAdmin debe usarla para namespacing de SID, PREAUTH y ACTION solo bajo el
+  perfil HTTP loopback validado. Verificar que dos proyectos permanecen
+  autenticados simultáneamente, que logout/recovery de uno no altera el otro y
+  que reiniciar sobre puertos distintos conserva la identidad del proyecto.
 - Reservar `LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL` y
   `LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL` para el bootstrap explícito. Exigir
   dos direcciones canónicas distintas; pueden pertenecer al mismo operador.
@@ -1059,10 +1065,11 @@ composer liquidstack:migrate --dry-run
   sobrios. Reservar los bordes para controles, foco, tablas, separadores o
   estados seleccionados donde cumplan una función perceptible; comunicar
   estado con texto, icono y color accesible, no con una raya lateral.
-- Tratar el medidor SEO editorial v1 como una ayuda no bloqueante, sin score ni
+- Tratar el medidor SEO editorial como una ayuda no bloqueante y sin
   persistencia propia. Debe clasificar cada comprobación como `Bien`,
   `Revisar` o `Pendiente`; un error del analizador nunca impide abrir, guardar
-  o publicar un artículo.
+  o publicar un artículo. El listado puede resumir las once comprobaciones
+  on-page en un porcentaje explicable, nunca como garantía de posicionamiento.
 - Mantener el análisis vivo en `POST /admin/blog/editor/seo-analysis`, con
   sesión, CSRF, `blog.articles.edit`, `webadmin.media.view`, respuestas
   `no-store` y CSP `connect-src 'self'`. Conservar el panel SSR como base y

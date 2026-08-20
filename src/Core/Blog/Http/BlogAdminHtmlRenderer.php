@@ -10,6 +10,7 @@ use App\Core\Blog\BlogDraft;
 use App\Core\Blog\BlogPostSummary;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
+use App\Core\Blog\Seo\BlogSeoScore;
 use App\Core\Blog\Seo\BlogUrlResolution;
 use App\Core\WebAdmin\Http\WebAdminPageAssets;
 use App\Core\WebAdmin\Http\WebAdminShellContext;
@@ -44,6 +45,7 @@ final class BlogAdminHtmlRenderer
      * @param array<string, BlogArticleAnalyticsSummary>
      *     $analyticsByLocalization
      * @param array<string, list<string>> $localesByPost
+     * @param array<string, BlogSeoScore> $seoScoresByLocalization
      */
     public function index(
         string $basePath,
@@ -64,7 +66,8 @@ final class BlogAdminHtmlRenderer
         ?BlogAdminCatalogQuery $catalogQuery = null,
         array $localesByPost = [],
         bool $canAddLocalization = false,
-        ?WebAdminPublicProfile $viewerProfile = null
+        ?WebAdminPublicProfile $viewerProfile = null,
+        array $seoScoresByLocalization = []
     ): string {
         if (
             $offset < 0
@@ -245,12 +248,21 @@ final class BlogAdminHtmlRenderer
                 }
                 $analyticsCells = $this->analyticsCells($metric);
             }
+            $seoScore = $seoScoresByLocalization[
+                $summary->localizationPublicId()
+            ] ?? null;
+            if ($seoScore !== null && !$seoScore instanceof BlogSeoScore) {
+                throw new InvalidArgumentException(
+                    'Invalid Blog SEO score presentation.'
+                );
+            }
             $rows .= '<tr><th id="' . $rowTitleId . '" scope="row">'
                 . $this->escape($summary->h1()) . '</th><td>'
                 . $this->localeBadge($summary->locale()) . '</td><td>'
                 . $this->tableStatus($summary->status()) . '</td><td>'
                 . $this->authorCell($summary) . '</td><td>'
                 . $this->categoryCell($summary) . '</td><td>'
+                . $this->seoScoreCell($seoScore) . '</td><td>'
                 . $this->robotsCell($summary) . '</td>'
                 . $analyticsCells
                 . '<td>'
@@ -261,7 +273,7 @@ final class BlogAdminHtmlRenderer
                 . '</td><td>' . $actions . '</td></tr>';
         }
         if ($rows === '') {
-            $columns = $showAnalytics ? 13 : 8;
+            $columns = $showAnalytics ? 14 : 9;
             $rows = '<tr><td colspan="' . $columns
                 . '">'
                 . ($catalogQuery->hasFilters()
@@ -356,6 +368,8 @@ final class BlogAdminHtmlRenderer
             )
             . '<th scope="col" title="No ordenable: un art&iacute;culo puede '
             . 'pertenecer a varias categor&iacute;as">Categor&iacute;as</th>'
+            . '<th scope="col" title="No ordenable: la puntuaci&oacute;n se '
+            . 'calcula para la versi&oacute;n guardada">SEO</th>'
             . $this->sortableHeading(
                 $basePath,
                 'Index / Follow',
@@ -930,6 +944,43 @@ final class BlogAdminHtmlRenderer
             . '</li><li>'
             . $this->booleanStatusIcon('Follow', $preferences->follow())
             . '</li></ul>';
+    }
+
+    private function seoScoreCell(?BlogSeoScore $score): string
+    {
+        if ($score === null) {
+            return '<span class="blogAdminPage__seoUnavailable" '
+                . 'aria-label="Puntuaci&oacute;n SEO no disponible">'
+                . '&mdash;</span>';
+        }
+
+        $band = $score->band();
+        if (!in_array($band, [
+            BlogSeoScore::BAND_RED,
+            BlogSeoScore::BAND_ORANGE,
+            BlogSeoScore::BAND_GREEN,
+        ], true)) {
+            throw new InvalidArgumentException(
+                'Invalid Blog SEO score band presentation.'
+            );
+        }
+
+        $percentage = $score->percentage();
+        $label = $score->label();
+        $valueText = sprintf(
+            'SEO editorial: %d%%, %d de %d comprobaciones correctas, %s',
+            $percentage,
+            $score->goodChecks(),
+            $score->totalChecks(),
+            $label
+        );
+
+        return '<span class="blogAdminPage__seoScore '
+            . 'blogAdminPage__seoScore--' . $band . '" role="meter" '
+            . 'aria-label="Puntuaci&oacute;n SEO" aria-valuemin="0" '
+            . 'aria-valuemax="100" aria-valuenow="' . $percentage . '" '
+            . 'aria-valuetext="' . $this->escape($valueText) . '">'
+            . $percentage . '%</span>';
     }
 
     private function booleanStatusIcon(string $label, bool $enabled): string

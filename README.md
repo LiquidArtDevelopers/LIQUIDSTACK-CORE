@@ -70,6 +70,9 @@ Al ejecutar `composer install` o `composer update` en un proyecto que consume es
    `App/includes/_globalHead.php` por `liquidstack_dev_vite_origin()`; un HEAD
    personalizado o ambiguo se conserva y deja la migración de `lad` pendiente
    hasta integrar manualmente el origen dinámico.
+   El supervisor deriva además una identidad opaca y estable del directorio
+   real del proyecto. WebAdmin la usa para separar sus tres cookies locales de
+   las de otros stacks, con independencia de los puertos elegidos cada día.
 5. Se instala el watcher compartido de idiomas en
    `tools/liquidstack/vite/update-languages-plugin.mjs`. Si el proyecto
    conserva el bloque Vite legacy conocido, el instalador lo sustituye por el
@@ -1244,6 +1247,13 @@ El supervisor gestionado inicia conjuntamente el servidor PHP y Vite. Intenta
 Vite; si alguno está ocupado, avanza por 1310, 1311… o 5174, 5175… sin detener
 el proceso que ya lo utiliza. La consola muestra los dos orígenes efectivos.
 
+La identidad local de WebAdmin se deriva del directorio real del proyecto y
+no del puerto. Por eso varios stacks pueden permanecer autenticados a la vez
+en el mismo perfil de Chrome, y un proyecto conserva su namespace aunque en
+otro arranque pase de 1309 a 1310 o a cualquier puerto posterior. Esta
+identidad es interna, no se configura en `.env` y no cambia los nombres de
+cookie usados fuera de `npm run lad`.
+
 Para exigir puertos concretos, se pueden definir
 `LIQUIDSTACK_DEV_APP_PORT` y `LIQUIDSTACK_DEV_VITE_PORT` antes de ejecutar el
 script. Un override es exacto: un valor inválido o un puerto ocupado provoca
@@ -1257,7 +1267,8 @@ npm run lad
 
 Tras activar el perfil de desarrollo con el `swap-env` habitual, el supervisor
 inyecta `RAIZ`, `LIQUIDSTACK_DEV_APP_ORIGIN` y
-`LIQUIDSTACK_DEV_VITE_ORIGIN` únicamente en los procesos de esa ejecución; no
+`LIQUIDSTACK_DEV_VITE_ORIGIN`, junto con la identidad opaca del proyecto,
+únicamente en los procesos de esa ejecución; no
 persiste los puertos seleccionados. Al interrumpir `npm run lad`, cierra su
 servidor PHP y su instancia Vite sin finalizar servicios ajenos.
 

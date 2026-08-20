@@ -82,7 +82,8 @@ final class BlogAnalyticsHttpRuntimeFactory implements
                 $context->languages()
             );
             $webAdminConfig = $this->webAdminConfigLoader->load(
-                $context->projectRoot()
+                $context->projectRoot(),
+                $context->environment()
             );
             if (!$config->analytics()->enabled()) {
                 throw new BlogAnalyticsHttpRuntimeException();

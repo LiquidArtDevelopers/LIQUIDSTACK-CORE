@@ -34,10 +34,17 @@ final class BlogAdminListAssetContractTest extends TestCase
             '.webadmin .blogAdminPage__analyticsFilter > div:first-child {',
             'flex: 2 1 20rem',
             '.webadmin .blogAdminPage__rowActions {',
-            'flex-wrap: wrap',
+            'min-width: 16.75rem',
+            'flex-wrap: nowrap',
+            '.webadmin .blogAdminPage__rowActions > * {',
+            'flex: 0 0 auto',
             '.webadmin .blogAdminPage__locale {',
             '.webadmin .blogAdminPage__robots {',
-            'display: inline-grid',
+            'width: max-content',
+            'margin: 0 auto',
+            'display: grid',
+            'grid-template-columns: repeat(2, 1.5rem)',
+            'justify-items: center',
             'gap: 0.35rem',
             '.webadmin .blogAdminPage__robots > * {',
             '.webadmin .blogAdminPage__action--disabled {',
@@ -75,7 +82,54 @@ final class BlogAdminListAssetContractTest extends TestCase
         );
         self::assertMatchesRegularExpression(
             '/\.webadmin \.blogAdminPage--index table\s*\{[^}]*'
-                . 'min-width:\s*75rem;/s',
+                . 'min-width:\s*81rem;/s',
+            $css
+        );
+    }
+
+    public function testSeoScoreAndRobotsUseFlatColoredValues(): void
+    {
+        $css = file_get_contents(
+            dirname(__DIR__, 2)
+                . '/modules/blog/published/assets/blog-admin.css'
+        );
+        self::assertIsString($css);
+
+        foreach ([
+            '.webadmin .blogAdminPage__seoScore {',
+            'display: block',
+            'font-weight: 850',
+            'text-align: center',
+            '.webadmin .blogAdminPage__seoScore--red {',
+            '--ls-blog-editor-basic-text-red',
+            '.webadmin .blogAdminPage__seoScore--orange {',
+            '--ls-blog-admin-seo-text-orange: #b85c00',
+            '.webadmin .blogAdminPage__categoryStack {',
+            'margin-block: 0',
+            'padding-inline-start: 1.25rem',
+            '.webadmin .blogAdminPage__seoScore--green,',
+            '--ls-blog-editor-basic-text-green',
+            '.webadmin .blogAdminPage__statusIcon--enabled {',
+            '.webadmin .blogAdminPage__statusIcon {',
+            'width: 1.5rem',
+            'height: 1.5rem',
+            'place-items: center',
+            '@media (forced-colors: active)',
+            'color: CanvasText',
+        ] as $contract) {
+            self::assertStringContainsString($contract, $css);
+        }
+
+        self::assertDoesNotMatchRegularExpression(
+            '/\.blogAdminPage__seoScore\s*\{[^}]*(?:border|background|padding)/s',
+            $css
+        );
+        self::assertDoesNotMatchRegularExpression(
+            '/\.blogAdminPage__statusIcon\s*\{[^}]*(?:border|background)/s',
+            $css
+        );
+        self::assertStringNotContainsString(
+            '.webadmin .blogAdminPage__seoScoreLabel {',
             $css
         );
     }

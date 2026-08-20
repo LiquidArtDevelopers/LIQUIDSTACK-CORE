@@ -6,15 +6,25 @@ El primer corte del medidor vive en `App\Core\Blog\Seo` y reutiliza el
 `BlogDraft` y el `BlogDocument` estructurado que ya forman cada revisión. Es
 determinista, explicable y estrictamente orientativo:
 
-- no calcula una puntuación de 0 a 100;
+- el detalle del editor conserva sus estados explicables y el listado resume
+  las comprobaciones on-page en un porcentaje de 0 a 100;
 - no bloquea guardar, publicar, retirar ni restaurar revisiones;
 - no persiste resultados y no necesita una migración;
 - no llama a APIs externas ni traduce contenido;
 - devuelve únicamente `Bien`, `Revisar` o `Pendiente` con una explicación.
 
-Los intervalos de longitud son referencias editoriales, no garantías de
-posicionamiento. La claridad y la intención de búsqueda prevalecen sobre
-forzar una cifra.
+El porcentaje cuenta cuántas de las once comprobaciones propias de metadatos,
+contenido y medios están en estado correcto, redondea el resultado y excluye
+la canibalización. De este modo una indisponibilidad del inventario de otras
+URLs no rebaja artificialmente el contenido. Los estados de revisión o
+pendientes no suman: la persona puede abrir el editor para conocer la causa.
+La presentación del listado usa los niveles 0–49 rojo, 50–79 naranja y
+80–100 verde. La celda muestra únicamente la cifra porcentual, de modo que el
+valor numérico conserva la información aunque el color no se perciba.
+
+Los intervalos de longitud y el porcentaje son referencias editoriales, no
+garantías de posicionamiento. La claridad y la intención de búsqueda
+prevalecen sobre forzar una cifra.
 
 ## Comprobaciones v1
 
@@ -51,6 +61,12 @@ URL, canonical, archivo indexable ni una puntuación nueva del medidor.
 Si el medidor falla, el editor continúa disponible. El panel muestra un estado
 pendiente o temporalmente no disponible; guardar y publicar conservan sus
 contratos previos.
+
+La columna del listado usa esa misma instantánea guardada —workspace privado,
+documento actual o proyección legacy— y carga toda la página mediante una
+consulta batch acotada. Una instantánea corrupta o un fallo del diagnóstico
+muestra «No disponible» solo como presentación aditiva: nunca oculta el
+artículo ni convierte el listado en una mutación.
 
 ## Inventario canónico estático opcional
 

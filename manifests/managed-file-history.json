@@ -8,6 +8,7 @@
         ],
         "modules/blog/published/assets/blog-admin.css": [
             "sha256:00b7f1a307f942db44da1aaacd62d34a8ed8ecefaa18dd0593f4e926b2aae85c",
+            "sha256:0c677efc6861985749dcd5423ded3847e9b44e8ec61f4e4c60e56f2342a6b8e9",
             "sha256:0fe8a4f9acb18785722ba1406cf198d7a1d0cc7a600dd3974591899922762ae9",
             "sha256:24a1a32d47ab2b9d87d6eb1b078a1b06b7a3b1c66b75c65a8beac5a83ecd56a2",
             "sha256:32067c01e2efb15e4f3742fdce8c56ddbbd9c40adb9e86a795c8ef49dbca5b1f",
@@ -2167,6 +2168,7 @@
             "sha256:e1e119dfcb99e7e16ad023f7b70a5898f4c39c412eae037ce0adff3f74b69a85"
         ],
         "stubs/App/tools/liquidstack-dev.mjs": [
+            "sha256:cdcef3361c3526d016228c6d660e10ac031e360fe7518d14d7598ece251ec1b1",
             "sha256:f853130841b953e521ba1491eeae417b1a8c7fd4bf469ff83867391383e3aa2d"
         ],
         "stubs/App/tools/php-dev-router.php": [

@@ -207,6 +207,19 @@ final class BlogAdminHttpController
             }
         }
 
+        $seoScoresByLocalization = [];
+        if ($this->runtime instanceof BlogSeoCatalogHttpRuntimeInterface) {
+            try {
+                $seoScoresByLocalization = $this->runtime
+                    ->seoCatalog()
+                    ->scoresFor($visibleSummaries, $publicPaths);
+            } catch (Throwable) {
+                // SEO is additive: an unavailable or corrupt snapshot never
+                // removes a row or breaks the editorial catalog.
+                $seoScoresByLocalization = [];
+            }
+        }
+
         return $this->htmlForRequest($request, 200, $this->renderer->index(
             basePath: $this->basePath(),
             summaries: $visibleSummaries,
@@ -232,7 +245,8 @@ final class BlogAdminHttpController
             catalogQuery: $catalogQuery,
             localesByPost: $localesByPost,
             canAddLocalization: $canAddLocalization,
-            viewerProfile: $this->viewerProfile($context['session'])
+            viewerProfile: $this->viewerProfile($context['session']),
+            seoScoresByLocalization: $seoScoresByLocalization
         ));
     }
 

@@ -88,6 +88,12 @@ representación válida de loopback. Si falta una de esas condiciones, HTTP
 responde `400` antes de abrir PDO. `Forwarded` y `X-Forwarded-*` nunca
 habilitan la excepción.
 
+En producción las cookies continúan siendo host-only y no declaran `Domain`.
+Por tanto, stacks publicados bajo hostnames distintos conservan sesiones
+simultáneas e independientes aunque usen los mismos nombres base. No se deriva
+ninguna identidad productiva de la ruta de despliegue: mover una release o
+servirla desde varias réplicas no debe cambiar su cookie ni forzar un logout.
+
 El servidor integrado y Vite deben arrancarse conjuntamente mediante el
 supervisor distribuido por CORE:
 
@@ -106,6 +112,15 @@ al servidor únicamente ficheros reales dentro de `public`; el resto pasa por
 rutas relativas del stack legacy. Al detener el supervisor se cierran solo su
 PHP y su Vite. `npm run build` mantiene el perfil de producción y no utiliza
 este router.
+
+El supervisor calcula una identidad opaca y estable a partir del directorio
+real del proyecto. WebAdmin la acepta solo en este perfil HTTP loopback y la
+incorpora a los nombres de las cookies autenticada, preautenticada y de
+acción. Los puertos no forman parte de esa identidad: varios proyectos pueden
+estar autenticados simultáneamente en `localhost`, y reiniciar uno sobre otro
+puerto libre no lo mezcla con el proyecto que ocupaba el puerto anterior. En
+producción y fuera del supervisor se conservan exactamente los nombres
+configurados tradicionales.
 
 ## Rutas HTTP
 
@@ -160,6 +175,17 @@ debe sustituir `localhost` por un dominio arbitrario resuelto a `127.0.0.1`.
 | `LS_WEBADMIN_SID` | Sesión autenticada; el nombre puede configurarse | `Strict` |
 | `LS_WEBADMIN_PREAUTH` | Login y formulario de recuperación | `Lax` |
 | `LS_WEBADMIN_ACTION` | Activación o restablecimiento ya vinculados | `Lax` |
+
+La tabla muestra los nombres base. Bajo `npm run lad`, cada uno recibe un
+sufijo opaco propio del proyecto; el sufijo nunca se deriva de 1309, 1310 ni
+de los puertos Vite y no se persiste en `.env`.
+
+Este namespace evita que un stack lea, rote o expire la sesión funcional de
+otro. Como el estándar de cookies no usa el puerto para delimitar el envío, el
+navegador puede adjuntar al header otros nombres del mismo host y path; cada
+runtime los ignora y por ello `localhost` debe seguir reservado a proyectos
+locales confiables. El aislamiento de transporte frente a un servidor local
+hostil requeriría perfiles de navegador u hostnames distintos.
 
 Separar `LS_WEBADMIN_PREAUTH` impide que una navegación externa al formulario
 reemplace la cookie autenticada `Strict`. `LS_WEBADMIN_ACTION` tampoco concede

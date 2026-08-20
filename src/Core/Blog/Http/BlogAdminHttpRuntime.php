@@ -10,6 +10,7 @@ use App\Core\Blog\Analytics\BlogAnalyticsReportInterface;
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\EditorPreferences\BlogEditorPreferencesService;
 use App\Core\Blog\Seo\BlogSeoAnalysisService;
+use App\Core\Blog\Seo\BlogSeoCatalogProjectionService;
 use App\Core\Blog\Seo\BlogSeoHttpRuntimeInterface;
 use App\Core\Blog\StructuredContent\Categories\BlogEditorCategoryCatalogInterface;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredEditorService;
@@ -33,6 +34,7 @@ class BlogAdminHttpRuntime implements
     BlogStructuredLayoutEditorHttpRuntimeInterface,
     BlogStructuredEditorCategoryHttpRuntimeInterface,
     BlogSeoHttpRuntimeInterface,
+    BlogSeoCatalogHttpRuntimeInterface,
     BlogEditorPreferencesHttpRuntimeInterface,
     BlogAdminProfileHttpRuntimeInterface,
     BlogTagAdminHttpRuntimeInterface
@@ -69,7 +71,9 @@ class BlogAdminHttpRuntime implements
             $optionalEditorPreferences = null,
         private readonly bool $privateDraftPublicationReady = false,
         private readonly ?PdoWebAdminProfileRepository $profiles = null,
-        private readonly ?BlogTagService $optionalTagService = null
+        private readonly ?BlogTagService $optionalTagService = null,
+        private readonly ?BlogSeoCatalogProjectionService
+            $optionalSeoCatalog = null
     ) {
         $this->navigation = $navigation ?? new WebAdminNavigationCatalog();
     }
@@ -206,6 +210,14 @@ class BlogAdminHttpRuntime implements
         }
 
         return $this->seoAnalysis;
+    }
+
+    public function seoCatalog(): BlogSeoCatalogProjectionService
+    {
+        return $this->optionalSeoCatalog
+            ?? throw new BlogAdminHttpRuntimeException(
+                'blog.seo_catalog_unavailable'
+            );
     }
 
     protected function configuredAnalyticsReport(): ?BlogAnalyticsReportInterface

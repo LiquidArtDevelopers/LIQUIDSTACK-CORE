@@ -53,7 +53,10 @@ final class BlogCategoryRouteProvider implements ModuleRouteProviderInterface
         ModuleRuntimeContext $context
     ): void {
         try {
-            $config = $this->configLoader->load($context->projectRoot());
+            $config = $this->configLoader->load(
+                $context->projectRoot(),
+                $context->environment()
+            );
             $resolution = $this->routePolicy->resolve(
                 $context->projectRoot(),
                 $config->basePath(),
@@ -64,15 +67,7 @@ final class BlogCategoryRouteProvider implements ModuleRouteProviderInterface
                 return;
             }
             if ($config->basePath() !== $webAdminPrefix) {
-                $config = new WebAdminConfig(
-                    $webAdminPrefix,
-                    $config->tablePrefix(),
-                    $config->cookieName(),
-                    $config->idleTtlSeconds(),
-                    $config->absoluteTtlSeconds(),
-                    $config->source(),
-                    $config->databaseConnection()
-                );
+                $config = $config->withBasePath($webAdminPrefix);
             }
             $blogPrefix = $webAdminPrefix . '/blog';
             $prefix = $blogPrefix . '/categories';

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\WebAdmin\Configuration;
 
 use App\Core\Database\DatabaseConnectionProfile;
+use InvalidArgumentException;
 
 final class WebAdminConfig
 {
@@ -21,6 +22,7 @@ final class WebAdminConfig
     ];
 
     public const SECURITY_KEY_ENV = 'LIQUIDSTACK_WEBADMIN_SECURITY_KEY';
+    public const DEVELOPMENT_PROJECT_ID_ENV = 'LIQUIDSTACK_DEV_PROJECT_ID';
 
     public const DEFAULT_BASE_PATH = '/admin';
     public const DEFAULT_TABLE_PREFIX = 'ls_webadmin_';
@@ -48,6 +50,12 @@ final class WebAdminConfig
     public const PREAUTH_COOKIE_SAME_SITE = 'Lax';
     public const ACTION_COOKIE_SAME_SITE = 'Lax';
     public const COOKIE_HOST_ONLY = true;
+    public const COOKIE_NAME_MAX_LENGTH = 64;
+    public const DEVELOPMENT_PROJECT_ID_LENGTH = 24;
+
+    private const DEVELOPMENT_COOKIE_SUFFIX_PREFIX = '_D_';
+
+    private readonly ?string $developmentProjectId;
 
     public function __construct(
         private readonly string $basePath,
@@ -57,11 +65,27 @@ final class WebAdminConfig
         private readonly int $absoluteTtlSeconds,
         private readonly string $source,
         private readonly string $databaseConnection =
-            DatabaseConnectionProfile::SHARED
+            DatabaseConnectionProfile::SHARED,
+        ?string $developmentProjectId = null
     ) {
+        if (
+            $developmentProjectId !== null
+            && preg_match(
+                '/\A[a-f0-9]{'
+                    . self::DEVELOPMENT_PROJECT_ID_LENGTH
+                    . '}\z/',
+                $developmentProjectId
+            ) !== 1
+        ) {
+            throw new InvalidArgumentException(
+                'Invalid LiquidStack development project identifier.'
+            );
+        }
+
+        $this->developmentProjectId = $developmentProjectId;
     }
 
-    public static function defaults(): self
+    public static function defaults(?string $developmentProjectId = null): self
     {
         return new self(
             self::DEFAULT_BASE_PATH,
@@ -69,7 +93,9 @@ final class WebAdminConfig
             self::DEFAULT_COOKIE_NAME,
             self::DEFAULT_IDLE_TTL_SECONDS,
             self::DEFAULT_ABSOLUTE_TTL_SECONDS,
-            'defaults'
+            'defaults',
+            DatabaseConnectionProfile::SHARED,
+            $developmentProjectId
         );
     }
 
@@ -90,7 +116,7 @@ final class WebAdminConfig
 
     public function cookieName(): string
     {
-        return $this->cookieName;
+        return $this->developmentCookieName($this->cookieName, true);
     }
 
     public function cookiePath(): string
@@ -104,7 +130,7 @@ final class WebAdminConfig
      */
     public function actionCookieName(): string
     {
-        return self::ACTION_COOKIE_NAME;
+        return $this->developmentCookieName(self::ACTION_COOKIE_NAME);
     }
 
     /**
@@ -113,7 +139,7 @@ final class WebAdminConfig
      */
     public function preAuthenticationCookieName(): string
     {
-        return self::PREAUTH_COOKIE_NAME;
+        return $this->developmentCookieName(self::PREAUTH_COOKIE_NAME);
     }
 
     public function idleTtlSeconds(): int
@@ -129,6 +155,20 @@ final class WebAdminConfig
     public function source(): string
     {
         return $this->source;
+    }
+
+    public function withBasePath(string $basePath): self
+    {
+        return new self(
+            $basePath,
+            $this->tablePrefix,
+            $this->cookieName,
+            $this->idleTtlSeconds,
+            $this->absoluteTtlSeconds,
+            $this->source,
+            $this->databaseConnection,
+            $this->developmentProjectId
+        );
     }
 
     /**
@@ -149,20 +189,48 @@ final class WebAdminConfig
                 ),
             ],
             'session' => [
-                'cookie_name' => $this->cookieName,
-                'preauth_cookie_name' => self::PREAUTH_COOKIE_NAME,
+                'cookie_name' => $this->cookieName(),
+                'preauth_cookie_name' =>
+                    $this->preAuthenticationCookieName(),
                 'preauth_cookie_same_site' =>
                     self::PREAUTH_COOKIE_SAME_SITE,
-                'action_cookie_name' => self::ACTION_COOKIE_NAME,
+                'action_cookie_name' => $this->actionCookieName(),
                 'action_cookie_same_site' => self::ACTION_COOKIE_SAME_SITE,
                 'cookie_path' => $this->cookiePath(),
                 'secure' => self::COOKIE_SECURE,
                 'http_only' => self::COOKIE_HTTP_ONLY,
                 'same_site' => self::COOKIE_SAME_SITE,
                 'host_only' => self::COOKIE_HOST_ONLY,
+                'development_isolated' =>
+                    $this->developmentProjectId !== null,
                 'idle_ttl_seconds' => $this->idleTtlSeconds,
                 'absolute_ttl_seconds' => $this->absoluteTtlSeconds,
             ],
         ];
+    }
+
+    private function developmentCookieName(
+        string $baseName,
+        bool $truncateBase = false
+    ): string {
+        if ($this->developmentProjectId === null) {
+            return $baseName;
+        }
+
+        $suffix = self::DEVELOPMENT_COOKIE_SUFFIX_PREFIX
+            . $this->developmentProjectId;
+        if (
+            $truncateBase
+            && strlen($baseName) + strlen($suffix)
+                > self::COOKIE_NAME_MAX_LENGTH
+        ) {
+            $baseName = substr(
+                $baseName,
+                0,
+                self::COOKIE_NAME_MAX_LENGTH - strlen($suffix)
+            );
+        }
+
+        return $baseName . $suffix;
     }
 }

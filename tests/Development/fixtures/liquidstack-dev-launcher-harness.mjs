@@ -85,7 +85,8 @@ try {
       + `  'appPort' => getenv('LIQUIDSTACK_DEV_APP_PORT'),\n`
       + `  'appOrigin' => getenv('LIQUIDSTACK_DEV_APP_ORIGIN'),\n`
       + `  'vitePort' => getenv('LIQUIDSTACK_DEV_VITE_PORT'),\n`
-      + `  'viteOrigin' => getenv('LIQUIDSTACK_DEV_VITE_ORIGIN'),\n]);\n`,
+      + `  'viteOrigin' => getenv('LIQUIDSTACK_DEV_VITE_ORIGIN'),\n`
+      + `  'projectId' => getenv('LIQUIDSTACK_DEV_PROJECT_ID'),\n]);\n`,
   );
   await writeFile(
     join(vitePackage, "package.json"),
@@ -102,6 +103,25 @@ try {
   );
 
   const module = await import(`${pathToFileURL(launcher).href}?test=${Date.now()}`);
+
+  const expectedProjectId = module.developmentProjectId(fixture);
+  assert.match(expectedProjectId, /^[a-f0-9]{24}$/);
+  assert.equal(
+    module.developmentProjectId("C:\\Example\\Project", {
+      platform: "win32",
+      canonicalize: (value) => value,
+    }),
+    module.developmentProjectId("c:/example/project", {
+      platform: "win32",
+      canonicalize: (value) => value,
+    }),
+  );
+  assert.notEqual(
+    module.developmentProjectId(fixture),
+    module.developmentProjectId(`${fixture}-other`, {
+      canonicalize: (value) => value,
+    }),
+  );
 
   assert.deepEqual(
     module.readPortOverride({}, "LIQUIDSTACK_DEV_APP_PORT", 1309),
@@ -162,6 +182,9 @@ try {
   };
   const environmentFor = ({ appPort, vitePort }) => ({
     ...process.env,
+    // The launcher owns this identity; inherited values cannot merge the
+    // cookie namespace of two different projects.
+    LIQUIDSTACK_DEV_PROJECT_ID: "ffffffffffffffffffffffff",
     LIQUIDSTACK_DEV_APP_PORT: String(appPort),
     LIQUIDSTACK_DEV_VITE_PORT: String(vitePort),
     LIQUIDSTACK_DEV_PHP_BINARY: phpBinary,
@@ -367,6 +390,7 @@ try {
   });
   assert.ok(Number(exactViteResponse.appPort) > exactVitePort);
   assert.equal(exactViteResponse.vitePort, String(exactVitePort));
+  assert.equal(exactViteResponse.projectId, expectedProjectId);
   assert.equal(
     await readFile(join(fixture, "vite-create-count.txt"), "utf8"),
     "1",
@@ -451,6 +475,7 @@ try {
     appOrigin: `http://localhost:${restartPorts.appPort}`,
     vitePort: String(restartPorts.vitePort),
     viteOrigin: `http://localhost:${restartPorts.vitePort}`,
+    projectId: expectedProjectId,
   });
   assert.ok(Number.isInteger(restartResponse.pid));
   const initialVite = await waitForJsonFile(
@@ -459,6 +484,7 @@ try {
   );
   assert.equal(initialVite.ci, process.env.CI);
   assert.equal(initialVite.stdinIsTty, false);
+  assert.equal(initialVite.projectId, expectedProjectId);
   const restarted = await waitForJsonFile(
     "vite-restarted.json",
     () => restartError,
@@ -469,6 +495,7 @@ try {
     configuredPort: restartPorts.vitePort,
     environmentPort: String(restartPorts.vitePort),
     environmentOrigin: `http://localhost:${restartPorts.vitePort}`,
+    projectId: expectedProjectId,
   });
   const responseAfterRestart = await requestJson(restartPorts.appPort);
   assert.equal(responseAfterRestart.pid, restartResponse.pid);

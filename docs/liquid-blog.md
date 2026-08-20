@@ -889,11 +889,18 @@ mantiene `pushState`, `replaceState` y `popstate` navegables. Un fallo conserva
 la navegación GET normal como fallback.
 
 Cada fila proyecta además el nombre visible del autor sin exponer su correo o
-ID interno, las categorías traducidas al locale de la variante y su directiva
-Index/Follow efectiva. Las categorías se obtienen para toda la página mediante
-una consulta acotada y se apilan semánticamente dentro de la celda. Las tres
-métricas compactas conservan encabezados textuales para lectores de pantalla;
-los iconos SVG son markup fijo del módulo y nunca proceden de datos editoriales.
+ID interno, las categorías traducidas al locale de la variante, el porcentaje
+SEO editorial y su directiva Index/Follow efectiva. Las categorías y las
+instantáneas SEO se obtienen para toda la página mediante consultas batch
+acotadas, sin N+1. El porcentaje cuenta las once comprobaciones on-page en
+estado correcto, excluye la canibalización y se presenta como 0–49 rojo,
+50–79 naranja o 80–100 verde. La celda muestra solo la cifra porcentual y
+conserva una descripción accesible del cálculo y su nivel. Una
+instantánea SEO no disponible deja un guion sin ocultar la variante ni romper
+el listado. Las categorías se apilan semánticamente dentro de la celda. Las
+tres métricas compactas conservan encabezados textuales para lectores de
+pantalla; los iconos SVG son markup fijo del módulo y nunca proceden de datos
+editoriales.
 
 La columna Estado mantiene siempre el texto oscuro: acompaña `Publicado` con
 un LED verde que hace un pulso de tres segundos al mostrarse y `Borrador` con
@@ -979,10 +986,11 @@ controles seguros; JavaScript facilita añadir, editar, mover y retirar bloques,
 pero el servidor vuelve a validar el documento completo. Estos assets no son
 configuración project-owned ni deben duplicarse en el bundle general del stack.
 
-El editor integra además el primer corte del medidor SEO editorial. El panel
-SSR analiza el estado guardado y el runtime progresivo actualiza los avisos con
-debounce y cancelación de la petición anterior. Es determinista, no asigna una
-puntuación y nunca bloquea guardar o publicar. Su contrato, el inventario
+El editor integra además el medidor SEO editorial. El panel SSR analiza el
+estado guardado y el runtime progresivo actualiza los avisos con debounce y
+cancelación de la petición anterior. Es determinista y nunca bloquea guardar o
+publicar. El detalle conserva los estados explicables y el listado deriva de
+ellos un porcentaje on-page no persistido. Su contrato, el inventario
 canónico estático opcional y sus límites se detallan en
 [Medidor SEO editorial del Blog](blog-seo-editorial.md).
 `doctor` inspecciona únicamente los assets runtime module-owned declarados bajo

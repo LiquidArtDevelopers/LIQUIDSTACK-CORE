@@ -4,6 +4,24 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.26.0] - 2026-08-20
+
+### Cambiado
+- `npm run lad` aísla ahora las cookies WebAdmin autenticada, preautenticada y
+  de acción con una identidad opaca estable por directorio de proyecto. Varios
+  stacks `localhost` pueden conservar sesiones simultáneas aunque sus puertos
+  PHP/Vite cambien entre arranques; producción mantiene los nombres de cookie
+  configurados existentes.
+- Gestión Blog incorpora una columna SEO calculada sobre la última instantánea
+  editorial guardada de cada variante. Resume en porcentaje las once
+  comprobaciones on-page del medidor, sin persistir resultados ni incluir la
+  canibalización, y presenta de forma accesible los niveles rojo 0–49, naranja
+  50–79 y verde 80–100 como una cifra porcentual plana. Index y Follow usan
+  checks centrados con el mismo verde, y las acciones de cada fila reservan
+  espacio para sus cinco controles posibles sin partirse. La proyección se
+  resuelve en lote y un fallo del diagnóstico deja la celda como no disponible
+  sin romper el listado.
+
 ## [1.25.0] - 2026-08-20
 ### Cambiado
 - `npm run lad` adopta un supervisor de desarrollo gestionado que inicia PHP

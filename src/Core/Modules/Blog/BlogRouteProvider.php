@@ -96,7 +96,8 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
         $configuration = WebAdminConfig::defaults();
         try {
             $configuration = $this->webAdminConfigLoader->load(
-                $context->projectRoot()
+                $context->projectRoot(),
+                $context->environment()
             );
         } catch (WebAdminConfigException) {
             $this->startupIssueCode =
@@ -127,15 +128,7 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
             return;
         }
         if ($configuration->basePath() !== $webAdminPrefix) {
-            $configuration = new WebAdminConfig(
-                $webAdminPrefix,
-                $configuration->tablePrefix(),
-                $configuration->cookieName(),
-                $configuration->idleTtlSeconds(),
-                $configuration->absoluteTtlSeconds(),
-                $configuration->source(),
-                $configuration->databaseConnection()
-            );
+            $configuration = $configuration->withBasePath($webAdminPrefix);
         }
         $prefix = $webAdminPrefix . '/blog';
 

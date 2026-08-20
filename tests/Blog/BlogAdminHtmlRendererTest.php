@@ -11,6 +11,7 @@ use App\Core\Blog\BlogService;
 use App\Core\Blog\Http\BlogAdminHtmlRenderer;
 use App\Core\Blog\Http\BlogLocalePresentation;
 use App\Core\Blog\Seo\BlogRobotsPreferences;
+use App\Core\Blog\Seo\BlogSeoScore;
 use App\Core\Blog\Seo\BlogUrlResolution;
 use App\Core\WebAdmin\Profile\WebAdminPublicProfile;
 use App\Core\WebAdmin\Profile\WebAdminTimeZone;
@@ -91,6 +92,166 @@ final class BlogAdminHtmlRendererTest extends TestCase
         self::assertStringNotContainsString(
             'Volver a la gesti&oacute;n web',
             $html
+        );
+    }
+
+    public function testListShowsOnlyAccessibleColoredSeoPercentagesAndUnavailableState(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $summaries = [
+            new BlogPostSummary(
+                '11111111-1111-4111-8111-111111111111',
+                '22222222-2222-4222-8222-222222222222',
+                'es',
+                'green',
+                'Green score',
+                BlogPostVariant::DRAFT,
+                null,
+                1,
+                $now
+            ),
+            new BlogPostSummary(
+                '33333333-3333-4333-8333-333333333333',
+                '44444444-4444-4444-8444-444444444444',
+                'es',
+                'orange',
+                'Orange score',
+                BlogPostVariant::DRAFT,
+                null,
+                1,
+                $now
+            ),
+            new BlogPostSummary(
+                '55555555-5555-4555-8555-555555555555',
+                '66666666-6666-4666-8666-666666666666',
+                'es',
+                'red',
+                'Red score',
+                BlogPostVariant::DRAFT,
+                null,
+                1,
+                $now
+            ),
+            new BlogPostSummary(
+                '77777777-7777-4777-8777-777777777777',
+                '88888888-8888-4888-8888-888888888888',
+                'es',
+                'unavailable',
+                'Unavailable score',
+                BlogPostVariant::DRAFT,
+                null,
+                1,
+                $now
+            ),
+        ];
+        $scores = [
+            $summaries[0]->localizationPublicId()
+                => BlogSeoScore::fromCounts(9),
+            $summaries[1]->localizationPublicId()
+                => BlogSeoScore::fromCounts(6),
+            $summaries[2]->localizationPublicId()
+                => BlogSeoScore::fromCounts(5),
+        ];
+
+        $html = (new BlogAdminHtmlRenderer())->index(
+            '/admin/blog',
+            $summaries,
+            false,
+            seoScoresByLocalization: $scores
+        );
+
+        self::assertStringContainsString(
+            'calcula para la versi&oacute;n guardada">SEO</th>',
+            $html
+        );
+        self::assertLessThan(
+            strpos($html, 'Index / Follow'),
+            strpos($html, '>SEO</th>')
+        );
+        foreach ([
+            ['green', 82, 9, 'Bien'],
+            ['orange', 55, 6, 'Mejorable'],
+            ['red', 45, 5, 'Bajo'],
+        ] as [$band, $percentage, $goodChecks, $label]) {
+            self::assertStringContainsString(
+                'blogAdminPage__seoScore--' . $band . '" role="meter"',
+                $html
+            );
+            self::assertStringContainsString(
+                'aria-valuemin="0" aria-valuemax="100" aria-valuenow="'
+                    . $percentage . '" aria-valuetext="SEO editorial: '
+                    . $percentage . '%, ' . $goodChecks
+                    . ' de 11 comprobaciones correctas, ' . $label . '"',
+                $html
+            );
+            self::assertStringContainsString(
+                'aria-valuenow="' . $percentage . '" aria-valuetext="'
+                    . 'SEO editorial: ' . $percentage . '%, ' . $goodChecks
+                    . ' de 11 comprobaciones correctas, ' . $label . '">'
+                    . $percentage . '%</span>',
+                $html
+            );
+        }
+        self::assertStringNotContainsString(
+            'blogAdminPage__seoScoreLabel',
+            $html
+        );
+        self::assertStringNotContainsString('>Bien<', $html);
+        self::assertStringNotContainsString('>Mejorable<', $html);
+        self::assertStringNotContainsString('>Bajo<', $html);
+        self::assertStringContainsString(
+            '<span class="blogAdminPage__seoUnavailable" '
+                . 'aria-label="Puntuaci&oacute;n SEO no disponible">'
+                . '&mdash;</span>',
+            $html
+        );
+    }
+
+    public function testListSeoColumnKeepsEmptyTableColspans(): void
+    {
+        $renderer = new BlogAdminHtmlRenderer();
+
+        self::assertStringContainsString(
+            '<td colspan="9">No hay art&iacute;culos.</td>',
+            $renderer->index('/admin/blog', [], false)
+        );
+        self::assertStringContainsString(
+            '<td colspan="14">No hay art&iacute;culos.</td>',
+            $renderer->index(
+                '/admin/blog',
+                [],
+                false,
+                showAnalytics: true
+            )
+        );
+    }
+
+    public function testListRejectsAnInvalidSeoScoreProjection(): void
+    {
+        $summary = new BlogPostSummary(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            'matrix',
+            'Matrix',
+            BlogPostVariant::DRAFT,
+            null,
+            1,
+            new DateTimeImmutable('2026-08-01T10:00:00Z')
+        );
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage(
+            'Invalid Blog SEO score presentation.'
+        );
+
+        (new BlogAdminHtmlRenderer())->index(
+            '/admin/blog',
+            [$summary],
+            false,
+            seoScoresByLocalization: [
+                $summary->localizationPublicId() => new stdClass(),
+            ]
         );
     }
 
@@ -558,6 +719,31 @@ final class BlogAdminHtmlRendererTest extends TestCase
         self::assertStringContainsString(
             'aria-label="Duplicar o a&ntilde;adir idioma"',
             $html
+        );
+        $draftRowStart = strpos(
+            $html,
+            '<tr><th id="blog-row-title-22222222-2222-4222-8222-222222222222"'
+        );
+        $publishedRowStart = strpos(
+            $html,
+            '<tr><th id="blog-row-title-44444444-4444-4444-8444-444444444444"'
+        );
+        self::assertIsInt($draftRowStart);
+        self::assertIsInt($publishedRowStart);
+        self::assertGreaterThan($draftRowStart, $publishedRowStart);
+        $draftRow = substr(
+            $html,
+            $draftRowStart,
+            $publishedRowStart - $draftRowStart
+        );
+        $publishedRow = substr($html, $publishedRowStart);
+        self::assertSame(
+            5,
+            substr_count($draftRow, 'class="blogAdminPage__action ')
+        );
+        self::assertSame(
+            4,
+            substr_count($publishedRow, 'class="blogAdminPage__action ')
         );
         self::assertMatchesRegularExpression(
             '/name="destination_locale" value="en"[^>]* disabled/',

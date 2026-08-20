@@ -134,7 +134,10 @@ final class BlogCategoryAdminHttpRuntimeFactory implements
             }
             $languages = $context->languages();
             $blogConfig = $this->blogConfigLoader->load($root, $languages);
-            $canonicalWebAdmin = $this->webAdminConfigLoader->load($root);
+            $canonicalWebAdmin = $this->webAdminConfigLoader->load(
+                $root,
+                $context->environment()
+            );
             if (!$this->sameWebAdminConfig($canonicalWebAdmin, $webAdminConfig)) {
                 throw new BlogAdminHttpRuntimeException(
                     'blog.webadmin_config_mismatch'
@@ -316,6 +319,9 @@ final class BlogCategoryAdminHttpRuntimeFactory implements
         return $first->tablePrefix() === $second->tablePrefix()
             && $first->databaseConnection() === $second->databaseConnection()
             && $first->cookieName() === $second->cookieName()
+            && $first->preAuthenticationCookieName()
+                === $second->preAuthenticationCookieName()
+            && $first->actionCookieName() === $second->actionCookieName()
             && $first->idleTtlSeconds() === $second->idleTtlSeconds()
             && $first->absoluteTtlSeconds() === $second->absoluteTtlSeconds();
     }

@@ -19,12 +19,14 @@ final class CountingUnavailableWebAdminRuntimeFactory implements
 {
     public int $calls = 0;
     public ?Throwable $exception = null;
+    public ?WebAdminConfig $config = null;
 
     public function create(
         ModuleRuntimeContext $context,
         WebAdminConfig $config
     ): WebAdminHttpRuntime {
         ++$this->calls;
+        $this->config = $config;
 
         throw $this->exception
             ?? new RuntimeException('runtime creation intentionally blocked');
@@ -117,6 +119,75 @@ final class WebAdminRouteProviderPreflightTest extends TestCase
         self::assertSame('/admin/login', $response->headers()['Location']);
         self::assertSame(0, $factory->calls);
         self::assertSame([], $reporter->issueCodes);
+    }
+
+    public function testDevelopmentProjectNamespaceIsUsedByRoutePreflight(): void
+    {
+        $routes = new ModuleRouteCollection();
+        $factory = new CountingUnavailableWebAdminRuntimeFactory();
+        $projectId = '0123456789abcdef01234567';
+        $environment = [
+            'RAIZ' => 'http://localhost:1310',
+            'DEV_MODE' => '1',
+            WebAdminConfig::DEVELOPMENT_PROJECT_ID_ENV => $projectId,
+        ];
+        (new WebAdminRouteProvider(runtimeFactory: $factory))
+            ->registerRoutes(
+                $routes,
+                new ModuleRuntimeContext($this->projectRoot, $environment)
+            );
+
+        $legacy = $routes->dispatch(Request::fromInput(
+            [
+                'REQUEST_METHOD' => 'POST',
+                'REQUEST_URI' => '/admin/login',
+                'HTTP_HOST' => 'localhost:1310',
+                'REMOTE_ADDR' => '127.0.0.1',
+            ],
+            form: [
+                'csrf' => 'syntactically-valid-shape',
+                'email' => 'admin@example.test',
+                'password' => 'not inspected during preflight',
+            ],
+            cookies: [WebAdminConfig::PREAUTH_COOKIE_NAME => str_repeat('A', 43)],
+            headers: ['Content-Type' => 'application/x-www-form-urlencoded']
+        ));
+
+        self::assertNotNull($legacy);
+        self::assertSame(400, $legacy->status());
+        self::assertSame(0, $factory->calls);
+
+        $effectiveName = WebAdminConfig::PREAUTH_COOKIE_NAME
+            . '_D_' . $projectId;
+        $effective = $routes->dispatch(Request::fromInput(
+            [
+                'REQUEST_METHOD' => 'POST',
+                'REQUEST_URI' => '/admin/login',
+                'HTTP_HOST' => 'localhost:1310',
+                'REMOTE_ADDR' => '127.0.0.1',
+            ],
+            form: [
+                'csrf' => 'syntactically-valid-shape',
+                'email' => 'admin@example.test',
+                'password' => 'not inspected during preflight',
+            ],
+            cookies: [$effectiveName => str_repeat('B', 43)],
+            headers: ['Content-Type' => 'application/x-www-form-urlencoded']
+        ));
+
+        self::assertNotNull($effective);
+        self::assertSame(503, $effective->status());
+        self::assertSame(1, $factory->calls);
+        self::assertNotNull($factory->config);
+        self::assertSame($effectiveName, $factory->config->preAuthenticationCookieName());
+        self::assertSame(
+            WebAdminConfig::DEFAULT_COOKIE_NAME . '_D_' . $projectId,
+            $factory->config->cookieName()
+        );
+        self::assertSame(
+            WebAdminConfig::ACTION_COOKIE_NAME . '_D_' . $projectId,
+            $factory->config->actionCookieName()
+        );
     }
 
     public function testLoopbackHttpCannotUseAnAliasOfConfiguredRaiz(): void

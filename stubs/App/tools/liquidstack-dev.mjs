@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import { realpathSync } from "node:fs";
 import net from "node:net";
 import { once } from "node:events";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -10,6 +12,7 @@ const DEFAULT_VITE_PORT = 5173;
 const PHP_START_TIMEOUT_MS = 5_000;
 const VITE_START_TIMEOUT_MS = 20_000;
 const CHILD_STOP_TIMEOUT_MS = 2_000;
+const DEVELOPMENT_PROJECT_ID_ENV = "LIQUIDSTACK_DEV_PROJECT_ID";
 
 class PortUnavailableError extends Error {
   constructor(host, port, cause) {
@@ -48,6 +51,39 @@ function delay(milliseconds) {
 
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Stable, opaque identity for one checkout. Ports are intentionally excluded:
+ * the same project keeps its development session when another listener makes
+ * the launcher move from 1309/5173 to the next available pair.
+ */
+export function developmentProjectId(
+  projectRoot,
+  {
+    platform = process.platform,
+    canonicalize = realpathSync.native,
+  } = {},
+) {
+  if (typeof projectRoot !== "string" || projectRoot.trim() === "") {
+    throw new TypeError("El directorio del proyecto no es valido.");
+  }
+
+  const canonical = canonicalize(resolve(projectRoot));
+  if (typeof canonical !== "string" || canonical === "") {
+    throw new TypeError("El directorio real del proyecto no es valido.");
+  }
+
+  let normalized = canonical.replaceAll("\\", "/");
+  if (platform === "win32") {
+    normalized = normalized.toLowerCase();
+  }
+
+  return createHash("sha256")
+    .update("liquidstack-development-project:v1\0", "utf8")
+    .update(normalized, "utf8")
+    .digest("hex")
+    .slice(0, 24);
 }
 
 export function attachStdinShutdown(
@@ -654,13 +690,18 @@ async function superviseDevelopmentServers({
   environment = process.env,
   input = process.stdin,
 } = {}) {
+  const projectId = developmentProjectId(projectRoot);
+  const projectEnvironment = {
+    ...environment,
+    [DEVELOPMENT_PROJECT_ID_ENV]: projectId,
+  };
   const appChoice = readPortOverride(
-    environment,
+    projectEnvironment,
     "LIQUIDSTACK_DEV_APP_PORT",
     DEFAULT_APP_PORT,
   );
   const viteChoice = readPortOverride(
-    environment,
+    projectEnvironment,
     "LIQUIDSTACK_DEV_VITE_PORT",
     DEFAULT_VITE_PORT,
   );
@@ -788,7 +829,7 @@ async function superviseDevelopmentServers({
 
         attempt.viteChild = spawnViteChild({
           projectRoot,
-          environment,
+          environment: projectEnvironment,
           appOrigin,
           port: viteChoice.port,
           strictPort: viteChoice.explicit,
@@ -818,7 +859,7 @@ async function superviseDevelopmentServers({
         }
 
         const childEnvironment = runtimeEnvironment(
-          environment,
+          projectEnvironment,
           appPort,
           vitePort,
         );

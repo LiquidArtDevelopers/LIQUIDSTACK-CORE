@@ -20,7 +20,9 @@ use App\Core\Blog\Sitemap\BlogSitemapPublicationCoordinatorFactory;
 use App\Core\Blog\Sitemap\Cache\BlogSitemapCacheException;
 use App\Core\Blog\Seo\BlogSeoAnalysisService;
 use App\Core\Blog\Seo\BlogSeoAnalyzer;
+use App\Core\Blog\Seo\BlogSeoCatalogProjectionService;
 use App\Core\Blog\Seo\BlogSeoStaticPageInventory;
+use App\Core\Blog\Seo\PdoBlogSeoCatalogSnapshotRepository;
 use App\Core\Blog\Seo\PdoBlogSeoCandidateRepository;
 use App\Core\Blog\Seo\PdoBlogUrlHistoryRepository;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredEditorService;
@@ -208,7 +210,8 @@ final class BlogAdminHttpRuntimeFactory implements
                 $languages
             );
             $canonicalWebAdminConfig = $this->loadWebAdminConfig(
-                $projectRoot
+                $projectRoot,
+                $context->environment()
             );
             if (!$this->sameWebAdminConfig(
                 $canonicalWebAdminConfig,
@@ -516,6 +519,15 @@ final class BlogAdminHttpRuntimeFactory implements
                         $audit
                     )
                     : null;
+            $seoCatalog = new BlogSeoCatalogProjectionService(
+                new PdoBlogSeoCatalogSnapshotRepository(
+                    $pdo,
+                    $blogScope,
+                    privateDraftPublicationReady:
+                        $privateDraftPublicationReady,
+                    layoutEditorReady: $layoutEditorReady
+                )
+            );
 
             $analyticsReport = $this->migrationFeatureGate->isReady(
                 $pdo,
@@ -562,7 +574,8 @@ final class BlogAdminHttpRuntimeFactory implements
                 $editorPreferences,
                 $privateDraftPublicationReady,
                 $profileRepository,
-                $tagService
+                $tagService,
+                $seoCatalog
             );
         } catch (BlogAdminHttpRuntimeException $exception) {
             throw $exception;
@@ -614,10 +627,14 @@ final class BlogAdminHttpRuntimeFactory implements
     }
 
     private function loadWebAdminConfig(
-        string $projectRoot
+        string $projectRoot,
+        array $environment
     ): WebAdminConfig {
         try {
-            return $this->webAdminConfigLoader->load($projectRoot);
+            return $this->webAdminConfigLoader->load(
+                $projectRoot,
+                $environment
+            );
         } catch (Throwable) {
             throw new BlogAdminHttpRuntimeException(
                 'blog.webadmin_config_invalid'
@@ -695,6 +712,9 @@ final class BlogAdminHttpRuntimeFactory implements
             && $first->databaseConnection()
                 === $second->databaseConnection()
             && $first->cookieName() === $second->cookieName()
+            && $first->preAuthenticationCookieName()
+                === $second->preAuthenticationCookieName()
+            && $first->actionCookieName() === $second->actionCookieName()
             && $first->idleTtlSeconds() === $second->idleTtlSeconds()
             && $first->absoluteTtlSeconds()
                 === $second->absoluteTtlSeconds();

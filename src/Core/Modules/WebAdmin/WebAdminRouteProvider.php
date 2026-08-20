@@ -65,7 +65,8 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
         $requestedPath = WebAdminConfig::DEFAULT_BASE_PATH;
         try {
             $configuration = (new WebAdminConfigLoader())->load(
-                $context->projectRoot()
+                $context->projectRoot(),
+                $context->environment()
             );
             $requestedPath = $configuration->basePath();
             $this->configuration = $configuration;
@@ -105,15 +106,8 @@ final class WebAdminRouteProvider implements ModuleRouteProviderInterface
             $this->configuration !== null
             && $this->configuration->basePath() !== $prefix
         ) {
-            $configured = $this->configuration;
-            $this->configuration = new WebAdminConfig(
-                $prefix,
-                $configured->tablePrefix(),
-                $configured->cookieName(),
-                $configured->idleTtlSeconds(),
-                $configured->absoluteTtlSeconds(),
-                $configured->source(),
-                $configured->databaseConnection()
+            $this->configuration = $this->configuration->withBasePath(
+                $prefix
             );
         }
 

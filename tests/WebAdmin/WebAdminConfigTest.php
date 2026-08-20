@@ -56,6 +56,7 @@ final class WebAdminConfigTest extends TestCase
         self::assertTrue($safe['session']['secure']);
         self::assertTrue($safe['session']['http_only']);
         self::assertTrue($safe['session']['host_only']);
+        self::assertFalse($safe['session']['development_isolated']);
         self::assertSame(
             'LS_WEBADMIN_PREAUTH',
             $safe['session']['preauth_cookie_name']
@@ -170,6 +171,229 @@ PHP);
         self::assertSame('/gestion-web', $config->basePath());
         self::assertSame('ls_webadmin_', $config->tablePrefix());
         self::assertSame('LS_WEBADMIN_SID', $config->cookieName());
+    }
+
+    public function testLoopbackDevelopmentNamespacesEveryCookieByProjectNotPort(): void
+    {
+        $projectId = '0123456789abcdef01234567';
+        $at1309 = (new WebAdminConfigLoader())->load(
+            $this->fixtureRoot,
+            $this->developmentEnvironment($projectId, 1309)
+        );
+        $at1317 = (new WebAdminConfigLoader())->load(
+            $this->fixtureRoot,
+            $this->developmentEnvironment($projectId, 1317)
+        );
+
+        self::assertSame(
+            'LS_WEBADMIN_SID_D_' . $projectId,
+            $at1309->cookieName()
+        );
+        self::assertSame(
+            'LS_WEBADMIN_PREAUTH_D_' . $projectId,
+            $at1309->preAuthenticationCookieName()
+        );
+        self::assertSame(
+            'LS_WEBADMIN_ACTION_D_' . $projectId,
+            $at1309->actionCookieName()
+        );
+        self::assertSame($at1309->cookieName(), $at1317->cookieName());
+        self::assertSame(
+            $at1309->preAuthenticationCookieName(),
+            $at1317->preAuthenticationCookieName()
+        );
+        self::assertSame(
+            $at1309->actionCookieName(),
+            $at1317->actionCookieName()
+        );
+
+        $otherProject = (new WebAdminConfigLoader())->load(
+            $this->fixtureRoot,
+            $this->developmentEnvironment(
+                'fedcba9876543210fedcba98',
+                1309
+            )
+        );
+        self::assertNotSame(
+            $at1309->cookieName(),
+            $otherProject->cookieName()
+        );
+
+        $safe = $at1309->toSafeArray();
+        self::assertTrue($safe['session']['development_isolated']);
+        self::assertSame(
+            $at1309->cookieName(),
+            $safe['session']['cookie_name']
+        );
+        self::assertSame(
+            $at1309->preAuthenticationCookieName(),
+            $safe['session']['preauth_cookie_name']
+        );
+        self::assertSame(
+            $at1309->actionCookieName(),
+            $safe['session']['action_cookie_name']
+        );
+        self::assertArrayNotHasKey(
+            'development_project_id',
+            $safe['session']
+        );
+
+        $withEffectivePath = $at1309->withBasePath('/gestion/interna');
+        self::assertSame('/gestion/interna', $withEffectivePath->basePath());
+        self::assertSame('/gestion/interna', $withEffectivePath->cookiePath());
+        self::assertSame(
+            $at1309->cookieName(),
+            $withEffectivePath->cookieName()
+        );
+        self::assertSame(
+            $at1309->preAuthenticationCookieName(),
+            $withEffectivePath->preAuthenticationCookieName()
+        );
+        self::assertSame(
+            $at1309->actionCookieName(),
+            $withEffectivePath->actionCookieName()
+        );
+        self::assertTrue(
+            $withEffectivePath->toSafeArray()['session'][
+                'development_isolated'
+            ]
+        );
+    }
+
+    public function testDevelopmentNamespaceTruncatesOnlyConfiguredSidToBudget(): void
+    {
+        $configuredSid = str_repeat('A', WebAdminConfig::COOKIE_NAME_MAX_LENGTH);
+        $this->writeConfig(
+            "<?php\n\nreturn " . var_export([
+                'session' => ['cookie_name' => $configuredSid],
+            ], true) . ";\n"
+        );
+        $projectId = '0123456789abcdef01234567';
+
+        $config = (new WebAdminConfigLoader())->load(
+            $this->fixtureRoot,
+            $this->developmentEnvironment($projectId)
+        );
+
+        $suffix = '_D_' . $projectId;
+        self::assertSame(
+            substr(
+                $configuredSid,
+                0,
+                WebAdminConfig::COOKIE_NAME_MAX_LENGTH - strlen($suffix)
+            ) . $suffix,
+            $config->cookieName()
+        );
+        self::assertSame(
+            WebAdminConfig::COOKIE_NAME_MAX_LENGTH,
+            strlen($config->cookieName())
+        );
+        self::assertSame(
+            WebAdminConfig::PREAUTH_COOKIE_NAME . $suffix,
+            $config->preAuthenticationCookieName()
+        );
+        self::assertSame(
+            WebAdminConfig::ACTION_COOKIE_NAME . $suffix,
+            $config->actionCookieName()
+        );
+        self::assertSame(
+            $config->cookieName(),
+            $config->toSafeArray()['session']['cookie_name']
+        );
+    }
+
+    public function testEnvironmentWithoutProjectIdPreservesLegacyCookieNames(): void
+    {
+        foreach ([
+            [],
+            ['RAIZ' => 'https://example.test', 'DEV_MODE' => '0'],
+            ['RAIZ' => 'http://localhost:1310', 'DEV_MODE' => '1'],
+        ] as $environment) {
+            $config = (new WebAdminConfigLoader())->load(
+                $this->fixtureRoot,
+                $environment
+            );
+
+            self::assertSame(
+                WebAdminConfig::DEFAULT_COOKIE_NAME,
+                $config->cookieName()
+            );
+            self::assertSame(
+                WebAdminConfig::PREAUTH_COOKIE_NAME,
+                $config->preAuthenticationCookieName()
+            );
+            self::assertSame(
+                WebAdminConfig::ACTION_COOKIE_NAME,
+                $config->actionCookieName()
+            );
+            self::assertFalse(
+                $config->toSafeArray()['session']['development_isolated']
+            );
+        }
+    }
+
+    /** @dataProvider invalidDevelopmentProjectIdProvider */
+    public function testInvalidDevelopmentProjectIdFailsClosed(mixed $projectId): void
+    {
+        $environment = $this->developmentEnvironment(
+            '0123456789abcdef01234567'
+        );
+        $environment[WebAdminConfig::DEVELOPMENT_PROJECT_ID_ENV] = $projectId;
+
+        $this->assertInvalidDevelopmentProjectEnvironment($environment);
+    }
+
+    /** @return iterable<string, array{mixed}> */
+    public static function invalidDevelopmentProjectIdProvider(): iterable
+    {
+        yield 'null' => [null];
+        yield 'integer' => [123456789012345678901234];
+        yield 'empty' => [''];
+        yield 'short' => ['0123456789abcdef0123456'];
+        yield 'long' => ['0123456789abcdef012345678'];
+        yield 'uppercase' => ['0123456789ABCDEF01234567'];
+        yield 'non hexadecimal' => ['0123456789abcdef0123456g'];
+        yield 'surrounding whitespace' => [' 0123456789abcdef01234567'];
+    }
+
+    /** @dataProvider invalidDevelopmentProfileProvider */
+    public function testProjectIdOutsideLoopbackDevelopmentFailsClosed(
+        array $environment
+    ): void {
+        $environment[WebAdminConfig::DEVELOPMENT_PROJECT_ID_ENV] =
+            '0123456789abcdef01234567';
+
+        $this->assertInvalidDevelopmentProjectEnvironment($environment);
+    }
+
+    /** @return iterable<string, array{array<string, mixed>}> */
+    public static function invalidDevelopmentProfileProvider(): iterable
+    {
+        yield 'missing profile' => [[]];
+        yield 'missing origin' => [['DEV_MODE' => '1']];
+        yield 'missing development mode' => [[
+            'RAIZ' => 'http://localhost:1309',
+        ]];
+        yield 'development disabled' => [[
+            'RAIZ' => 'http://localhost:1309',
+            'DEV_MODE' => '0',
+        ]];
+        yield 'production https' => [[
+            'RAIZ' => 'https://example.test',
+            'DEV_MODE' => '0',
+        ]];
+        yield 'https with development enabled' => [[
+            'RAIZ' => 'https://localhost:1309',
+            'DEV_MODE' => '1',
+        ]];
+        yield 'remote http host' => [[
+            'RAIZ' => 'http://example.test:1309',
+            'DEV_MODE' => '1',
+        ]];
+        yield 'malformed origin' => [[
+            'RAIZ' => "http://localhost:1309\n",
+            'DEV_MODE' => '1',
+        ]];
     }
 
     public function testMaximumTablePrefixLeavesRoomForLongestTableName(): void
@@ -364,5 +588,48 @@ PHP);
             $this->fixtureRoot . '/' . WebAdminConfig::PROJECT_CONFIG_PATH,
             $contents
         );
+    }
+
+    /** @return array<string, string> */
+    private function developmentEnvironment(
+        string $projectId,
+        int $port = 1309
+    ): array {
+        return [
+            'RAIZ' => 'http://localhost:' . $port,
+            'DEV_MODE' => '1',
+            WebAdminConfig::DEVELOPMENT_PROJECT_ID_ENV => $projectId,
+        ];
+    }
+
+    /** @param array<string, mixed> $environment */
+    private function assertInvalidDevelopmentProjectEnvironment(
+        array $environment
+    ): void {
+        try {
+            (new WebAdminConfigLoader())->load(
+                $this->fixtureRoot,
+                $environment
+            );
+            self::fail('Invalid development isolation must fail closed.');
+        } catch (WebAdminConfigException $exception) {
+            self::assertSame(
+                'config.invalid_development_project_id',
+                $exception->issueCode()
+            );
+            self::assertSame(
+                WebAdminConfig::DEVELOPMENT_PROJECT_ID_ENV,
+                $exception->configKey()
+            );
+            $rawProjectId = $environment[
+                WebAdminConfig::DEVELOPMENT_PROJECT_ID_ENV
+            ] ?? null;
+            if (is_string($rawProjectId) && $rawProjectId !== '') {
+                self::assertStringNotContainsString(
+                    $rawProjectId,
+                    $exception->getMessage()
+                );
+            }
+        }
     }
 }

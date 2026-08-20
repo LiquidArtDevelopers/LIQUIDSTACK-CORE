@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Core\WebAdmin\Configuration;
 
 use App\Core\Database\DatabaseConnectionProfile;
+use App\Core\Environment\ProjectRuntimeProfile;
+use InvalidArgumentException;
 use Throwable;
 
 final class WebAdminConfigLoader
@@ -17,16 +19,21 @@ final class WebAdminConfigLoader
         'absolute_ttl_seconds',
     ];
 
-    public function load(string $projectRoot): WebAdminConfig
-    {
+    /** @param array<string, mixed>|null $environment */
+    public function load(
+        string $projectRoot,
+        #[\SensitiveParameter] ?array $environment = null
+    ): WebAdminConfig {
         $root = rtrim($projectRoot, '/\\');
         if ($root === '' || !is_dir($root)) {
             throw new WebAdminConfigException('project.root_missing');
         }
 
+        $developmentProjectId = $this->developmentProjectId($environment);
+
         $path = $root . '/' . WebAdminConfig::PROJECT_CONFIG_PATH;
         if (!file_exists($path) && !is_link($path)) {
-            return WebAdminConfig::defaults();
+            return WebAdminConfig::defaults($developmentProjectId);
         }
 
         if (!is_file($path) || is_link($path)) {
@@ -96,7 +103,58 @@ final class WebAdminConfigLoader
             $idleTtl,
             $absoluteTtl,
             'project',
-            $connection
+            $connection,
+            $developmentProjectId
+        );
+    }
+
+    /** @param array<string, mixed>|null $environment */
+    private function developmentProjectId(
+        #[\SensitiveParameter] ?array $environment
+    ): ?string {
+        if (
+            $environment === null
+            || !array_key_exists(
+                WebAdminConfig::DEVELOPMENT_PROJECT_ID_ENV,
+                $environment
+            )
+        ) {
+            return null;
+        }
+
+        $projectId = $environment[
+            WebAdminConfig::DEVELOPMENT_PROJECT_ID_ENV
+        ];
+        if (
+            !is_string($projectId)
+            || preg_match(
+                '/\A[a-f0-9]{'
+                    . WebAdminConfig::DEVELOPMENT_PROJECT_ID_LENGTH
+                    . '}\z/',
+                $projectId
+            ) !== 1
+        ) {
+            throw $this->invalidDevelopmentProjectId();
+        }
+
+        try {
+            $profile = ProjectRuntimeProfile::fromEnvironment($environment);
+        } catch (InvalidArgumentException) {
+            throw $this->invalidDevelopmentProjectId();
+        }
+
+        if (!$profile->isDevelopmentLoopbackHttp()) {
+            throw $this->invalidDevelopmentProjectId();
+        }
+
+        return $projectId;
+    }
+
+    private function invalidDevelopmentProjectId(): WebAdminConfigException
+    {
+        return new WebAdminConfigException(
+            'config.invalid_development_project_id',
+            WebAdminConfig::DEVELOPMENT_PROJECT_ID_ENV
         );
     }
 

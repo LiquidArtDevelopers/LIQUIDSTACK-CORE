@@ -87,6 +87,7 @@ export async function createServer(options) {
           pid: process.pid,
           ci: process.env.CI,
           stdinIsTty: Boolean(process.stdin.isTTY),
+          projectId: process.env.LIQUIDSTACK_DEV_PROJECT_ID,
         }),
       );
 
@@ -119,6 +120,7 @@ export async function createServer(options) {
                 configuredPort: vite.config.server.port,
                 environmentPort: process.env.LIQUIDSTACK_DEV_VITE_PORT,
                 environmentOrigin: process.env.LIQUIDSTACK_DEV_VITE_ORIGIN,
+                projectId: process.env.LIQUIDSTACK_DEV_PROJECT_ID,
               }),
             );
           } catch (error) {

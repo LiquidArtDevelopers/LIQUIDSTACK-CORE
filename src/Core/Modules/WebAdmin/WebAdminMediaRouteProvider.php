@@ -69,7 +69,10 @@ final class WebAdminMediaRouteProvider implements ModuleRouteProviderInterface
     ): void {
         $config = WebAdminConfig::defaults();
         try {
-            $config = $this->configLoader->load($context->projectRoot());
+            $config = $this->configLoader->load(
+                $context->projectRoot(),
+                $context->environment()
+            );
         } catch (WebAdminConfigException) {
             $this->startupIssueCode = 'webadmin.media.configuration_invalid';
             $this->startupBlocked = true;
@@ -96,15 +99,7 @@ final class WebAdminMediaRouteProvider implements ModuleRouteProviderInterface
             return;
         }
         if ($config->basePath() !== $basePath) {
-            $config = new WebAdminConfig(
-                $basePath,
-                $config->tablePrefix(),
-                $config->cookieName(),
-                $config->idleTtlSeconds(),
-                $config->absoluteTtlSeconds(),
-                $config->source(),
-                $config->databaseConnection()
-            );
+            $config = $config->withBasePath($basePath);
         }
         $prefix = $basePath . '/media';
         try {

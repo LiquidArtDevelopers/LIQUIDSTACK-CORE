@@ -18,6 +18,8 @@ use App\Core\Blog\Http\BlogStructuredEditorHttpRuntimeInterface;
 use App\Core\Blog\Http\BlogTagAdminHttpRuntimeInterface;
 use App\Core\Blog\Persistence\PdoBlogRepository;
 use App\Core\Blog\Seo\PdoBlogUrlHistoryRepository;
+use App\Core\Blog\Seo\BlogSeoCatalogProjectionService;
+use App\Core\Blog\Seo\PdoBlogSeoCatalogSnapshotRepository;
 use App\Core\Blog\Tags\BlogTagCapabilities;
 use App\Core\Blog\Tags\BlogTagService;
 use App\Core\Blog\Tags\Persistence\PdoBlogTagRepository;
@@ -412,7 +414,14 @@ final class BlogAdminHttpControllerTest extends TestCase
                     '/blog',
                     BlogAdminHttpController::VIEW_CAPABILITY
                 ),
-            ])
+            ]),
+            optionalSeoCatalog: new BlogSeoCatalogProjectionService(
+                new PdoBlogSeoCatalogSnapshotRepository(
+                    $this->pdo,
+                    $blogScope,
+                    privateDraftPublicationReady: true
+                )
+            )
         );
         $this->controller = new BlogAdminHttpController($this->runtime);
     }
@@ -1516,6 +1525,14 @@ final class BlogAdminHttpControllerTest extends TestCase
         $first = $this->controller->index($this->get('/admin/blog'));
         self::assertSame(200, $first->status());
         self::assertSame(21, substr_count($first->body(), '<tr>'));
+        self::assertSame(
+            20,
+            substr_count($first->body(), 'role="meter"')
+        );
+        self::assertStringContainsString(
+            'aria-label="Puntuaci&oacute;n SEO"',
+            $first->body()
+        );
         self::assertStringContainsString(
             'rel="next" href="/admin/blog?offset=20"',
             $first->body()
