@@ -4,6 +4,15 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.26.1] - 2026-08-26
+
+### Cambiado
+- La skill canónica `liquidstack-module-operations` incorpora un preflight
+  Windows para identificar el PHP efectivo antes de Composer, `doctor` o
+  `npm run lad`. Separa los requisitos base de WebAdmin de los de Media,
+  documenta el override de proceso `LIQUIDSTACK_DEV_PHP_BINARY` y evita tratar
+  fallos de extensiones o `php.ini` como migraciones pendientes.
+
 ## [1.26.0] - 2026-08-20
 
 ### Cambiado

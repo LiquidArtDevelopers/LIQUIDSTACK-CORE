@@ -13,6 +13,63 @@ description: Activación, diagnóstico, actualización, desarrollo y cierre func
 - No confundir WebAdmin con una zona privada legacy del cliente. No compartir sus rutas, tablas, endpoints, modelos, cookie o sesión.
 - No editar `vendor/liquidstack/core` ni decidir módulos desde `composer.lock`, `replace`, `provide` o `InstalledVersions`.
 
+## Preflight del PHP local en Windows
+
+Antes de ejecutar `composer update`, `composer liquidstack:doctor` o
+`npm run lad` en un entorno local Windows, identificar el runtime PHP exacto.
+XAMPP puede mantener MySQL/MariaDB operativo sin que `php`, el launcher de
+Composer o el supervisor estén usando el PHP incluido en XAMPP.
+
+Ejecutar estas comprobaciones de solo lectura en PowerShell:
+
+```powershell
+where.exe php
+where.exe composer
+php --ini
+php -r "echo 'PHP binary: ', PHP_BINARY, PHP_EOL;"
+php -r "echo 'PDO drivers: ', implode(', ', PDO::getAvailableDrivers()), PHP_EOL;"
+php -r "echo 'zend.exception_ignore_args=', ini_get('zend.exception_ignore_args') ? 'On' : 'Off', PHP_EOL;"
+php -r "echo in_array('argon2id', password_algos(), true) ? 'Argon2id=available' : 'Argon2id=missing', PHP_EOL;"
+```
+
+- Para WebAdmin base sobre MySQL/MariaDB, exigir como mínimo en el PHP que
+  ejecuta la operación: el driver `pdo_mysql` —aparece como `mysql` en
+  `PDO::getAvailableDrivers()`—, Argon2id y
+  `zend.exception_ignore_args=On`. Comprobar también el SAPI que servirá
+  `/admin` cuando no sea el mismo runtime que el CLI.
+- Mantener separados los requisitos de Media. Las subidas añaden `fileinfo`,
+  Imagick, soporte AVIF verificable y límites adecuados de subida; su ausencia
+  no equivale a que el panel WebAdmin base necesite migraciones. Seguir el
+  preflight específico de la sección de medios.
+- Un launcher de Composer puede resolver su PHP desde el `PATH`. Confirmar su
+  binario e `ini` efectivos por separado; seleccionar el PHP del supervisor no
+  cambia el proceso que ya ejecuta Composer.
+- Si `LIQUIDSTACK_DEV_PHP_BINARY` tiene un valor no vacío, el supervisor
+  intenta ejecutar exactamente ese valor; si está ausente o vacío, lanza
+  `php` mediante el `PATH` heredado. No valida el override ni aplica fallback
+  cuando es inválido: en ese caso, el arranque falla. El override es de proceso
+  y debe definirse antes de arrancar el supervisor, por ejemplo:
+
+  ```powershell
+  $env:LIQUIDSTACK_DEV_PHP_BINARY = 'C:\ruta\al\php.exe'
+  & $env:LIQUIDSTACK_DEV_PHP_BINARY --ini
+  npm run lad
+  ```
+
+  `C:\xampp\php\php.exe` puede ser un ejemplo válido tras verificar una
+  instalación concreta de XAMPP, pero no es una ruta universal ni un default
+  portable. Repetir las comprobaciones anteriores invocando explícitamente el
+  binario elegido.
+- Después de cambiar el binario o su `php.ini`, detener y volver a arrancar
+  `npm run lad`; el supervisor no recarga PHP en caliente. Repetir después
+  `composer liquidstack:doctor` bajo el PHP de Composer ya comprobado.
+- Una pública operativa junto a un `503` en `/admin` puede indicar el fallo
+  cerrado de un runtime sin driver o con la directiva incorrecta. Corregir y
+  volver a comprobar el runtime; esa ausencia no es una razón para ejecutar
+  migraciones.
+- En tareas de diagnóstico, no modificar automáticamente `php.ini`, `.env` ni
+  el `PATH`, y no ejecutar migraciones, sin autorización expresa.
+
 ## Activar o retirar un módulo
 
 1. Comprobar el estado de Git y leer `composer.json` antes de mutar dependencias.
@@ -86,10 +143,6 @@ return [
 - Guardar `LIQUIDSTACK_WEBADMIN_SECURITY_KEY` únicamente en el entorno o gestor
   de secretos: debe contener 32 bytes aleatorios como base64url canónico de 43
   caracteres. No reutilizar una contraseña ni registrar su valor.
-- Exigir `zend.exception_ignore_args=On` en CLI y en el SAPI web antes de
-  habilitar autenticación.
-- Exigir soporte Argon2id para la política productiva fija `argon2id-v1`; no
-  sustituirla automáticamente por bcrypt según el host.
 - Exigir en toda creación, activación o restablecimiento un mínimo de ocho
   caracteres Unicode, una minúscula, una mayúscula, un número y un signo,
   UTF-8 válido y un máximo de 1024 bytes. Mantener separada la validación de
