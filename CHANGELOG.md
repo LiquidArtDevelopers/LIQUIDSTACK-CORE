@@ -4,6 +4,11 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.26.2] - 2026-09-06
+
+### Cambiado
+- Mejora de los estilos del art11
+
 ## [1.26.1] - 2026-08-26
 
 ### Cambiado
