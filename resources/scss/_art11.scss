@@ -31,15 +31,16 @@
             row-gap: 1.5rem;
             span{
                 color: c.$color00;
+                >:nth-child(1){
+                    font-size: clamp(1.4rem, 2vw, 4rem);
+                }
+                >:nth-child(2){
+                    width: 60%;
+                    font-size: clamp(0.6rem, 1vw, 1rem);
+                    text-align: center;
+                }
             }
-            >:nth-child(1){
-                font-size: clamp(1.4rem, 2vw, 4rem);
-            }
-            >:nth-child(2){
-                width: 60%;
-                font-size: clamp(0.6rem, 1vw, 1rem);
-                text-align: center;
-            }
+            
         }        
     }
     h3{
