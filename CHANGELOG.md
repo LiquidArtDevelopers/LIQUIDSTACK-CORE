@@ -4,6 +4,16 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.28.1] - 2026-09-09
+
+### Corregido
+- El shell público de Blog carga ahora los módulos H1 usados por `hero00`,
+  `hero06` y `hero07`, y presenta autor, rol y fecha como una firma legible que
+  no compite por espacio con el contenido del hero. El fallback standalone
+  aplica el mismo contrato visual.
+- Se elimina whitespace residual de `art11` para que las actualizaciones de
+  consumidores mantengan limpio `git diff --check`.
+
 ## [1.28.0] - 2026-09-09
 
 ### Añadido

@@ -204,9 +204,10 @@ final class BlogDiagnosticServiceTest extends TestCase
     public function testCanonicalProjectShellDependenciesAndMetadataAreRequired(): void
     {
         $this->writeProjectArticleShell();
-        $this->filesystem->remove(
-            $this->root . '/App/includes/_nav.php'
-        );
+        $this->filesystem->remove([
+            $this->root . '/App/includes/_nav.php',
+            $this->root . '/src/scss/resources/_moduleH1Type03.scss',
+        ]);
         $this->filesystem->dumpFile(
             $this->root . '/App/includes/_globalHead.php',
             "<?php declare(strict_types=1);\n"
@@ -225,7 +226,10 @@ final class BlogDiagnosticServiceTest extends TestCase
         self::assertFalse($data['public_shell']['ready']);
         self::assertFalse($data['public_shell']['dependencies']['ready']);
         self::assertSame(
-            ['App/includes/_nav.php'],
+            [
+                'App/includes/_nav.php',
+                'src/scss/resources/_moduleH1Type03.scss',
+            ],
             $data['public_shell']['dependencies']['missing']
         );
         self::assertSame(
@@ -1546,6 +1550,9 @@ PHP,
             'src/scss/resources/_hero00.scss' => "/* fixture */\n",
             'src/scss/resources/_hero06.scss' => "/* fixture */\n",
             'src/scss/resources/_hero07.scss' => "/* fixture */\n",
+            'src/scss/resources/_moduleH1Type01.scss' => "/* fixture */\n",
+            'src/scss/resources/_moduleH1Type03.scss' => "/* fixture */\n",
+            'src/scss/resources/_moduleH1Type04.scss' => "/* fixture */\n",
             'src/scss/resources/_artBlogArticle01.scss' => "/* fixture */\n",
             'src/scss/resources/_moduleButtonType04.scss' => "/* fixture */\n",
             'src/scss/resources/_sectionBlogRelated01.scss' => "/* fixture */\n",

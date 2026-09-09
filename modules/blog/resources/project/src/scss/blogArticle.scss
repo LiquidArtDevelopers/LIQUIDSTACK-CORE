@@ -3,12 +3,84 @@
 @use './resources/hero00';
 @use './resources/hero06';
 @use './resources/hero07';
+@use './resources/moduleH1Type01';
+@use './resources/moduleH1Type03';
+@use './resources/moduleH1Type04';
 @use './resources/artBlogArticle01';
 @use './resources/moduleButtonType04';
 @use './resources/sectionBlogRelated01';
 
 body.blog-article-page {
   background: c.$color00;
+}
+
+.blogArticleHero {
+  > .hero00-content,
+  > .hero06-content,
+  > .hero07-content {
+    box-sizing: border-box;
+    padding-bottom: clamp(3.75rem, 8vw, 5rem);
+  }
+
+  > .blogArticleHero-signature {
+    position: absolute;
+    z-index: 2;
+    right: 0;
+    bottom: clamp(1rem, 3vw, 1.75rem);
+    left: 0;
+    box-sizing: border-box;
+    width: min(100%, 72rem);
+    margin: 0 auto;
+    padding-inline: clamp(1rem, 4vw, 3rem);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: 0.25rem 0.65rem;
+    color: c.$color00;
+    font-size: clamp(0.8rem, 1.4vw, 0.95rem);
+    line-height: 1.4;
+    text-align: left;
+    text-shadow: 0 0.1rem 0.45rem rgba(0, 0, 0, 0.55);
+
+    > * {
+      color: inherit;
+      font: inherit;
+    }
+
+    .blogArticleHero-author {
+      font-weight: 700;
+    }
+
+    .blogArticleHero-role,
+    .blogArticleHero-date {
+      &::before {
+        content: '·';
+        margin-right: 0.65rem;
+        opacity: 0.8;
+      }
+    }
+  }
+
+  &--hero00,
+  &--hero06 {
+    > .blogArticleHero-signature {
+      justify-content: center;
+      text-align: center;
+    }
+  }
+
+  &--basic {
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+
+    > .blogArticleHero-signature {
+      position: static;
+      color: c.$color01;
+      text-shadow: none;
+    }
+  }
 }
 
 .blog-article {

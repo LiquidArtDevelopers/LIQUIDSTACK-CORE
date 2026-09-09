@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Core\Blog\StructuredContent\Presentation\BlogH1ModuleCatalog;
+use App\Core\Blog\StructuredContent\Presentation\BlogHeroCatalog;
 use PHPUnit\Framework\TestCase;
 
 final class BlogPublicArticleShellContractTest extends TestCase
@@ -95,6 +97,23 @@ final class BlogPublicArticleShellContractTest extends TestCase
         }
     }
 
+    public function testStylesheetLoadsEverySelectableHeaderResource(): void
+    {
+        $source = $this->source('src/scss/blogArticle.scss');
+        $resources = array_merge(
+            (new BlogHeroCatalog())->toSafeArray(),
+            (new BlogH1ModuleCatalog())->toSafeArray()
+        );
+
+        foreach ($resources as $item) {
+            self::assertStringContainsString(
+                "@use './resources/{$item['resource']}'",
+                $source,
+                $item['resource']
+            );
+        }
+    }
+
     public function testStylesheetUsesOnlyNeutralThemeAndBlogResources(): void
     {
         $source = $this->source('src/scss/blogArticle.scss');
@@ -105,10 +124,17 @@ final class BlogPublicArticleShellContractTest extends TestCase
             "@use './resources/hero00'",
             "@use './resources/hero06'",
             "@use './resources/hero07'",
+            "@use './resources/moduleH1Type01'",
+            "@use './resources/moduleH1Type03'",
+            "@use './resources/moduleH1Type04'",
             "@use './resources/artBlogArticle01'",
             "@use './resources/moduleButtonType04'",
             "@use './resources/sectionBlogRelated01'",
             'body.blog-article-page',
+            '.blogArticleHero-signature',
+            '.blogArticleHero-author',
+            '.blogArticleHero-role',
+            '.blogArticleHero-date',
             '.blog-article',
             '.artBlogArticle01-footer--newsIndex',
         ] as $contract) {
