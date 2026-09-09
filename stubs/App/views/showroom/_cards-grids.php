@@ -11,6 +11,12 @@ echo controller('art02', 0, [
     'items' => 8,
 ]);
 
+// art02v1 conserva el contrato editorial de art02 y convierte sus fichas en
+// perfiles fotográficos con avatar circular. Admite 1-26 items y CTA opcional.
+echo controller('art02v1', 0, [
+    'items' => 4,
+]);
+
 echo controller('art32', 0, [
     'items' => 8,
 ]);

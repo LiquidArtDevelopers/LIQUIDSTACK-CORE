@@ -171,6 +171,9 @@ final class BlogOperationalDoctorTest extends TestCase
         self::assertSame('applied', $blog['database']['status']);
         self::assertSame('ready', $blog['tags']['status']);
         self::assertTrue($blog['tags']['ready']);
+        self::assertSame('standalone', $blog['public_shell']['mode']);
+        self::assertTrue($blog['public_shell']['ready']);
+        self::assertFalse($blog['public_shell']['complete']);
         self::assertSame([
             'public/assets/modules/blog/blog-admin-list.js',
             'public/assets/modules/blog/blog-admin.css',
@@ -198,6 +201,13 @@ final class BlogOperationalDoctorTest extends TestCase
         ));
         self::assertCount(1, $originChecks);
         self::assertSame('warning', $originChecks[0]['status'] ?? null);
+        $shellChecks = array_values(array_filter(
+            $payload['checks'],
+            static fn (array $check): bool =>
+                ($check['id'] ?? null) === 'blog.public_shell'
+        ));
+        self::assertCount(1, $shellChecks);
+        self::assertSame('warning', $shellChecks[0]['status'] ?? null);
 
         $encoded = json_encode($payload, JSON_THROW_ON_ERROR);
         self::assertStringNotContainsString(
@@ -235,6 +245,108 @@ final class BlogOperationalDoctorTest extends TestCase
         self::assertContains(
             'database.migrations_not_ready',
             $blog['readiness']['blockers']
+        );
+    }
+
+    public function testConfiguredIncompletePublicShellIsOperationalError(): void
+    {
+        $this->filesystem->mkdir([
+            $this->projectRoot . '/App/config/modules',
+            $this->projectRoot . '/App/views',
+        ]);
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/views/blog-article.php',
+            "<?php declare(strict_types=1);\n"
+        );
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/config/modules/blog.php',
+            "<?php\nreturn ['public_article_view' => "
+                . "'App/views/blog-article.php'];\n"
+        );
+        $this->filesystem->remove(
+            $this->projectRoot . '/src/js/blogArticle.js'
+        );
+        $environment = file_get_contents($this->projectRoot . '/.env');
+        self::assertIsString($environment);
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/.env',
+            $environment . "RAIZ=http://localhost:1309\nDEV_MODE=1\n"
+        );
+
+        $report = (new ModuleDoctor(
+            migrationRuntimeFactory:
+                new BlogOperationalDoctorRuntimeFactoryFixture(
+                    new MigrationCommandRuntime(
+                        $this->pdo,
+                        $this->catalog,
+                        $this->scopes
+                    )
+                )
+        ))->inspect($this->projectRoot, $this->coreRoot);
+        $payload = $report->toArray();
+        $blog = $payload['module_diagnostics']['blog'];
+
+        self::assertFalse($report->isHealthy());
+        self::assertSame('project', $blog['public_shell']['mode']);
+        self::assertFalse($blog['public_shell']['ready']);
+        self::assertContains(
+            'public_shell.project_not_ready',
+            $blog['readiness']['blockers']
+        );
+        $checks = array_values(array_filter(
+            $payload['checks'],
+            static fn (array $check): bool =>
+                ($check['id'] ?? null) === 'blog.public_shell'
+        ));
+        self::assertCount(1, $checks);
+        self::assertSame('error', $checks[0]['status'] ?? null);
+    }
+
+    public function testInvalidPublicShellSecurityConfigIsOperationalError(): void
+    {
+        $this->filesystem->mkdir(
+            $this->projectRoot . '/App/config/modules'
+        );
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/config/modules/blog-public.php',
+            "<?php\nreturn ['security_sources' => "
+                . "['script' => ['https://private.example.test/path']]];\n"
+        );
+
+        $report = (new ModuleDoctor(
+            migrationRuntimeFactory:
+                new BlogOperationalDoctorRuntimeFactoryFixture(
+                    new MigrationCommandRuntime(
+                        $this->pdo,
+                        $this->catalog,
+                        $this->scopes
+                    )
+                )
+        ))->inspect($this->projectRoot, $this->coreRoot);
+        $payload = $report->toArray();
+        $blog = $payload['module_diagnostics']['blog'];
+
+        self::assertFalse($report->isHealthy());
+        self::assertSame('standalone', $blog['public_shell']['mode']);
+        self::assertFalse($blog['public_shell']['ready']);
+        self::assertSame(
+            'invalid',
+            $blog['public_shell']['security_config']['status']
+        );
+        self::assertContains(
+            'public_shell.security_not_ready',
+            $blog['readiness']['blockers']
+        );
+        $checks = array_values(array_filter(
+            $payload['checks'],
+            static fn (array $check): bool =>
+                ($check['id'] ?? null) === 'blog.public_shell'
+        ));
+        self::assertCount(1, $checks);
+        self::assertSame('error', $checks[0]['status'] ?? null);
+        self::assertStringNotContainsString(
+            'private.example.test',
+            json_encode($payload, JSON_THROW_ON_ERROR)
         );
     }
 

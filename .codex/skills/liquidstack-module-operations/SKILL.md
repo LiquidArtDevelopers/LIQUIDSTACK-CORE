@@ -529,8 +529,9 @@ composer liquidstack:migrate --dry-run
   contexto y solo imprimir directamente las proyecciones HTML saneadas.
   `bodyHtml()` conserva por compatibilidad el cuerpo histórico
   completo, incluida la portada; las vistas nuevas deben colocar
-  `headerMediaHtml()` en su `header` y `mainHtml()` dentro de su `main`, sin
-  duplicar el medio destacado. El hook expone además `$articleCategories`,
+  `headerHtml()` antes de su `main` y `mainHtml()` dentro de este, sin
+  duplicar el hero ni su medio destacado. `headerMediaHtml()` permanece como
+  proyección compatible para shells anteriores. El hook expone además `$articleCategories`,
   `$articleTags` y `$articleTaxonomiesHtml`; colocar el último dentro del
   artículo, antes de `$articleMain`. Mantener el copy localizado de
   categorías/etiquetas, omitir cada grupo vacío y no inventar enlaces a
@@ -549,10 +550,40 @@ composer liquidstack:migrate --dry-run
   en `App/config/modules/blog-public.php` y el controlador la aplica a la
   `Response`, junto con su nonce. La vista solo consume ese nonce desde el
   contexto; nunca llama `header()`, genera otro nonce ni requiere un include de
-  seguridad local. Omitir `public_article_view` conserva el fallback standalone
-  y su CSS gestionado. `shared` permanece como default; si se declara
+  seguridad local. CORE distribuye el scaffold neutral
+  `App/views/blog-article.php`, `src/js/blogArticle.js` y
+  `src/scss/blogArticle.scss` como un grupo `managed_hash`: avanza unido
+  mientras conserva huellas conocidas y se preserva completo tras cualquier
+  personalización. Antes de activarlo, preparar los includes y entradas
+  globales project-owned, dependencias directas JS/SCSS, catálogos de todos los
+  locales activos, head, metadata, nonce y política CSP/CookieLad cuando
+  corresponda. Planificar con
+  `composer liquidstack:blog:adopt-public-shell`; el comando es de solo lectura
+  por defecto y debe validar esas dependencias, además del scaffold y su hook.
+  Debe comprobar que `_globalHead.php`
+  consuma desde `$pageMeta` `title`, `headline`, `description`, `canonical`,
+  `alternates`, `x_default`, `type`, `image`, `published_at` y `updated_at`, y
+  aplique `$cspNonce` a sus scripts. Si el preflight es correcto, ejecutar
+  `npm run build` y verificar que `public/.vite/manifest.json` contiene la
+  entrada exacta `src/js/blogArticle.js`, manteniendo entretanto el fallback
+  standalone. Solo después aplicar
+  `composer liquidstack:blog:adopt-public-shell --apply --yes`, que limita la
+  mutación a la clave `public_article_view` de una configuración literal
+  verificable o crea una configuración mínima si falta, y ejecutar
+  inmediatamente `composer liquidstack:doctor`. Una vista activa con cualquiera
+  de esas piezas incompleta, sin hook, entry o bundle de producción es un
+  blocker. Ante PHP dinámico, symlinks, un valor incompatible o cambio
+  concurrente, no escribir y trasladar manualmente el snippet indicado. Omitir
+  `public_article_view` conserva el fallback standalone y su CSS gestionado,
+  pero `doctor` debe emitir el warning accionable `blog.public_shell`. Si el
+  shell referencia el loader de CookieLad, exigir que su origen exacto esté
+  autorizado por la política efectiva en `script`, `style`, `image` y
+  `connect`; el config `App/config/modules/blog-public.php` sigue siendo
+  project-owned y Composer no debe inventarlo.
+  `shared` permanece como default; si se declara
   `liquidstack`, WebAdmin debe declararlo también. Composer no debe crear,
-  fusionar ni sobrescribir estos ficheros project-owned.
+  fusionar ni sobrescribir estos ficheros project-owned durante install/update;
+  la excepción es el comando de adopción solicitado de forma explícita.
 - Limitar `database.table_prefix` de Blog a 29 bytes, presupuesto derivado de
   `category_assignment_workspace_items` y del máximo de 64 bytes de
   MySQL/MariaDB. Un proyecto configurado con una versión hasta v1.23.0 que
@@ -1302,8 +1333,13 @@ composer liquidstack:migrate --dry-run
 4. Hacer que una configuración inválida falle cerrada dentro de su namespace sin derribar rutas públicas ni revelar la causa al visitante.
 5. Mantener `project_files` limitado a namespaces de assets del módulo y, si el
    manifiesto declara una allowlist `resources`, a los ficheros estándar y
-   hooks exactos habilitados por ella. Rutas, `.env`, configuración, sitemap,
-   vistas públicas, medios y datos siguen siendo project-owned.
+   hooks exactos habilitados por ella. Solo permitir un scaffold de vista o
+   entrypoint fuera de esos namespaces mediante targets exactos, cerrados al
+   módulo propietario, neutrales y cubiertos por pruebas de rechazo para
+   cualquier otra ruta; `public-article-shell` de Blog es esa excepción.
+   Rutas, `.env`, configuración, sitemap, el resto de vistas públicas, medios y
+   datos siguen siendo project-owned. Una personalización del scaffold también
+   debe preservarse como propiedad del proyecto.
    Los ficheros `managed_hash` que deban avanzar juntos tienen que compartir
    un `group`: el sincronizador adquiere el lock del proyecto, recarga estado,
    prepara staging+journal y revierte el grupo completo ante un fallo. Un

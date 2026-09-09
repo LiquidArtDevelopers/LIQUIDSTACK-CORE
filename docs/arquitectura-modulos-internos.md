@@ -119,7 +119,10 @@ pueden no haberse instalado por el contrato SCSS o haberse preservado de forma
 legítima sin declarar inoperativo el runtime PHP del módulo.
 
 Un manifiesto no puede apuntar por esta vía a rutas, `.env`, configuración,
-sitemap, DB, storage, medios, copy ni vistas públicas del cliente. Esa
+sitemap, DB, storage, medios, copy ni vistas públicas arbitrarias del cliente.
+La excepción cerrada es un scaffold neutral declarado por el propio módulo en
+targets exactos allowlisted; no concede acceso general a `App/views` ni a las
+entradas superiores de Vite. Esa
 publicación reutiliza el sincronizador seguro de CORE:
 
 - instala ficheros ausentes;
@@ -176,6 +179,26 @@ reutilizable permanece autoloaded bajo `src/Core/Blog`; cada adaptador traduce
 el contexto del stack a contratos tipados y una vista requiere solo el hook de
 su superficie.
 
+Blog publica además el scaffold exacto `App/views/blog-article.php`,
+`src/js/blogArticle.js` y `src/scss/blogArticle.scss` bajo el grupo
+`public-article-shell`. Es una semilla neutral sin marca, rutas ni entorno: se
+instala y actualiza atómicamente mientras conserva una huella gestionada y, al
+detectar una personalización en cualquiera de las tres piezas, preserva el grupo
+completo. `ModuleDefinition` permite esos tres destinos solo al módulo `blog`;
+otros módulos y cualquier otra vista o entrypoint continúan rechazados.
+
+El scaffold no autoriza a Composer a modificar
+`App/config/modules/blog.php`. La activación se planifica con
+`composer liquidstack:blog:adopt-public-shell`, después de preparar sus
+dependencias project-owned. Con el preflight verde se ejecuta `npm run build` y
+se verifica la entrada `src/js/blogArticle.js` en
+`public/.vite/manifest.json`; durante ambos pasos continúa activo el fallback
+standalone. Solo entonces se escribe con `--apply --yes`, que crea un fichero
+mínimo si falta o inserta la clave exacta en una matriz literal reconocida, y
+se ejecuta `doctor` sobre el shell activo. Una configuración dinámica,
+enlazada, concurrentemente modificada o con un valor incompatible falla
+cerrada y queda intacta.
+
 Los recursos estándar modulares comparten el gate del contrato SCSS base. Si
 `src/scss/_config.scss` no puede verificarse, el instalador omite durante ese
 ciclo todos sus controladores, templates, SCSS, JS y hooks de showroom, y
@@ -195,7 +218,9 @@ Siguen siendo siempre propiedad del proyecto:
 - `App/config/routes/get.php` y `post.php`;
 - `App/config/modules/*.php`;
 - `robots.txt` y cualquier sitemap existente;
-- copy, vistas publicadas, medios y datos del cliente.
+- copy, vistas publicadas distintas del scaffold neutral reconocido, medios y
+  datos del cliente. En cuanto el proyecto personaliza el scaffold, también se
+  preserva como propiedad del proyecto.
 
 ### Perfiles de conexión modular
 
@@ -262,6 +287,8 @@ composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
 composer liquidstack:migrate --apply
 composer liquidstack:media:init
+composer liquidstack:blog:adopt-public-shell
+composer liquidstack:blog:adopt-public-shell --apply --yes
 composer liquidstack:blog:sitemap-cache:init
 composer liquidstack:webadmin:bootstrap
 composer liquidstack:webadmin:onboard --yes
@@ -275,6 +302,10 @@ estrictamente de solo lectura: valida el contrato PDO, compara el registro de
 migraciones con el catálogo y verifica las postcondiciones del esquema. La
 salida estructurada contiene nombres de variables y códigos estables, nunca
 credenciales, correos, claves, DSN, SQL o mensajes internos del driver.
+Con Blog activo también distingue el fallback público `standalone` del shell
+`project`, verifica su composición, dependencias, metadata/nonce, bundle y
+política CSP efectiva, incluida la autorización de CookieLad cuando se detecta
+su loader; no muestra orígenes ni configuración privada.
 
 El comando exige exactamente uno de estos modos:
 
@@ -664,14 +695,22 @@ compartida en `App/config/modules/blog-public.php`; el controlador crea el
 nonce y aplica CSP y cabeceras defensivas sobre la `Response`. La vista solo
 consume ese nonce y no emite cabeceras ni requiere seguridad local. CORE falla
 cerrado si la vista emite una salida vacía o lanza una excepción. Omitir la
-clave no cambia la salida standalone de consumidores existentes. Las claves
+clave no cambia la salida standalone de consumidores existentes. El preflight
+de adopción verifica los includes globales, dependencias JS/SCSS, catálogos de
+locales activos y el consumo completo de `$pageMeta` y del nonce. Antes de
+aplicar la clave, el proyecto genera y comprueba el bundle de producción con
+`npm run build`; después de aplicarla, `doctor` valida el shell y ese bundle. Si
+se referencia CookieLad, la política efectiva debe autorizar su origen exacto
+en `script`, `style`, `image` y `connect`; esa configuración permanece
+project-owned. Las claves
 `article-basic-01` y
 `article-cover-01` siguen siendo contratos de documento y portada; nuevas
 composiciones visuales mediante recursos LiquidStack permanecen aditivas.
 El view model conserva `bodyHtml()` como cuerpo histórico completo, incluida la
 portada, para no romper shells existentes. Las vistas nuevas deben componer
-`headerMediaHtml()` en el `header` y `mainHtml()` dentro del `main`; ambos son
-fragmentos saneados y separan el medio destacado del contenido sin duplicarlo.
+`headerHtml()` antes de `<main>` y `mainHtml()` dentro de este;
+`headerMediaHtml()` queda como proyección compatible para shells anteriores.
+Los fragmentos saneados separan el hero del contenido sin duplicarlo.
 El hook añade `$articleCategories`, `$articleTags` y
 `$articleTaxonomiesHtml`; el shell coloca este último dentro del artículo, antes
 de `$articleMain`. El copy integrado usa «Categorías»/«Etiquetas» en español,

@@ -142,7 +142,7 @@ final class Art05V1ContractTest extends TestCase
             '--art05v1-card-background:',
             '.art05v1-cardMedia {',
             'aspect-ratio: 4 / 3;',
-            'object-fit: cover;',
+            'object-fit: contain;',
             'width: 48%;',
             'width: 31%;',
             'max-width: 28rem;',

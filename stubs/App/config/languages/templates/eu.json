@@ -787,6 +787,63 @@
         "text": "Azken adierazleak diseinuaren erritmoa eta erantzuna neurtzen ditu, irakurketa, banaketa eta responsive portaera balioztatzeko zortzi adibide luzez osatutako matrizea itxiz, pantaila-tamaina guztietan."
     },
 
+    "art02v1_00_headerPrimary": {
+        "text": "art02v1 · erretratu zirkularreko lau profil"
+    },
+    "art02v1_00_intro_p": {
+        "text": "Matrix ipsum probak lau profil biltzen ditu, izenak, rolak, erretratuak eta deskribapen zabalak konposizio editorial argi, orekatu eta moldagarri batean nola uztartzen diren egiaztatzeko."
+    },
+    "art02v1_00_p1": {
+        "text": "Txartel bakoitzak irudi fotografiko zirkularra eta azalera independentea erabiltzen ditu, edukia profilen artean aldatzean mozketak, altuerak, kontrastea, irakurketa-erritmoa eta lerrokatzea berrikusteko."
+    },
+    "art02v1_00_p2": {
+        "text": "Azken lerroa zentratuta mantentzen da, eta aukerako CTAek kokapena gordetzen dute profilen deskribapenek luzera desberdina dutenean."
+    },
+    "art02v1_00_headerSecondary_a": {
+        "text": "<b>Morpheus</b><br>Tripulazioaren kapitaina"
+    },
+    "art02v1_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Morpheus profilaren dummy erretratua",
+        "title": "Morpheus, tripulazioaren kapitaina"
+    },
+    "art02v1_00_a_p": {
+        "text": "Morpheusek sistemaren seinaleak interpretatzen ditu, taldearen lehentasunak antolatzen ditu eta helburu partekatua ikusgai mantentzen du Matrix ipsum barruan erabaki konplexuak agertzen direnean."
+    },
+    "art02v1_00_headerSecondary_b": {
+        "text": "<b>Trinity</b><br>Operazioetako espezialista"
+    },
+    "art02v1_00_b_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Trinity profilaren dummy erretratua",
+        "title": "Trinity, operazioetako espezialista"
+    },
+    "art02v1_00_b_p": {
+        "text": "Trinityk estrategia eta exekuzioa lotzen ditu, aldaketak azkar hautematen ditu eta ekintza bakoitzak tripulazioak adostutako ibilbidearekin koherentzia mantentzen duela egiaztatzen du."
+    },
+    "art02v1_00_headerSecondary_c": {
+        "text": "<b>Neo</b><br>Kodearen analista"
+    },
+    "art02v1_00_c_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Neo profilaren dummy erretratua",
+        "title": "Neo, kodearen analista"
+    },
+    "art02v1_00_c_p": {
+        "text": "Neok ereduak aztertzen ditu, hipotesiak alderatzen ditu eta informazio sakabanatua erabaki ulergarri bihurtzen du, taldeak erreferentzia partekatu batekin aurrera egin dezan."
+    },
+    "art02v1_00_headerSecondary_d": {
+        "text": "<b>Niobe</b><br>Nabigazioaren arduraduna"
+    },
+    "art02v1_00_d_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Niobe profilaren dummy erretratua",
+        "title": "Niobe, nabigazioaren arduraduna"
+    },
+    "art02v1_00_d_p": {
+        "text": "Niobek ibilbide posibleak alderatzen ditu, arriskuak aurreikusten ditu eta norabidea egokitzen du egonkortasuna galdu gabe, testuinguruak Matrix ipsum hasierako plana berrikustea eskatzen duenean ere."
+    },
+
     "art32_00_headerPrimary": {
         "text": "art32 · kutxako zortzi txartel ikonodun"
     },

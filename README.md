@@ -187,6 +187,8 @@ composer liquidstack:webadmin:mail:dispatch
 composer liquidstack:webadmin:mail:dispatch --limit=20 --format=json
 composer liquidstack:blog:analytics:purge --yes
 composer liquidstack:blog:analytics:purge --yes --format=json
+composer liquidstack:blog:adopt-public-shell
+composer liquidstack:blog:adopt-public-shell --apply --yes
 ```
 
 `doctor` valida el catálogo, la selección, los providers tipados, la
@@ -224,8 +226,14 @@ es el procedimiento de upgrade legacy, expresamente solicitado con
 completa entre DB y filesystem.
 
 El orden de una instalación nueva es: activar el selector, actualizar CORE,
-configurar entorno, ejecutar `doctor`, revisar `migrate --plan` y
-`migrate --dry-run`, crear y comprobar un backup recuperable de DB y storage y,
+configurar entorno y, con Blog activo, preparar las dependencias project-owned
+de su shell público. Después se ejecuta el preflight de solo lectura
+`liquidstack:blog:adopt-public-shell`, se genera el bundle con `npm run build` y
+se comprueba que el manifest de producción contiene `src/js/blogArticle.js`.
+Solo entonces se activa `public_article_view` con
+`liquidstack:blog:adopt-public-shell --apply --yes` y se ejecuta `doctor`. A
+continuación se revisan `migrate --plan` y `migrate --dry-run`, se crea y
+comprueba un backup recuperable de DB y storage y,
 tras autorización explícita, aplicar las migraciones; después se inicializa el
 storage con `liquidstack:media:init` y se ejecuta obligatoriamente
 `liquidstack:webadmin:onboard --yes`. Este último paso compone el bootstrap
@@ -284,17 +292,31 @@ La selección vive en los ficheros project-owned de ambos módulos:
 Blog y WebAdmin deben declarar el mismo perfil porque comparten un único PDO,
 el registro de migraciones y operaciones cross-scope. Una discrepancia bloquea
 el diagnóstico, las migraciones y el runtime antes de escribir. Composer no
-crea ni fusiona `.env` o `App/config/modules/*.php`.
+crea ni fusiona `.env` o `App/config/modules/*.php` durante `install` o
+`update`. La única mutación asistida de esta configuración es el comando
+explícito de adopción del shell Blog: limita su cambio a
+`public_article_view`, exige `--apply --yes` y falla sin escribir ante una forma
+dinámica o un valor incompatible.
 
 Adopción segura en un consumidor nuevo:
 
 ```bash
 composer require liquidstack/blog
 composer update liquidstack/core
+composer liquidstack:blog:adopt-public-shell
+npm run build
+composer liquidstack:blog:adopt-public-shell --apply --yes
 composer liquidstack:doctor
 composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
 ```
+
+Antes del preflight deben estar preparados los includes y entradas globales,
+los catálogos activos y el head con metadata, nonce y política CSP/CookieLad
+cuando corresponda. El build debe terminar correctamente y dejar en
+`public/.vite/manifest.json` la entrada exacta `src/js/blogArticle.js` antes de
+aplicar la configuración; hasta ese momento el renderer standalone continúa
+siendo la salida pública segura.
 
 Solo después de revisar el dry-run, disponer de un backup recuperable y
 autorizar la mutación se ejecuta `composer liquidstack:migrate --apply`; a
@@ -645,9 +667,19 @@ ni emite cabeceras. GET y HEAD comparten estado HTTP/SEO, y la respuesta parcial
 puede transportar el mismo documento SSR completo con
 `Vary: X-LiquidStack-Partial` para la mejora progresiva.
 
-`public_article_view` es opcional y aditivo. Debe apuntar mediante una ruta
-relativa a un PHP regular y legible bajo `App/views`, sin traversal ni
-symlinks. La vista recibe `$blogArticle` y `$blogArticleShell` como contratos
+Al activar Blog, CORE distribuye el scaffold neutral
+`App/views/blog-article.php` y sus entradas `src/js/blogArticle.js` y
+`src/scss/blogArticle.scss`. Se actualizan como una unidad mientras no hayan
+sido personalizados; si cambia cualquiera, Composer preserva las tres piezas.
+La vista incorpora el head dinámico, navegación, footer, smoother y carga global
+del proyecto. No contiene marca, dominio, rutas ni copy de un cliente concreto.
+El grupo de tres piezas no es autónomo: el preflight exige además los includes
+y entradas globales project-owned, los catálogos de todos los locales activos y
+un `_globalHead.php` compatible con `$pageMeta` y el nonce CSP.
+
+`public_article_view` es opcional por compatibilidad y aditivo. Debe apuntar
+mediante una ruta relativa a un PHP regular y legible bajo `App/views`, sin
+traversal ni symlinks. La vista recibe `$blogArticle` y `$blogArticleShell` como contratos
 tipados y comienza con el único require gestionado
 `App/app/_moduleBlogPublicArticle.php`. El hook prepara las variables de shell,
 catálogo y assets sin emitir HTML ni cabeceras. La vista compone head,
@@ -657,7 +689,18 @@ controlador y a la `Response`. La vista solo consume el nonce entregado y nunca
 llama `header()` ni requiere seguridad local. Sus alternates SEO
 incluyen solo traducciones publicadas; la navegación de idioma separada cae al
 índice localizado cuando falta una variante. Si se omite, CORE conserva el HTML
-standalone y carga su CSS neutral responsive gestionado.
+standalone y carga su CSS neutral responsive gestionado, pero `doctor` muestra
+el aviso `blog.public_shell` y propone
+`composer liquidstack:blog:adopt-public-shell`. El comando es dry-run por
+defecto y valida las dependencias del scaffold sin escribir. Mantener el
+fallback standalone mientras se ejecuta `npm run build` y comprobar que
+`public/.vite/manifest.json` contiene `src/js/blogArticle.js`; solo después se
+puede usar `--apply --yes` para crear o completar de forma acotada la
+configuración project-owned. Ejecutar `doctor` inmediatamente después de esa
+activación. Si el shell carga CookieLad, el diagnóstico
+exige además que su origen exacto esté autorizado en `script`, `style`, `image`
+y `connect` por `App/config/modules/blog-public.php`; este fichero sigue siendo
+project-owned y Composer no lo crea ni lo completa.
 
 El hook expone también `$articleCategories`, `$articleTags` y el fragmento
 saneado `$articleTaxonomiesHtml`. Una vista project-owned lo coloca dentro del
@@ -667,10 +710,11 @@ omiten por separado cuando están vacías y nunca se convierten en enlaces a una
 ruta que el proyecto no haya declarado.
 
 `bodyHtml()` conserva por compatibilidad el cuerpo histórico completo, incluida
-la portada. Las vistas nuevas deben colocar `headerMediaHtml()` en el `header`
-junto al H1 y `mainHtml()` dentro del `main`; ambos fragmentos están saneados y
-evitan duplicar el medio destacado. Los tres métodos son la única salida HTML
-confiable del view model; sus escalares se siguen escapando según contexto.
+la portada. Las vistas nuevas deben colocar `headerHtml()` antes de `<main>` y
+`mainHtml()` dentro de este; `headerMediaHtml()` permanece como proyección
+compatible para shells anteriores. Los fragmentos están saneados y evitan
+duplicar el hero o su medio destacado; los escalares se siguen escapando según
+contexto.
 
 Los idiomas deben coincidir exactamente con `App/config/langs.php`. Las rutas
 estáticas del proyecto conservan prioridad; Blog resuelve las URLs de artículo

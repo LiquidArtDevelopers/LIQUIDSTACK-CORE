@@ -4,6 +4,41 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.28.0] - 2026-09-09
+
+### Añadido
+- `art02v1` independiza la variante de perfiles fotográficos de `art02` con
+  avatares circulares, tarjetas adaptables, CTA opcional y prefijo de idiomas
+  propio.
+- Blog distribuye un shell público neutral y personalizable para el detalle de
+  artículo mediante `App/views/blog-article.php`, `src/js/blogArticle.js` y
+  `src/scss/blogArticle.scss`. Las tres piezas se sincronizan como un grupo
+  atómico: avanzan mientras conservan una huella conocida y se preservan juntas
+  cuando el proyecto personaliza cualquiera de ellas.
+- El nuevo comando `composer liquidstack:blog:adopt-public-shell` comprueba en
+  solo lectura que el scaffold y sus dependencias project-owned están completos.
+  El flujo productivo mantiene el fallback standalone durante ese preflight y
+  `npm run build`, exige que el manifest contenga `src/js/blogArticle.js` y solo
+  después permite la variante confirmada `--apply --yes`, que crea una
+  configuración Blog mínima cuando no existe o añade
+  exclusivamente `public_article_view` a un `return` literal reconocido; una
+  configuración dinámica o incompatible se conserva intacta y recibe la entrada
+  manual necesaria.
+
+### Cambiado
+- `art05v1` muestra la imagen completa mediante `contain`, adopta un borde
+  neutral y aplica el color de encabezado también cuando se inyecta un
+  encabezado externo.
+- `artAccordion02` adopta como diseño canónico una superficie más contenida,
+  imagen sin recorte, acordeones sin sombra y encabezados con mayor peso, sin
+  depender de modificadores de instancia ni de colores privados del proyecto.
+- `liquidstack:doctor` distingue ahora un Blog `standalone` de un shell
+  `project` completo. El fallback sigue siendo compatible y operativo, pero
+  produce un aviso accionable; una vista configurada sin hook, dependencias
+  globales, catálogos activos, head compatible con metadata/nonce, entrypoint o
+  bundle Vite requerido falla de forma visible. Si detecta el loader de
+  CookieLad, valida también sus autorizaciones CSP exactas sin exponerlas.
+
 ## [1.27.0] - 2026-09-09
 
 ### Añadido

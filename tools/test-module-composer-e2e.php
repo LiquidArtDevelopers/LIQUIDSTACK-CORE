@@ -65,6 +65,9 @@ $composerFilesystem = new ComposerFilesystem();
 $filesystem->mkdir($temporaryRoot);
 $filesystem->mkdir([
     $temporaryRoot . '/App/config',
+    $temporaryRoot . '/App/config/languages/global',
+    $temporaryRoot . '/App/includes',
+    $temporaryRoot . '/src/js',
     $temporaryRoot . '/src/scss',
 ]);
 $filesystem->dumpFile(
@@ -78,6 +81,57 @@ $filesystem->dumpFile(
 $filesystem->dumpFile(
     $temporaryRoot . '/src/scss/_config.scss',
     '$color00: #fff;' . PHP_EOL
+);
+$filesystem->dumpFile(
+    $temporaryRoot . '/App/includes/_globalHead.php',
+    <<<'PHP'
+<?php
+
+$title = $pageMeta['title'];
+$headline = $pageMeta['headline'];
+$description = $pageMeta['description'];
+$canonical = $pageMeta['canonical'];
+$alternates = $pageMeta['alternates'];
+$xDefault = $pageMeta['x_default'];
+$type = $pageMeta['type'];
+$image = $pageMeta['image'];
+$publishedAt = $pageMeta['published_at'];
+$updatedAt = $pageMeta['updated_at'];
+$nonceAttribute = $cspNonce !== ''
+    ? ' nonce="' . htmlspecialchars($cspNonce, ENT_QUOTES, 'UTF-8') . '"'
+    : '';
+?>
+<title><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></title>
+<script<?= $nonceAttribute ?> src="/assets/js/global.js"></script>
+PHP
+);
+$filesystem->dumpFile(
+    $temporaryRoot . '/App/includes/_globalBody.php',
+    "<?php\ndeclare(strict_types=1);\n"
+);
+$filesystem->dumpFile(
+    $temporaryRoot . '/App/includes/_nav.php',
+    "<nav aria-label=\"Principal\"></nav>\n"
+);
+$filesystem->dumpFile(
+    $temporaryRoot . '/App/includes/_footer.php',
+    "<footer></footer>\n"
+);
+$filesystem->dumpFile(
+    $temporaryRoot . '/App/config/languages/global/es.json',
+    "{}\n"
+);
+$filesystem->dumpFile(
+    $temporaryRoot . '/App/config/languages/global/en.json',
+    "{}\n"
+);
+$filesystem->dumpFile(
+    $temporaryRoot . '/src/js/_global.js',
+    "export {};\n"
+);
+$filesystem->dumpFile(
+    $temporaryRoot . '/src/scss/_global.scss',
+    "\n"
 );
 $filesystem->dumpFile(
     $temporaryRoot . '/.env',
@@ -335,6 +389,12 @@ try {
         'modules/blog/resources/project/App/app/'
             . '_moduleBlogPublicArticle.php'
             => 'App/app/_moduleBlogPublicArticle.php',
+        'modules/blog/resources/project/App/views/blog-article.php'
+            => 'App/views/blog-article.php',
+        'modules/blog/resources/project/src/js/blogArticle.js'
+            => 'src/js/blogArticle.js',
+        'modules/blog/resources/project/src/scss/blogArticle.scss'
+            => 'src/scss/blogArticle.scss',
         'modules/blog/resources/project/App/controllers/'
             . 'artBlogArticle01.php'
             => 'App/controllers/artBlogArticle01.php',
@@ -417,6 +477,15 @@ try {
             'El consumidor no recibió el comando de inicialización Media.'
         );
     }
+    if (!in_array(
+        'liquidstack:blog:adopt-public-shell',
+        $commandNames,
+        true
+    )) {
+        throw new RuntimeException(
+            'El consumidor Blog no recibió el comando de adopción del shell público.'
+        );
+    }
 
     $snapshotProject = static function (string $root): array {
         $hashes = [];
@@ -475,11 +544,37 @@ try {
             !== true
         || ($doctor['module_diagnostics']['blog']['readiness']['blog_ready'] ?? null)
             !== false
+        || ($doctor['module_diagnostics']['blog']['public_shell']['mode'] ?? null)
+            !== 'standalone'
+        || ($doctor['module_diagnostics']['blog']['public_shell']['complete'] ?? null)
+            !== false
         || str_contains($doctorOutput, 'module-e2e-secret')
         || str_contains($doctorOutput, $e2eSecurityKey)
     ) {
         throw new RuntimeException(
             'LiquidStack doctor no devolvió el diagnóstico seguro esperado.'
+        );
+    }
+
+    $shellAdoptionOutput = trim($runComposer([
+        'liquidstack:blog:adopt-public-shell',
+        '--format=json',
+        '--no-interaction',
+    ]));
+    $shellAdoption = json_decode(
+        $shellAdoptionOutput,
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    if (
+        ($shellAdoption['ok'] ?? null) !== true
+        || ($shellAdoption['result']['status'] ?? null) !== 'ready'
+        || ($shellAdoption['result']['changed'] ?? null) !== false
+        || is_file($temporaryRoot . '/App/config/modules/blog.php')
+    ) {
+        throw new RuntimeException(
+            'La adopción dry-run del shell Blog no conservó el consumidor.'
         );
     }
 

@@ -41,13 +41,16 @@ final class CanonicalModuleDistributionTest extends TestCase
             'sectionBlogSlider02',
             'sectionBlogStack01',
         ], $blog->resources());
-        self::assertCount(63, $blog->projectFiles());
+        self::assertCount(66, $blog->projectFiles());
 
         $targets = array_column($blog->projectFiles(), 'target');
         self::assertSame($targets, array_values(array_unique($targets)));
         foreach ([
             'public/assets/modules/blog',
             'App/app/_moduleBlogPublicArticle.php',
+            'App/views/blog-article.php',
+            'src/js/blogArticle.js',
+            'src/scss/blogArticle.scss',
             'App/app/_moduleBlogPublicCollections.php',
             'App/app/_moduleBlogPublicIndex.php',
             'App/controllers/_moduleBlogResources.php',
@@ -123,6 +126,9 @@ final class CanonicalModuleDistributionTest extends TestCase
             'modules/blog/published/assets/icons/position-left.svg',
             'modules/blog/published/assets/icons/position-right.svg',
             'modules/blog/resources/project/App/app/_moduleBlogPublicArticle.php',
+            'modules/blog/resources/project/App/views/blog-article.php',
+            'modules/blog/resources/project/src/js/blogArticle.js',
+            'modules/blog/resources/project/src/scss/blogArticle.scss',
             'modules/blog/resources/project/App/app/_moduleBlogPublicCollections.php',
             'modules/blog/resources/project/App/app/_moduleBlogPublicIndex.php',
             'modules/blog/resources/project/App/controllers/_moduleBlogResources.php',
@@ -176,6 +182,6 @@ final class CanonicalModuleDistributionTest extends TestCase
         ] as $source) {
             self::assertContains($source, $published);
         }
-        self::assertCount(79, $published);
+        self::assertCount(82, $published);
     }
 }

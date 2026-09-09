@@ -1,0 +1,149 @@
+@use '../config' as c;
+
+.art02v1 {
+    --art02v1-surface: #{c.$color00bis};
+    --art02v1-border: #{c.$color02bis3};
+    --art02v1-heading: #{c.$color02};
+    --art02v1-copy: #{c.$color01};
+    --art02v1-avatar-ring: #{c.$color00};
+    --art02v1-avatar-outline: #{c.$color02bis2};
+    --art02v1-shadow: 0 .75rem 2rem #{c.$color01bis5};
+
+    width: c.$anchoFull;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    row-gap: 2rem;
+
+    .art02v1-header {
+        width: 100%;
+        padding: 0 c.$padMin;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        row-gap: 1rem;
+
+        :is(h2, h3, h4, h5, h6) {
+            color: var(--art02v1-heading);
+        }
+
+        > p {
+            color: var(--art02v1-copy);
+        }
+    }
+
+    > p {
+        padding: 0 c.$padMin;
+        color: var(--art02v1-copy);
+    }
+
+    .art02v1-cards {
+        width: 100%;
+        padding: 0 c.$padMin;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: stretch;
+        gap: 1.5rem;
+    }
+
+    .art02v1-card {
+        width: 100%;
+        max-width: 28rem;
+        padding: clamp(1.25rem, 2vw, 1.75rem);
+        padding-bottom: clamp(1.5rem, 2vw, 2rem);
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        row-gap: 1.5rem;
+        background-color: var(--art02v1-surface);
+        border: 1px solid var(--art02v1-border);
+        border-radius: .5rem;
+        box-shadow: var(--art02v1-shadow);
+    }
+
+    .art02v1-cardTitle {
+        min-height: calc(1.3em * 3);
+        margin: 0;
+        order: 2;
+        color: var(--art02v1-heading);
+        font-size: clamp(1rem, 3vw, 1.1rem);
+        font-weight: 700;
+        text-align: center;
+
+        b {
+            color: inherit;
+        }
+    }
+
+    .art02v1-avatar {
+        width: clamp(7rem, 12vw, 9rem);
+        max-width: 55%;
+        height: auto;
+        aspect-ratio: 1 / 1;
+        order: 1;
+        align-self: center;
+        object-fit: cover;
+        object-position: center;
+        border: 3px solid var(--art02v1-avatar-ring);
+        border-radius: 50%;
+        box-shadow: 0 0 0 1px var(--art02v1-avatar-outline);
+        filter: none;
+    }
+
+    .art02v1-cardText {
+        margin: 0;
+        order: 3;
+        color: var(--art02v1-copy);
+    }
+
+    .art02v1-cardCta {
+        margin-top: auto;
+        order: 4;
+    }
+
+    @media (min-width: c.$tablet) {
+        width: c.$anchoMedio;
+        padding: c.$padMax 0;
+
+        .art02v1-header,
+        > p {
+            width: c.$anchoMedio;
+            padding-inline: 0;
+        }
+
+        .art02v1-cards {
+            padding-inline: 0;
+            gap: 2rem;
+        }
+
+        .art02v1-card {
+            width: calc(50% - 1rem);
+        }
+    }
+
+    @media (min-width: c.$desktop) {
+        .art02v1-header,
+        > p {
+            width: c.$anchoCorto;
+            min-width: c.$textMin;
+            max-width: c.$textMax;
+        }
+
+        .art02v1-header {
+            row-gap: 3rem;
+        }
+
+        .art02v1-cards {
+            max-width: 90rem;
+            padding-top: 4rem;
+            gap: 3rem;
+        }
+
+        .art02v1-card {
+            width: calc((100% - 9rem) / 4);
+            max-width: 20rem;
+            row-gap: 2rem;
+        }
+    }
+}

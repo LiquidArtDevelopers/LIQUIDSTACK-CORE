@@ -201,6 +201,9 @@
         "modules/blog/resources/project/App/templates/_sectionBlogStack01.html": [
             "sha256:76c05cda2de08d75833c3738e7e0943af289f20b3a46d8a466e0fea9a7da8cdd"
         ],
+        "modules/blog/resources/project/App/views/blog-article.php": [
+            "sha256:be8a4d1fea8b98ff9a2937f788891991e9f9c7d02d5409bf0b1b075c68271069"
+        ],
         "modules/blog/resources/project/App/views/showroom/_blog.php": [
             "sha256:151fe9cb0344c58573a73dd067f7dccdcb8845c47c2f404aeb5469723875019a",
             "sha256:5e52cfd9a8d96503e209cce2dbdd6241475d1966454f957ddcd8d5d01679129c",
@@ -208,6 +211,9 @@
             "sha256:c2c3300613f7afb73b8fa6b11f7f0aba23b20a7ad031effe38a1345b395b6607",
             "sha256:d31b36f2431c4d97efcd97f1456a9eabebf93739f5021b34e75e764ab677c7b0",
             "sha256:e95d141d0e1ecdaacdebd879a3d57d20cdfe8526b21e97a5ee576c3a923132aa"
+        ],
+        "modules/blog/resources/project/src/js/blogArticle.js": [
+            "sha256:4765143c31d2eb5305859d17258b16c447f079685f6ec4a3bfd49bcd069d3ea9"
         ],
         "modules/blog/resources/project/src/js/modules/blog/blogCollectionLoader.js": [
             "sha256:33707432e5eb4c24a3a335c4234e3ddedec3d096f711da1439a0d3918fa62ab0"
@@ -237,6 +243,9 @@
             "sha256:2ad33b5a309c65ebbd4ffd0fa26c6cf6638920ad8335460c7d008260bbc0f3d1",
             "sha256:3cccfd0606cec03147953483d303b09410aff8b9c4b4784c00a13e45c33f2151",
             "sha256:a84140f9ad0ba53c4ce4a5469536b97b0de600d41d5ba344c8884ee27c929e2f"
+        ],
+        "modules/blog/resources/project/src/scss/blogArticle.scss": [
+            "sha256:d65d9b5bb6b8e504ef3eb109ecd9075b2208b547f134106c825fb9112a804de4"
         ],
         "modules/blog/resources/project/src/scss/resources/_artBlogArticle01.scss": [
             "sha256:5fac98ea5b515f29172e191ccac4e45653927c9efd69fd630950326be9dfc0b4",
@@ -842,6 +851,9 @@
             "sha256:3461d08c44bf8dceee193d50ccb6c13402bad2e5d7e6e0461645388606969061",
             "sha256:c17981cd5e58c685fe97f5b60f41af57a67f161ed591395142618dc3dc3b112a"
         ],
+        "resources/scss/_art02v1.scss": [
+            "sha256:9e664a60b30fb999326eaecbf6e3000ead0fa76252002fe66541ab708e7531e6"
+        ],
         "resources/scss/_art03.scss": [
             "sha256:3d159a18970a435d97fab97603000617c501a4c2e1671a3f3c732c5a4e5b2a6c",
             "sha256:47d5c52e02742aa8d26ae631e746e2330514bae1d4e98a3d249c7055ef5e2922",
@@ -865,7 +877,8 @@
             "sha256:dd172d63e1854416f8d070b2673032fb1bc49661d0ee132fc463aaaffc87612b"
         ],
         "resources/scss/_art05v1.scss": [
-            "sha256:84e25d508ee8fba693ab23787708496350856cf50305e1ddb854141086dd2975"
+            "sha256:84e25d508ee8fba693ab23787708496350856cf50305e1ddb854141086dd2975",
+            "sha256:bd665fba4bd04962b1fa752879f583605111790988e0e416bc8b4a539f7fcf95"
         ],
         "resources/scss/_art06.scss": [
             "sha256:0843ae9f7773a9cd7a43834fb333c44b5c15093d8ce589c5e043ab3a681e6d95",
@@ -1018,6 +1031,7 @@
         ],
         "resources/scss/_artAccordion02.scss": [
             "sha256:65e5b362c54002d4e576176f03870c5d31011d734920a7fec8125e9b15a4d244",
+            "sha256:9f3d9e6ff74c0b49a1b644fdc6c5a1c49f9ddc55efbb5ff8cffddb56ac53ed47",
             "sha256:b186c17c3d105cebac732c4f64e535030df02ae73ac97006dd69358c700e09dc"
         ],
         "resources/scss/_artAuth01.scss": [
@@ -1400,7 +1414,8 @@
             "sha256:8ad671c20ce95534bda20339f4baa88608368e3a4097a5aff077762ce2914e44"
         ],
         "src/scss/showroom/cards-grids.scss": [
-            "sha256:3cfd262b541383bf7dd2c5b22e861989f22c4fd602f8cad21f7593395a6b5a5b"
+            "sha256:3cfd262b541383bf7dd2c5b22e861989f22c4fd602f8cad21f7593395a6b5a5b",
+            "sha256:ed58e41ee5a35cd3863943e01fd1a694b45616e1920d2c028841325e6cdeb078"
         ],
         "src/scss/showroom/common.scss": [
             "sha256:4548732f348aed717c9bb071db502a7f4286db4b0f7333d4490ec8789c2996f1",
@@ -1482,6 +1497,9 @@
         "stubs/App/controllers/art02little.php": [
             "sha256:2d95f5aa7fde637028fee28ce49eef0a645f5005b8d7038f2e9cfcba02287f49",
             "sha256:e483d9514c1135e2a3c18ee5626e94a3285ee8d05a7583a024ffc522f21826fc"
+        ],
+        "stubs/App/controllers/art02v1.php": [
+            "sha256:39c84258a93758edb209c040a774a871caa555b6302db881653c43afdbecba77"
         ],
         "stubs/App/controllers/art03.php": [
             "sha256:ec321412146f487b7e481465cbd213bab7361a11935b6338b2e84d7c093f5d15",
@@ -1839,6 +1857,9 @@
         "stubs/App/templates/_art02little.html": [
             "sha256:528a3b2ebdfb169ea49e946ec8adf173f17e07337fd742c82a43de6add25d1e8",
             "sha256:913c80cd881bfbb53ce69b435081d3424deaf094000dc83ecaba37e90842a823"
+        ],
+        "stubs/App/templates/_art02v1.html": [
+            "sha256:fe5b05058fd60ea7d7c28ccf187b71cb9098b573f000d800874f264fa4f6e8f6"
         ],
         "stubs/App/templates/_art03.html": [
             "sha256:17f63229eecb52502759f24495efc0df57157acba3c0e836a8c654cb206136e3"
@@ -2224,6 +2245,7 @@
             "sha256:d31b36f2431c4d97efcd97f1456a9eabebf93739f5021b34e75e764ab677c7b0"
         ],
         "stubs/App/views/showroom/_cards-grids.php": [
+            "sha256:5a08be23fa14abdd3bccc1ef9d715fd51f3ce75a41a0a11f29243848e72a178e",
             "sha256:5c7d15155f34622e7adc83ad7503df2f1070635e4bf8aabcc4aa92444ab63d66",
             "sha256:ede69faed3c8ec6ec9785207e5dc9f8aaa7cdd076880cae3079b6641457b8ce0"
         ],

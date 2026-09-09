@@ -9,6 +9,7 @@ use App\Core\Composer\Command\BlogSitemapCacheInitCommand;
 use App\Core\Composer\Command\BlogAnalyticsPurgeCommand;
 use App\Core\Composer\Command\BlogQaSeedMatrixCommand;
 use App\Core\Composer\Command\BlogUnifiedTextAdoptionCommand;
+use App\Core\Composer\Command\BlogPublicShellAdoptionCommand;
 use App\Core\Composer\Command\MediaInitCommand;
 use App\Core\Composer\Command\MigrateCommand;
 use App\Core\Composer\Command\WebAdminBootstrapCommand;
@@ -42,6 +43,7 @@ final class LiquidStackCommandProvider implements CommandProvider
             new BlogAnalyticsPurgeCommand(),
             new BlogQaSeedMatrixCommand(),
             new BlogUnifiedTextAdoptionCommand(),
+            new BlogPublicShellAdoptionCommand(),
             new WebAdminOnboardCommand(),
             new WebAdminBootstrapCommand(),
             new WebAdminMailDispatchCommand(),

@@ -165,6 +165,80 @@ final class ModuleCatalogTest extends TestCase
         self::assertCount(6, $definition->projectFiles());
     }
 
+    public function testBlogCanPublishItsExactPublicArticleShell(): void
+    {
+        $manifest = $this->manifest('blog', 'liquidstack/blog');
+        $manifest['project_files'] = [
+            [
+                'source' => 'resources/project/App/views/blog-article.php',
+                'target' => 'App/views/blog-article.php',
+                'group' => 'public-article-shell',
+            ],
+            [
+                'source' => 'resources/project/src/js/blogArticle.js',
+                'target' => 'src/js/blogArticle.js',
+                'group' => 'public-article-shell',
+            ],
+            [
+                'source' => 'resources/project/src/scss/blogArticle.scss',
+                'target' => 'src/scss/blogArticle.scss',
+                'group' => 'public-article-shell',
+            ],
+        ];
+        $this->writeManifest('blog', $manifest);
+
+        $projectFiles = ModuleCatalog::fromModulesRoot(
+            $this->fixtureRoot
+        )->get('blog')->projectFiles();
+
+        self::assertSame([
+            'App/views/blog-article.php',
+            'src/js/blogArticle.js',
+            'src/scss/blogArticle.scss',
+        ], array_column($projectFiles, 'target'));
+        self::assertSame([
+            'module:blog:public-article-shell',
+            'module:blog:public-article-shell',
+            'module:blog:public-article-shell',
+        ], array_column($projectFiles, 'group'));
+        self::assertSame([
+            'managed_hash',
+            'managed_hash',
+            'managed_hash',
+        ], array_column($projectFiles, 'policy'));
+    }
+
+    public function testBlogCannotPublishAnArbitraryProjectView(): void
+    {
+        $manifest = $this->manifest('blog', 'liquidstack/blog');
+        $manifest['project_files'] = [[
+            'source' => 'resources/project/App/views/blog.php',
+            'target' => 'App/views/blog.php',
+        ]];
+        $this->writeManifest('blog', $manifest);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('no pertenece al espacio');
+        ModuleCatalog::fromModulesRoot($this->fixtureRoot);
+    }
+
+    public function testForeignModuleCannotPublishTheBlogArticleShell(): void
+    {
+        $manifest = $this->manifest(
+            'webadmin',
+            'liquidstack/webadmin'
+        );
+        $manifest['project_files'] = [[
+            'source' => 'resources/project/App/views/blog-article.php',
+            'target' => 'App/views/blog-article.php',
+        ]];
+        $this->writeManifest('webadmin', $manifest);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('no pertenece al espacio');
+        ModuleCatalog::fromModulesRoot($this->fixtureRoot);
+    }
+
     public function testManifestCannotPublishAnArbitraryApplicationBackend(): void
     {
         $manifest = $this->manifest('blog', 'liquidstack/blog');

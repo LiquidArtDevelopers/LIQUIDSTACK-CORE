@@ -75,6 +75,27 @@
             "group": "public-article-support"
         },
         {
+            "source": "resources/project/App/views/blog-article.php",
+            "target": "App/views/blog-article.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "public-article-shell"
+        },
+        {
+            "source": "resources/project/src/js/blogArticle.js",
+            "target": "src/js/blogArticle.js",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "public-article-shell"
+        },
+        {
+            "source": "resources/project/src/scss/blogArticle.scss",
+            "target": "src/scss/blogArticle.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "public-article-shell"
+        },
+        {
             "source": "resources/project/App/app/_moduleBlogPublicCollections.php",
             "target": "App/app/_moduleBlogPublicCollections.php",
             "type": "file",

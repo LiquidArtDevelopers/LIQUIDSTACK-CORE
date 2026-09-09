@@ -65,6 +65,9 @@ final class BlogPublicAssetSyncTest extends TestCase
             'App/app/_moduleBlogPublicArticle.php',
             'App/app/_moduleBlogPublicCollections.php',
             'App/app/_moduleBlogPublicIndex.php',
+            'App/views/blog-article.php',
+            'src/js/blogArticle.js',
+            'src/scss/blogArticle.scss',
             'App/controllers/_moduleBlogResources.php',
             'src/js/modules/blog/blogCollectionLoader.js',
             'App/controllers/artBlogArticle01.php',
@@ -167,6 +170,15 @@ final class BlogPublicAssetSyncTest extends TestCase
             $this->projectRoot . '/App/app/_moduleBlogPublicIndex.php'
         );
         self::assertFileDoesNotExist(
+            $this->projectRoot . '/App/views/blog-article.php'
+        );
+        self::assertFileDoesNotExist(
+            $this->projectRoot . '/src/js/blogArticle.js'
+        );
+        self::assertFileDoesNotExist(
+            $this->projectRoot . '/src/scss/blogArticle.scss'
+        );
+        self::assertFileDoesNotExist(
             $this->projectRoot . '/App/controllers/sectionBlogGrid01.php'
         );
         self::assertFileDoesNotExist(
@@ -182,6 +194,49 @@ final class BlogPublicAssetSyncTest extends TestCase
             $this->projectRoot . '/src/js/showroom/blog.js'
         );
         self::assertSame(0, $synchronizer->stats()['errors']);
+    }
+
+    public function testCustomizedArticleShellPreservesTheWholeGroup(): void
+    {
+        $coreRoot = dirname(__DIR__, 2);
+        $selection = ModuleSelection::fromRequirementNames(
+            ModuleCatalog::fromCoreRoot($coreRoot),
+            ['liquidstack/blog']
+        );
+        $sync = function () use ($coreRoot, $selection): ManagedFileSynchronizer {
+            $io = new BufferIO();
+            $synchronizer = new ManagedFileSynchronizer(
+                $this->projectRoot,
+                $coreRoot,
+                $io
+            );
+            (new ModuleProjectFileSynchronizer(
+                $this->projectRoot,
+                $io
+            ))->queue($selection, $synchronizer);
+            $synchronizer->apply();
+
+            return $synchronizer;
+        };
+
+        $sync();
+        $view = $this->projectRoot . '/App/views/blog-article.php';
+        $javascript = $this->projectRoot . '/src/js/blogArticle.js';
+        $stylesheet = $this->projectRoot . '/src/scss/blogArticle.scss';
+        $stylesheetBefore = (string) file_get_contents($stylesheet);
+        $this->filesystem->dumpFile($view, 'project-owned article shell');
+        $this->filesystem->remove($javascript);
+
+        $second = $sync();
+
+        self::assertSame(
+            'project-owned article shell',
+            file_get_contents($view)
+        );
+        self::assertFileDoesNotExist($javascript);
+        self::assertSame($stylesheetBefore, file_get_contents($stylesheet));
+        self::assertGreaterThanOrEqual(3, $second->stats()['preserved']);
+        self::assertSame(0, $second->stats()['errors']);
     }
 
     public function testCustomizedVisualSupportCannotBlockTheIndexAdapter(): void

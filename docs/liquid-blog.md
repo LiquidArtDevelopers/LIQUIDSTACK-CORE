@@ -115,12 +115,52 @@ en `App/config/routes/get.php`. Las rutas limpias sin filtros pueden ser
 self-canonical; búsqueda, categorías, orden y archivo siguen siendo estados
 `noindex, follow` con canonical al índice base.
 
-`public_article_view` es opcional. Cuando se declara, debe ser una ruta PHP
-relativa a la raíz del proyecto bajo `App/views/`; el fichero y todos sus
+CORE distribuye con el selector Blog un scaffold neutral formado por
+`App/views/blog-article.php`, `src/js/blogArticle.js` y
+`src/scss/blogArticle.scss`. El grupo se instala y actualiza atómicamente
+mientras mantiene huellas gestionadas; cualquier personalización local congela
+las tres piezas para no mezclar contratos. No contiene marca, dominio, rutas ni
+configuración de un consumidor.
+
+`public_article_view` es opcional por compatibilidad. Cuando se declara, debe
+ser una ruta PHP relativa a la raíz del proyecto bajo `App/views/`; el fichero y todos sus
 directorios deben existir, ser legibles y no contener symlinks. Una ruta
 absoluta, un traversal, una ruta fuera de `App/views` o un fichero ausente
 bloquean Blog de forma cerrada. Omitir la clave conserva el renderer standalone
-compatible y no exige crear una vista en proyectos existentes.
+compatible, pero `doctor` lo identifica mediante un aviso no bloqueante en
+`module_diagnostics.blog.public_shell`.
+
+La adopción es explícita e idempotente:
+
+```bash
+composer liquidstack:blog:adopt-public-shell
+npm run build
+composer liquidstack:blog:adopt-public-shell --apply --yes
+composer liquidstack:doctor
+```
+
+El grupo de tres piezas no es autónomo. Antes del preflight se preparan los
+includes globales, las entradas y dependencias directas JS/SCSS, el binding de
+idioma y un catálogo global JSON válido por cada locale activo. El comando de
+solo lectura comprueba esas piezas, además del selector, la vista, el hook, el
+runtime y los recursos gestionados. También exige que `_globalHead.php` consuma
+`title`, `headline`, `description`, `canonical`, `alternates`, `x_default`,
+`type`, `image`, `published_at` y `updated_at` desde `$pageMeta`, y que
+propague `$cspNonce` a sus scripts. El preflight no crea ni sobrescribe las
+piezas project-owned.
+
+Con el preflight verde, `npm run build` debe terminar correctamente y registrar
+la entrada exacta `src/js/blogArticle.js` en
+`public/.vite/manifest.json`. Hasta comprobar ese artefacto se mantiene el
+renderer standalone y no se aplica `public_article_view`. Solo después,
+`--apply --yes` crea `App/config/modules/blog.php` con la única clave necesaria
+si no existe o añade esa clave a un `return` literal verificable. Nunca
+sustituye rutas, DB, analytics ni otras decisiones del proyecto. Una
+configuración dinámica, enlazada, incompatible o modificada concurrentemente
+se conserva sin cambios y el comando devuelve el snippet manual requerido. A
+continuación, `doctor` valida el shell ya activo y su bundle. En desarrollo,
+`npm run lad` puede resolver la entrada sin un manifest Vite, pero eso no
+invierte el orden del despliegue productivo.
 
 La política de seguridad de todos los shells públicos project-owned se declara,
 solo cuando el proyecto necesita ampliar los defaults, en
@@ -129,7 +169,12 @@ orígenes exactos para `script`, `style`, `image`, `font`, `connect` y `frame`, 
 una `security_policy` que implemente el contrato tipado, pero no ambos. El
 controlador crea un contexto por respuesta, aplica sus cabeceras a la
 `Response` y entrega el mismo nonce al shell. Composer no crea ni sobrescribe
-este fichero.
+este fichero. Si la vista o sus includes referencian el loader estático de
+CookieLad desde un origen externo, ese mismo origen exacto debe estar permitido
+en `security_sources.script`, `style`, `image` y `connect`. `doctor` evalúa la
+política efectiva por el mismo flujo del runtime, no expone su contenido y
+bloquea el shell si falta cualquiera de esas familias; la adopción tampoco
+modifica este config project-owned.
 
 `preview_asset_adapter` también es opcional y solo afecta al documento SSR
 privado que se incrusta en el `iframe` del editor. Debe apuntar a un fichero

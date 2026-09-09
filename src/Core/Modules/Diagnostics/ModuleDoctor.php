@@ -822,6 +822,48 @@ final class ModuleDoctor
                 'La configuracion Blog no cumple el contrato.'
             );
 
+        $publicShellMode = is_string(
+            $payload['public_shell']['mode'] ?? null
+        ) ? $payload['public_shell']['mode'] : 'unavailable';
+        $publicShellReady = (
+            $payload['public_shell']['ready'] ?? false
+        ) === true;
+        if ($publicShellMode === 'standalone' && $publicShellReady) {
+            $checks[] = DiagnosticCheck::warning(
+                'blog.public_shell',
+                'Blog usa el shell publico standalone; configura la vista '
+                    . 'project-owned para integrarlo con el layout global '
+                    . 'del proyecto con '
+                    . 'composer liquidstack:blog:adopt-public-shell.'
+            );
+        } elseif ($publicShellMode === 'standalone') {
+            $checks[] = DiagnosticCheck::error(
+                'blog.public_shell',
+                'El shell publico standalone no puede cargar su politica '
+                    . 'de seguridad; consulta '
+                    . 'module_diagnostics.blog.public_shell.security_config.'
+            );
+        } elseif ($publicShellMode === 'project' && $publicShellReady) {
+            $checks[] = DiagnosticCheck::ok(
+                'blog.public_shell',
+                'El shell publico project-owned de Blog esta completo.'
+            );
+        } elseif ($publicShellMode === 'project') {
+            $checks[] = DiagnosticCheck::error(
+                'blog.public_shell',
+                'El shell publico project-owned de Blog esta configurado '
+                    . 'pero incompleto; consulta '
+                    . 'module_diagnostics.blog.public_shell.'
+            );
+        } else {
+            $checks[] = DiagnosticCheck::error(
+                'blog.public_shell',
+                'No se pudo evaluar el shell publico de Blog porque su '
+                    . 'configuracion no esta disponible; consulta primero '
+                    . 'blog.configuration.'
+            );
+        }
+
         $domExtensionReady = (
             $payload['runtime']['dom_extension']['ready'] ?? false
         ) === true;

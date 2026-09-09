@@ -161,26 +161,844 @@ final class BlogDiagnosticServiceTest extends TestCase
 
     public function testEffectiveConfigurationReportsProjectOwnedArticleView(): void
     {
-        $this->filesystem->mkdir([
-            $this->root . '/App/config/modules',
-            $this->root . '/App/views',
-        ]);
-        $this->filesystem->dumpFile(
-            $this->root . '/App/views/blog-article.php',
-            "<?php declare(strict_types=1);\n"
-        );
-        $this->filesystem->dumpFile(
-            $this->root . '/App/config/modules/blog.php',
-            "<?php\nreturn ['public_article_view' => "
-                . "'App/views/blog-article.php'];\n"
-        );
+        $this->writeProjectArticleShell();
 
-        $data = $this->inspect($this->appliedPlan())->toArray();
+        $data = (new BlogDiagnosticService())->inspect(
+            $this->root,
+            ['es', 'en'],
+            $this->developmentEnvironment(),
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
 
         self::assertTrue($data['configuration']['ready']);
         self::assertSame(
             'App/views/blog-article.php',
             $data['configuration']['effective']['public_article_view']
+        );
+        self::assertSame('project', $data['public_shell']['mode']);
+        self::assertTrue($data['public_shell']['ready']);
+        self::assertTrue($data['public_shell']['complete']);
+        self::assertTrue($data['public_shell']['dependencies']['ready']);
+        self::assertSame(
+            'canonical',
+            $data['public_shell']['dependencies']['profile']
+        );
+        self::assertSame(
+            'ready',
+            $data['public_shell']['metadata_head']['status']
+        );
+        self::assertSame(
+            'default',
+            $data['public_shell']['security_config']['status']
+        );
+        self::assertSame(
+            'not_required_in_development',
+            $data['public_shell']['production_manifest']['status']
+        );
+        self::assertSame([], $data['public_shell']['issues']);
+    }
+
+    public function testCanonicalProjectShellDependenciesAndMetadataAreRequired(): void
+    {
+        $this->writeProjectArticleShell();
+        $this->filesystem->remove(
+            $this->root . '/App/includes/_nav.php'
+        );
+        $this->filesystem->dumpFile(
+            $this->root . '/App/includes/_globalHead.php',
+            "<?php declare(strict_types=1);\n"
+        );
+
+        $data = (new BlogDiagnosticService())->inspect(
+            $this->root,
+            ['es', 'en'],
+            $this->developmentEnvironment(),
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
+
+        self::assertFalse($data['public_shell']['ready']);
+        self::assertFalse($data['public_shell']['dependencies']['ready']);
+        self::assertSame(
+            ['App/includes/_nav.php'],
+            $data['public_shell']['dependencies']['missing']
+        );
+        self::assertSame(
+            'contract_missing',
+            $data['public_shell']['metadata_head']['status']
+        );
+        self::assertContains(
+            'public_shell.dependencies_missing_or_invalid',
+            array_column($data['public_shell']['issues'], 'code')
+        );
+        self::assertContains(
+            'public_shell.metadata_head_incompatible',
+            array_column($data['public_shell']['issues'], 'code')
+        );
+        self::assertContains(
+            'public_shell.project_not_ready',
+            $data['readiness']['blockers']
+        );
+    }
+
+    public function testProjectShellRejectsInvalidSecurityConfigWithoutLeakingIt(): void
+    {
+        $this->writeProjectArticleShell();
+        $this->filesystem->dumpFile(
+            $this->root . '/App/config/modules/blog-public.php',
+            "<?php\nreturn ['unknown' => "
+                . "'https://private-csp.example.test'];\n"
+        );
+
+        $data = (new BlogDiagnosticService())->inspect(
+            $this->root,
+            ['es', 'en'],
+            $this->developmentEnvironment(),
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
+
+        self::assertFalse($data['public_shell']['ready']);
+        self::assertSame('invalid', $data['public_shell']['security_config']['status']);
+        self::assertTrue($data['public_shell']['security_config']['present']);
+        self::assertFalse($data['public_shell']['security_config']['configured']);
+        self::assertContains(
+            'public_shell.security_config_invalid',
+            array_column($data['public_shell']['issues'], 'code')
+        );
+        self::assertContains(
+            'public_shell.security_not_ready',
+            $data['readiness']['blockers']
+        );
+        self::assertStringNotContainsString(
+            'private-csp.example.test',
+            json_encode($data, JSON_THROW_ON_ERROR)
+        );
+    }
+
+    public function testProjectShellRequiresSemanticViewHookAndEntryContracts(): void
+    {
+        $this->writeProjectArticleShell();
+        $this->filesystem->dumpFile(
+            $this->root . '/App/views/blog-article.php',
+            "<?php declare(strict_types=1); ?>\n"
+                . "<!DOCTYPE html><html><head></head><body></body></html>\n"
+        );
+
+        $viewInvalid = $this->inspectProjectShell();
+
+        self::assertSame(
+            'contract_invalid',
+            $viewInvalid['public_shell']['view']['status']
+        );
+        self::assertContains(
+            'public_shell.view_missing_or_invalid',
+            array_column($viewInvalid['public_shell']['issues'], 'code')
+        );
+
+        $this->writeProjectArticleShell();
+        $this->filesystem->dumpFile(
+            $this->root . '/App/app/_moduleBlogPublicArticle.php',
+            "<?php declare(strict_types=1);\n"
+        );
+
+        $hookInvalid = $this->inspectProjectShell();
+
+        self::assertSame(
+            'contract_invalid',
+            $hookInvalid['public_shell']['hook']['status']
+        );
+        self::assertContains(
+            'public_shell.hook_missing_or_invalid',
+            array_column($hookInvalid['public_shell']['issues'], 'code')
+        );
+
+        $this->writeProjectArticleShell();
+        $this->filesystem->dumpFile(
+            $this->root . '/src/js/blogArticle.js',
+            "import '../scss/blogArticle.scss';\n"
+        );
+
+        $entryInvalid = $this->inspectProjectShell();
+
+        self::assertSame(
+            'contract_invalid',
+            $entryInvalid['public_shell']['source_entry']['status']
+        );
+        self::assertContains(
+            'public_shell.source_entry_missing_or_invalid',
+            array_column($entryInvalid['public_shell']['issues'], 'code')
+        );
+    }
+
+    public function testProjectShellAcceptsAliasedLanguageBindingAndCallsItsLocalName(): void
+    {
+        $this->writeProjectArticleShell();
+        $entryPath = $this->root . '/src/js/blogArticle.js';
+        $this->filesystem->dumpFile($entryPath, <<<'JS'
+import '../scss/blogArticle.scss';
+import './_global.js';
+import { bindLanguageNavigation as bindProjectLanguages } from './resources/_languagePreference.mjs';
+
+const unbindLanguageNavigation = bindProjectLanguages(window, document);
+JS
+        );
+
+        $ready = $this->inspectProjectShell();
+
+        self::assertTrue($ready['public_shell']['source_entry']['ready']);
+        self::assertSame(
+            'ready',
+            $ready['public_shell']['source_entry']['status']
+        );
+
+        $this->filesystem->dumpFile($entryPath, <<<'JS'
+import '../scss/blogArticle.scss';
+import './_global.js';
+import { bindLanguageNavigation as bindProjectLanguages } from './resources/_languagePreference.mjs';
+
+const unbindLanguageNavigation = bindLanguageNavigation(window, document);
+JS
+        );
+
+        $wrongLocalName = $this->inspectProjectShell();
+
+        self::assertFalse(
+            $wrongLocalName['public_shell']['source_entry']['ready']
+        );
+        self::assertSame(
+            'contract_invalid',
+            $wrongLocalName['public_shell']['source_entry']['status']
+        );
+    }
+
+    public function testProjectShellRejectsInertDefaultAndNamespaceLanguageImports(): void
+    {
+        $invalidEntries = [
+            'comment' => <<<'JS'
+import '../scss/blogArticle.scss';
+import './_global.js';
+// import { bindLanguageNavigation } from './resources/_languagePreference.mjs';
+bindLanguageNavigation(window, document);
+JS,
+            'template string' => <<<'JS'
+import '../scss/blogArticle.scss';
+import './_global.js';
+const inertContract = `
+import { bindLanguageNavigation } from './resources/_languagePreference.mjs';
+bindLanguageNavigation(window, document);
+`;
+JS,
+            'default import' => <<<'JS'
+import '../scss/blogArticle.scss';
+import './_global.js';
+import bindLanguageNavigation from './resources/_languagePreference.mjs';
+bindLanguageNavigation(window, document);
+JS,
+            'namespace import' => <<<'JS'
+import '../scss/blogArticle.scss';
+import './_global.js';
+import * as languagePreference from './resources/_languagePreference.mjs';
+languagePreference.bindLanguageNavigation(window, document);
+JS,
+        ];
+
+        foreach ($invalidEntries as $case => $entry) {
+            $this->writeProjectArticleShell();
+            $this->filesystem->dumpFile(
+                $this->root . '/src/js/blogArticle.js',
+                $entry
+            );
+
+            $data = $this->inspectProjectShell();
+
+            self::assertSame(
+                'contract_invalid',
+                $data['public_shell']['source_entry']['status'],
+                $case
+            );
+        }
+    }
+
+    public function testPhpShellContractsRejectInvalidAndInertMarkers(): void
+    {
+        $this->writeProjectArticleShell();
+        $headPath = $this->root . '/App/includes/_globalHead.php';
+        $this->filesystem->dumpFile($headPath, <<<'PHP'
+<?php
+
+$inertContract = <<<'CONTRACT'
+$pageMeta['title']; $pageMeta['headline']; $pageMeta['description'];
+$pageMeta['canonical']; $pageMeta['alternates']; $pageMeta['x_default'];
+$pageMeta['type']; $pageMeta['image']; $pageMeta['published_at'];
+$pageMeta['updated_at']; $cspNonce; nonce=
+CONTRACT;
+?>
+<script nonce="fixed"></script>
+PHP
+        );
+
+        $inertHead = $this->inspectProjectShell();
+
+        self::assertSame(
+            'contract_missing',
+            $inertHead['public_shell']['metadata_head']['status']
+        );
+
+        $this->filesystem->dumpFile(
+            $headPath,
+            (string) file_get_contents($headPath) . "\n<?php if ("
+        );
+        $invalidHead = $this->inspectProjectShell();
+
+        self::assertSame(
+            'contract_missing',
+            $invalidHead['public_shell']['metadata_head']['status']
+        );
+
+        $this->writeProjectArticleShell();
+        $this->filesystem->dumpFile(
+            $this->root . '/App/views/blog-article.php',
+            <<<'PHP'
+<?php
+require __DIR__ . '/../app/_moduleBlogPublicArticle.php';
+$inertContract = <<<'CONTRACT'
+$articleHero $articleMain $articleCustomCss $blogPublicRuntimeUrl
+$articleTaxonomiesHtml ->headerHtml() ->mainHtml() ->customCss()
+->publicRuntimeUrl() data-blog-analytics-enabled
+data-blog-analytics-retention-days data-blog-analytics-session-timeout
+data-blog-analytics-page-grant id="smooth-wrapper" id="smooth-content"
+CONTRACT;
+?>
+<!DOCTYPE html>
+<html><head><script nonce="<?= $cspNonce ?>"></script></head>
+<body><div id="smooth-wrapper"><div id="smooth-content"></div></div></body>
+</html>
+PHP
+        );
+
+        $inertView = $this->inspectProjectShell();
+
+        self::assertSame(
+            'contract_invalid',
+            $inertView['public_shell']['view']['status']
+        );
+
+        $this->writeProjectArticleShell();
+        $this->filesystem->dumpFile(
+            $this->root . '/App/app/_moduleBlogPublicArticle.php',
+            <<<'PHP'
+<?php
+$inertContract = <<<'CONTRACT'
+BlogPublicArticleViewModel BlogPublicArticleShellContext $pageMeta['headline']
+$cspNonce ->nonce() $blogPublicRuntimeUrl ->publicRuntimeUrl()
+$articleHero ->headerHtml() $articleMain ->mainHtml()
+$articleCustomCss ->customCss() $articleTaxonomiesHtml $relatedArticles
+CONTRACT;
+PHP
+        );
+
+        $inertHook = $this->inspectProjectShell();
+
+        self::assertSame(
+            'contract_invalid',
+            $inertHook['public_shell']['hook']['status']
+        );
+    }
+
+    public function testEveryLiteralScriptMustUseTheRuntimeCspNonce(): void
+    {
+        $this->writeProjectArticleShell();
+        $headPath = $this->root . '/App/includes/_globalHead.php';
+        $head = (string) file_get_contents($headPath);
+        $this->filesystem->dumpFile(
+            $headPath,
+            $head . "\n<script nonce=\"fixed\"></script>\n"
+        );
+
+        $invalidHead = $this->inspectProjectShell();
+
+        self::assertSame(
+            'contract_missing',
+            $invalidHead['public_shell']['metadata_head']['status']
+        );
+
+        $this->writeProjectArticleShell();
+        $viewPath = $this->root . '/App/views/blog-article.php';
+        $view = (string) file_get_contents($viewPath);
+        $this->filesystem->dumpFile(
+            $viewPath,
+            str_replace(
+                '</head>',
+                '<script nonce="fixed"></script></head>',
+                $view
+            )
+        );
+
+        $invalidView = $this->inspectProjectShell();
+
+        self::assertSame(
+            'contract_invalid',
+            $invalidView['public_shell']['view']['status']
+        );
+    }
+
+    public function testCanonicalViewMustActuallyComposeTheGlobalShell(): void
+    {
+        $this->writeProjectArticleShell();
+        $path = $this->root . '/App/views/blog-article.php';
+        $source = (string) file_get_contents($path);
+        $source = str_replace(
+            "    <?php include __DIR__ . '/../includes/_nav.php' ?>\n",
+            '',
+            $source
+        );
+        $this->filesystem->dumpFile($path, $source);
+
+        $data = $this->inspectProjectShell();
+
+        self::assertSame(
+            'contract_invalid',
+            $data['public_shell']['view']['status']
+        );
+        self::assertContains(
+            'public_shell.view_missing_or_invalid',
+            array_column($data['public_shell']['issues'], 'code')
+        );
+    }
+
+    public function testNonCanonicalProjectViewStillRequiresHookAndEntry(): void
+    {
+        $this->writeProjectArticleShell();
+        $this->filesystem->copy(
+            $this->root . '/App/views/blog-article.php',
+            $this->root . '/App/views/custom-news.php'
+        );
+        $this->filesystem->dumpFile(
+            $this->root . '/App/config/modules/blog.php',
+            "<?php\nreturn ['public_article_view' => "
+                . "'App/views/custom-news.php'];\n"
+        );
+
+        $ready = $this->inspectProjectShell();
+
+        self::assertTrue($ready['public_shell']['ready']);
+        self::assertSame(
+            'project_owned',
+            $ready['public_shell']['dependencies']['profile']
+        );
+
+        $this->filesystem->remove([
+            $this->root . '/App/app/_moduleBlogPublicArticle.php',
+            $this->root . '/src/js/blogArticle.js',
+        ]);
+
+        $incomplete = $this->inspectProjectShell();
+
+        self::assertFalse($incomplete['public_shell']['ready']);
+        self::assertTrue($incomplete['public_shell']['view']['ready']);
+        self::assertFalse($incomplete['public_shell']['hook']['ready']);
+        self::assertFalse($incomplete['public_shell']['source_entry']['ready']);
+    }
+
+    public function testStaticCookieLadLoaderRequiresEffectiveCspSources(): void
+    {
+        $this->writeProjectArticleShell();
+        $headPath = $this->root . '/App/includes/_globalHead.php';
+        $head = file_get_contents($headPath);
+        self::assertIsString($head);
+        $this->filesystem->dumpFile(
+            $headPath,
+            $head . <<<'HTML'
+
+<!-- <script src="https://webda.eus/apis/cookielad/loader.js"></script> -->
+<?php // https://webda.eus/apis/cookielad/loader.js ?>
+HTML
+        );
+
+        $commentedLoader = $this->inspectProjectShell();
+
+        self::assertTrue($commentedLoader['public_shell']['ready']);
+        self::assertFalse(
+            $commentedLoader['public_shell']['security_config']['cookie_lad']['detected']
+        );
+        $this->filesystem->dumpFile(
+            $headPath,
+            $head . <<<'HTML'
+
+<script nonce="<?= $cspNonce ?>" defer src="https://webda.eus/apis/cookielad/loader.js"></script>
+HTML
+        );
+
+        $missingSources = $this->inspectProjectShell();
+
+        self::assertFalse($missingSources['public_shell']['ready']);
+        self::assertSame(
+            'cookielad_sources_missing',
+            $missingSources['public_shell']['security_config']['status']
+        );
+        self::assertTrue(
+            $missingSources['public_shell']['security_config']['cookie_lad']['detected']
+        );
+        self::assertFalse(
+            $missingSources['public_shell']['security_config']['cookie_lad']['ready']
+        );
+        self::assertContains(
+            'public_shell.cookielad_csp_not_ready',
+            array_column($missingSources['public_shell']['issues'], 'code')
+        );
+        self::assertStringNotContainsString(
+            'webda.eus',
+            json_encode($missingSources, JSON_THROW_ON_ERROR)
+        );
+
+        $this->filesystem->dumpFile(
+            $this->root . '/App/config/modules/blog-public.php',
+            <<<'PHP'
+<?php
+
+return [
+    'security_sources' => [
+        'script' => ['https://webda.eus'],
+        'style' => ['https://webda.eus'],
+        'image' => ['https://webda.eus'],
+        'connect' => ['https://webda.eus'],
+    ],
+];
+PHP
+        );
+
+        $authorized = $this->inspectProjectShell();
+
+        self::assertTrue($authorized['public_shell']['ready']);
+        self::assertSame(
+            'configured',
+            $authorized['public_shell']['security_config']['status']
+        );
+        self::assertTrue(
+            $authorized['public_shell']['security_config']['cookie_lad']['ready']
+        );
+        self::assertStringNotContainsString(
+            'webda.eus',
+            json_encode($authorized, JSON_THROW_ON_ERROR)
+        );
+    }
+
+    public function testStandaloneShellIsReadyWithNonBlockingRecommendation(): void
+    {
+        $data = $this->inspect($this->appliedPlan())->toArray();
+
+        self::assertTrue($data['readiness']['blog_ready']);
+        self::assertSame('standalone', $data['public_shell']['mode']);
+        self::assertTrue($data['public_shell']['ready']);
+        self::assertFalse($data['public_shell']['complete']);
+        self::assertSame(
+            'public_shell.configure_project_view',
+            $data['public_shell']['recommendation']
+        );
+        self::assertSame([[
+            'code' => 'public_shell.project_view_recommended',
+            'blocking' => false,
+        ]], $data['public_shell']['issues']);
+        self::assertNotContains(
+            'public_shell.project_not_ready',
+            $data['readiness']['blockers']
+        );
+    }
+
+    public function testConfiguredProjectShellMissingPartsBlocksReadiness(): void
+    {
+        $this->writeProjectArticleShell(false, false);
+
+        $data = (new BlogDiagnosticService())->inspect(
+            $this->root,
+            ['es', 'en'],
+            $this->developmentEnvironment(),
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
+
+        self::assertFalse($data['readiness']['blog_ready']);
+        self::assertSame('project', $data['public_shell']['mode']);
+        self::assertSame('incomplete', $data['public_shell']['status']);
+        self::assertFalse($data['public_shell']['hook']['ready']);
+        self::assertFalse($data['public_shell']['source_entry']['ready']);
+        self::assertContains(
+            'public_shell.project_not_ready',
+            $data['readiness']['blockers']
+        );
+        self::assertSame([
+            'public_shell.hook_missing_or_invalid',
+            'public_shell.source_entry_missing_or_invalid',
+        ], array_column($data['public_shell']['issues'], 'code'));
+    }
+
+    public function testConfiguredMissingProjectViewHasDedicatedShellBlocker(): void
+    {
+        $this->writeProjectArticleShell();
+        $this->filesystem->remove(
+            $this->root . '/App/views/blog-article.php'
+        );
+
+        $data = (new BlogDiagnosticService())->inspect(
+            $this->root,
+            ['es', 'en'],
+            $this->developmentEnvironment(),
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
+
+        self::assertFalse($data['configuration']['ready']);
+        self::assertSame('project', $data['public_shell']['mode']);
+        self::assertNull($data['public_shell']['view']['path']);
+        self::assertFalse($data['public_shell']['view']['ready']);
+        self::assertContains(
+            'configuration.invalid',
+            $data['readiness']['blockers']
+        );
+        self::assertContains(
+            'public_shell.project_not_ready',
+            $data['readiness']['blockers']
+        );
+    }
+
+    public function testProjectShellRequiresCompleteManifestInProduction(): void
+    {
+        $this->writeProjectArticleShell();
+        $service = new BlogDiagnosticService();
+        $environment = [
+            BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                'https://example.test',
+        ];
+
+        $missing = $service->inspect(
+            $this->root,
+            ['es', 'en'],
+            $environment,
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
+        self::assertFalse($missing['readiness']['blog_ready']);
+        self::assertTrue(
+            $missing['public_shell']['production_manifest']['required']
+        );
+        self::assertSame(
+            'missing_or_invalid',
+            $missing['public_shell']['production_manifest']['status']
+        );
+
+        $this->filesystem->mkdir([
+            $this->root . '/public/.vite',
+            $this->root . '/public/assets/css',
+            $this->root . '/public/assets/js',
+        ]);
+        $this->filesystem->dumpFile(
+            $this->root . '/public/assets/css/blogArticle-test.css',
+            '/* fixture */'
+        );
+        $this->filesystem->dumpFile(
+            $this->root . '/public/assets/js/blogArticle-test.js',
+            'export default true;'
+        );
+        $this->filesystem->dumpFile(
+            $this->root . '/public/.vite/manifest.json',
+            json_encode([
+                'src/js/blogArticle.js' => [
+                    'file' => 'assets/js/blogArticle-test.js',
+                    'css' => ['assets/css/blogArticle-test.css'],
+                ],
+            ], JSON_THROW_ON_ERROR)
+        );
+
+        $ready = $service->inspect(
+            $this->root,
+            ['es', 'en'],
+            $environment,
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
+        self::assertTrue($ready['readiness']['blog_ready']);
+        self::assertSame(
+            'ready',
+            $ready['public_shell']['production_manifest']['status']
+        );
+        self::assertTrue($ready['public_shell']['ready']);
+        self::assertSame([], $ready['public_shell']['issues']);
+    }
+
+    public function testProductionManifestKeepsCssAndJavascriptExtensionsDistinct(): void
+    {
+        $this->writeProjectArticleShell();
+        $this->filesystem->mkdir([
+            $this->root . '/public/.vite',
+            $this->root . '/public/assets/css',
+            $this->root . '/public/assets/js',
+        ]);
+        $this->filesystem->dumpFile(
+            $this->root . '/public/assets/js/blogArticle-test.css',
+            '/* wrong extension */'
+        );
+        $this->filesystem->dumpFile(
+            $this->root . '/public/assets/css/blogArticle-test.js',
+            'export default true;'
+        );
+        $this->filesystem->dumpFile(
+            $this->root . '/public/.vite/manifest.json',
+            json_encode([
+                'src/js/blogArticle.js' => [
+                    'file' => 'assets/js/blogArticle-test.css',
+                    'css' => ['assets/css/blogArticle-test.js'],
+                ],
+            ], JSON_THROW_ON_ERROR)
+        );
+
+        $data = (new BlogDiagnosticService())->inspect(
+            $this->root,
+            ['es', 'en'],
+            [BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                'https://example.test'],
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
+
+        self::assertFalse($data['public_shell']['ready']);
+        self::assertSame(
+            'assets_missing_or_invalid',
+            $data['public_shell']['production_manifest']['status']
+        );
+        self::assertContains(
+            'public_shell.production_bundle_not_ready',
+            array_column($data['public_shell']['issues'], 'code')
+        );
+    }
+
+    public function testProductionManifestWalksReachableImportsAndCycles(): void
+    {
+        $this->writeProjectArticleShell();
+        $this->filesystem->mkdir([
+            $this->root . '/public/.vite',
+            $this->root . '/public/assets/css',
+            $this->root . '/public/assets/fonts',
+            $this->root . '/public/assets/js',
+            $this->root . '/public/assets/media',
+        ]);
+        foreach ([
+            'public/assets/css/blogArticle-test.css' => '/* root */',
+            'public/assets/css/shared-test.css' => '/* shared */',
+            'public/assets/fonts/blog-test.woff2' => 'font',
+            'public/assets/js/blogArticle-test.js' => 'export default true;',
+            'public/assets/js/lazy-test.js' => 'export default true;',
+            'public/assets/js/shared-test.js' => 'export default true;',
+            'public/assets/media/cover-test.avif' => 'image',
+        ] as $relativePath => $contents) {
+            $this->filesystem->dumpFile(
+                $this->root . '/' . $relativePath,
+                $contents
+            );
+        }
+        $manifest = [
+            'src/js/blogArticle.js' => [
+                'file' => 'assets/js/blogArticle-test.js',
+                'css' => ['assets/css/blogArticle-test.css'],
+                'imports' => ['_shared.js'],
+                'dynamicImports' => ['_lazy.js'],
+            ],
+            '_shared.js' => [
+                'file' => 'assets/js/shared-test.js',
+                'css' => ['assets/css/shared-test.css'],
+                'assets' => ['assets/media/cover-test.avif'],
+                'imports' => ['_lazy.js'],
+            ],
+            '_lazy.js' => [
+                'file' => 'assets/js/lazy-test.js',
+                'assets' => ['assets/fonts/blog-test.woff2'],
+                'dynamicImports' => ['src/js/blogArticle.js'],
+            ],
+        ];
+        $manifestPath = $this->root . '/public/.vite/manifest.json';
+        $this->filesystem->dumpFile(
+            $manifestPath,
+            json_encode($manifest, JSON_THROW_ON_ERROR)
+        );
+        $environment = [
+            BlogPublicOrigin::PROJECT_ORIGIN_ENV => 'https://example.test',
+        ];
+        $service = new BlogDiagnosticService();
+
+        $ready = $service->inspect(
+            $this->root,
+            ['es', 'en'],
+            $environment,
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
+
+        self::assertTrue($ready['public_shell']['ready']);
+        self::assertSame(
+            'ready',
+            $ready['public_shell']['production_manifest']['status']
+        );
+
+        $this->filesystem->remove(
+            $this->root . '/public/assets/media/cover-test.avif'
+        );
+        $missingNestedAsset = $service->inspect(
+            $this->root,
+            ['es', 'en'],
+            $environment,
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
+
+        self::assertFalse($missingNestedAsset['public_shell']['ready']);
+        self::assertSame(
+            'assets_missing_or_invalid',
+            $missingNestedAsset['public_shell']['production_manifest']['status']
+        );
+
+        $this->filesystem->dumpFile(
+            $this->root . '/public/assets/media/cover-test.avif',
+            'image'
+        );
+        $manifest['src/js/blogArticle.js']['imports'][] = '_missing.js';
+        $this->filesystem->dumpFile(
+            $manifestPath,
+            json_encode($manifest, JSON_THROW_ON_ERROR)
+        );
+        $missingChunk = $service->inspect(
+            $this->root,
+            ['es', 'en'],
+            $environment,
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
+
+        self::assertSame(
+            'assets_missing_or_invalid',
+            $missingChunk['public_shell']['production_manifest']['status']
         );
     }
 
@@ -571,6 +1389,183 @@ SQL);
             'assets.missing_or_invalid',
             $data['readiness']['blockers']
         );
+    }
+
+    /** @return array<string, mixed> */
+    private function inspectProjectShell(): array
+    {
+        return (new BlogDiagnosticService())->inspect(
+            $this->root,
+            ['es', 'en'],
+            $this->developmentEnvironment(),
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
+    }
+
+    private function writeProjectArticleShell(
+        bool $withHook = true,
+        bool $withSourceEntry = true
+    ): void {
+        $this->filesystem->mkdir([
+            $this->root . '/App/app',
+            $this->root . '/App/config/languages/global',
+            $this->root . '/App/config/modules',
+            $this->root . '/App/controllers',
+            $this->root . '/App/includes',
+            $this->root . '/App/templates',
+            $this->root . '/App/views',
+            $this->root . '/src/js',
+            $this->root . '/src/js/resources',
+            $this->root . '/src/scss/resources',
+        ]);
+        $this->filesystem->dumpFile(
+            $this->root . '/App/views/blog-article.php',
+            <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/../app/_moduleBlogPublicArticle.php';
+?>
+<!DOCTYPE html>
+<html lang="<?= $escape($lang) ?>"<?php if ($blogArticle->analyticsEnabled()): ?>
+      data-blog-analytics-enabled="true"
+      data-blog-analytics-retention-days="<?= $escape($blogArticle->analyticsRetentionDays()) ?>"
+      data-blog-analytics-session-timeout="<?= $escape($blogArticle->analyticsSessionTimeoutSeconds()) ?>"
+      data-blog-analytics-page-grant="<?= $escape($blogArticle->analyticsPageGrant()) ?>"<?php endif ?>>
+<head>
+    <?php include_once __DIR__ . '/../includes/_globalHead.php' ?>
+    <style nonce="<?= $escape($cspNonce) ?>"><?= $articleCustomCss ?></style>
+    <script nonce="<?= $escape($cspNonce) ?>" src="<?= $escape($blogPublicRuntimeUrl) ?>"></script>
+</head>
+<body>
+    <?php include_once __DIR__ . '/../includes/_globalBody.php' ?>
+    <?php include __DIR__ . '/../includes/_nav.php' ?>
+    <div id="smooth-wrapper">
+        <div id="smooth-content">
+            <?= $articleHero ?>
+            <?= $articleTaxonomiesHtml ?>
+            <?= $articleMain ?>
+            <?php include __DIR__ . '/../includes/_footer.php' ?>
+        </div>
+    </div>
+</body>
+</html>
+PHP
+        );
+        $this->filesystem->dumpFile(
+            $this->root . '/App/config/modules/blog.php',
+            "<?php\nreturn ['public_article_view' => "
+                . "'App/views/blog-article.php'];\n"
+        );
+        if ($withHook) {
+            $this->filesystem->dumpFile(
+                $this->root . '/App/app/_moduleBlogPublicArticle.php',
+                <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+use App\Core\Blog\Http\BlogPublicArticleShellContext;
+use App\Core\Blog\Http\BlogPublicArticleViewModel;
+
+$pageMeta = [
+    'headline' => $blogArticle->h1(),
+];
+$cspNonce = $blogArticleShell->nonce();
+$blogPublicRuntimeUrl = $blogArticleShell->publicRuntimeUrl();
+$articleHero = $blogArticle->headerHtml();
+$articleMain = $blogArticle->mainHtml();
+$articleCustomCss = $blogArticle->customCss();
+$articleTaxonomiesHtml = '';
+$relatedArticles = [];
+PHP
+            );
+        }
+        if ($withSourceEntry) {
+            $this->filesystem->dumpFile(
+                $this->root . '/src/js/blogArticle.js',
+                <<<'JS'
+import '../scss/blogArticle.scss';
+import './_global.js';
+import { bindLanguageNavigation } from './resources/_languagePreference.mjs';
+
+const unbindLanguageNavigation = bindLanguageNavigation(window, document);
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(unbindLanguageNavigation);
+}
+JS
+            );
+        }
+        foreach (['es', 'en'] as $language) {
+            $this->filesystem->dumpFile(
+                $this->root . '/App/config/languages/global/'
+                    . $language . '.json',
+                "{}\n"
+            );
+        }
+        $dependencies = [
+            'App/includes/_globalHead.php' =>
+                <<<'PHP'
+<?php
+
+$metadataFixture = [
+    $pageMeta['title'] ?? '',
+    $pageMeta['headline'] ?? '',
+    $pageMeta['description'] ?? '',
+    $pageMeta['canonical'] ?? '',
+    $pageMeta['alternates'] ?? [],
+    $pageMeta['x_default'] ?? null,
+    $pageMeta['type'] ?? 'website',
+    $pageMeta['image'] ?? null,
+    $pageMeta['published_at'] ?? null,
+    $pageMeta['updated_at'] ?? null,
+];
+$nonceAttribute = ' nonce="' . $cspNonce . '"';
+?>
+<script<?= $nonceAttribute ?>></script>
+PHP,
+            'App/includes/_globalBody.php' => "<?php\n",
+            'App/includes/_nav.php' => "<?php\n",
+            'App/includes/_footer.php' => "<?php\n",
+            'App/controllers/_moduleBlogResources.php' => "<?php\n",
+            'App/controllers/sectionBlogRelated01.php' => "<?php\n",
+            'App/templates/_sectionBlogRelated01.html' => "<section></section>\n",
+            'App/controllers/moduleButtonType04.php' => "<?php\n",
+            'App/templates/_moduleButtonType04.html' => "<a></a>\n",
+            'src/js/_global.js' => "export default true;\n",
+            'src/js/resources/_languagePreference.mjs' =>
+                "export const bindLanguageNavigation = () => () => {};\n",
+            'src/scss/blogArticle.scss' => "/* fixture */\n",
+            'src/scss/_config.scss' => "/* fixture */\n",
+            'src/scss/_global.scss' => "/* fixture */\n",
+            'src/scss/resources/_hero00.scss' => "/* fixture */\n",
+            'src/scss/resources/_hero06.scss' => "/* fixture */\n",
+            'src/scss/resources/_hero07.scss' => "/* fixture */\n",
+            'src/scss/resources/_artBlogArticle01.scss' => "/* fixture */\n",
+            'src/scss/resources/_moduleButtonType04.scss' => "/* fixture */\n",
+            'src/scss/resources/_sectionBlogRelated01.scss' => "/* fixture */\n",
+        ];
+        foreach ($dependencies as $relativePath => $contents) {
+            $this->filesystem->dumpFile(
+                $this->root . '/' . $relativePath,
+                $contents
+            );
+        }
+    }
+
+    /** @return array<string, string> */
+    private function developmentEnvironment(): array
+    {
+        return [
+            BlogPublicOrigin::PROJECT_ORIGIN_ENV =>
+                'http://localhost:1309',
+            'DEV_MODE' => '1',
+        ];
     }
 
     private function inspect(

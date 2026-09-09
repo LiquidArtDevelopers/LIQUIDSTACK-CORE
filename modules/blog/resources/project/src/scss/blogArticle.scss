@@ -1,0 +1,99 @@
+@use './config' as c;
+@use './global';
+@use './resources/hero00';
+@use './resources/hero06';
+@use './resources/hero07';
+@use './resources/artBlogArticle01';
+@use './resources/moduleButtonType04';
+@use './resources/sectionBlogRelated01';
+
+body.blog-article-page {
+  background: c.$color00;
+}
+
+.blog-article {
+  min-height: 50vh;
+  padding-block: clamp(1rem, 3vw, 2.5rem)
+    clamp(4rem, 10vw, 8rem);
+  color: c.$color01;
+  background: c.$color00;
+
+  > p,
+  > .blogDocument:not(.blogDocument--layout) {
+    width: min(100%, 50rem);
+    margin-inline: auto;
+    min-width: 0;
+  }
+
+  > p {
+    color: c.$color01;
+    font-size: clamp(1rem, 1.8vw, 1.15rem);
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+
+    + p {
+      margin-top: 1.5rem;
+    }
+  }
+
+  .blogDocument__paragraph,
+  .blogDocument__listItem,
+  .blogDocument__calloutContent {
+    color: c.$color01;
+    font-size: clamp(1rem, 1.8vw, 1.15rem);
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+  }
+
+  .blogDocument a {
+    color: c.$color02;
+    text-decoration: underline;
+    text-decoration-thickness: 0.08em;
+    text-underline-offset: 0.2em;
+
+    &:hover {
+      color: c.$color01;
+    }
+
+    &:focus-visible {
+      border-radius: 0.15rem;
+      outline: 0.18rem solid c.$color02;
+      outline-offset: 0.2rem;
+    }
+  }
+
+  &.artBlogArticle01--cover {
+    > .blogDocument--cover:not(.blogDocument--layout) {
+      width: 100%;
+
+      > * {
+        width: min(100%, 50rem);
+        margin-inline: auto;
+      }
+    }
+  }
+
+  > .artBlogArticle01-footer {
+    position: static;
+    z-index: auto;
+    inset: auto;
+    width: min(100%, 50rem);
+    height: auto;
+    min-height: 0;
+    padding: clamp(1rem, 4vw, 2rem) 0 0;
+    display: block;
+    background: transparent;
+    transition: none;
+
+    &.artBlogArticle01-footer--newsIndex {
+      padding-block: clamp(2rem, 4vw, 3rem);
+      display: flex;
+      justify-content: center;
+      border-top: 0;
+
+      .artBlogArticle01-newsIndexAction {
+        box-shadow: none;
+      }
+    }
+  }
+}

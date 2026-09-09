@@ -544,6 +544,17 @@ final class ModuleDefinition
         }
 
         if ($type === 'file') {
+            if (
+                $id === 'blog'
+                && in_array($target, [
+                    'App/views/blog-article.php',
+                    'src/js/blogArticle.js',
+                    'src/scss/blogArticle.scss',
+                ], true)
+            ) {
+                return;
+            }
+
             $moduleClassId = implode('', array_map(
                 static fn (string $part): string => ucfirst($part),
                 explode('-', $id)

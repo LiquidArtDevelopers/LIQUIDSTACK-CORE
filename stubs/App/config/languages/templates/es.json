@@ -787,6 +787,63 @@
         "text": "El último indicador mide ritmo y respuesta del diseño, cerrando una matriz de ocho ejemplos suficientemente extensos para validar lectura, distribución y comportamiento responsive."
     },
 
+    "art02v1_00_headerPrimary": {
+        "text": "art02v1 · cuatro perfiles con retrato circular"
+    },
+    "art02v1_00_intro_p": {
+        "text": "Matrix ipsum reúne cuatro perfiles de prueba para comprobar cómo conviven nombres, cargos, retratos y descripciones extensas dentro de una composición editorial clara, equilibrada y adaptable."
+    },
+    "art02v1_00_p1": {
+        "text": "Cada ficha utiliza una imagen fotográfica circular y una superficie independiente para revisar recortes, alturas, contraste, ritmo de lectura y alineación cuando el contenido cambia entre perfiles."
+    },
+    "art02v1_00_p2": {
+        "text": "La última fila permanece centrada y los CTA opcionales conservan su posición aunque las descripciones tengan longitudes diferentes."
+    },
+    "art02v1_00_headerSecondary_a": {
+        "text": "<b>Morpheus</b><br>Capitán de la tripulación"
+    },
+    "art02v1_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Retrato dummy del perfil de Morpheus",
+        "title": "Morpheus, capitán de la tripulación"
+    },
+    "art02v1_00_a_p": {
+        "text": "Morpheus interpreta las señales del sistema, ordena las prioridades del equipo y mantiene visible el objetivo común cuando aparecen decisiones complejas dentro de Matrix ipsum."
+    },
+    "art02v1_00_headerSecondary_b": {
+        "text": "<b>Trinity</b><br>Especialista en operaciones"
+    },
+    "art02v1_00_b_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Retrato dummy del perfil de Trinity",
+        "title": "Trinity, especialista en operaciones"
+    },
+    "art02v1_00_b_p": {
+        "text": "Trinity conecta estrategia y ejecución, detecta cambios con rapidez y comprueba que cada acción conserve coherencia con el recorrido acordado por la tripulación."
+    },
+    "art02v1_00_headerSecondary_c": {
+        "text": "<b>Neo</b><br>Analista del código"
+    },
+    "art02v1_00_c_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Retrato dummy del perfil de Neo",
+        "title": "Neo, analista del código"
+    },
+    "art02v1_00_c_p": {
+        "text": "Neo examina patrones, contrasta hipótesis y convierte información dispersa en decisiones comprensibles para que el resto del equipo pueda avanzar con una referencia compartida."
+    },
+    "art02v1_00_headerSecondary_d": {
+        "text": "<b>Niobe</b><br>Responsable de navegación"
+    },
+    "art02v1_00_d_img": {
+        "src": "assets/img/dummy/dummy04.avif",
+        "alt": "Retrato dummy del perfil de Niobe",
+        "title": "Niobe, responsable de navegación"
+    },
+    "art02v1_00_d_p": {
+        "text": "Niobe compara rutas posibles, anticipa riesgos y ajusta el rumbo sin perder estabilidad, incluso cuando el contexto exige revisar el plan inicial de Matrix ipsum."
+    },
+
     "art32_00_headerPrimary": {
         "text": "art32 · ocho cards con iconos en cajas"
     },
