@@ -4,6 +4,19 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.27.0] - 2026-09-09
+
+### Añadido
+- `art05v1` convierte la variante fotográfica de tarjetas probada en ARRO en
+  un recurso autónomo, multiinstancia y personalizable, con una, dos y tres
+  columnas según viewport y últimas filas centradas.
+
+### Cambiado
+- `art05` acota el tamaño fluido de los encabezados de ficha para mantener su
+  jerarquía visual con copys largos.
+- `sectionBlogSlider02` reduce el tamaño de los títulos de tarjeta y añade
+  respiración vertical responsive al viewport del carrusel.
+
 ## [1.26.2] - 2026-09-06
 
 ### Cambiado

@@ -67,6 +67,7 @@
             }
             >:nth-child(1):not(img){
                 order: 1;
+                font-size: clamp(1rem, 3vw, 1.5rem);
             }
             p:not(.firma){
                 order: 2;
@@ -91,7 +92,6 @@
         }
     }
 }
-
 
 
 

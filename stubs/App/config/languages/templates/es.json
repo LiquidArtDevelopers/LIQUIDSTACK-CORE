@@ -1859,6 +1859,55 @@
         "text": "Choice is an illusion."
     },
 
+    "art05v1_00_headerPrimary": {
+        "text": "art05v1"
+    },
+    "art05v1_00_intro_p": {
+        "text": "You take the blue pill, the story ends. You take the red pill, you stay in Wonderland."
+    },
+    "art05v1_00_headerSecondary_a": {
+        "text": "The Matrix has you."
+    },
+    "art05v1_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Retrato Matrix de la ficha 01",
+        "title": "Matrix ipsum 01 para art05v1"
+    },
+    "art05v1_00_a_p": {
+        "text": "We are still here."
+    },
+    "art05v1_00_a_firma": {
+        "text": "I know kung fu."
+    },
+    "art05v1_00_headerSecondary_b": {
+        "text": "Choice is an illusion."
+    },
+    "art05v1_00_b_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Retrato Matrix de la ficha 02",
+        "title": "Matrix ipsum 02 para art05v1"
+    },
+    "art05v1_00_b_p": {
+        "text": "The body cannot live without the mind."
+    },
+    "art05v1_00_b_firma": {
+        "text": "The system is watching."
+    },
+    "art05v1_00_headerSecondary_c": {
+        "text": "You are the One."
+    },
+    "art05v1_00_c_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Retrato Matrix de la ficha 03",
+        "title": "Matrix ipsum 03 para art05v1"
+    },
+    "art05v1_00_c_p": {
+        "text": "Fate, it seems, is not without a sense of irony."
+    },
+    "art05v1_00_c_firma": {
+        "text": "Red pill or blue pill."
+    },
+
     "art03_00_b_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art03_00_b_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art03_00_b_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",

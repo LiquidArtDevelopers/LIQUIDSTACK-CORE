@@ -104,6 +104,18 @@ final class CanonicalResourceRegressionTest extends TestCase
         self::assertStringNotContainsString('1309//assets/', $html);
     }
 
+    public function testArt05KeepsCardHeadingSizeBounded(): void
+    {
+        $scss = (string) file_get_contents(
+            dirname(__DIR__, 2) . '/resources/scss/_art05.scss'
+        );
+
+        self::assertStringContainsString(
+            'font-size: clamp(1rem, 3vw, 1.5rem);',
+            $scss
+        );
+    }
+
     public function testHero02UsesEditableTitleKeyWithoutPlaceholders(): void
     {
         $GLOBALS['hero02_video_webm'] = (object) [

@@ -15,6 +15,7 @@ echo controller('art01', 0, [
 ]);
 
 echo controller('art05', 0, ['items' => 3]);
+echo controller('art05v1', 0, ['items' => 3]);
 echo controller('art07', 0);
 
 echo controller('art14', 0, [

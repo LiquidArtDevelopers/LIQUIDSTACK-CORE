@@ -1868,6 +1868,55 @@
         "text": "Nora Salvat"
     },
 
+    "art05v1_00_headerPrimary": {
+        "text": "art05v1"
+    },
+    "art05v1_00_intro_p": {
+        "text": "Nuestros clientes describen cómo la instalación solar optimiza sus costes energéticos y refuerza su compromiso con la sostenibilidad, destacando la cercanía del equipo técnico y la monitorización continua que ofrecemos en cada proyecto residencial."
+    },
+    "art05v1_00_headerSecondary_a": {
+        "text": "Consumo optimizado en vivienda unifamiliar"
+    },
+    "art05v1_00_a_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Retrato Matrix de la ficha 01",
+        "title": "Matrix ipsum 01 para art05v1"
+    },
+    "art05v1_00_a_p": {
+        "text": "Diseñamos campos solares escalables que se adaptan al consumo real de cada sede, priorizando inversores híbridos y cableado eficiente. El equipo coordina permisos y puesta en marcha sin detener los turnos críticos de producción."
+    },
+    "art05v1_00_a_firma": {
+        "text": "Laura Pérez"
+    },
+    "art05v1_00_headerSecondary_b": {
+        "text": "Cadena hotelera con autoconsumo activo"
+    },
+    "art05v1_00_b_img": {
+        "src": "assets/img/dummy/dummy02.avif",
+        "alt": "Retrato Matrix de la ficha 02",
+        "title": "Matrix ipsum 02 para art05v1"
+    },
+    "art05v1_00_b_p": {
+        "text": "Automatizamos cubiertas y salas técnicas con paneles ligeros que respetan la estética del complejo. Gestionamos con la distribuidora el vertido de excedentes y ajustamos la curva de consumo según ocupación y demanda estacional."
+    },
+    "art05v1_00_b_firma": {
+        "text": "Carlos Medina"
+    },
+    "art05v1_00_headerSecondary_c": {
+        "text": "Cooperativa agro instala bombeo eficiente"
+    },
+    "art05v1_00_c_img": {
+        "src": "assets/img/dummy/dummy03.avif",
+        "alt": "Retrato Matrix de la ficha 03",
+        "title": "Matrix ipsum 03 para art05v1"
+    },
+    "art05v1_00_c_p": {
+        "text": "Implementamos bombeo solar en comunidades de regantes con variadores de frecuencia y depósitos inteligentes. La plataforma predice necesidades hídricas y coordina mantenimientos para evitar paradas en temporada alta de cosecha."
+    },
+    "art05v1_00_c_firma": {
+        "text": "Uxue Garaia"
+    },
+
     "art03_00_b_avif_src01": "assets/img/dummy/dummy_1200.avif 1200w",
     "art03_00_b_avif_src02": "assets/img/dummy/dummy_1800.avif 1800w",
     "art03_00_b_img_src01": "assets/img/dummy/dummy_1200.avif 1200w",

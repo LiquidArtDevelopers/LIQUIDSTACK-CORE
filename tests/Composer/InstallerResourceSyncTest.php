@@ -98,6 +98,7 @@ final class InstallerResourceSyncTest extends TestCase
             'moduleButtonType03',
             'moduleButtonType04',
             'moduleTable01',
+            'art05v1',
             'art20',
             'art21',
             'art22',
@@ -519,6 +520,7 @@ final class InstallerResourceSyncTest extends TestCase
             self::assertArrayHasKey('art32_00_h_img', $language);
             self::assertArrayHasKey('art33_00_headerPrimary', $language);
             self::assertArrayHasKey('art34_00_headerPrimary', $language);
+            self::assertArrayHasKey('art05v1_00_headerPrimary', $language);
             self::assertArrayHasKey(
                 'moduleFormContact01_00_legend',
                 $language

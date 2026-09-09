@@ -59,6 +59,14 @@ Al ejecutar `composer install` o `composer update` en un proyecto que consume es
 - `resources/img` -> `public/assets/img`.
 - `resources/video` -> `public/assets/video`.
 
+### Convención de variantes visuales
+
+Un sufijo `vN`, como `art05v1`, identifica una variante visual independiente
+derivada de un recurso anterior. No expresa la versión SemVer de CORE: cada
+variante conserva controlador, template, SCSS y prefijo de idiomas propios,
+puede evolucionar sin modificar el contrato del recurso original y no depende
+de modificadores alojados en una vista consumidora.
+
 3. Se fusionan dependencias de `package.core.json` en el `package.json` del proyecto consumidor.
 4. Se sincronizan el supervisor local `App/tools/liquidstack-dev.mjs` y el
    router `App/tools/php-dev-router.php`. Cuando el script `lad` conserva una

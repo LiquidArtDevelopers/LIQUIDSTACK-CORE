@@ -47,6 +47,7 @@ final class ShowroomHeadingCopyTest extends TestCase
             'art03_00_headerPrimary' => ['art03'],
             'art04_00_headerPrimary' => ['art04'],
             'art05_00_headerPrimary' => ['art05'],
+            'art05v1_00_headerPrimary' => ['art05v1'],
             'art06_00_headerPrimary' => ['art06'],
             'art07_00_h3_1' => ['art07'],
             'art08_00_headerPrimary' => ['art08'],

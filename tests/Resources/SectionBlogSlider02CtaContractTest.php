@@ -72,8 +72,10 @@ final class SectionBlogSlider02CtaContractTest extends TestCase
             'span {',
             'color: inherit;',
             "span[aria-hidden='true']",
+            'padding: 2rem 0;',
+            'padding: 4rem 0;',
             'border-inline-start: 0.25rem solid c.$color02;',
-            'font-size: clamp(1.45rem, 4.5vw, 2rem);',
+            'font-size: clamp(1.1rem, 4.5vw, 1.3rem);',
         ] as $contract) {
             self::assertStringContainsString($contract, $scss);
         }

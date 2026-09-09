@@ -1,0 +1,117 @@
+@use '../config' as c;
+
+/* art05v1: variante fotográfica en tarjetas derivada de art05. */
+.art05v1 {
+    --art05v1-heading-color: #{c.$color03};
+    --art05v1-copy-color: #{c.$color01};
+    --art05v1-card-background: #{c.$color00bis};
+    --art05v1-card-border: #{c.$color03bis};
+    --art05v1-card-shadow: 0 0.75rem 2rem #{c.$color01bis5};
+
+    width: c.$anchoFull;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1.5rem;
+
+    @media (min-width: c.$tablet) {
+        width: c.$anchoMedio;
+    }
+
+    .art05v1-header {
+        width: 100%;
+        padding: c.$padMin;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 1.5rem;
+        text-align: center;
+
+        .art05v1-title {
+            color: var(--art05v1-heading-color);
+        }
+
+        > p {
+            color: var(--art05v1-copy-color);
+
+            @media (min-width: c.$tablet) {
+                width: c.$anchoCorto;
+                max-width: c.$textMax;
+            }
+        }
+    }
+
+    .art05v1-cards {
+        width: 100%;
+        padding-inline: c.$padMin;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+        justify-content: center;
+        gap: 1rem;
+
+        @media (min-width: c.$tablet) {
+            padding-inline: 0;
+        }
+    }
+
+    .art05v1-card {
+        width: 100%;
+        min-width: 0;
+        padding: c.$padMin;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 1rem;
+        border: 1px solid var(--art05v1-card-border);
+        border-radius: 0.5rem;
+        background-color: var(--art05v1-card-background);
+        box-shadow: var(--art05v1-card-shadow);
+
+        @media (min-width: c.$tablet) {
+            width: 48%;
+        }
+
+        @media (min-width: c.$desktop) {
+            width: 31%;
+            max-width: 28rem;
+        }
+    }
+
+    .art05v1-cardTitle {
+        order: 1;
+        color: var(--art05v1-heading-color);
+        font-size: clamp(1rem, 3vw, 1.5rem);
+        font-weight: 700;
+        text-align: center;
+        overflow-wrap: anywhere;
+    }
+
+    .art05v1-cardMedia {
+        order: 0;
+        width: 100%;
+        max-width: none;
+        display: block;
+        border-radius: 0.25rem;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+    }
+
+    .art05v1-cardText {
+        order: 2;
+        width: 100%;
+        color: var(--art05v1-copy-color);
+        text-align: center;
+    }
+
+    .art05v1-cardSignature {
+        order: 3;
+        margin-top: auto;
+        color: var(--art05v1-heading-color);
+        font-style: italic;
+        text-align: center;
+    }
+}
