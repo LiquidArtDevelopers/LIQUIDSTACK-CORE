@@ -48,6 +48,41 @@ final class ManagedFileRegistryTest extends TestCase
         );
     }
 
+    public function testFooterControllerAndTemplateUpdateAsOneManagedResource(): void
+    {
+        foreach ([
+            'stubs/App/controllers/footerInfo01.php',
+            'stubs/App/templates/_footerInfo01.html',
+        ] as $sourceId) {
+            self::assertSame(
+                ManagedFileRegistry::POLICY_MANAGED,
+                ManagedFileRegistry::policyForSource($sourceId)
+            );
+            self::assertSame(
+                'resource:footerInfo01',
+                ManagedFileRegistry::groupForSource($sourceId)
+            );
+        }
+    }
+
+    public function testLegalRuntimeUpdatesByHashWhileStylesRemainASeed(): void
+    {
+        self::assertSame(
+            ManagedFileRegistry::POLICY_MANAGED,
+            ManagedFileRegistry::policyForSource('resources/js/_terminos.js')
+        );
+        self::assertSame(
+            'resource:terminos',
+            ManagedFileRegistry::groupForSource('resources/js/_terminos.js')
+        );
+        self::assertSame(
+            ManagedFileRegistry::POLICY_INSTALL_IF_MISSING,
+            ManagedFileRegistry::policyForSource(
+                'resources/scss/_moduleTerminos.scss'
+            )
+        );
+    }
+
     public function testTextFingerprintsIgnoreOnlyTrailingEofWhitespace(): void
     {
         $path = 'resources/scss/_sample.scss';

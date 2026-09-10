@@ -1283,10 +1283,11 @@ final class ManagedFileSynchronizer
 
         $stateEntry = $this->stateFiles[$item['target_id']] ?? null;
 
-        if (
+        $stateMatchesSource =
             is_array($stateEntry)
-            && ($stateEntry['source'] ?? null) === $item['source_id']
-        ) {
+            && ($stateEntry['source'] ?? null) === $item['source_id'];
+
+        if ($stateMatchesSource) {
             $installedFingerprints = $this->readFingerprintList(
                 $stateEntry['fingerprints'] ?? []
             );
@@ -1303,12 +1304,6 @@ final class ManagedFileSynchronizer
                     'source_fingerprints' => $sourceFingerprints,
                 ];
             }
-
-            return [
-                'action' => 'preserve',
-                'reason' => 'se modificó después de instalarlo CORE',
-                'source_fingerprints' => $sourceFingerprints,
-            ];
         }
 
         $historicalFingerprints = $this->history[
@@ -1324,6 +1319,14 @@ final class ManagedFileSynchronizer
             return [
                 'action' => 'update',
                 'reason' => 'coincide con una versión histórica de CORE',
+                'source_fingerprints' => $sourceFingerprints,
+            ];
+        }
+
+        if ($stateMatchesSource) {
+            return [
+                'action' => 'preserve',
+                'reason' => 'se modificó después de instalarlo CORE',
                 'source_fingerprints' => $sourceFingerprints,
             ];
         }

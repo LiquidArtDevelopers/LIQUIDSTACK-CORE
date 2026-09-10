@@ -15,11 +15,8 @@ final class ManagedFileRegistry
      * @var list<string>
      */
     private const INSTALL_IF_MISSING_FILES = [
-        'resources/js/_terminos.js',
         'resources/scss/_moduleTerminos.scss',
         'stubs/App/class/_comprobaciones.php',
-        'stubs/App/controllers/footerInfo01.php',
-        'stubs/App/templates/_footerInfo01.html',
         'stubs/App/templates/_formContactAdmin.html',
         'stubs/App/templates/_formContactUser.html',
     ];

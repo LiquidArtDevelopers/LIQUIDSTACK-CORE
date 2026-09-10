@@ -131,6 +131,11 @@ publicación reutiliza el sincronizador seguro de CORE:
 - no usa mirrors destructivos;
 - no ejecuta migraciones durante `composer install` o `composer update`.
 
+El estado de la última copia instalada y el historial canónico de huellas de CORE son
+evidencias acumulativas. Si el estado queda desfasado pero el destino coincide
+exactamente con una huella histórica, la copia continúa siendo gestionada; solo
+un contenido desconocido se considera personalización local.
+
 Cada entrada publicada forma un grupo de actualización independiente por
 defecto. Un manifiesto puede dar el mismo `group` al controlador, template,
 SCSS y JS de un recurso para actualizarlos atómicamente, sin congelar por ello

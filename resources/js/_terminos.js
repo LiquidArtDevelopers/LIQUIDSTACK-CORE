@@ -1,5 +1,7 @@
 const nombre_empresa = import.meta.env.VITE_BUSINESS_NAME || "(NOMBRE EMPRESA)";
-const direccion = import.meta.env.VITE_BUSINESS_ADRESS || "(DIRECCIÓN EMPRESA)";
+const direccion = import.meta.env.VITE_BUSINESS_ADDRESS
+    || import.meta.env.VITE_BUSINESS_ADRESS
+    || "(DIRECCIÓN EMPRESA)";
 const cif = import.meta.env.VITE_BUSINESS_CIF || "(CIF EMPRESA)";
 const web = import.meta.env.VITE_BUSINESS_WEB || "(WEB EMPRESA)";
 const email_contacto = import.meta.env.VITE_BUSINESS_CONTACT || "(CORREO EMPRESA)";

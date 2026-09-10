@@ -78,6 +78,33 @@ final class DevelopmentViteHeadIntegratorTest extends TestCase
         );
     }
 
+    public function testRecognizesEscapedNoncedHeadWithoutRewriting(): void
+    {
+        $path = $this->headPath();
+        $contents = $this->canonicalEscapedNoncedHead();
+        $this->filesystem->dumpFile($path, $contents);
+
+        self::assertTrue(
+            DevelopmentViteHeadIntegrator::isIntegrated($this->projectRoot)
+        );
+
+        $io = new BufferIO();
+        self::assertTrue(DevelopmentViteHeadIntegrator::integrate(
+            $this->projectRoot,
+            $this->filesystem,
+            $io
+        ));
+        self::assertSame($contents, file_get_contents($path));
+        self::assertSame(
+            2,
+            substr_count($contents, 'liquidstack_dev_vite_origin()')
+        );
+        self::assertStringContainsString(
+            'already integrated',
+            $io->getOutput()
+        );
+    }
+
     #[DataProvider('unsafeHeadProvider')]
     public function testPreservesCustomOrAmbiguousHead(string $contents): void
     {
@@ -157,6 +184,44 @@ final class DevelopmentViteHeadIntegratorTest extends TestCase
                 . '/src/js/home.js"\'></script>'
                 . "\n",
         ];
+        yield 'escaped origins without the canonical HTML escaper' => [
+            str_replace(
+                'ENT_QUOTES | ENT_SUBSTITUTE',
+                'ENT_SUBSTITUTE',
+                self::canonicalEscapedNoncedHeadStatic()
+            ),
+        ];
+        yield 'escaped origins without the CSP nonce attribute' => [
+            str_replace(
+                '<script<?= $headScriptNonceAttribute ?>',
+                '<script',
+                self::canonicalEscapedNoncedHeadStatic()
+            ),
+        ];
+        yield 'escaped origins with nonce sourced from request input' => [
+            str_replace(
+                '$headCspNonce = isset($cspNonce)',
+                "\$headCspNonce = isset(\$_GET['nonce'])",
+                self::canonicalEscapedNoncedHeadStatic()
+            ),
+        ];
+        yield 'escaped origins with a second nonce attribute assignment' => [
+            self::canonicalEscapedNoncedHeadStatic()
+                . "\n<?php \$headScriptNonceAttribute = "
+                . "\$_GET['nonce'] ?? ''; ?>\n",
+        ];
+        yield 'escaped origins plus an arbitrary third helper occurrence' => [
+            self::canonicalEscapedNoncedHeadStatic()
+                . "\n<!-- liquidstack_dev_vite_origin() -->\n",
+        ];
+        yield 'escaped origins nested in another attribute' => [
+            str_replace(
+                ' src="<?= $escapeMeta(liquidstack_dev_vite_origin()) ?>',
+                ' data-code=\'src="<?= '
+                    . '$escapeMeta(liquidstack_dev_vite_origin()) ?>',
+                self::canonicalEscapedNoncedHeadStatic()
+            ),
+        ];
     }
 
     public function testMissingHeadDefersIntegration(): void
@@ -211,12 +276,42 @@ final class DevelopmentViteHeadIntegratorTest extends TestCase
         return self::canonicalLegacyHeadStatic();
     }
 
+    private function canonicalEscapedNoncedHead(): string
+    {
+        return self::canonicalEscapedNoncedHeadStatic();
+    }
+
     private static function canonicalLegacyHeadStatic(): string
     {
         return <<<'PHP'
 <?php if ($devMode): ?>
 <script type="module" src="http://localhost:5173/@vite/client"></script>
 <script defer src="http://localhost:5173/src/js/<?= $resources ?>.js" type="module"></script>
+<?php endif; ?>
+PHP;
+    }
+
+    private static function canonicalEscapedNoncedHeadStatic(): string
+    {
+        return <<<'PHP'
+<?php
+$escapeMeta = static fn (mixed $value): string => htmlspecialchars(
+    (string) $value,
+    ENT_QUOTES | ENT_SUBSTITUTE,
+    'UTF-8'
+);
+$headCspNonce = isset($cspNonce)
+    && is_string($cspNonce)
+    && preg_match('/\A[A-Za-z0-9+\/_=-]+\z/D', $cspNonce) === 1
+        ? $cspNonce
+        : null;
+$headScriptNonceAttribute = $headCspNonce === null
+    ? ''
+    : ' nonce="' . $escapeMeta($headCspNonce) . '"';
+?>
+<?php if ($devMode): ?>
+<script<?= $headScriptNonceAttribute ?> type="module" src="<?= $escapeMeta(liquidstack_dev_vite_origin()) ?>/@vite/client"></script>
+<script<?= $headScriptNonceAttribute ?> defer type="module" src="<?= $escapeMeta(liquidstack_dev_vite_origin()) ?>/src/js/<?= $escapeMeta($resources ?? '') ?>.js"></script>
 <?php endif; ?>
 PHP;
     }

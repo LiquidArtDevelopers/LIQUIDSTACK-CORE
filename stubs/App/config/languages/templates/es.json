@@ -119,11 +119,11 @@
     },
     "hero03_00_logo": {
         "src": "assets/img/logos/logo-black.svg",
-        "alt": "Liquid Art Developers",
-        "title": "Liquid Art Developers"
+        "alt": "LiquidStack",
+        "title": "LiquidStack"
     },
     "hero03_00_h1_text": {
-        "text": "Liquid Art Developers"
+        "text": "LiquidStack"
     },
     "hero03_00_front_text": {
         "text": "hero03 · Matrix Has You"
@@ -1227,7 +1227,7 @@
         "text": "Believe."
     },
     "art09_00_link": {
-        "href": "https://ejemplo.com",
+        "href": "https://example.com",
         "title": "You are the One.",
         "text": "There is no spoon."
     },
@@ -1526,7 +1526,7 @@
     "artForm01_00_contact_tel": {
         "text": "Dodge this."
     },
-    "artForm01_00_contact_mail_href": "mailto:info@ejemplo.com",
+    "artForm01_00_contact_mail_href": "mailto:info@example.com",
     "artForm01_00_contact_mail_title": "Believe.",
     "artForm01_00_contact_mail_img": {
         "src": "assets/img/system/mail.svg",
@@ -1536,7 +1536,7 @@
     "artForm01_00_contact_mail": {
         "text": "Choice is an illusion."
     },
-    "artForm01_00_contact_addr_href": "https://maps.app.goo.gl/xxxxx",
+    "artForm01_00_contact_addr_href": "https://example.com/map",
     "artForm01_00_contact_addr_title": "Free your mind.",
     "artForm01_00_contact_addr_img": {
         "src": "assets/img/system/wp.svg",
@@ -1546,7 +1546,7 @@
     "artForm01_00_contact_addr": {
         "text": "The system is watching."
     },
-    "artForm01_00_contact_web_href": "https://www.ejemplo.com",
+    "artForm01_00_contact_web_href": "https://www.example.com",
     "artForm01_00_contact_web_title": "Choice is an illusion.",
     "artForm01_00_contact_web_img": {
         "src": "assets/img/system/web.svg",

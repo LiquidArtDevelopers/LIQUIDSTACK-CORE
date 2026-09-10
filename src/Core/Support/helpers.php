@@ -515,12 +515,12 @@ function getMatchRouteByLang($route, $lang){
  * ------------------------------------------------------------------
  *  Devuelve las etiquetas <link rel="alternate" …> para el <head>
  *  $lang → idioma de la página actual  (p. ej. 'es' | 'eu')
- *  $url  → ruta actual con slash inicial (p. ej. '/es/bilbao')
+ *  $url  → ruta actual con slash inicial (p. ej. '/es/servicios')
  * ------------------------------------------------------------------ */
 function hreflangAlternates(string $lang, string $url): string
 {
     global $arrayRutasGet;                      // mapa de rutas
-    $raiz = rtrim($_ENV['RAIZ'] ?? '', '/');    // https://jaramaautoescuela.com
+    $raiz = rtrim($_ENV['RAIZ'] ?? '', '/');    // https://example.com
 
     /* 1. La URL no existe en el idioma actual → no se imprime nada */
     if (!isset($arrayRutasGet[$lang][$url])) {
@@ -658,7 +658,7 @@ function schemaWebPageAccessibility(
 /* helpers/sitemap.php
  * ---------------------------------------------------------------
  *  • $arrayRutasGet  → el array multilingüe que ya tienes cargado
- *  • $_ENV['RAIZ']   → dominio principal (p. ej. https://jaramaautoescuela.com)
+ *  • $_ENV['RAIZ']   → dominio principal (p. ej. https://example.com)
  *  • $outputDir      → carpeta donde quieres soltar los XML (raíz pública)
  * --------------------------------------------------------------- */
 

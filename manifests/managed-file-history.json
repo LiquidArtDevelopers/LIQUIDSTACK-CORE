@@ -813,6 +813,11 @@
             "sha256:187f6a3ebf4e749e3ec43006f83d6cd54e528439a856dea0903e6e88c0e7ad34",
             "sha256:f6060e8c8a0c4990dbda03ea2bbed3616e249d21524949555da2a4eba4ba9f58"
         ],
+        "resources/js/_terminos.js": [
+            "sha256:0a8e64484e1d11f394f8038b8dc2e68e6cab243afdf0ee94627119d5404db71a",
+            "sha256:55dba1ce45b542183ee25ced9a03bbb09ad95f6a4376fe7ba65c439464025002",
+            "sha256:74117fcec4f751b59796b1a541160c379624b81b20b51083417f1734500b219e"
+        ],
         "resources/js/_toast.js": [
             "sha256:27dcd6dfaef057dc6858155344273f8d4d4ab7a5667c9d78251406c706dc14a7"
         ],
@@ -1686,6 +1691,11 @@
             "sha256:a60f2b4d0310fb2d2b8bc981af072130888a3bb4ce34de0100ce84fa63aff5f3",
             "sha256:fc493531f529df709e9c66e301f2651df0cfb84930ebfa74aab35196a5ae02f3"
         ],
+        "stubs/App/controllers/footerInfo01.php": [
+            "sha256:78c3f7b0e8071d13a93ef11ad2b067240fca40854ca65017f1fb7de9df989f10",
+            "sha256:8e6b59b1eeb350e93b76179ae4031192d3f3666e773f113b5c98fa91fed92e1e",
+            "sha256:ec6c39bcb7fa76263565301c5f87682e501ca89a3df2cb424944d00d43ec702a"
+        ],
         "stubs/App/controllers/hero00.php": [
             "sha256:09ae6f8ce27810d62c6e516382398831dc51dc6aec2b6908a20880866f41b6fd",
             "sha256:1117bf0625567767e46d3f49a2523c98bd6df741a7642293eb3ed155e714c126",
@@ -1704,6 +1714,7 @@
         ],
         "stubs/App/controllers/hero03.php": [
             "sha256:78fce85b80ab459bd86dc6c979ccb2e0664fdc07e8d204f6ea371cf99cdfd72b",
+            "sha256:8d592cbd73a3a1cbd07f8f499d56b38e3bfa24ede85cbce5c8b941883c9a2a20",
             "sha256:e4a04b1f8d04ea69d43f6dce111ac0738cd4720c07d87820298121d785b576b5"
         ],
         "stubs/App/controllers/hero04.php": [
@@ -1814,6 +1825,7 @@
         ],
         "stubs/App/controllers/navMegamenu01.php": [
             "sha256:20228c72982aae0ca7696823d30cb42948a9f59a76bd59b2bd1f0459255b694a",
+            "sha256:4b5d325389fb877684055fd4ae4aa401b93edf3a220bd6831b2213e770b06e78",
             "sha256:73a820b15b013c3530fa622d63ac22344c910a8be2f6ec64c222f4ca92c9e203",
             "sha256:7a8717e676510ad5f30e30762054c7c0ef3c4c64c546764205cb383bd4befe54",
             "sha256:9078ebbf250a8cdec3e061a90b4a2399cbfa1893438b1bf2ffdfcc6ca963c177"
@@ -2024,6 +2036,10 @@
             "sha256:7e336c1e3999dcee25e9f4babaa269d822f3ef4d8296271260e2c1fcfcbc4e2d",
             "sha256:8d30c34fee009a67acc06acedf6c46295288da7ee4bab853631fa809e33e406b",
             "sha256:ad92a83e4c7c1af6b14f5f7b69070c7d5e88da2e60a02d3ca5ac3057107aea34"
+        ],
+        "stubs/App/templates/_footerInfo01.html": [
+            "sha256:3270411394e4c295d10875a95949565fd5c2b759067e698b1d947a7b9bcf0862",
+            "sha256:382425aa73863a880fa4ec8f5e68a0f63973332b4ab51de6c8b7e38b07660244"
         ],
         "stubs/App/templates/_hero00.html": [
             "sha256:5880f694b2d9b97ffdbd69ca00ee0bcd8bb0386f4dc9dd9f6f31e7c907cdca46",

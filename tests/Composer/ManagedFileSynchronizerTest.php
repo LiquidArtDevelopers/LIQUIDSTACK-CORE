@@ -874,6 +874,71 @@ final class ManagedFileSynchronizerTest extends TestCase
         self::assertSame(1, $sync->stats()['updated']);
     }
 
+    public function testHistoricalFileWithStaleStateCompletesItsManagedGroup(): void
+    {
+        $runtimeSourceId = 'resources/js/_traducciones.js';
+        $runtimeTargetId = 'src/js/resources/_traducciones.js';
+        $runtimeSource = $this->packageRoot . '/' . $runtimeSourceId;
+        $runtimeTarget = $this->projectRoot . '/' . $runtimeTargetId;
+        $preferenceSourceId = 'resources/js/_languagePreference.mjs';
+        $preferenceTargetId = 'src/js/resources/_languagePreference.mjs';
+        $preferenceSource = $this->packageRoot . '/' . $preferenceSourceId;
+        $preferenceTarget = $this->projectRoot . '/' . $preferenceTargetId;
+        $stateVersion = 'translation-runtime-state-version';
+        $historicalVersion = 'translation-runtime-historical-version';
+        $currentVersion = 'translation-runtime-current-version';
+
+        $this->writeHistory([
+            $runtimeSourceId => ManagedFileRegistry::fingerprintContents(
+                $runtimeSourceId,
+                $historicalVersion
+            ),
+        ]);
+        $this->writeFile($runtimeSource, $currentVersion);
+        $this->writeFile($runtimeTarget, $historicalVersion);
+        $this->writeFile(
+            $preferenceSource,
+            'export const bindLanguageNavigation = () => () => {};'
+        );
+        $this->writeFile(
+            $this->projectRoot . '/.liquidstack/core/managed-files.json',
+            json_encode([
+                'schema' => 1,
+                'package' => 'liquidstack/core',
+                'files' => [
+                    $runtimeTargetId => [
+                        'source' => $runtimeSourceId,
+                        'fingerprints' => ManagedFileRegistry::fingerprintContents(
+                            $runtimeSourceId,
+                            $stateVersion
+                        ),
+                    ],
+                ],
+            ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . PHP_EOL
+        );
+
+        $sync = $this->synchronizer();
+        $sync->queueFile(
+            $runtimeSource,
+            $runtimeTarget,
+            $runtimeSourceId,
+            $runtimeTargetId
+        );
+        $sync->queueFile(
+            $preferenceSource,
+            $preferenceTarget,
+            $preferenceSourceId,
+            $preferenceTargetId
+        );
+        $sync->apply();
+
+        self::assertSame($currentVersion, file_get_contents($runtimeTarget));
+        self::assertFileEquals($preferenceSource, $preferenceTarget);
+        self::assertSame(1, $sync->stats()['updated']);
+        self::assertSame(1, $sync->stats()['added']);
+        self::assertSame(0, $sync->stats()['preserved']);
+    }
+
     public function testUnknownExistingFileIsPreserved(): void
     {
         $source = $this->packageRoot

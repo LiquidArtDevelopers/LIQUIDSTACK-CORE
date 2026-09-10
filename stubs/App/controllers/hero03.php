@@ -50,8 +50,8 @@ function controller_hero03(int $i = 0, array $params = []): string
     }
 
     $logoSrc = $_ENV['RAIZ'] . '/assets/img/logos/logo-black.svg';
-    $logoAlt = 'Liquid Art Developers';
-    $logoTitle = 'Liquid Art Developers';
+    $logoAlt = 'LiquidStack';
+    $logoTitle = 'LiquidStack';
     if (is_object($logoObj)) {
         if (isset($logoObj->src) && $logoObj->src !== '') {
             $logoSrc = $_ENV['RAIZ'] . '/' . ltrim((string) $logoObj->src, '/');

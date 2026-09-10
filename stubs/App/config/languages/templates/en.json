@@ -12,7 +12,7 @@
     },
 
     "title": {
-        "text": "LAD Framework Templates"
+        "text": "LiquidStack resource templates"
     },
 
     "description": {
@@ -122,11 +122,11 @@
     },
     "hero03_00_logo": {
         "src": "assets/img/logos/logo-black.svg",
-        "alt": "Liquid Art Developers",
-        "title": "Liquid Art Developers"
+        "alt": "LiquidStack",
+        "title": "LiquidStack"
     },
     "hero03_00_h1_text": {
-        "text": "Liquid Art Developers"
+        "text": "LiquidStack"
     },
     "hero03_00_front_text": {
         "text": "hero03 · Matrix Has You"
@@ -1233,12 +1233,12 @@
         "text": "Consulta el informe"
     },
     "art09_00_link": {
-        "href": "https://ejemplo.com",
+        "href": "https://example.com",
         "title": "Descubre métricas completas del proyecto",
         "text": "Ver informe"
     },
     "art09_00_headerSecondary_a": {
-        "text": "Rediseño flagship centro Bilbao"
+        "text": "Flagship experience redesign"
     },
     "art09_00_a_img1": {
         "src": "assets/img/system/star-outline.svg",
@@ -1254,7 +1254,7 @@
         "text": "Reordenamos la circulación principal con señalética dinámica y pruebas de producto asistidas que incrementaron un 18 % las ventas cruzadas y redujeron el tiempo de espera medio en caja."
     },
     "art09_00_headerSecondary_b": {
-        "text": "Plan piloto showroom Barcelona"
+        "text": "Interactive showroom pilot"
     },
     "art09_00_b_img1": {
         "src": "assets/img/system/star-outline.svg",
@@ -1384,7 +1384,7 @@
     "art12_00_b_img": {
         "src": "assets/img/system/star-outline.svg",
         "alt": "Icono de asistencia continua",
-        "title": "Asistencia continua para socios"
+        "title": "Continuous project support"
     },
     "art12_00_b_imgBack": {
         "src": "assets/img/dummy/dummy_2560.avif",
@@ -1440,7 +1440,7 @@
         "text": "art14"
     },
     "art14_00_p": {
-        "text": "Nuestro equipo combina asesoría jurídica tecnológica con conocimiento industrial para acelerar implantaciones seguras en Bizkaia. Coordinamos evaluaciones regulatorias, contratos de innovación y formación preventiva para que tus lanzamientos conecten con partners locales y cumplan la norma europea sin fricciones operativas. Supervisamos auditorías de datos, licencias y cláusulas de ciberseguridad que blindan el crecimiento sostenible de cada planta."
+        "text": "Nuestro equipo combina asesoría jurídica tecnológica con conocimiento industrial para acelerar implantaciones seguras en distintos mercados. Coordinamos evaluaciones regulatorias, contratos de innovación y formación preventiva para que tus lanzamientos conecten con partners locales y cumplan la norma europea sin fricciones operativas. Supervisamos auditorías de datos, licencias y cláusulas de ciberseguridad que blindan el crecimiento sostenible de cada planta."
     },
     "art14_00_img": {
         "src": "assets/img/dummy/dummy_2560.avif",
@@ -1532,7 +1532,7 @@
     "artForm01_00_contact_tel": {
         "text": "Teléfono pendiente de actualización"
     },
-    "artForm01_00_contact_mail_href": "mailto:info@ejemplo.com",
+    "artForm01_00_contact_mail_href": "mailto:info@example.com",
     "artForm01_00_contact_mail_title": "Enviar correo",
     "artForm01_00_contact_mail_img": {
         "src": "assets/img/system/mail.svg",
@@ -1540,9 +1540,9 @@
         "title": "Mail"
     },
     "artForm01_00_contact_mail": {
-        "text": "Escríbenos a info@ejemplo.com"
+        "text": "Write to info@example.com"
     },
-    "artForm01_00_contact_addr_href": "https://maps.app.goo.gl/xxxxx",
+    "artForm01_00_contact_addr_href": "https://example.com/map",
     "artForm01_00_contact_addr_title": "Cómo llegar",
     "artForm01_00_contact_addr_img": {
         "src": "assets/img/system/wp.svg",
@@ -1552,7 +1552,7 @@
     "artForm01_00_contact_addr": {
         "text": "Dirección pendiente de actualización"
     },
-    "artForm01_00_contact_web_href": "https://www.ejemplo.com",
+    "artForm01_00_contact_web_href": "https://www.example.com",
     "artForm01_00_contact_web_title": "Visitar web",
     "artForm01_00_contact_web_img": {
         "src": "assets/img/system/web.svg",
@@ -1560,7 +1560,7 @@
         "title": "Web"
     },
     "artForm01_00_contact_web": {
-        "text": "Accede a www.ejemplo.com"
+        "text": "Visit www.example.com"
     },
     "artForm01_00_map_src": "https://www.google.com/maps/embed?pb=...",
     "artForm01_00_map_width": "600",
@@ -1818,22 +1818,22 @@
         "text": "artAccordion01"
     },
     "artAccordion01_00_itema_title": {
-        "text": "¿Qué documentos debo presentar?"
+        "text": "What content can this component display?"
     },
     "artAccordion01_00_itema_content": {
-        "text": "Lleva DNI vigente, fotografía tamaño carnet, justificante de tasas y certificado psicotécnico actualizado; si ya tienes permisos previos, añade copia compulsada para agilizar el alta y evitar desplazamientos adicionales."
+        "text": "Use each panel to organize frequently asked questions, service details, or help content with the project's own text and links."
     },
     "artAccordion01_00_itemb_title": {
-        "text": "¿Cómo se organiza la teoría?"
+        "text": "Can the sections start collapsed?"
     },
     "artAccordion01_00_itemb_content": {
-        "text": "Planificamos sesiones en vivo de dos horas cada tarde durante diez días laborables, reforzadas con cuestionarios descargables y tutoría online para que consolides normativa, señalización y maniobras antes de pasar a las prácticas obligatorias."
+        "text": "Yes. The project can define the initial state and let each person open only the information they need."
     },
     "artAccordion01_00_itemc_title": {
-        "text": "¿Qué opciones de pago tengo?"
+        "text": "Can the component be used with a keyboard?"
     },
     "artAccordion01_00_itemc_content": {
-        "text": "Ofrecemos financiación interna sin intereses en tres cuotas mensuales, domiciliación bancaria flexible y acuerdos con entidades colaboradoras para adaptar el desembolso a tu calendario, siempre con asesoría para elegir el plan más conveniente."
+        "text": "The controls keep a visible focus and semantic structure so the interaction remains clear with a keyboard and assistive technologies."
     },
 
     "artZipper_00_h3": {

@@ -119,6 +119,36 @@ final class InstallerFrontendPackageSyncTest extends TestCase
         );
     }
 
+    public function testCanonicalLadMigratesWithEscapedNoncedHead(): void
+    {
+        $headPath = $this->projectRoot . '/App/includes/_globalHead.php';
+        $head = $this->escapedNoncedDevelopmentHead();
+        $this->filesystem->dumpFile($headPath, $head);
+        $this->writePackage([
+            'scripts' => [
+                'dev' => 'vite',
+                'lad' => self::ROUTED_LAD,
+            ],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            self::SUPERVISED_LAD,
+            $this->readPackage()['scripts']['lad'] ?? null
+        );
+        self::assertSame($head, file_get_contents($headPath));
+        self::assertStringContainsString(
+            'Updated canonical frontend scripts in package.json: lad',
+            $output
+        );
+        self::assertStringNotContainsString('Preserved custom', $output);
+        self::assertStringNotContainsString(
+            'Deferred canonical frontend script migration',
+            $output
+        );
+    }
+
     public function testCustomizedLadScriptIsPreserved(): void
     {
         $custom = 'node custom-development-server.mjs';
@@ -437,6 +467,29 @@ final class InstallerFrontendPackageSyncTest extends TestCase
 <?php if ($devMode): ?>
 <script type="module" src="http://localhost:5173/@vite/client"></script>
 <script defer src="http://localhost:5173/src/js/<?= $resources ?>.js" type="module"></script>
+<?php endif; ?>
+PHP;
+    }
+
+    private function escapedNoncedDevelopmentHead(): string
+    {
+        return <<<'PHP'
+<?php
+$escapeMeta = static fn (mixed $value): string => htmlspecialchars(
+    (string) $value,
+    ENT_QUOTES | ENT_SUBSTITUTE,
+    'UTF-8'
+);
+$headCspNonce = isset($cspNonce) && is_string($cspNonce)
+    ? $cspNonce
+    : null;
+$headScriptNonceAttribute = $headCspNonce === null
+    ? ''
+    : ' nonce="' . $escapeMeta($headCspNonce) . '"';
+?>
+<?php if ($devMode): ?>
+<script<?= $headScriptNonceAttribute ?> type="module" src="<?= $escapeMeta(liquidstack_dev_vite_origin()) ?>/@vite/client"></script>
+<script<?= $headScriptNonceAttribute ?> defer type="module" src="<?= $escapeMeta(liquidstack_dev_vite_origin()) ?>/src/js/<?= $escapeMeta($resources ?? '') ?>.js"></script>
 <?php endif; ?>
 PHP;
     }

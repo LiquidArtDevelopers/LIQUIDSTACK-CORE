@@ -20,6 +20,40 @@ final class DevelopmentViteHeadIntegrator
         'src="<?= liquidstack_dev_vite_origin() ?>/@vite/client"';
     private const DYNAMIC_ENTRY =
         'src="<?= liquidstack_dev_vite_origin() ?>/src/js/';
+    private const ESCAPED_DYNAMIC_CLIENT =
+        'src="<?= $escapeMeta(liquidstack_dev_vite_origin()) ?>/@vite/client"';
+    private const ESCAPED_DYNAMIC_ENTRY =
+        'src="<?= $escapeMeta(liquidstack_dev_vite_origin()) ?>/src/js/';
+    private const CSP_NONCE_SCRIPT_PREFIX =
+        '<script<?= $headScriptNonceAttribute ?>';
+    private const CANONICAL_HTML_ESCAPER = <<<'PHP'
+<?php
+$escapeMeta = static fn (mixed $value): string => htmlspecialchars(
+    (string) $value,
+    ENT_QUOTES | ENT_SUBSTITUTE,
+    'UTF-8'
+);
+PHP;
+    private const CANONICAL_CSP_NONCE_ATTRIBUTE = <<<'PHP'
+<?php
+$headCspNonce = isset($cspNonce) && is_string($cspNonce)
+    ? $cspNonce
+    : null;
+$headScriptNonceAttribute = $headCspNonce === null
+    ? ''
+    : ' nonce="' . $escapeMeta($headCspNonce) . '"';
+PHP;
+    private const CANONICAL_VALIDATED_CSP_NONCE_ATTRIBUTE = <<<'PHP'
+<?php
+$headCspNonce = isset($cspNonce)
+    && is_string($cspNonce)
+    && preg_match('/\A[A-Za-z0-9+\/_=-]+\z/D', $cspNonce) === 1
+        ? $cspNonce
+        : null;
+$headScriptNonceAttribute = $headCspNonce === null
+    ? ''
+    : ' nonce="' . $escapeMeta($headCspNonce) . '"';
+PHP;
 
     public static function integrate(
         string $projectRoot,
@@ -155,21 +189,139 @@ final class DevelopmentViteHeadIntegrator
 
     private static function isIntegratedContents(string $contents): bool
     {
-        return substr_count($contents, self::DYNAMIC_CLIENT) === 1
-            && substr_count($contents, self::DYNAMIC_ENTRY) === 1
-            && substr_count($contents, 'liquidstack_dev_vite_origin') === 2
-            && substr_count($contents, 'http://localhost:5173') === 0
+        if (substr_count($contents, 'liquidstack_dev_vite_origin') !== 2
+            || substr_count($contents, 'http://localhost:5173') !== 0
+            || !self::hasValidPhpSyntax($contents)
+        ) {
+            return false;
+        }
+
+        if (self::hasCanonicalDynamicScriptPair(
+            $contents,
+            self::DYNAMIC_CLIENT,
+            self::DYNAMIC_ENTRY
+        )) {
+            return true;
+        }
+
+        return self::hasCanonicalHtmlEscaper($contents)
+            && self::hasCanonicalCspNonceAttribute($contents)
+            && self::hasCanonicalDynamicScriptPair(
+                $contents,
+                self::ESCAPED_DYNAMIC_CLIENT,
+                self::ESCAPED_DYNAMIC_ENTRY,
+                self::CSP_NONCE_SCRIPT_PREFIX
+            );
+    }
+
+    private static function hasCanonicalDynamicScriptPair(
+        string $contents,
+        string $client,
+        string $entry,
+        ?string $requiredScriptPrefix = null
+    ): bool {
+        return substr_count($contents, $client) === 1
+            && substr_count($contents, $entry) === 1
             && self::isCanonicalScriptLine(
                 $contents,
-                self::DYNAMIC_CLIENT,
-                false
+                $client,
+                false,
+                $requiredScriptPrefix
             )
             && self::isCanonicalScriptLine(
                 $contents,
-                self::DYNAMIC_ENTRY,
-                false
-            )
-            && self::hasValidPhpSyntax($contents);
+                $entry,
+                false,
+                $requiredScriptPrefix
+            );
+    }
+
+    /**
+     * Accept only the HTML escaper shipped by the canonical public shell.
+     * This keeps the escaped integration as strict as the direct variant:
+     * an arbitrary wrapper around the Vite origin is not enough.
+     */
+    private static function hasCanonicalHtmlEscaper(string $contents): bool
+    {
+        $tokens = self::normalizedPhpTokenStream($contents);
+        $expected = self::normalizedPhpTokenStream(
+            self::CANONICAL_HTML_ESCAPER
+        );
+        if ($tokens === null || $expected === null) {
+            return false;
+        }
+
+        $assignment = "\0" . '$escapeMeta' . "\0=\0";
+
+        return substr_count($tokens, $expected) === 1
+            && substr_count($tokens, $assignment) === 1;
+    }
+
+    /** Ensure the script attribute is derived only from the canonical CSP nonce. */
+    private static function hasCanonicalCspNonceAttribute(
+        string $contents
+    ): bool {
+        $tokens = self::normalizedPhpTokenStream($contents);
+        if ($tokens === null) {
+            return false;
+        }
+
+        $matches = 0;
+        foreach ([
+            self::CANONICAL_CSP_NONCE_ATTRIBUTE,
+            self::CANONICAL_VALIDATED_CSP_NONCE_ATTRIBUTE,
+        ] as $variant) {
+            $expected = self::normalizedPhpTokenStream($variant);
+            if ($expected === null) {
+                return false;
+            }
+            $matches += substr_count($tokens, $expected);
+        }
+
+        return $matches === 1
+            && substr_count(
+                $tokens,
+                "\0" . '$headCspNonce' . "\0=\0"
+            ) === 1
+            && substr_count(
+                $tokens,
+                "\0" . '$headScriptNonceAttribute' . "\0=\0"
+            ) === 1;
+    }
+
+    private static function normalizedPhpTokenStream(
+        string $contents
+    ): ?string {
+        try {
+            $tokens = token_get_all($contents, TOKEN_PARSE);
+        } catch (\ParseError) {
+            return null;
+        }
+
+        $significant = [];
+        foreach ($tokens as $token) {
+            if (is_array($token)) {
+                if (in_array($token[0], [
+                    T_WHITESPACE,
+                    T_COMMENT,
+                    T_DOC_COMMENT,
+                    T_INLINE_HTML,
+                    T_OPEN_TAG,
+                    T_OPEN_TAG_WITH_ECHO,
+                    T_CLOSE_TAG,
+                ], true)) {
+                    continue;
+                }
+                $significant[] = $token[1];
+                continue;
+            }
+
+            if (trim($token) !== '') {
+                $significant[] = $token;
+            }
+        }
+
+        return "\0" . implode("\0", $significant) . "\0";
     }
 
     private static function safeTargetPath(string $projectRoot): ?string
@@ -219,7 +371,8 @@ final class DevelopmentViteHeadIntegrator
     private static function isCanonicalScriptLine(
         string $contents,
         string $needle,
-        bool $mustBeInlineHtml
+        bool $mustBeInlineHtml,
+        ?string $requiredScriptPrefix = null
     ): bool {
         $offset = strpos($contents, $needle);
         if ($offset === false || self::isInsideHtmlComment($contents, $offset)) {
@@ -234,6 +387,15 @@ final class DevelopmentViteHeadIntegrator
             substr($contents, $lineStart, $lineEnd - $lineStart),
             "\r"
         );
+
+        if ($requiredScriptPrefix !== null
+            && !str_starts_with(
+                ltrim($line, " \t"),
+                $requiredScriptPrefix
+            )
+        ) {
+            return false;
+        }
 
         if (preg_match(
             '~^[\\t ]*<script\\b[^\\r\\n]*'

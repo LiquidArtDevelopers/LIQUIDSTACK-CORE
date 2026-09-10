@@ -4,6 +4,37 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.28.2] - 2026-09-10
+
+### Corregido
+- El sincronizador consulta también el historial canónico cuando el estado de
+  instalación está desfasado. Una copia histórica exacta puede así actualizar
+  todo su grupo y añadir dependencias nuevas, mientras un cambio local
+  desconocido continúa preservándose.
+- `navMegamenu01` ya no contiene una sede real como fallback: conserva el
+  parámetro `offices`, pero sin datos explícitos parte de una colección vacía.
+  Admite además enlaces públicos project-owned mediante `public_link_keys` y
+  permite ocultar el acceso privado heredado con `show_private_access=false`.
+  Las redes sociales incompletas y la imagen opcional de `footerInfo01` se
+  omiten en vez de generar enlaces o imágenes que apunten a la raíz. Los
+  ejemplos de dominio de los helpers usan ahora `example.com`.
+- El integrador del head reconoce también el contrato moderno que escapa los
+  dos orígenes dinámicos de Vite y mantiene el atributo de nonce CSP en ambos
+  scripts. Las apariciones parciales, adicionales o sin el escaper canónico
+  continúan difiriendo la migración de `lad`.
+- Los textos legales aceptan `VITE_BUSINESS_ADDRESS` como nombre canónico de
+  la dirección y conservan `VITE_BUSINESS_ADRESS` únicamente como alias
+  retrocompatible.
+- El runtime legal y la pareja controlador/template de `footerInfo01` pasan de
+  semillas a gestión por huella. Las copias canónicas actuales o históricas se
+  actualizan, las personalizadas se preservan y el footer se aplica como un
+  único grupo atómico para no mezclar contratos incompatibles.
+- El catálogo inicial del showroom identifica sus ejemplos como LiquidStack,
+  elimina copy heredado de clientes o clubes y referencias sectoriales
+  heredadas, y usa el dominio reservado `example.com` para enlaces y correos
+  ficticios propios del proyecto; los embeds de proveedores conservan sus
+  dominios técnicos.
+
 ## [1.28.1] - 2026-09-09
 
 ### Corregido

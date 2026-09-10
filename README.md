@@ -18,8 +18,10 @@ Al ejecutar `composer install` o `composer update` en un proyecto que consume es
    - Un fichero nuevo de CORE se instala cuando todavía no existe en el
      consumidor.
    - Un fichero existente solo se actualiza si su estado registrado o una
-     huella histórica de CORE permiten reconocer que sigue intacto. La
-     comparación normaliza los finales de línea para que LF/CRLF no convierta
+     huella histórica de CORE permiten reconocer que sigue intacto. Ambas
+     evidencias son acumulativas: un estado desfasado no convierte una copia
+     histórica exacta de CORE en una personalización local. La comparación
+     normaliza los finales de línea para que LF/CRLF no convierta
      un fichero intacto en una falsa personalización. También considera
      equivalentes la ausencia de salto final y una o varias líneas vacías al
      final, sin normalizar el contenido interno.
@@ -50,9 +52,12 @@ Al ejecutar `composer install` o `composer update` en un proyecto que consume es
 
    La familia `moduleFormContact01/02/03` incluye además un backend de contacto
    genérico (`formContact.php`, transporte PHPMailer, comprobaciones y
-   catálogos de correo ES/EN/EU). El backend, las plantillas de email, el
-   runtime legal, el footer y los logos son semillas: se instalan únicamente
-   cuando faltan y cualquier variante local existente se conserva.
+   catálogos de correo ES/EN/EU). El backend, el runtime JS legal y la pareja
+   controlador/template del footer se actualizan por huella cuando siguen
+   siendo copias canónicas; el footer se aplica como un único grupo atómico.
+   Las comprobaciones, plantillas y catálogos de email, estilos legales y logos
+   son semillas que solo se instalan cuando faltan. Cualquier variante local
+   no reconocida se conserva en ambos casos.
 2. Se copian recursos frontend:
 - `resources/js` -> `src/js/resources`.
 - `resources/scss` -> `src/scss/resources`.
@@ -1229,6 +1234,36 @@ Los proyectos pueden ampliar el catálogo sin personalizar el grupo gestionado:
 
 CORE no distribuye ni elimina esos hooks locales.
 
+#### Parámetros project-owned de `navMegamenu01`
+
+El controlador conserva sus enlaces históricos por defecto, pero los proyectos
+nuevos pueden componer una navegación pública sin copiar ni editar el stub:
+
+```php
+controller('navMegamenu01', 0, [
+    'public_link_keys' => [[
+        'link' => 'navMegamenu01_00_blog',
+        'text' => 'navMegamenu01_00_blogText',
+    ]],
+    'show_private_access' => false,
+    'offices' => [[
+        'label' => 'Oficina de ejemplo',
+        'tels' => ['+34 900 000 000'],
+        'addr' => 'Dirección configurable',
+        'map' => 'https://example.com/map',
+    ]],
+]);
+```
+
+`public_link_keys` es opcional y parte de `[]`. Cada elemento referencia dos
+claves ya hidratadas del catálogo activo: `link` apunta a un objeto con `href`
+y `title`, mientras `text` apunta a otro objeto con `text`. Las entradas
+incompletas se omiten.
+`show_private_access` vale `true` por defecto para no romper consumidores
+existentes y, al establecerlo en `false`, oculta tanto login como enlaces de
+sesión. `offices` parte siempre de `[]`; las sedes son datos del proyecto y cada
+una declara `label`, `tels`, `addr` y `map`.
+
 ### 4) Dependencias NPM del recurso
 
 Si el recurso necesita librerias nuevas (ejemplo `three`):
@@ -1298,6 +1333,11 @@ El supervisor gestionado inicia conjuntamente el servidor PHP y Vite. Intenta
 `http://localhost:1309` para la aplicación y `http://localhost:5173` para
 Vite; si alguno está ocupado, avanza por 1310, 1311… o 5174, 5175… sin detener
 el proceso que ya lo utiliza. La consola muestra los dos orígenes efectivos.
+El integrador admite tanto los dos `src` dinámicos directos como la variante
+del head público que los escapa con `$escapeMeta` y aplica
+`$headScriptNonceAttribute` a ambos scripts. Exige exactamente dos usos
+válidos; un head parcial o ambiguo se conserva y difiere la migración de
+`lad`.
 
 La identidad local de WebAdmin se deriva del directorio real del proyecto y
 no del puerto. Por eso varios stacks pueden permanecer autenticados a la vez
@@ -1343,17 +1383,86 @@ CORE incluye un comando interactivo que publica el commit y su etiqueta
 anotada en una unica operacion atomica. Las preguntas se realizan mediante la
 entrada interactiva nativa de Composer, tambien desde PowerShell en Windows:
 
-Uso rapido desde PowerShell:
+Antes de publicar, mueve las entradas de `Unreleased` a una sección fechada
+`## [X.Y.Z] - AAAA-MM-DD` de `CHANGELOG.md`. El siguiente bloque PowerShell
+ejecuta el cierre completo, enseña el lote exacto antes del commit y delega el
+tag y el push atómico en el comando canónico. Ajusta únicamente la versión, el
+mensaje y, si existe una DB **TEST aislada**, el flag de integración MySQL:
 
 ```powershell
-cd C:\xampp\htdocs\__LIQUIDSTACK\LIQUIDSTACK-CORE
+Set-Location -LiteralPath 'C:\xampp\htdocs\__LIQUIDSTACK\LIQUIDSTACK-CORE'
 
-php tools/build-managed-file-history.php
-git add .
-git commit -m "Descripción del cambio"
+$Version = 'vX.Y.Z'
+$CommitMessage = 'tipo(ámbito): descripción'
+$RunMySqlIntegration = $false
 
-composer release
+function Invoke-Checked {
+    param([string]$Name, [scriptblock]$Command)
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Name falló (exit $LASTEXITCODE)."
+    }
+}
+
+if ((git branch --show-current).Trim() -ne 'main') {
+    throw 'La release debe salir de main.'
+}
+git diff --cached --quiet
+if ($LASTEXITCODE -eq 1) {
+    throw 'Ya hay cambios staged; revísalos antes de continuar.'
+}
+if ($LASTEXITCODE -gt 1) {
+    throw 'No se pudo comprobar el staging.'
+}
+if ($Version -notmatch '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
+    throw 'Usa vX.Y.Z sin ceros iniciales.'
+}
+$Number = $Version.Substring(1)
+$Heading = '^## \[' + [regex]::Escape($Number) + '\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$'
+if (-not (Select-String -LiteralPath 'CHANGELOG.md' -Pattern $Heading -Quiet)) {
+    throw "Documenta antes ## [$Number] - AAAA-MM-DD en CHANGELOG.md."
+}
+
+Invoke-Checked 'Historial gestionado' {
+    php tools/build-managed-file-history.php
+}
+Invoke-Checked 'Comprobación del historial' {
+    php tools/build-managed-file-history.php --check
+}
+Invoke-Checked 'Contrato del manifest' {
+    php vendor/bin/phpunit --configuration phpunit.xml.dist `
+        --do-not-cache-result --filter ManagedFileManifestTest
+}
+Invoke-Checked 'Validación Composer' {
+    composer validate --strict --no-check-publish
+}
+Invoke-Checked 'Suite CORE' { composer test }
+Invoke-Checked 'E2E modular' { composer test:module-e2e }
+if ($RunMySqlIntegration) {
+    Invoke-Checked 'Integración MySQL/MariaDB' {
+        composer test:mysql-integration
+    }
+}
+Invoke-Checked 'Whitespace/diff' { git diff --check }
+
+Invoke-Checked 'Staging' { git add -A }
+Invoke-Checked 'Comprobación staged' { git diff --cached --check }
+git status --short
+git diff --cached --stat
+if ((Read-Host 'Revisa el lote. Escribe PUBLICAR para crear el commit') -cne 'PUBLICAR') {
+    git restore --staged .
+    throw 'Cancelado; no se creó el commit ni el tag.'
+}
+Invoke-Checked 'Commit' { git commit -m $CommitMessage }
+Invoke-Checked 'Release atómica' {
+    composer release -- "--version=$Version"
+}
 ```
+
+`composer release` requiere un árbol completamente limpio. Repite por sí mismo
+`composer validate` y `composer test`, pero no regenera el historial gestionado
+ni ejecuta `test:module-e2e` o `test:mysql-integration`; por eso esas operaciones
+aparecen antes del commit en el bloque completo.
 
 No es necesario ejecutar antes `git push`: `composer release` sube
 simultaneamente `main` y la etiqueta. El comando:

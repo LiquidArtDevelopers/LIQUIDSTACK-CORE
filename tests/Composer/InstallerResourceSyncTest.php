@@ -746,6 +746,48 @@ PHP
         );
     }
 
+    public function testFooterPairCompletesOnlyWhenExistingMemberIsCanonical(): void
+    {
+        $coreRoot = dirname(__DIR__, 2);
+        $controller = $coreRoot . '/stubs/App/controllers/footerInfo01.php';
+        $template = $coreRoot . '/stubs/App/templates/_footerInfo01.html';
+        $targetController = $this->projectRoot
+            . '/App/controllers/footerInfo01.php';
+        $targetTemplate = $this->projectRoot
+            . '/App/templates/_footerInfo01.html';
+        $this->writeFile(
+            $targetController,
+            (string) file_get_contents($controller)
+        );
+
+        Installer::postUpdate($this->createEvent());
+
+        self::assertFileEquals($controller, $targetController);
+        self::assertFileEquals($template, $targetTemplate);
+    }
+
+    public function testFooterPairDoesNotMixCustomControllerWithCanonicalTemplate(): void
+    {
+        $customController = '<?php // custom project footer';
+        $targetController = $this->projectRoot
+            . '/App/controllers/footerInfo01.php';
+        $targetTemplate = $this->projectRoot
+            . '/App/templates/_footerInfo01.html';
+        $this->writeFile($targetController, $customController);
+
+        Installer::postUpdate($this->createEvent());
+
+        self::assertSame(
+            $customController,
+            file_get_contents($targetController)
+        );
+        self::assertFileDoesNotExist($targetTemplate);
+        self::assertStringContainsString(
+            'resource:footerInfo01',
+            $this->io->getOutput()
+        );
+    }
+
     private function createEvent(): Event
     {
         $config = new Config(false, $this->projectRoot);

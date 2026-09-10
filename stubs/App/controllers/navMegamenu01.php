@@ -72,20 +72,44 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
                 ],
             ],
         ],
-        [
-            'type'  => 'simple',
-            'value' => $buildLink("{$pref}contactLink", "{$pref}contactText"),
-        ],
     ];
 
-    if (!isset($_SESSION["id_rol"])):
+    $publicLinkKeys = $params['public_link_keys'] ?? [];
+    if (is_array($publicLinkKeys)) {
+        foreach ($publicLinkKeys as $publicLinkKey) {
+            if (!is_array($publicLinkKey)) {
+                continue;
+            }
+            $linkKey = $publicLinkKey['link'] ?? null;
+            $textKey = $publicLinkKey['text'] ?? null;
+            if (
+                !is_string($linkKey)
+                || !is_string($textKey)
+                || !isset($GLOBALS[$linkKey], $GLOBALS[$textKey])
+                || trim($extractHref($linkKey)) === ''
+            ) {
+                continue;
+            }
+            $col1Items[] = [
+                'type' => 'simple',
+                'value' => $buildLink($linkKey, $textKey),
+            ];
+        }
+    }
+    $col1Items[] = [
+        'type'  => 'simple',
+        'value' => $buildLink("{$pref}contactLink", "{$pref}contactText"),
+    ];
+
+    $showPrivateAccess = ($params['show_private_access'] ?? true) === true;
+    if ($showPrivateAccess && !isset($_SESSION["id_rol"])):
         $col1Items[] = [
             'type'  => 'simple',
             'value' => $buildLink("{$pref}login", "{$pref}loginText"),
         ];
     endif;
 
-    if (isset($_SESSION["id_rol"])):
+    if ($showPrivateAccess && isset($_SESSION["id_rol"])):
         $privateLinks = [
             $buildLink("{$pref}link0", "{$pref}link0Text"),
             $buildLink("{$pref}link4", "{$pref}link4Text"),
@@ -174,15 +198,37 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
     }
     $col2Links2 .= '</ul>';
 
-    $btn = $GLOBALS["{$pref}become_member_button"];
-    $col2Button = '<a data-lang="'."{$pref}become_member_button".'" href="'.$btn->href.'" title="'.$btn->title.'" class="boton">'.$btn->text.'</a>';
+    $readField = static function (mixed $value, string $field): string {
+        if (is_object($value) && isset($value->{$field})) {
+            return (string) $value->{$field};
+        }
+        if (is_array($value) && isset($value[$field])) {
+            return (string) $value[$field];
+        }
 
-    $col2Social = '<div class="rrss">'
-        . '<a data-lang="'."{$pref}rrss_yt".'" href="'.$GLOBALS["{$pref}rrss_yt_href"].'" target="_blank" title="'.$GLOBALS["{$pref}rrss_yt"]->title.'"><img data-lang="'."{$pref}rrss_yt_img".'" src="'.$_ENV['RAIZ'].'/'.$GLOBALS["{$pref}rrss_yt_img"]->src.'" alt="'.$GLOBALS["{$pref}rrss_yt_img"]->alt.'" title="'.$GLOBALS["{$pref}rrss_yt_img"]->title.'"></a>'
-        . '<a data-lang="'."{$pref}rrss_in".'" href="'.$GLOBALS["{$pref}rrss_in_href"].'" target="_blank" title="'.$GLOBALS["{$pref}rrss_in"]->title.'"><img data-lang="'."{$pref}rrss_in_img".'" src="'.$_ENV['RAIZ'].'/'.$GLOBALS["{$pref}rrss_in_img"]->src.'" alt="'.$GLOBALS["{$pref}rrss_in_img"]->alt.'" title="'.$GLOBALS["{$pref}rrss_in_img"]->title.'"></a>'
-        . '<a data-lang="'."{$pref}rrss_fb".'" href="'.$GLOBALS["{$pref}rrss_fb_href"].'" target="_blank" title="'.$GLOBALS["{$pref}rrss_fb"]->title.'"><img data-lang="'."{$pref}rrss_fb_img".'" src="'.$_ENV['RAIZ'].'/'.$GLOBALS["{$pref}rrss_fb_img"]->src.'" alt="'.$GLOBALS["{$pref}rrss_fb_img"]->alt.'" title="'.$GLOBALS["{$pref}rrss_fb_img"]->title.'"></a>'
-        . '<a data-lang="'."{$pref}rrss_ig".'" href="'.$GLOBALS["{$pref}rrss_ig_href"].'" target="_blank" title="'.$GLOBALS["{$pref}rrss_ig"]->title.'"><img data-lang="'."{$pref}rrss_ig_img".'" src="'.$_ENV['RAIZ'].'/'.$GLOBALS["{$pref}rrss_ig_img"]->src.'" alt="'.$GLOBALS["{$pref}rrss_ig_img"]->alt.'" title="'.$GLOBALS["{$pref}rrss_ig_img"]->title.'"></a>'
-        . '</div>';
+        return '';
+    };
+    $col2SocialItems = '';
+    foreach (['yt', 'in', 'fb', 'ig'] as $network) {
+        $linkKey = "{$pref}rrss_{$network}";
+        $imageKey = "{$linkKey}_img";
+        $href = trim((string) ($GLOBALS["{$linkKey}_href"] ?? ''));
+        $image = $GLOBALS[$imageKey] ?? null;
+        $imageSource = trim($readField($image, 'src'));
+        if ($href === '' || $imageSource === '') {
+            continue;
+        }
+
+        $link = $GLOBALS[$linkKey] ?? null;
+        $col2SocialItems .= '<a data-lang="'.$linkKey.'" href="'.$href
+            .'" target="_blank" title="'.$readField($link, 'title').'">'
+            .'<img data-lang="'.$imageKey.'" src="'.$_ENV['RAIZ'].'/'
+            .$imageSource.'" alt="'.$readField($image, 'alt').'" title="'
+            .$readField($image, 'title').'"></a>';
+    }
+    $col2Social = $col2SocialItems === ''
+        ? ''
+        : '<div class="rrss">'.$col2SocialItems.'</div>';
 
     $logo = $GLOBALS["{$pref}logo_business"];
     $col2Logo = '<div><img data-lang="'."{$pref}logo_business".'" src="'.$_ENV['RAIZ'].'/'.$logo->src.'" alt="'.$logo->alt.'" title="'.$logo->title.'"></div>';
@@ -190,22 +236,10 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
     $col3Html = '<ul>';
     $col3Html .= '<li><a data-lang="'."{$pref}correo_link".'" href="mailto:'.$GLOBALS["{$pref}correo_link_href"].'" title="'.$GLOBALS["{$pref}correo_link"]->title.'" class="si_select linkReducido"><img data-lang="'."{$pref}correo_img".'" src="'.$_ENV['RAIZ'].'/'.$GLOBALS["{$pref}correo_img"]->src.'" alt="'.$GLOBALS["{$pref}correo_img"]->alt.'" title="'.$GLOBALS["{$pref}correo_img"]->title.'"><span data-lang="'."{$pref}correo_text".'">'.$GLOBALS["{$pref}correo_text"]->text.'</span></a></li>';
 
-    /*
-     * Compatibilidad: los stacks existentes mantienen la sede histórica
-     * mientras no declaren el parámetro. BASE pasa `offices => []` para que
-     * todo proyecto nuevo nazca sin datos de un cliente anterior.
-     */
-    $sedes = array_key_exists('offices', $params)
-        && is_array($params['offices'])
-            ? $params['offices']
-            : [
-                [
-                    'label' => 'DONOSTIA',
-                    'tels' => ['943 21 53 54'],
-                    'addr' => 'Hegaztien Pasealekua, 5, 20009 Donostia / San Sebastián, Gipuzkoa',
-                    'map' => 'https://maps.app.goo.gl/1irmxtrYHNRD3HQe9',
-                ],
-            ];
+    /* Las sedes son datos propios de cada proyecto, nunca defaults de CORE. */
+    $sedes = is_array($params['offices'] ?? null)
+        ? $params['offices']
+        : [];
 
     foreach ($sedes as $s) {
         $col3Html .= '<li><p class="resaltado">'.$s['label'].'</p><div>';

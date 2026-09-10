@@ -83,7 +83,11 @@ php -r "echo in_array('argon2id', password_algos(), true) ? 'Argon2id=available'
    Si el plugin instalado aún no normaliza el selector, usar explícitamente `:*`.
 3. Actualizar el código físico con `composer update liquidstack/core`; actualizar CORE por sí solo no activa WebAdmin ni Blog.
 4. Para desactivar, usar `composer remove` sobre el selector directo. Nunca borrar automáticamente tablas, usuarios, artículos, medios, configuración o assets conservados.
-5. Revisar el resumen del sincronizador: un fichero project-owned o personalizado debe preservarse salvo que exista un contrato de versión gestionada reconocido.
+5. Revisar el resumen del sincronizador: un fichero project-owned o
+   personalizado debe preservarse salvo que exista un contrato de versión
+   gestionada reconocido. El estado instalado y el historial de huellas son
+   evidencias acumulativas; una huella histórica exacta sigue siendo gestionada
+   aunque el estado haya quedado desfasado.
 
 No ejecutar `require`, `remove`, migraciones, commit, push o release si el usuario solo ha pedido una auditoría.
 

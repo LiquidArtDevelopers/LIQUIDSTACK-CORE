@@ -140,6 +140,11 @@ controladores, templates, SCSS, JS, vistas e imágenes distribuidas. El
 manifiesto permite reconocer versiones canónicas anteriores sin confundirlas
 con personalizaciones del consumidor.
 
+Tratar el estado de la última instalación y este historial como evidencias
+acumulativas. Si el estado está desfasado pero un destino coincide exactamente
+con una huella histórica, sigue siendo una copia gestionada y no debe bloquear
+su grupo; un contenido que no coincida con ninguna evidencia se preserva.
+
 Ejecutar desde la raíz de CORE, después de cerrar todos los cambios gestionados
 y antes de crear o enmendar el commit de release:
 
