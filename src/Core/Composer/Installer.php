@@ -45,21 +45,8 @@ class Installer
             );
         }
 
-        $synchronizer = self::createManagedFileSynchronizer($event);
-
-        // The local router is runtime infrastructure, not an SCSS resource.
-        // Queue it even when the visual-resource contract cannot be extended;
-        // package.json must never point at a file withheld by an unrelated
-        // config failure.
-        self::queueDevelopmentRuntimeAssets($event, $synchronizer);
-
-        if ($scssContractReady) {
-            self::syncProjectAssets($event, $synchronizer);
-            self::queueResources($event, $synchronizer);
-        }
-        self::queueInternalModules(
+        $synchronizer = self::prepareManagedProjectFiles(
             $event,
-            $synchronizer,
             $scssContractReady
         );
         $synchronizer->apply();
@@ -79,6 +66,36 @@ class Installer
                 . self::VITE_LANGUAGE_PLUGIN_PATH,
             $event->getIO()
         );
+    }
+
+    /**
+     * Prepara, sin escribir el proyecto, la misma cola gestionada que usan
+     * los hooks de install/update. Las integraciones SCSS, Vite, package.json
+     * y skills conservan sus contratos y ciclos separados.
+     */
+    public static function prepareManagedProjectFiles(
+        Event $event,
+        bool $includeStandardResources
+    ): ManagedFileSynchronizer {
+        $synchronizer = self::createManagedFileSynchronizer($event);
+
+        // The local router is runtime infrastructure, not an SCSS resource.
+        // Queue it even when the visual-resource contract cannot be extended;
+        // package.json must never point at a file withheld by an unrelated
+        // config failure.
+        self::queueDevelopmentRuntimeAssets($event, $synchronizer);
+
+        if ($includeStandardResources) {
+            self::syncProjectAssets($event, $synchronizer);
+            self::queueResources($event, $synchronizer);
+        }
+        self::queueInternalModules(
+            $event,
+            $synchronizer,
+            $includeStandardResources
+        );
+
+        return $synchronizer;
     }
 
     public static function syncAgentGuidance(Event $event): void
@@ -647,6 +664,7 @@ class Installer
         $resourcesDir = $packageRoot . '/resources';
 
         if (!is_dir($resourcesDir)) {
+            $synchronizer->block('sync.canonical_source_missing');
             $io->writeError(sprintf('<warning>Resources directory not found: %s</warning>', $resourcesDir));
             return;
         }
@@ -674,6 +692,7 @@ class Installer
                 $destination = $pair['destination'];
 
                 if (!is_dir($source)) {
+                    $synchronizer->block('sync.canonical_source_missing');
                     $io->writeError(sprintf('<warning>Skipping missing resources dir: %s</warning>', $source));
                     continue;
                 }
@@ -683,7 +702,12 @@ class Installer
                     $destination,
                     $pair['source_id'],
                     $pair['target_id'],
-                    $target['track_state']
+                    $target['track_state'],
+                    null,
+                    null,
+                    str_starts_with($pair['target_id'], '@custom-resources/')
+                        ? $destination
+                        : null
                 );
             }
         }
@@ -692,15 +716,22 @@ class Installer
         $imagesDestination = self::resolveImageResourceTarget($projectRoot);
 
         if (is_dir($imagesSource)) {
+            $imagesTargetId = self::logicalTargetPrefix(
+                $projectRoot,
+                $imagesDestination,
+                '@custom-resources/img'
+            );
             $synchronizer->queueDirectory(
                 $imagesSource,
                 $imagesDestination,
                 'resources/img',
-                self::logicalTargetPrefix(
-                    $projectRoot,
-                    $imagesDestination,
-                    '@custom-resources/img'
-                )
+                $imagesTargetId,
+                true,
+                null,
+                null,
+                str_starts_with($imagesTargetId, '@custom-resources/')
+                    ? $imagesDestination
+                    : null
             );
         }
 
@@ -708,15 +739,22 @@ class Installer
         $videosDestination = self::resolveVideoResourceTarget($projectRoot);
 
         if (is_dir($videosSource)) {
+            $videosTargetId = self::logicalTargetPrefix(
+                $projectRoot,
+                $videosDestination,
+                '@custom-resources/video'
+            );
             $synchronizer->queueDirectory(
                 $videosSource,
                 $videosDestination,
                 'resources/video',
-                self::logicalTargetPrefix(
-                    $projectRoot,
-                    $videosDestination,
-                    '@custom-resources/video'
-                )
+                $videosTargetId,
+                true,
+                null,
+                null,
+                str_starts_with($videosTargetId, '@custom-resources/')
+                    ? $videosDestination
+                    : null
             );
         }
     }
@@ -766,11 +804,13 @@ class Installer
             $target = $projectRoot . '/' . $assetPath;
 
             if ($assetType === 'file' && !is_file($source)) {
+                $synchronizer->block('sync.canonical_source_missing');
                 $io->writeError(sprintf('<warning>Skipping missing asset: %s</warning>', $source));
                 continue;
             }
 
             if ($assetType === 'dir' && !is_dir($source)) {
+                $synchronizer->block('sync.canonical_source_missing');
                 $io->writeError(sprintf('<warning>Skipping missing directory: %s</warning>', $source));
                 continue;
             }
@@ -812,6 +852,7 @@ class Installer
             $source = $packageRoot . '/stubs/' . $relativePath;
 
             if (!is_file($source)) {
+                $synchronizer->block('sync.canonical_source_missing');
                 $event->getIO()->writeError(sprintf(
                     '<warning>Skipping missing development runtime: %s</warning>',
                     $source
@@ -844,6 +885,7 @@ class Installer
                 $projectRoot . '/composer.json'
             );
         } catch (\Throwable $exception) {
+            $synchronizer->block('sync.modules_unresolved');
             $io->writeError(sprintf(
                 '<warning>No se pudieron resolver los módulos internos; el CORE base continuará sincronizándose: %s</warning>',
                 $exception->getMessage()

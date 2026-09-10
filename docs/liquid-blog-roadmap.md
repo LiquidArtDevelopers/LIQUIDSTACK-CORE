@@ -250,8 +250,7 @@ fuente gestionada por Composer en `resources/img/dummy/responsive`, cubren 480,
 
 Relacionados y archivo ya pertenecen al corte 5. Continúan pendientes RSS y las
 composiciones que excedan la familia actual. La implementación
-RESOURCE-001 se integra en CORE principal dentro de `Unreleased`; su publicación
-versionada sigue abierta hasta cerrar la matriz final. La QA funcional-visual
+RESOURCE-001 forma parte de CORE versionado desde `v1.22.0`. La QA funcional-visual
 previa cubrió Chrome real a 390, 768 y 1280 px,
 incluidos filtros coordinados, paginación, varias instancias, teclado,
 geometría de media y ausencia de overflow o errores de consola. También se

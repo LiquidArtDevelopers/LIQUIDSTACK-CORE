@@ -11,6 +11,7 @@ use App\Core\Composer\Command\BlogQaSeedMatrixCommand;
 use App\Core\Composer\Command\BlogUnifiedTextAdoptionCommand;
 use App\Core\Composer\Command\BlogPublicShellAdoptionCommand;
 use App\Core\Composer\Command\MediaInitCommand;
+use App\Core\Composer\Command\ManagedSyncCommand;
 use App\Core\Composer\Command\MigrateCommand;
 use App\Core\Composer\Command\WebAdminBootstrapCommand;
 use App\Core\Composer\Command\WebAdminMailDispatchCommand;
@@ -37,6 +38,7 @@ final class LiquidStackCommandProvider implements CommandProvider
     {
         return [
             new DoctorCommand(),
+            new ManagedSyncCommand(),
             new MigrateCommand(),
             new MediaInitCommand(),
             new BlogSitemapCacheInitCommand(),

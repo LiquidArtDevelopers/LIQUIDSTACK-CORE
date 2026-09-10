@@ -38,6 +38,32 @@ final class ScssConfigContractSynchronizerTest extends TestCase
         $this->filesystem->remove($this->root);
     }
 
+    public function testReadOnlyInspectionDoesNotPatchMissingVariables(): void
+    {
+        $original = "\$color00: #fff;\n";
+        $this->writeFile($this->configPath, $original);
+        $this->writeContract([[
+            'name' => 'color02SVG',
+            'value' => 'fallback-filter',
+        ]]);
+        $synchronizer = $this->synchronizer();
+
+        self::assertFalse($synchronizer->isSatisfied(
+            $this->configPath,
+            $this->contractPath
+        ));
+        self::assertSame($original, file_get_contents($this->configPath));
+
+        $this->writeFile(
+            $this->configPath,
+            $original . "\$color02SVG: fallback-filter !default;\n"
+        );
+        self::assertTrue($synchronizer->isSatisfied(
+            $this->configPath,
+            $this->contractPath
+        ));
+    }
+
     public function testAddsOnlyMissingVariablesAndKeepsExistingValues(): void
     {
         $original = "\$color00: project-white;\n"

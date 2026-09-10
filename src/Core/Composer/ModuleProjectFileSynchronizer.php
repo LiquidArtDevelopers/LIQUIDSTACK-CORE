@@ -121,6 +121,7 @@ final class ModuleProjectFileSynchronizer
         }
 
         if (!$selectionIsValid) {
+            $synchronizer->block('sync.modules_incomplete');
             $this->io->writeError(
                 '<warning>No se publica ningún fichero de los módulos seleccionados para evitar una instalación parcial o una dependencia incompleta.</warning>'
             );

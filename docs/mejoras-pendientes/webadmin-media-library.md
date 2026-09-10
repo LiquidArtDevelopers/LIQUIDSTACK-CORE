@@ -1,7 +1,8 @@
 # Biblioteca de medios de WebAdmin
 
-> Estado (2026-08-17, CORE `Unreleased`): biblioteca, vinculación con el editor
-> estructurado Blog y retirada recuperable mediante cuarentena implementadas.
+> Estado (2026-08-17, CORE versionado): biblioteca, vinculación con el editor
+> estructurado Blog y retirada recuperable mediante cuarentena disponibles
+> desde `v1.13.0`; inicialización segura del storage desde `v1.14.0`.
 > La purga irreversible, restauración operativa y otros formatos siguen
 > pendientes. La adopción en consumidores exige migración e inicialización de
 > storage explícitas; los eventos automáticos de Composer no realizan ninguna.

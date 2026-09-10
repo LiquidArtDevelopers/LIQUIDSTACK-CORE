@@ -4,6 +4,39 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.29.0] - 2026-09-10
+
+### Añadido
+- Nuevo comando `composer liquidstack:sync` con catálogo `--plan`, preview
+  `--dry-run` estrictamente de solo lectura y aplicación confirmada mediante
+  `--apply --plan-hash=... --yes`. La salida usa exclusivamente IDs relativos
+  y códigos estables.
+
+### Cambiado
+- La skill canónica de migración descubre CORE, consumidor y `vendor-dir`
+  desde Git y Composer; ya no presupone una ubicación local o XAMPP.
+
+### Seguridad
+- La aplicación recupera primero transacciones interrumpidas, vuelve a
+  calcular el plan bajo el lock del proyecto y rechaza hashes obsoletos antes
+  de aplicar nuevas mutaciones. La nueva superficie conserva las políticas y
+  grupos atómicos existentes y no introduce borrados, renames, migraciones,
+  cambios de entorno ni otras mutaciones de lifecycle.
+- El preflight bloquea estado, historial, catálogos JSON, roots autorizados o
+  scaffolds transaccionales inválidos; liga el hash al proyecto, destinos y
+  contrato SCSS, y evita renames atómicos externos entre filesystems.
+- La limpieza de journals valida su layout, conserva el marcador ante carreras
+  de cierre y retira únicamente slots regulares mediante `unlink`, sin recorrer
+  symlinks, junctions ni directorios. Los bindings se congelan durante el apply
+  y se revalidan antes de cada mutación; un `committed` terminal nunca revierte
+  estado ni condiciona el cleanup al contenido posterior del consumidor.
+- Las mutaciones independientes usan el mismo journal transaccional que los
+  grupos, sustituyen ficheros mediante promoción en vez de escritura in-place y
+  no propagan cambios a hard links externos. Los paths físicos se congelan en
+  memoria preservando el casing operativo, las colisiones que aparecen tras
+  retargetear un alias bloquean el plan y los cambios concurrentes de junction
+  se restauran sobre el destino originalmente autorizado.
+
 ## [1.28.2] - 2026-09-10
 
 ### Corregido
@@ -296,8 +329,7 @@ atribuirlas a una versión concreta.
   consumidor y respetan cualquier miniatura que ya entregue el feed. La QA
   funcional-visual en Chrome real queda cerrada a 390, 768 y 1280 px; corrigió
   además la altura intrínseca de Grid02 y aisló Pagination01 del `nav` global.
-  El corte queda integrado en CORE principal dentro de `Unreleased`; la
-  publicación versionada permanece condicionada a la matriz de adopción.
+  RESOURCE-001 quedó versionado en CORE desde `v1.22.0`.
 - Duplicar un artículo o añadir un locale crea un borrador privado con lock
   inicial, documento actual y revisión propia número `1` cuando la fuente es
   estructurada, sin clonar publicación ni historial. El duplicado independiente

@@ -148,16 +148,18 @@ el estado se recarga después de adquirirlo para que dos procesos no decidan con
 la misma proyección obsoleta. Primero todos los orígenes mutables del grupo se
 copian y verifican en un staging corto bajo
 `.liquidstack/core/sync-transactions`; un journal atómico con estados
-`staging`, `prepared` y `committed` mapea cada destino, backup y SHA-256 exacto.
+`staging`, `prepared`, `committed` y `cleanup_pending` mapea cada destino,
+backup y SHA-256 exacto.
 Después los destinos
 reconocidos se apartan a backup y se promueven los ficheros preparados.
 
-Un fallo en cualquier escritura elimina solo destinos cuya huella demuestra
-que proceden del staging y restaura cada original antes de registrar huellas o
-contabilizar altas/actualizaciones. Una edición concurrente desconocida nunca
-se borra. Si PHP se interrumpe, el siguiente `apply()` recupera obligatoriamente
-los journals `prepared` o finaliza el cleanup de los `committed` antes de
-planificar. Los backups viven en el mismo volumen del proyecto para que
+Un fallo anterior a confirmar `committed` elimina solo destinos cuya huella
+demuestra que proceden del staging y restaura cada original antes de registrar
+huellas o contabilizar altas/actualizaciones. Una edición concurrente
+desconocida nunca se borra. Si PHP se interrumpe, el siguiente `apply()`
+recupera obligatoriamente los journals `prepared` o finaliza el cleanup de los
+`committed`/`cleanup_pending` antes de planificar. Los backups viven en el mismo
+volumen del proyecto para que
 `rename` sea seguro en Windows. Si incluso la restauración falla, Composer se
 detiene, no escribe estado ni continúa otros grupos y conserva journal y
 backups para recuperación. El lock reside en el temporal del sistema y el
@@ -165,6 +167,37 @@ staging contiene un `.gitignore` interno que excluye journals y backups; solo
 `.liquidstack/core/managed-files.json` se versiona. Las políticas
 `install_if_missing`, `merge_json_additive` y los ficheros sin grupo conservan
 su flujo independiente.
+
+El mismo inventario gestionado se expone de forma explícita mediante
+`composer liquidstack:sync`. `--plan` publica el catálogo relativo de
+source/target, política y grupo sin evaluar acciones (el preflight puede leer el
+contrato SCSS para determinar el inventario); `--dry-run` incorpora el estado
+real y genera un hash determinista sin adquirir el lock, crear journals o
+escribir el proyecto. `--apply` exige `--yes` y ese `--plan-hash`; ya bajo el
+lock recupera transacciones interrumpidas, recarga estado y vuelve a calcular
+la instantanea.
+El hash se liga a una versión explícita del protocolo, al proyecto físico, a
+los destinos efectivos y a los preflights relevantes sin publicar rutas
+absolutas. `--apply` recupera primero journals interrumpidos, porque una
+transacción incompleta debe quedar en un estado seguro antes de evaluar nada
+nuevo. Esa recuperación puede restaurar destinos o terminar su cleanup; si
+altera la instantánea, el hash falla con `sync.plan_changed` antes de aplicar
+mutaciones nuevas de la cola y debe repetirse el dry-run.
+
+Esta frontera reutiliza exactamente la cola de CORE, runtime y módulos activos
+que preparan los hooks cuando el contrato SCSS ya está satisfecho. No absorbe
+las otras fases del instalador: ampliacion aditiva de `_config.scss`, parche
+quirurgico de Vite, merge de `package.json` y distribucion de `.codex`. Si el
+contrato SCSS no está listo, el comando queda bloqueado y el hook ordinario
+debe reconciliarlo antes de repetir el plan. No existe todavía un lifecycle de
+renames o retires: ninguna ausencia del catalogo autoriza a borrar un target
+del consumidor, aunque figure en un estado histórico. Un estado, historial,
+catálogo JSON o scaffold transaccional inválido bloquea el apply explícito. Un
+grupo atómico con override externo mutante debe compartir filesystem con el
+journal del proyecto; de lo contrario se bloquea antes del primer rename. Solo
+los journals externos `prepared` requieren el mismo binding de destino y la
+cola original para restaurar. `committed` y `cleanup_pending` son terminales de
+limpieza: no reconstruyen la cola ni vuelven a consultar el destino.
 
 El helper común de una familia puede tener un grupo granular propio únicamente
 si su API pública es estable y aditiva. En Blog, `resource-support` conserva
@@ -288,6 +321,9 @@ Composer lo ha cargado:
 ```bash
 composer liquidstack:doctor
 composer liquidstack:doctor --format=json
+composer liquidstack:sync --plan
+composer liquidstack:sync --dry-run
+composer liquidstack:sync --apply --plan-hash=sha256:... --yes
 composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
 composer liquidstack:migrate --apply
@@ -795,8 +831,7 @@ y evita N+1. Schema o storage no preparados y datos corruptos fallan cerrados a
 la card textual. Los 16 derivados Dummy del showroom tienen fuente gestionada
 por Composer en `resources/img/dummy/responsive`, cubren 480, 899/900, 1800 y
 2560 px y no sustituyen una proyección real del feed.
-RESOURCE-001 se integra en CORE principal dentro de `Unreleased`; la release
-versionada permanece condicionada a la matriz de adopción final.
+RESOURCE-001 forma parte de CORE versionado desde `v1.22.0`.
 
 Siguen fuera de este corte el análisis de búsqueda avanzado, la traducción IA, las
 plantillas visuales adicionales, los formatos de medios aún no admitidos, la

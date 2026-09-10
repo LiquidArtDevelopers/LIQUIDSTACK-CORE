@@ -23,6 +23,46 @@ final class ScssConfigContractSynchronizer
         $this->filesystem = new Filesystem();
     }
 
+    /**
+     * Comprueba el contrato sin escribir el config. Un resultado false hace
+     * que el planificador explicito omita la superficie visual, igual que el
+     * hook cuando no puede garantizar el contrato antes de encolarla.
+     */
+    public function isSatisfied(
+        string $configPath,
+        string $contractPath
+    ): bool {
+        if (!$this->isRegularFile($configPath)) {
+            return false;
+        }
+        if (!$this->isRegularFile($contractPath)) {
+            return false;
+        }
+
+        $config = @file_get_contents($configPath);
+        $contractRaw = @file_get_contents($contractPath);
+        if ($config === false || $contractRaw === false) {
+            return false;
+        }
+
+        $variables = $this->decodeContract(
+            $contractRaw,
+            $contractPath
+        );
+        if ($variables === null) {
+            return false;
+        }
+
+        $declaredVariables = $this->declaredVariables($config);
+        foreach ($variables as $variable) {
+            if (!isset($declaredVariables[$variable['name']])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function sync(string $configPath, string $contractPath): int
     {
         $this->successful = false;

@@ -1754,8 +1754,7 @@ aplica cuando el feed no ha proyectado ya `thumbnail` o `media`.
 Las claves legacy de `templates` se mantienen aditivamente durante la
 transición. Un stack sin Blog no recibe los controladores, templates, estilos,
 runtimes ni hooks de esta categoría.
-Este corte se integra en CORE principal dentro de `Unreleased`; todavía no es
-una release versionada y debe superar la matriz de adopción antes de publicarse. La QA
+RESOURCE-001 forma parte de CORE versionado desde `v1.22.0`. La QA
 funcional-visual previa se ejecutó en Chrome real a 390, 768 y 1280 px sobre
 centrado, miniaturas, varias instancias, controles, teclado, filtros
 coordinados, historial, paginación SSR y ausencia de overflow o errores de

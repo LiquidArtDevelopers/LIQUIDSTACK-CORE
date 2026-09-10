@@ -28,10 +28,12 @@ Al ejecutar `composer install` o `composer update` en un proyecto que consume es
    - Si un controlador, template, SCSS, JS o asset de un recurso contiene una
      personalización desconocida, se conserva el grupo completo del recurso.
      Así no se mezclan piezas de contratos incompatibles.
-   - Las escrituras `managed_hash` que comparten grupo se preparan completas
-     antes de modificar el consumidor. Un lock exclusivo por proyecto obliga a
-     recargar primero el estado más reciente; cada operación mantiene además un
-     journal atómico y backups temporales en el mismo volumen. Si falla una
+   - Las altas, actualizaciones y fusiones JSON se preparan antes de modificar
+     el consumidor. Las operaciones independientes usan transacciones de un
+     fichero y las escrituras `managed_hash` agrupadas conservan su atomicidad
+     conjunta. Un lock exclusivo por proyecto obliga a recargar primero el
+     estado más reciente; cada operación mantiene además un journal y backups
+     temporales en el mismo volumen. Si falla una
      promoción, restaura el grupo antes de actualizar estadísticas o estado; si
      PHP se interrumpe, la siguiente ejecución recupera el journal antes de
      planificar. Una restauración incierta detiene Composer y conserva la copia
@@ -111,6 +113,54 @@ La sincronizacion automatica anterior la realiza el plugin en los eventos
 `post-install-cmd` y `post-update-cmd`. Los errores de la guia para agentes se
 registran sin interrumpir Composer.
 
+### Planificación explícita de ficheros gestionados
+
+El consumidor puede auditar y repetir de forma controlada la misma cola de
+ficheros gestionados de CORE, runtime y módulos activos:
+
+```bash
+composer liquidstack:sync --plan
+composer liquidstack:sync --dry-run
+composer liquidstack:sync --dry-run --format=json
+composer liquidstack:sync --apply --plan-hash=sha256:... --yes
+```
+
+- `--plan` enumera targets relativos, política y grupo sin evaluar acciones ni
+  escribir el proyecto. El preflight puede comprobar si el contrato SCSS esta
+  disponible para determinar el inventario aplicable.
+- `--dry-run` evalua las acciones y entrega un `plan_hash` determinista. No
+  crea locks o journals, no escribe targets ni actualiza
+  `.liquidstack/core/managed-files.json`. El hash queda ligado al protocolo,
+  al proyecto físico, a los destinos efectivos y a los preflights relevantes,
+  sin publicar rutas absolutas.
+- `--apply` exige tanto `--yes` como el hash revisado. El sincronizador vuelve
+  a calcular el plan después de adquirir el lock y rechaza
+  `sync.plan_changed` si origen, destino o estado han cambiado.
+
+Antes de comparar el hash, `--apply` recupera cualquier journal interrumpido:
+esa recuperación puede restaurar un backup o terminar una limpieza pendiente.
+No aplica mutaciones nuevas de la cola con un hash obsoleto; si la recuperación
+cambia la instantánea, devuelve `sync.plan_changed` y exige repetir el
+`--dry-run`. Solo un journal externo en estado `prepared` necesita que siga
+activa la misma configuración de destino para validar su binding y restaurar.
+`committed` y `cleanup_pending` son terminales de limpieza: no reconstruyen la
+cola ni vuelven a leer o modificar el destino ya confirmado.
+
+El comando no ejecuta retires ni renames de lifecycle sobre destinos del
+consumidor. Cubre exclusivamente las políticas
+`managed_hash`, `install_if_missing` y `merge_json_additive` que ya usa el
+sincronizador. El contrato aditivo de `src/scss/_config.scss`, la integracion
+quirurgica de `vite.config.js`, las dependencias de `package.json` y la guia
+`.codex` siguen siendo fases separadas de `composer install`/`update`. Si el
+preflight devuelve `sync.scss_contract_not_satisfied`, ejecutar primero el
+hook normal para reconciliar ese contrato y volver a generar el dry-run; el
+comando no lo modifica de forma encubierta. También bloquea antes de escribir
+si el estado, el historial, un catálogo JSON o el scaffold transaccional son
+inválidos. Cualquier mutación dirigida a un override externo solo se ejecuta
+cuando ese destino comparte filesystem con el journal del proyecto; un
+destino externo en otro volumen devuelve
+`sync.external_target_cross_device_unsupported`.
+
 Son propiedad del proyecto y no se sobrescriben automáticamente las rutas,
 el fichero `vite.config.js` completo, `src/scss/_config.scss`,
 `src/scss/_global.scss`, los SCSS propios de páginas y las configuraciones
@@ -179,6 +229,8 @@ encolado por los flujos de invitación:
 ```bash
 composer liquidstack:doctor
 composer liquidstack:doctor --format=json
+composer liquidstack:sync --plan
+composer liquidstack:sync --dry-run
 composer liquidstack:migrate --plan
 composer liquidstack:migrate --dry-run
 composer liquidstack:migrate --apply
@@ -859,8 +911,7 @@ siendo textual. El helper valida estrictamente `src`, `srcset` y `sizes` y aplic
 el `sizes` propio de cada composición. Los 16 derivados AVIF de los cuatro
 Dummy del showroom tienen su fuente gestionada por Composer en
 `resources/img/dummy/responsive` —480, 899/900, 1800 y 2560 px— y se sincronizan
-al consumidor. Este corte se integra en CORE principal dentro de `Unreleased`;
-su publicación versionada sigue condicionada a la matriz completa de adopción.
+al consumidor. RESOURCE-001 forma parte de CORE versionado desde `v1.22.0`.
 La QA funcional-visual en Chrome real está cerrada a 390, 768 y
 1280 px, con filtros, paginación, sliders multiinstancia y geometría responsive
 sin overflow ni errores de consola.
@@ -1372,10 +1423,10 @@ En el proyecto laboratorio, ejecuta:
 composer update liquidstack/core
 ```
 
-Esto refresca stubs, recursos, dependencias frontend y guia para agentes. Los
-comandos de sincronizacion selectiva solo estaran disponibles en el laboratorio
-si se han declarado en el `composer.json` raiz como se muestra en la seccion
-"Scripts Composer y paquete raiz".
+Esto refresca stubs, recursos, dependencias frontend y guia para agentes.
+`liquidstack:sync` se registra directamente mediante el `CommandProvider` de
+CORE. Solo los aliases opcionales `liquidstack-core:*` necesitan declararse en
+el `composer.json` raiz como se muestra en "Scripts Composer y paquete raiz".
 
 ## Publicacion de cambios del core
 
@@ -1390,7 +1441,11 @@ tag y el push atómico en el comando canónico. Ajusta únicamente la versión, 
 mensaje y, si existe una DB **TEST aislada**, el flag de integración MySQL:
 
 ```powershell
-Set-Location -LiteralPath 'C:\xampp\htdocs\__LIQUIDSTACK\LIQUIDSTACK-CORE'
+$CoreRoot = (git rev-parse --show-toplevel).Trim()
+if ($LASTEXITCODE -ne 0 -or $CoreRoot -eq '') {
+    throw 'Ejecuta este bloque desde un clon de liquidstack/core.'
+}
+Set-Location -LiteralPath $CoreRoot
 
 $Version = 'vX.Y.Z'
 $CommitMessage = 'tipo(ámbito): descripción'

@@ -98,11 +98,15 @@ final class InstallerModuleSyncTest extends TestCase
             ) . PHP_EOL
         );
 
-        $this->sync(['liquidstack/webadmin']);
+        $synchronizer = $this->sync(['liquidstack/webadmin']);
 
         self::assertFileDoesNotExist(
             $this->projectRoot
                 . '/public/assets/modules/webadmin/module.txt'
+        );
+        self::assertContains(
+            'sync.modules_incomplete',
+            $synchronizer->blockers()
         );
     }
 

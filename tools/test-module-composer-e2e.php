@@ -324,6 +324,15 @@ try {
             'WebAdmin-only no recibió el comando de onboarding inicial.'
         );
     }
+    if (!in_array(
+        'liquidstack:sync',
+        $webAdminOnlyCommandNames,
+        true
+    )) {
+        throw new RuntimeException(
+            'WebAdmin-only did not receive liquidstack:sync.'
+        );
+    }
     $runComposer([
         'remove',
         'liquidstack/webadmin',
@@ -517,6 +526,36 @@ try {
         return $hashes;
     };
     $beforeReadOnlyCommands = $snapshotProject($temporaryRoot);
+
+    $syncOutput = trim($runComposer([
+        'liquidstack:sync',
+        '--dry-run',
+        '--format=json',
+        '--no-interaction',
+    ]));
+    $syncPlan = json_decode(
+        $syncOutput,
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    if (
+        ($syncPlan['ok'] ?? null) !== true
+        || ($syncPlan['status'] ?? null) !== 'ready'
+        || ($syncPlan['standard_resources_ready'] ?? null) !== true
+        || preg_match(
+            '/\Asha256:[a-f0-9]{64}\z/',
+            (string) ($syncPlan['plan_hash'] ?? '')
+        ) !== 1
+        || str_contains(
+            str_replace('\\', '/', $syncOutput),
+            str_replace('\\', '/', $temporaryRoot)
+        )
+    ) {
+        throw new RuntimeException(
+            'LiquidStack sync did not return a safe read-only plan.'
+        );
+    }
 
     $doctorOutput = trim($runComposerExpectingFailure([
         'liquidstack:doctor',

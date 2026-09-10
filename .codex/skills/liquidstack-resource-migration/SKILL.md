@@ -15,16 +15,19 @@ description: Migración y promoción de recursos entre un proyecto LiquidStack c
 4. Tratar `liquidstack/core` como fuente canónica de recursos estables y el proyecto consumidor como laboratorio.
 5. No editar `vendor/liquidstack/core` como fuente de verdad.
 
-Localizaciones habituales en este entorno, que deben verificarse antes de usarse:
+Descubrir siempre las localizaciones efectivas; la skill debe funcionar en
+otro ordenador y no presupone una raíz de XAMPP concreta:
 
-- BASE: `C:\xampp\htdocs\__LIQUIDSTACK\LIQUIDSTACK-BASE`
-- CORE: `C:\xampp\htdocs\__LIQUIDSTACK\LIQUIDSTACK-CORE`
+- consumidor: `git rev-parse --show-toplevel` desde el proyecto activo;
+- CORE instalado: `composer show --path liquidstack/core` desde el consumidor
+  y, como respaldo, la ruta `vendor/liquidstack/core` del `vendor-dir` que
+  declare Composer;
+- checkout de desarrollo de CORE o BASE: el repositorio/remoto configurado y
+  las instrucciones de ese propio proyecto, nunca una ruta inventada;
 - showroom BASE: el origen de aplicación que publique `npm run lad`, seguido
   de `/es/showroom` (con `/es/templates` como alias compatible). Si 1309 está
   libre será normalmente `http://localhost:1309/es/showroom`; no asumirlo si
   hay otro stack activo.
-
-En otros entornos, localizar CORE mediante Composer, el repositorio configurado o las instrucciones del proyecto; no inventar rutas.
 
 El supervisor gestionado intenta PHP desde 1309 y Vite desde 5173 y avanza
 independientemente hasta encontrar puertos libres. Tratar
@@ -122,6 +125,50 @@ No copiar a CORE destinatarios, credenciales, BCC, branding, contenido legal o
 plantillas propias del cliente. Si un runtime canónico contiene datos
 regulatorios locales, separarlo en una variante o marcarlo como preservable
 antes de permitir que Composer actualice el consumidor.
+
+### Planificar la sincronización gestionada
+
+Cuando se necesite auditar o repetir la publicacion de ficheros sin ocultarla
+dentro de un update, usar en el consumidor:
+
+```powershell
+composer liquidstack:sync --plan
+composer liquidstack:sync --dry-run --format=json
+composer liquidstack:sync --apply --plan-hash=sha256:... --yes
+```
+
+- `--plan` enumera la cola relativa y sus políticas; no evalúa acciones ni
+  escribe destinos. El preflight puede leer el contrato SCSS para determinar
+  el inventario aplicable.
+- `--dry-run` es estrictamente read-only: no crea lock, journal o estado. Su
+  `plan_hash` fija protocolo, proyecto físico, origen, destino, preflights,
+  estado y decisión de cada entrada sin exponer rutas absolutas.
+- Revisar preservaciones y errores antes de aplicar. `--apply` exige el hash
+  exacto y `--yes`; recalcula bajo lock y `sync.plan_changed` obliga a generar
+  un dry-run nuevo. Nunca reutilizar un hash después de editar el consumidor o
+  cambiar CORE.
+- Antes de comparar el hash, el apply recupera journals interrumpidos. Esa
+  recuperación puede restaurar backups o terminar limpiezas; si cambia la
+  instantánea, repetir el dry-run. No se aplican mutaciones nuevas de la cola
+  con un hash obsoleto.
+- El comando cubre la misma cola `managed_hash`, `install_if_missing` y
+  `merge_json_additive` de CORE, runtime y módulos activos cuando el contrato
+  SCSS ya está satisfecho. No cubre el parche aditivo de `_config.scss`, la
+  integracion de Vite, el merge de `package.json` ni la distribucion de skills;
+  esas fases siguen perteneciendo a `composer install`/`update`.
+- Si aparece `sync.scss_contract_not_satisfied`, ejecutar el hook normal,
+  revisar su resultado y repetir el dry-run. No modificar `_config.scss` a
+  ciegas para desbloquearlo.
+- Tratar como bloqueos operativos un historial/estado inválido, un catálogo
+  JSON no válido o un scaffold transaccional alterado. Un grupo atómico con
+  override externo mutante debe compartir filesystem con el journal del
+  proyecto. Para recuperar un journal externo `prepared`, conservar la misma
+  configuración de destino hasta terminar la restauración. `committed` y
+  `cleanup_pending` solo cierran el cleanup y no reconstruyen la cola ni leen
+  de nuevo el destino.
+- La desaparicion de una entrada no autoriza un borrado. Hasta que exista un
+  contrato de lifecycle separado y probado, los renames/retires se resuelven
+  de forma explicita preservando las personalizaciones.
 
 Los directorios de medios no se consideran distribuidos solo por existir en
 `resources`: verificar que `Installer::syncResources()` los copie al destino

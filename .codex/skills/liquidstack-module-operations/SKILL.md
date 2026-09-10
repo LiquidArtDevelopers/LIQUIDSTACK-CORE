@@ -1228,9 +1228,9 @@ composer liquidstack:migrate --dry-run
   `public-collections-support`. No agruparlos con `resource-support`: una
   personalización del helper o loader visual no debe impedir instalar o
   actualizar el adaptador backend que requiere cada vista.
-- RESOURCE-001 forma parte de CORE principal desde este corte `Unreleased`.
-  Mantener como gate de publicación sus pruebas técnicas y la QA funcional y
-  visual tras instalarlo en un consumidor; no confundir integración con release.
+- RESOURCE-001 forma parte de CORE versionado desde `v1.22.0`. Mantener sus
+  pruebas técnicas y la QA funcional y visual como gates de regresión tras
+  instalarlo en un consumidor.
 - Si el contrato de `src/scss/_config.scss` no está disponible, publicar solo
   los assets autocontenidos de cada módulo bajo sus namespaces
   `public/assets/modules/<id>`, `src/js/modules/<id>` y

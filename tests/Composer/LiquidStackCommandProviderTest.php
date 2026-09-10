@@ -27,6 +27,7 @@ final class LiquidStackCommandProviderTest extends TestCase
 
         self::assertSame([
             'liquidstack:doctor',
+            'liquidstack:sync',
             'liquidstack:migrate',
             'liquidstack:media:init',
             'liquidstack:blog:sitemap-cache:init',
