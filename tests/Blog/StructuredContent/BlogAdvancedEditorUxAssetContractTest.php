@@ -611,6 +611,7 @@ final class BlogAdvancedEditorUxAssetContractTest extends TestCase
             self::assertFalse(
                 $advanced[$conversion]['afterCss']['wasAdvanced']
             );
+            self::assertSame('', $advanced[$conversion]['afterCss']['css']);
             self::assertSame(
                 '<p>Hello</p>',
                 $advanced[$conversion]['afterCss']['serialized']
@@ -626,6 +627,36 @@ final class BlogAdvancedEditorUxAssetContractTest extends TestCase
                 $advanced[$conversion]['flow'][0]['content'][0]['text']
             );
         }
+        self::assertSame(
+            $advanced['convertedViaHtml'],
+            $advanced['convertedWhitespaceCss']
+        );
+        self::assertSame([
+            'empty' => true,
+            'whitespace' => true,
+            'valid' => true,
+            'invalid' => false,
+        ], $advanced['cssValidation']);
+        self::assertSame([
+            'id', 'type', 'content', 'presentation',
+        ], $advanced['clearedAdvancedResult']['keys']);
+        self::assertFalse($advanced['clearedAdvancedResult']['advanced']);
+        self::assertSame(
+            'Hello',
+            $advanced['clearedAdvancedResult']['text']
+        );
+        self::assertSame([
+            'width' => 'full',
+            'align' => 'start',
+            'text_align' => 'start',
+            'size' => 'm',
+            'font_weight' => 'default',
+            'text_color' => 'default',
+        ], $advanced['clearedAdvancedResult']['presentation']);
+        self::assertStringContainsString(
+            'richApplyTextFlowDraft(location, state.flowDraft);',
+            $this->javascript
+        );
         self::assertSame([
             'dirty' => true,
             'reverted' => false,

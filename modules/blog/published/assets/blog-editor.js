@@ -3378,8 +3378,8 @@
         ) {
             throw new Error('rich-advanced-css-not-allowed');
         }
-        if (value === '') {
-            return value;
+        if (/^[ \t\r\n]*$/u.test(value)) {
+            return '';
         }
         var executable = richCssStripComments(value);
         if (executable === '') {
@@ -3407,7 +3407,7 @@
     }
 
     function richAdvancedCssVisualSafe(value, customPolicy) {
-        if (value === '') {
+        if (typeof value === 'string' && /^[ \t\r\n]*$/u.test(value)) {
             return true;
         }
         var properties = [];
@@ -10490,7 +10490,7 @@
         // An incomplete V2 draft may deliberately keep an exact empty HTML
         // source while its scoped CSS is already being prepared.
         var parsed = html === '' ? null : richParseAdvancedHtml(html);
-        richValidateAdvancedCss(css);
+        css = richValidateAdvancedCss(css);
         var sanitizedHtml = parsed === null
             ? (html === '' ? '' : escapeHtml(html)) :
             parsed.body.innerHTML;
@@ -10702,8 +10702,7 @@
 
     function richCommitAdvancedEditors(state) {
         var policy = richStatePolicy(state);
-        richValidateAdvancedCss(state.cssSource.value, policy);
-        var css = state.cssSource.value;
+        var css = richValidateAdvancedCss(state.cssSource.value, policy);
         var source = state.wasAdvanced && !state.sourceTouched
             ? state.advancedHtmlDraft
             : state.source.value;
@@ -16201,6 +16200,21 @@
         );
     }
 
+    function richApplyTextFlowDraft(location, flowDraft) {
+        if (richAdvancedParagraphBlock(location.node)) {
+            var standardParagraph = {
+                id: location.node.id,
+                type: 'paragraph',
+                content: richClone(flowDraft),
+                presentation: richClone(location.node.presentation)
+            };
+            location.siblings[location.index] = standardParagraph;
+            location.node = standardParagraph;
+            return;
+        }
+        location.node.content = richClone(flowDraft);
+    }
+
     function richApplyModal(state) {
         if (state.mode === 'visual') {
             richDiscardEmptyCaretExit(state);
@@ -16334,7 +16348,7 @@
                 presentation: richClone(location.node.presentation)
             };
         } else if (state.textFlowMode) {
-            location.node.content = richClone(state.flowDraft);
+            richApplyTextFlowDraft(location, state.flowDraft);
         } else {
             location.node.content = richClone(state.draft);
             if (state.headingMode) {

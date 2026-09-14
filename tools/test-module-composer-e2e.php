@@ -224,6 +224,25 @@ try {
         '--no-progress',
     ]);
 
+    foreach ([
+        '.codex/skills/liquidstack-content-localization/SKILL.md',
+        '.codex/skills/liquidstack-content-localization/agents/openai.yaml',
+        '.codex/skills/liquidstack-content-localization/references/static-content.md',
+        '.codex/skills/liquidstack-content-localization/references/blog-localizations.md',
+    ] as $agentGuidancePath) {
+        $sourcePath = $coreRoot . '/' . $agentGuidancePath;
+        $targetPath = $temporaryRoot . '/' . $agentGuidancePath;
+        if (
+            !is_file($targetPath)
+            || hash_file('sha256', $sourcePath) !== hash_file('sha256', $targetPath)
+        ) {
+            throw new RuntimeException(sprintf(
+                'Composer no distribuyó la guía canónica %s.',
+                $agentGuidancePath
+            ));
+        }
+    }
+
     $webAdminRequireOutput = $runComposer([
         'require',
         'liquidstack/webadmin',

@@ -581,6 +581,30 @@ final class BlogCustomTextModuleContractTest extends TestCase
         );
     }
 
+    public function testCssTreatsEmptyAndWhitespaceOnlyInputAsNoCustomStyles(): void
+    {
+        $sanitizer = new BlogCustomTextCssSanitizer();
+
+        self::assertSame('', $sanitizer->sanitize(''));
+        self::assertSame('', $sanitizer->sanitize(" \t\r\n  "));
+        self::assertSame('color:#272727;', $sanitizer->sanitize(' color: #272727; '));
+        self::assertSame('', $sanitizer->renderScoped('', $this->id(3)));
+
+        $document = BlogDocument::fromArray($this->document([
+            $this->advancedParagraph(3, '<div>Safe content</div>', " \n\t "),
+        ]));
+        self::assertSame('', $document->blocks()[0]['children'][1]['css']);
+        self::assertStringContainsString(
+            '"css":""',
+            (new BlogDocumentCodec())->encode($document)
+        );
+
+        $this->assertCssRejected(
+            $sanitizer,
+            'background:url(https://example.test/unsafe)'
+        );
+    }
+
     public function testCssPolicyRejectsEscapesGlobalSelectorsAndBreakoutValues(): void
     {
         $sanitizer = new BlogCustomTextCssSanitizer();

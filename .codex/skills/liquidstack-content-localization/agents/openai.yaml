@@ -1,0 +1,4 @@
+interface:
+  display_name: "LiquidStack Content Localization"
+  short_description: "Localiza páginas estáticas y publicaciones Blog"
+  default_prompt: "Usa $liquidstack-content-localization para traducir contenido estático o variantes Blog sin romper rutas, SEO ni estado editorial."

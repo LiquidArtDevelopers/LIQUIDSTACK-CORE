@@ -31,6 +31,7 @@
             "sha256:040555fa754a9e6a7ecc29be65cf9a9b7128aa04a5a2958b58092705d3da2ece",
             "sha256:05e22b69348b9cb5f69075379c09e40441d81d26f147da7a3e9f5a17875793c2",
             "sha256:12ff3f7e700b59a29ae31c018f40ba6072fc08b827df8348e3ef9d17ef0793bd",
+            "sha256:135c9fbefa264570831f2002e5de0cf10c6a260b74988f66bc7f8bbfce2b25b1",
             "sha256:20d568be908b7c3f6c9c1c7fc5980c0cd4d6ebcc28556e2b3bbca705024b9264",
             "sha256:31a74473ca4c76d32603c10a35f2799658763675340362876c5ee430afc01c70",
             "sha256:56619bb9e6d39b88e36a60d9715f09b98f6612ce304ec17da0dde24aa8b95187",
@@ -49,7 +50,8 @@
             "sha256:6c596d1575965db994d00e2fdb97d087cae7cf5af69be51452c9447f6900f85d",
             "sha256:af4e43bf33fc453ec61812415bfbfbfc513331f76d607a58a1331a63c9ad6bec",
             "sha256:b6319de54947243fa8c02c094d78a63ea1fef30ae54cbceda002cd506f77302f",
-            "sha256:c4406c85d35479fc7ba0b77bb2f98d5cc7c427b43fd19bb57eabbc6eff2ad55b"
+            "sha256:c4406c85d35479fc7ba0b77bb2f98d5cc7c427b43fd19bb57eabbc6eff2ad55b",
+            "sha256:e1e7fcdf1bd76e7831a0afbcc7b78732d4bce0883ec57b6c43e03ed7ee57d90a"
         ],
         "modules/blog/published/assets/blog-public.js": [
             "sha256:0a98db292b9c4efcf7b38a624bff1af30aacfc4de63084112ddc8e9c20b1180a",
@@ -252,6 +254,7 @@
         "modules/blog/resources/project/src/scss/resources/_artBlogArticle01.scss": [
             "sha256:5fac98ea5b515f29172e191ccac4e45653927c9efd69fd630950326be9dfc0b4",
             "sha256:6f6d341185e093e5c93d353ec3745128a22a2fa5960bdd28c46533082a7fa77b",
+            "sha256:856aa3e7a8287d82940f0a3a41f7bc8ab5783e82af2813f05a2e4827684f1f02",
             "sha256:8ee6157aff7c8a487aacb5be416d5cc09a338a0037ab276ea3213dddc58eb549",
             "sha256:961ff478b3adafd119576e71196004b74348704601d1cad298732fd9decfef16",
             "sha256:bf751d2cfe40bf1144dbb5458171e3bcb75a5768fc86af512425224819579328",

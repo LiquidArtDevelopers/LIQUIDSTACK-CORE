@@ -165,7 +165,7 @@ final class BlogCustomTextCssSanitizer
         if (!is_string($css)) {
             throw $this->invalid();
         }
-        if ($css === '') {
+        if (preg_match('/\A[ \t\r\n]*\z/D', $css) === 1) {
             return '';
         }
 

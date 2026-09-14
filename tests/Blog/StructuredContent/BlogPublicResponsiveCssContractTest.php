@@ -175,7 +175,7 @@ final class BlogPublicResponsiveCssContractTest extends TestCase
         foreach ([
             '.blogDocument__textHeading',
             '.blogDocument__textList',
-            'padding-inline-start: 1.25rem',
+            'padding-inline-start: 1.5rem',
             '.blogDocument__textCallout',
             '.blogDocument__textQuote',
             'border-inline-start: 0.2rem solid',
@@ -204,6 +204,70 @@ final class BlogPublicResponsiveCssContractTest extends TestCase
                 . 'border-inline-start:\s*0\.2rem/s',
             $this->publicCss
         );
+    }
+
+    public function testEveryPublicListKeepsNativeMarkersAndBodyRhythm(): void
+    {
+        foreach ([
+            '.blogDocument__list',
+            '.blogDocument__textList',
+            '.blogDocument__text--custom :is(ul, ol)',
+            '.blogDocument__embedContent :is(ul, ol)',
+            'row-gap: 1.2rem',
+            'padding-block: 0.75rem',
+            'padding-inline-start: 1.5rem',
+            'list-style-position: outside',
+            'font: inherit',
+        ] as $contract) {
+            self::assertStringContainsString($contract, $this->publicCss);
+        }
+
+        self::assertMatchesRegularExpression(
+            '/:where\(ul\)\.blogDocument__list,.*?\{\s*'
+                . 'list-style-type:\s*disc;/s',
+            $this->publicCss
+        );
+        self::assertMatchesRegularExpression(
+            '/:where\(ol\)\.blogDocument__list,.*?\{\s*'
+                . 'list-style-type:\s*decimal;/s',
+            $this->publicCss
+        );
+        self::assertStringContainsString(
+            '.blogDocument__text--custom :where(ul)',
+            $this->publicCss
+        );
+        self::assertStringContainsString(
+            '.blogDocument__embedContent :where(ol)',
+            $this->publicCss
+        );
+        self::assertLessThan(
+            strpos($this->publicCss, '.blogDocument__list--marker-upper-alpha'),
+            strpos($this->publicCss, ':where(ul).blogDocument__list')
+        );
+        self::assertMatchesRegularExpression(
+            '/li::marker[^}]*color:\s*var\('
+                . '--ls-blog-color02,\s*#24658e\);[^}]*font-size:\s*1em;/s',
+            $this->publicCss
+        );
+        self::assertMatchesRegularExpression(
+            '/@media \(min-width:\s*48rem\).*?padding-block:\s*1rem;'
+                . '.*?padding-inline-start:\s*2rem;/s',
+            $this->publicCss
+        );
+
+        foreach ([
+            '.blogDocument__text--custom ul',
+            '.blogDocument__text--custom li',
+            '.blogDocument__embedContent p',
+            '.blogDocument__embedContent ol',
+            'row-gap: 1.2rem',
+            'color: c.$color02',
+            'font-family: c.$fuente02',
+            'font-size: clamp(1rem, 1.8vw, 1.15rem)',
+            '@media (min-width: c.$tablet)',
+        ] as $contract) {
+            self::assertStringContainsString($contract, $this->projectScss);
+        }
     }
 
     private function read(string $path): string

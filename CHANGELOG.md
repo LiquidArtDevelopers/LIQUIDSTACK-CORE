@@ -4,6 +4,22 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.31.0] - 2026-09-14
+
+### Añadido
+- Nueva skill distribuida `liquidstack-content-localization`, con circuitos
+  separados para catálogos estáticos y variantes por locale del Blog, además
+  de validación SSR, SEO, enlaces, medios, taxonomías y publicación.
+
+### Corregido
+- Las listas públicas del Blog recuperan viñeta o numeración nativas, marcador
+  corporativo, tipografía del cuerpo y un ritmo vertical responsive uniforme,
+  tanto en contenido estructurado como en Texto avanzado o HTML seguro.
+- El editor de Texto avanzado permite retirar por completo el CSS personalizado
+  —también si solo quedan espacios o saltos de línea—, canoniza el valor vacío
+  en cliente y servidor y devuelve el bloque al flujo estructurado cuando su
+  HTML es compatible, sin relajar el rechazo del CSS no permitido.
+
 ## [1.30.0] - 2026-09-14
 
 ### Añadido

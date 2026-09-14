@@ -581,11 +581,16 @@ el párrafo o los párrafos seleccionados en `ul` u `ol`, y permite revertir una
 lista del mismo tipo a párrafos sin perder marcas ni enlaces.
 
 Las listas admiten como máximo cuatro niveles. El editor y el SSR aplican una
-sangría moderada desde el borde izquierdo —aproximadamente `1.25rem` en el
+sangría moderada desde el borde izquierdo —aproximadamente `1.5rem` en el
 primer nivel y un incremento menor en los anidados— para que una lista siga
 leyéndose como parte del texto y no quede desplazada hacia el centro del
-módulo. Una quinta profundidad falla cerrada en el candidato y nunca se
-persiste de forma truncada.
+módulo. En la salida pública, las listas estructuradas y los `ul`/`ol` seguros
+de Texto avanzado o HTML conservan viñeta o numeración nativas, marcador en el
+color corporativo principal, texto oscuro y la tipografía del cuerpo. Sus
+elementos mantienen un ritmo vertical de `1.2rem` y el bloque aporta espacio
+vertical propio sin depender del reset global del consumidor. Una quinta
+profundidad falla cerrada en el candidato y nunca se persiste de forma
+truncada.
 
 Las citas y los destacados son unidades semánticas del mismo flujo, no cajas de
 layout libres. Una cita se proyecta como `blockquote`, con una línea funcional
@@ -681,6 +686,10 @@ en el mismo historial undo/redo.
 El CSS avanzado se guarda sin scope para que duplicar el módulo con otro UUID
 mantenga una fuente editable. El servidor lo parsea con una lista cerrada de
 propiedades, reglas normales, nesting nativo y únicamente `@media`/`@supports`.
+Una fuente CSS vacía o compuesta solo por espacios, tabuladores y saltos de
+línea se canoniza a `''`. Si al retirarla el HTML puede volver al flujo
+controlado habitual, el editor sustituye de forma completa la variante
+`html`/`css` por `content`; nunca mezcla ambas representaciones en el bloque.
 Los selectores seguros de clase, ID o etiqueta no tienen que coincidir todavía
 con el HTML del módulo: el usuario puede preparar primero `.clase { ... }` y
 asignarla después. La validación depende de la sintaxis y del aislamiento, no de

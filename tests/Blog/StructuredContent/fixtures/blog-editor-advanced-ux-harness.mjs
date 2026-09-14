@@ -36,6 +36,7 @@ source = source.slice(0, markerIndex)
     richSerializeTextFlowHtml,
     richAdvancedParagraphBlock,
     richTextBlockEmpty,
+    validAdvancedCss,
     richAdvancedCssVisualSafe,
     validAdvancedHtml,
     richSourceUsesStandardParagraph,
@@ -61,6 +62,7 @@ source = source.slice(0, markerIndex)
     richAdvancedVisualProjectAttributes,
     richAdvancedVisualStripProjectedAttributes,
     richCommitAdvancedEditors,
+    richApplyTextFlowDraft,
     richAdvancedVisualSource,
     richResetAdvancedTouchState,
     richResetAdvancedVisualBaseline,
@@ -1275,9 +1277,9 @@ const advancedListEnter = {
   ),
 };
 
-function convertedAdvancedState() {
+function convertedAdvancedState(clearedCss = '') {
   const source = codeControl(helloAdvancedHtml);
-  const cssSource = codeControl('');
+  const cssSource = codeControl(clearedCss);
   const state = {
     block: { type: 'paragraph' },
     wasAdvanced: true,
@@ -1307,6 +1309,7 @@ function convertedAdvancedState() {
   const afterCss = {
     advanced: state.advancedMode,
     wasAdvanced: state.wasAdvanced,
+    css: state.cssDraft,
     serialized: hooks.richSerializeEditorHtml(state),
   };
   state.source.value = hooks.richSerializeEditorHtml(state);
@@ -1323,6 +1326,32 @@ function convertedAdvancedState() {
 }
 const convertedViaHtml = convertedAdvancedState();
 const convertedViaVisual = convertedAdvancedState();
+const convertedWhitespaceCss = convertedAdvancedState(' \n\t ');
+const clearedAdvancedBlock = {
+  id: '50000000-0000-4000-8000-000000000097',
+  type: 'paragraph',
+  html: helloAdvancedHtml,
+  css: safeVisualCss,
+  presentation: {
+    width: 'full',
+    align: 'start',
+    text_align: 'start',
+    size: 'm',
+    font_weight: 'default',
+    text_color: 'default',
+  },
+};
+const clearedAdvancedSiblings = [clearedAdvancedBlock];
+const clearedAdvancedLocation = {
+  node: clearedAdvancedBlock,
+  siblings: clearedAdvancedSiblings,
+  index: 0,
+};
+hooks.richApplyTextFlowDraft(clearedAdvancedLocation, [{
+  type: 'paragraph',
+  content: [{ type: 'text', text: 'Hello', marks: [] }],
+}]);
+const clearedAdvancedResult = clearedAdvancedSiblings[0];
 
 const visualNetState = {
   advancedMode: true,
@@ -2327,6 +2356,21 @@ process.stdout.write(JSON.stringify({
     unsafeCommit,
     convertedViaHtml,
     convertedViaVisual,
+    convertedWhitespaceCss,
+    clearedAdvancedResult: {
+      keys: Object.keys(clearedAdvancedResult),
+      advanced: hooks.richAdvancedParagraphBlock(clearedAdvancedResult),
+      text: clearedAdvancedResult.content[0].content[0].text,
+      presentation: clearedAdvancedResult.presentation,
+    },
+    cssValidation: {
+      empty: hooks.validAdvancedCss(''),
+      whitespace: hooks.validAdvancedCss(' \n\t '),
+      valid: hooks.validAdvancedCss('p { color: red; }'),
+      invalid: hooks.validAdvancedCss(
+        'background:url(https://example.test/unsafe)',
+      ),
+    },
     visualNet,
     cssOnlyVisual,
     existingEmptyStructures,

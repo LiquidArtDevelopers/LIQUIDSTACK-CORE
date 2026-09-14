@@ -106,12 +106,19 @@ de modificadores alojados en una vista consumidora.
      legacy en la raiz. Cada proyecto puede mantener un `AGENTS.md` minimo de
      compatibilidad y encapsular su contexto privado en skills locales con
      nombres propios.
+   - `liquidstack-content-localization` separa la traducción de catálogos
+     estáticos del ciclo editorial de variantes Blog y preserva rutas, SEO,
+     medios, taxonomías y estado de publicación.
    - Si una version previa de la sincronizacion dejo un manifiesto gestionado en `.agents/skills`, CORE retira solo esas copias antiguas y conserva las skills locales de ese directorio.
    - La sincronizacion rechaza destinos redirigidos mediante symlinks o junctions para no escribir ni borrar fuera del arbol real del proyecto.
 
 La sincronizacion automatica anterior la realiza el plugin en los eventos
 `post-install-cmd` y `post-update-cmd`. Los errores de la guia para agentes se
 registran sin interrumpir Composer.
+`--no-plugins`, `--no-scripts` y un dry-run no entregan estas actualizaciones.
+Después de un update normal se debe comprobar la presencia de las skills
+distribuidas necesarias y que el manifiesto
+`.codex/skills/.liquidstack-core-skills.json` las declare como gestionadas.
 
 ### Planificación explícita de ficheros gestionados
 
