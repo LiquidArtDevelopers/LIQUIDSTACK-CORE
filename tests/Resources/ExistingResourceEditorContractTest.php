@@ -7,6 +7,7 @@ use Symfony\Component\Filesystem\Filesystem;
 
 require_once dirname(__DIR__, 2) . '/stubs/App/controllers/art16.php';
 require_once dirname(__DIR__, 2) . '/stubs/App/controllers/hero00.php';
+require_once dirname(__DIR__, 2) . '/stubs/App/controllers/hero01.php';
 require_once dirname(__DIR__, 2) . '/stubs/App/controllers/moduleH1Type01.php';
 
 final class ExistingResourceEditorContractTest extends TestCase
@@ -31,7 +32,7 @@ final class ExistingResourceEditorContractTest extends TestCase
         $this->previousWorkingDirectory = (string) getcwd();
         $this->previousEnv = $_ENV;
 
-        foreach (['art16', 'hero00', 'moduleH1Type01'] as $resource) {
+        foreach (['art16', 'hero00', 'hero01', 'moduleH1Type01'] as $resource) {
             $target = $this->fixtureRoot
                 . "/App/templates/_{$resource}.html";
 
@@ -76,6 +77,16 @@ final class ExistingResourceEditorContractTest extends TestCase
             'hero00_bg_fallback',
             (object) [
                 'src' => 'https://cdn.example.test/fallback.avif");color:red;/*',
+            ]
+        );
+        $this->setGlobal(
+            'hero01_00_img',
+            (object) [
+                'src' => 'assets/img/dummy/hero01.avif',
+                'alt' => 'Editable hero image',
+                'title' => 'Hero image title',
+                'width' => 2560,
+                'height' => 1600,
             ]
         );
     }
@@ -189,6 +200,39 @@ final class ExistingResourceEditorContractTest extends TestCase
         self::assertStringNotContainsString('style=', $html);
         self::assertStringContainsString('data-inline-background', $html);
         self::assertMatchesRegularExpression('/^\s*<header\b/', $html);
+    }
+
+    public function testHero01ImageIsEditableAndStrictlyOptIn(): void
+    {
+        $defaultHtml = controller_hero01();
+
+        self::assertStringNotContainsString('hero01-picture', $defaultHtml);
+        self::assertStringNotContainsString('data-inline-background', $defaultHtml);
+
+        $html = controller_hero01(0, [
+            'with_image' => true,
+            '{editor-attributes}' => 'data-injected="unsafe"',
+            '{hero01-media}' => '<script>unsafe()</script>',
+        ]);
+
+        self::assertStringContainsString('<picture class="hero01-picture">', $html);
+        self::assertStringContainsString('class="hero01-media"', $html);
+        self::assertStringContainsString('data-lang="hero01_00_img"', $html);
+        self::assertStringContainsString(
+            'src="https://www.example.test/base/assets/img/dummy/hero01.avif"',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-inline-background-target=".hero01-media"',
+            $html
+        );
+        self::assertStringContainsString(
+            'data-inline-background-image-key="hero01_00_img"',
+            $html
+        );
+        self::assertStringNotContainsString('data-injected="unsafe"', $html);
+        self::assertStringNotContainsString('<script>unsafe()</script>', $html);
+        self::assertSame(4, substr_count($html, '<span></span>'));
     }
 
     public function testModuleH1Type01PrefersInjectedCopyWithoutGlobals(): void

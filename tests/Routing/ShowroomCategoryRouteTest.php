@@ -428,6 +428,37 @@ final class ShowroomCategoryRouteTest extends TestCase
         );
     }
 
+    public function testHeroesEntrypointKeepsAStandaloneParallaxRecipe(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $entrypoint = (string) file_get_contents(
+            $root . '/src/js/showroom/heroes.js'
+        );
+
+        self::assertStringContainsString('IMPORTS POR RECURSO', $entrypoint);
+        self::assertStringContainsString(
+            'HERO00 · PARALLAX — BLOQUE COPIABLE',
+            $entrypoint
+        );
+        self::assertStringContainsString(
+            "import gsapParallax from '../resources/_gsapParallaxScroll.js';",
+            $entrypoint
+        );
+        self::assertStringContainsString(
+            'parallaxCleanup = gsapParallax({',
+            $entrypoint
+        );
+        self::assertStringContainsString(
+            'HERO00 · PARALLAX — LIMPIEZA HMR',
+            $entrypoint
+        );
+        self::assertStringNotContainsString('swapBackgrounds', $entrypoint);
+        self::assertStringNotContainsString(
+            "from 'gsap/ScrollTrigger'",
+            $entrypoint
+        );
+    }
+
     public function testCatalogShellRendersHydratedCopyOnTheServer(): void
     {
         $filesystem = new Filesystem();

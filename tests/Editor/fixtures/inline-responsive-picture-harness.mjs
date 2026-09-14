@@ -7,7 +7,10 @@ const source = await readFile(
   resolve(coreRoot, 'resources/js/_inlineResponsivePicture.js'),
   'utf8',
 );
-const { applyInlineResponsivePicture } = await import(
+const {
+  applyInlineResponsivePicture,
+  resolveInlineBackgroundContainer,
+} = await import(
   `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`
 );
 
@@ -36,15 +39,37 @@ const image = new FakeElement('IMG', {
 });
 const container = {
   dataset: {
+    inlineBackgroundTarget: '.hero00-media',
     inlineBackgroundPictureSource: '.hero00-picture source',
     inlineBackgroundMobileDescriptor: '480w',
     inlineBackgroundTabletDescriptor: '900w',
     inlineBackgroundDesktopDescriptor: '1800w',
   },
   querySelector(selector) {
+    if (selector === '.hero00-media') {
+      return image;
+    }
     return selector === '.hero00-picture source' ? sourceElement : null;
   },
 };
+
+image.closest = (selector) => (
+  selector === '[data-inline-background]' ? container : null
+);
+image.contains = (candidate) => candidate === image;
+const heading = {
+  closest(selector) {
+    return selector === '[data-inline-background]' ? container : null;
+  },
+};
+
+assert.equal(resolveInlineBackgroundContainer(image, 1), container);
+assert.equal(resolveInlineBackgroundContainer(heading, 1), null);
+assert.equal(resolveInlineBackgroundContainer(heading, 0), container);
+assert.equal(
+  resolveInlineBackgroundContainer({ closest: () => null }, 0),
+  null,
+);
 
 assert.equal(applyInlineResponsivePicture(container, image), true);
 assert.equal(
@@ -79,6 +104,8 @@ assert.equal(
 
 process.stdout.write(JSON.stringify({
   refreshed: true,
+  visualTargetPrioritized: true,
+  nestedCopyPreserved: true,
   invalidDescriptorRejected: true,
   missingContractRejected: true,
 }));

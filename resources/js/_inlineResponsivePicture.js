@@ -8,6 +8,53 @@ const validDescriptor = (value) =>
   /^(?:[1-9][0-9]{0,4}w|[1-9][0-9]*(?:\.[0-9]+)?x)$/.test(value);
 
 /**
+ * Resolves the background contract without stealing editable copy nested in
+ * the same component. A click on the declared visual target wins even when
+ * that image also carries data-lang; copy keeps the generic editor path.
+ */
+export function resolveInlineBackgroundContainer(
+  eventTarget,
+  languageTargetCount = 0,
+) {
+  if (!eventTarget || typeof eventTarget.closest !== "function") {
+    return null;
+  }
+
+  const container = eventTarget.closest("[data-inline-background]");
+  if (!container) {
+    return null;
+  }
+
+  const targetSelector = String(
+    container.dataset?.inlineBackgroundTarget || "",
+  ).trim();
+
+  if (targetSelector !== "" && typeof container.querySelector === "function") {
+    let visualTarget = null;
+    try {
+      visualTarget = container.querySelector(targetSelector);
+    } catch (error) {
+      visualTarget = null;
+    }
+
+    if (
+      visualTarget
+      && (
+        eventTarget === visualTarget
+        || (
+          typeof visualTarget.contains === "function"
+          && visualTarget.contains(eventTarget)
+        )
+      )
+    ) {
+      return container;
+    }
+  }
+
+  return languageTargetCount === 0 ? container : null;
+}
+
+/**
  * Projects the four-value inline background contract onto a real picture.
  * The component declares its source selector and candidate descriptors.
  */

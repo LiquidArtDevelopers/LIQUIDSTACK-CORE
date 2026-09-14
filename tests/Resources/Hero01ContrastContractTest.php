@@ -37,7 +37,7 @@ final class Hero01ContrastContractTest extends TestCase
             $controller
         );
         self::assertStringContainsString(
-            '<header class="hero01{contrast-class}">',
+            '<header class="hero01{contrast-class}" {editor-attributes}>',
             $template
         );
         self::assertStringNotContainsString(
@@ -65,5 +65,48 @@ final class Hero01ContrastContractTest extends TestCase
             'color: c.$color01;',
             $moduleScss
         );
+    }
+
+    public function testEditableImageIsOptInAndDocumentedInEveryTemplateLocale(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $controller = (string) file_get_contents(
+            $root . '/stubs/App/controllers/hero01.php'
+        );
+
+        self::assertStringContainsString(
+            "(\$params['with_image'] ?? false) === true",
+            $controller
+        );
+        self::assertStringContainsString(
+            'data-inline-background-target=".hero01-media"',
+            $controller
+        );
+        self::assertStringContainsString(
+            'data-inline-background-image-key="',
+            $controller
+        );
+
+        foreach (['es', 'en', 'eu'] as $language) {
+            $catalog = json_decode(
+                (string) file_get_contents(
+                    $root
+                    . "/stubs/App/config/languages/templates/{$language}.json"
+                ),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            );
+            $image = $catalog['hero01_00_img'] ?? null;
+
+            self::assertIsArray($image, $language);
+            self::assertSame(
+                'assets/img/dummy/dummy01.avif',
+                $image['src'] ?? null,
+                $language
+            );
+            self::assertSame(2560, $image['width'] ?? null, $language);
+            self::assertSame(1600, $image['height'] ?? null, $language);
+        }
     }
 }

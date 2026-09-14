@@ -754,6 +754,7 @@
             "sha256:787a74f2bf7cf5ccae7d137aa5b391f5571175377868d5c13d49afd169b51798"
         ],
         "resources/js/_inlineEditor.js": [
+            "sha256:3282ede73706d83f408f79e69ff68f54a9e5c9f4b3df435b17f5230833731dab",
             "sha256:6146336267239f730a9648837b0edf84444f15db017730ab514f7131e46b12a0",
             "sha256:7d8b4cb590f17dcd6bd7bc6ad5b126bd379d1e0c1d818c8a9e2ab42682da3747",
             "sha256:9e26b0a622240949b624f2b137de84709564d42e43fa42e05588c436a10b7fc1",
@@ -764,6 +765,7 @@
             "sha256:fca9978efb02f7a2889abf31bc56073bda1a3b329cea289abef9b58c6d6875c1"
         ],
         "resources/js/_inlineResponsivePicture.js": [
+            "sha256:476e16dc72260691b069bd5c9922fd44623bc145f0620f2062067a563dc16c2e",
             "sha256:b5c996aa770dad5da55d631855cd70673a9f17df604f374c32ebeebb179987a9"
         ],
         "resources/js/_languagePreference.mjs": [
@@ -1128,6 +1130,7 @@
             "sha256:bbf9091cc5e7b328e4c7cbb47a2546986b351968fcb8a0dca85e2bf45664aa01"
         ],
         "resources/scss/_hero01.scss": [
+            "sha256:0bed6297d12f63f1bd48efeebd89ac5633cd77b63aea8f7e1df4e2abc6ba6409",
             "sha256:3fa4c88bbfc2d84d25e3663a7cb17e4ec9534656a706c828d91b5328ce0a5afe",
             "sha256:64b07e4721569526be7c34f3b30c9b6dc6670a2809ae0205118bffa9b8528ac5",
             "sha256:abbae5e145d78ebd52c94c2346edbcc0e4757ff0ad0760358f2599afc2f6b5d8"
@@ -1393,6 +1396,7 @@
         ],
         "src/js/showroom/heroes.js": [
             "sha256:2912cd1604573a85a021c20f43f63326b660409ac7f170c3bab025c7b83044a1",
+            "sha256:2b2a22df8da953b3f33bb83f034338f693477c0e79d3476546167239403acf1d",
             "sha256:7b0544fa03b1fd11e2e2b2a60406ab7d9139f9454d099faebb4d5f016fd8647e"
         ],
         "src/js/showroom/media.js": [
@@ -1704,6 +1708,7 @@
         ],
         "stubs/App/controllers/hero01.php": [
             "sha256:37624e84f8eb4d579b2a2ca70cf3a63307ae0c8315bec718986c3882238f1400",
+            "sha256:453066cfa4afec36451d7674c23be1171d1c45e1b65817eb1449d491da57b45e",
             "sha256:8f93f24c0564e256092c1c9e2b45d74afe858ff8f13e436969fddc56dc852775",
             "sha256:91b31afbc5536e950c30cf1ecb3591e15376829f90fa2de2dfcbc7582064ddbf"
         ],
@@ -2048,6 +2053,7 @@
             "sha256:bd9b23c60324bfe0f6051d7051519132f42eb8ff9ea8c57d3abc1cabdecb1290"
         ],
         "stubs/App/templates/_hero01.html": [
+            "sha256:515e39d6de338c46c33a8a2b5b3fee49820db8359871fb509687138ff33c3989",
             "sha256:78f633f311ed07841a7751a4601d0bbe7cee4aef88dc5b2d0f4b3efc8e65c066",
             "sha256:b674a22a5a3024faab696ddad1e75484321424b4fb772811bd1bffd7b75e3593",
             "sha256:f9a07bceadce6ae8d0a5cfbc819381ba7a1c3b1d519694d5d4738ffa7246537d"
@@ -2285,6 +2291,7 @@
         ],
         "stubs/App/views/showroom/_heroes.php": [
             "sha256:8d2c05f7a4b817766767786e3fab8b66aa342c4a66cf9bf93877adce9f9fea96",
+            "sha256:a20129e13381faba94bae92dfa15f71da7ccc2e60958c5526d997782be487c9e",
             "sha256:c3a05ca97788455120c9b8877e19287db72e453f92a3ed1edbf65cff2e4a2208",
             "sha256:f9e36a929679a224d99722aa8d73d63d2e709fc9ba34d1f00140ef4384202754"
         ],

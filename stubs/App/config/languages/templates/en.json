@@ -94,7 +94,18 @@
         "src": "assets/img/dummy/dummy_2560.avif"
     },
     "hero00_bg_fallback": {
-        "src": "assets/img/dummy/dummy_900.avif"
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Responsive placeholder image for hero00",
+        "title": "Hero00 placeholder background",
+        "width": 900,
+        "height": 506
+    },
+    "hero01_00_img": {
+        "src": "assets/img/dummy/dummy01.avif",
+        "alt": "Placeholder image for hero01",
+        "title": "Editable hero01 background",
+        "width": 2560,
+        "height": 1600
     },
 
     "hero02_video_webm": {

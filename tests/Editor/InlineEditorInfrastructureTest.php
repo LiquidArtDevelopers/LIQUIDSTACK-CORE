@@ -143,7 +143,7 @@ final class InlineEditorInfrastructureTest extends TestCase
             $source
         );
         self::assertStringContainsString(
-            'event.target.closest("[data-inline-background]")',
+            'resolveInlineBackgroundContainer(eventTarget, targets.length)',
             $source
         );
         self::assertStringContainsString(
@@ -163,7 +163,10 @@ final class InlineEditorInfrastructureTest extends TestCase
             $source
         );
         self::assertLessThan(
-            strpos($source, 'event.target.closest("[data-inline-background]")'),
+            strpos(
+                $source,
+                'resolveInlineBackgroundContainer(eventTarget, targets.length)'
+            ),
             strpos(
                 $source,
                 "event.target.closest('[data-inline-collection=\"lines\"]')"
@@ -394,7 +397,15 @@ final class InlineEditorInfrastructureTest extends TestCase
         );
 
         self::assertStringContainsString(
-            'import { applyInlineResponsivePicture }',
+            'applyInlineResponsivePicture,',
+            $inlineEditor
+        );
+        self::assertStringContainsString(
+            'resolveInlineBackgroundContainer,',
+            $inlineEditor
+        );
+        self::assertStringContainsString(
+            'resolveInlineBackgroundContainer(eventTarget, targets.length)',
             $inlineEditor
         );
         self::assertStringContainsString(
@@ -429,6 +440,8 @@ final class InlineEditorInfrastructureTest extends TestCase
             JSON_THROW_ON_ERROR
         );
         self::assertTrue($result['refreshed']);
+        self::assertTrue($result['visualTargetPrioritized']);
+        self::assertTrue($result['nestedCopyPreserved']);
         self::assertTrue($result['invalidDescriptorRejected']);
         self::assertTrue($result['missingContractRejected']);
     }

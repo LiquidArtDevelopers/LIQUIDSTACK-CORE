@@ -443,15 +443,27 @@ final class InstallerResourceSyncTest extends TestCase
         $inlineEditor = file_get_contents(
             $this->projectRoot . '/src/js/resources/_inlineEditor.js'
         );
+        $responsivePicture = file_get_contents(
+            $this->projectRoot
+            . '/src/js/resources/_inlineResponsivePicture.js'
+        );
         $languageEndpoint = file_get_contents(
             $this->projectRoot . '/App/app/updateLanguage.php'
         );
 
         self::assertIsString($inlineEditor);
+        self::assertIsString($responsivePicture);
         self::assertIsString($languageEndpoint);
         self::assertStringContainsString('const saveBatchValues = async', $inlineEditor);
         self::assertStringContainsString('[data-inline-collection="lines"]', $inlineEditor);
-        self::assertStringContainsString('[data-inline-background]', $inlineEditor);
+        self::assertStringContainsString(
+            'resolveInlineBackgroundContainer(eventTarget, targets.length)',
+            $inlineEditor
+        );
+        self::assertStringContainsString(
+            '[data-inline-background]',
+            $responsivePicture
+        );
         self::assertStringContainsString('[data-inline-group]', $inlineEditor);
         self::assertStringContainsString(
             'INLINE_EDITOR_HANDLER_KEY',

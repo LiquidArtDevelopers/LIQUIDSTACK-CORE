@@ -4,6 +4,24 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.30.0] - 2026-09-14
+
+### Añadido
+- `hero01` admite una capa de imagen editable mediante el opt-in
+  `with_image`; conserva por defecto su composición histórica y documenta un
+  objeto dummy completo en los catálogos ES, EN y EU.
+
+### Corregido
+- El editor inline prioriza el contrato de fondo cuando el gesto se realiza
+  sobre su target visual, aunque el `<img>` tenga `data-lang`. Así `hero00`
+  vuelve a editar conjuntamente mobile, tablet, desktop y fallback sin
+  interceptar el H1 o el copy del mismo recurso.
+
+### Cambiado
+- El entrypoint del showroom de héroes vuelve a separar y comentar el bloque
+  copiable de parallax de `hero00`, incluida su limpieza HMR, y elimina el
+  intercambio CSS de fondos que ya sustituye el `<picture>` nativo.
+
 ## [1.29.0] - 2026-09-10
 
 ### Añadido

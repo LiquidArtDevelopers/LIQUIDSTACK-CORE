@@ -4,6 +4,7 @@
     width: c.$anchoFull;
     min-height: 100dvh;
     position: relative;
+    isolation: isolate;
     overflow: hidden;
     background-color: c.$color01;
     display: flex;
@@ -12,6 +13,7 @@
     justify-content: center;
     >span{
         position: absolute;
+        z-index: 0;
         transform: translateY(20dvh);   
     }
     >span:nth-child(4){        
@@ -50,9 +52,32 @@
         left: -25%;
         box-shadow: 0px 0px 100px c.$color00;       
     }
+    &-picture{
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        width: 100%;
+        height: 100%;
+        opacity: .28;
+    }
+    &-media{
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+
+        &[data-blog-image-object-position-y='top']{
+            object-position: center top;
+        }
+        &[data-blog-image-object-position-y='bottom']{
+            object-position: center bottom;
+        }
+    }
     .hero01-content{
         width: 100%;
-        z-index: 1;
+        position: relative;
+        z-index: 2;
         display: flex;
         justify-content: center;
     }

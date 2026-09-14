@@ -16,11 +16,13 @@ $hero04Content = controller('moduleH1Type01', 3, [
     '{a-button-primary}' => $heroButton,
 ]);
 
-// `contrast_surface` es opt-in: protege el copy sin alterar consumidores
-// existentes que usan la superficie translúcida de moduleH1Type01.
+// Opciones de hero01:
+// - `contrast_surface`: protege el copy con una superficie opaca.
+// - `with_image`: activa la imagen de fondo editable con Ctrl + doble clic.
 echo controller('hero01', 0, [
     '{hero01-content}' => $hero01Content,
     'contrast_surface' => true,
+    'with_image' => true,
 ]);
 echo controller('hero00', 0, ['{hero00-content}' => $hero00Content]);
 echo controller('hero02', 0, ['{hero02-content}' => $hero02Content]);

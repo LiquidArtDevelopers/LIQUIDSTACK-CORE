@@ -1,5 +1,8 @@
 import configScss from "../../scss/_config.scss?raw";
-import { applyInlineResponsivePicture } from "./_inlineResponsivePicture.js";
+import {
+  applyInlineResponsivePicture,
+  resolveInlineBackgroundContainer,
+} from "./_inlineResponsivePicture.js";
 
 const STYLE_ID = "dev-inline-editor-style";
 const DEFAULT_COLOR_OPTIONS = [
@@ -2519,12 +2522,8 @@ export default function initInlineEditor() {
       ? collectionCandidate
       : null;
     const targets = collection ? [] : collectLanguageElements(event);
-    const background = (
-      !collection
-      && !targets.length
-      && eventTarget
-    )
-      ? event.target.closest("[data-inline-background]")
+    const background = (!collection && eventTarget)
+      ? resolveInlineBackgroundContainer(eventTarget, targets.length)
       : null;
 
     if (!collection && !background && !targets.length) {

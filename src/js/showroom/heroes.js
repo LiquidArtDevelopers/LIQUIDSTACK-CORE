@@ -1,49 +1,37 @@
 import '../../scss/showroom/heroes.scss';
-import gsap from 'gsap';
-import ScrollTrigger from 'gsap/ScrollTrigger';
+
+// IMPORTS POR RECURSO
+// Copia únicamente los imports de los héroes presentes en la vista.
 import initHero03 from '../resources/_hero03.js';
 import initHero04 from '../resources/_hero04.js';
 import initHero05 from '../resources/_hero05.js';
+
+// Requerido por el bloque copiable HERO00 · PARALLAX de más abajo.
 import gsapParallax from '../resources/_gsapParallaxScroll.js';
 
-let resizeHandler = null;
-let resizeDelay = null;
+// HERO00 · PARALLAX: conserva este cleanup si copias el bloque con HMR.
 let parallaxCleanup = null;
 
 export default function initShowroomHeroes() {
   parallaxCleanup?.();
+
+  // INICIALIZACIONES SIN CONFIGURACIÓN
   initHero03();
   initHero04();
   initHero05();
 
-  const swapBackgrounds = () => {
-    const width = window.innerWidth;
-    document.querySelectorAll('.bg[data-bg-mobile]').forEach((element) => {
-      const url =
-        width < 800
-          ? element.dataset.bgMobile
-          : width < 1400
-            ? element.dataset.bgTablet
-            : element.dataset.bgDesktop;
-
-      if (url) {
-        element.style.setProperty('background-image', `url(${url})`, 'important');
-      }
-    });
-  };
-
-  const refresh = () => {
-    swapBackgrounds();
-    ScrollTrigger.refresh();
-  };
-
-  resizeHandler = () => {
-    resizeDelay?.kill();
-    resizeDelay = gsap.delayedCall(0.15, refresh);
-  };
-  window.addEventListener('resize', resizeHandler);
-
-  refresh();
+  // =============================================================
+  // HERO00 · PARALLAX — BLOQUE COPIABLE
+  // =============================================================
+  // 1. Copia el import de gsapParallax indicado arriba.
+  // 2. Copia esta llamada en el JS que hidrata la vista.
+  // 3. Ejecuta la función devuelta al desmontar/HMR.
+  //
+  // El <picture> de hero00 ya selecciona mobile/tablet/desktop: no necesita
+  // un listener de resize ni cambiar fondos desde este entrypoint.
+  //
+  // moveDesktop / moveMobile: recorrido vertical en porcentaje.
+  // sizeMode: 'cover', 'containHeight' o 'containWidth'.
   parallaxCleanup = gsapParallax({
     container: '.hero00',
     bg: '.hero00-media',
@@ -51,17 +39,13 @@ export default function initShowroomHeroes() {
     moveMobile: 20,
     sizeMode: 'cover',
   });
+  // FIN HERO00 · PARALLAX
 }
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
-    resizeDelay?.kill();
+    // HERO00 · PARALLAX — LIMPIEZA HMR (parte del bloque copiable).
     parallaxCleanup?.();
     parallaxCleanup = null;
-    if (resizeHandler) {
-      window.removeEventListener('resize', resizeHandler);
-    }
-    resizeHandler = null;
-    resizeDelay = null;
   });
 }
