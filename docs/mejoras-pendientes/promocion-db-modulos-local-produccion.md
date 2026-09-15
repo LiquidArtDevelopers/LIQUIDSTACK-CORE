@@ -1,7 +1,14 @@
 # Promoción de la DB modular entre local y producción
 
-> Estado: pendiente de cerrar antes de instalar WebAdmin o Blog en una DB de
-> producción con datos reales.
+> Estado (2026-09-11): contrato manual documentado y distribuido. Continúa
+> pendiente una herramienta automatizada de exportación/importación; no es un
+> requisito para ejecutar el procedimiento manual verificado.
+
+El runbook operativo que llega a todos los consumidores mediante Composer vive
+en
+[`liquidstack-module-operations/references/production-db-media-promotion.md`](../../.codex/skills/liquidstack-module-operations/references/production-db-media-promotion.md).
+Los workflows que deban preservar ese estado se crean o auditan con
+[`liquidstack-github-actions`](../../.codex/skills/liquidstack-github-actions/SKILL.md).
 
 ## Situación actual
 
@@ -40,6 +47,9 @@ DB o credenciales obligue a modificar PHP, rutas, controladores o migraciones.
   adopta tablas encontradas ni mezcla registros de dos entornos.
 - El sitemap dinámico, el origen público, SMTP y cualquier almacenamiento de
   medios se configuran para el mismo entorno que la DB antes de publicar.
+- Un `.gitignore` no constituye una política de persistencia. El storage
+  productivo vive fuera del árbol de proyecto/releases y ninguna fase de
+  Actions, sync, extracción, cleanup o rollback de código puede alcanzarlo.
 
 ## Dos promociones distintas
 
@@ -73,15 +83,33 @@ ejecuta el envío durante install/update.
    las tablas de negocio dejando fuera dicho registro.
 4. Trasladar de forma conjunta los namespaces WebAdmin y Blog, preservando
    claves foráneas, charset, timestamps UTC y orden transaccional posible.
-5. Tratar medios y ficheros fuera de la DB como una migración coordinada y
-   verificable.
+5. Inventariar tamaños y SHA-256 y trasladar la raíz Media completa —marker,
+   dotfiles, cuarentena y manifiestos incluidos— con staging vacío. El destino
+   final debe ser absoluto, privado, persistente y externo al deploy.
 6. Cambiar los secretos del entorno sin modificar el código.
 7. Ejecutar `doctor` y `migrate --dry-run` sobre destino antes de permitir
    nuevas escrituras.
-8. Hacer smoke tests, comparar recuentos y conservar un plan de rollback.
+8. Hacer smoke tests, comparar recuentos DB↔filesystem e inventarios, ejecutar
+   un deploy de ensayo que no cambie Media y conservar un rollback conjunto.
 
-Este flujo no debe automatizarse hasta disponer de una herramienta específica
-con inventario, comprobaciones y recuperación probados.
+Este flujo no debe incluirse en el deploy ordinario. Cualquier automatización
+futura será una operación separada, protegida y autorizada, con inventario,
+comprobaciones y recuperación probados.
+
+## Impacto en GitHub Actions
+
+- El build puede generar y desplegar código, `vendor` resuelto y bundles Vite;
+  no empaqueta `.env`, dumps, backups, DB ni Media.
+- `LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT` apunta directamente al directorio
+  físico persistente fuera del deploy. No se resuelve con `App/media`, un
+  symlink dentro de una release o una mera exclusión de Git.
+- Los despliegues in-place y cualquier `rsync --delete` deben probarse con
+  dry-run y un target de código acotado. `--delete-excluded` es incompatible
+  con una exclusión usada como protección.
+- Migraciones, onboarding, inicialización y la primera copia DB + Media no se
+  ejecutan automáticamente con cada push.
+- Tras la copia inicial, producción pasa a ser la fuente de verdad. Nunca se
+  vuelve a sincronizar la biblioteca local sobre ella.
 
 ## Trabajo de CORE pendiente
 
@@ -93,8 +121,9 @@ con inventario, comprobaciones y recuperación probados.
   de la confirmación ordinaria de `--apply`.
 - Definir el contrato TLS con CA y verificación del servidor para DB remotas no
   confiables.
-- Crear un runbook y una prueba E2E con dos DB aisladas que simule local →
-  producción, tanto con destino vacío como con traslado de contenido.
+- Crear una prueba E2E con dos DB aisladas que simule local → producción, tanto
+  con destino vacío como con traslado de contenido, y convertir el runbook
+  manual en tooling solo cuando pueda conservar sus mismas garantías.
 - Definir exportación/importación versionada de DB y medios sin incluir
   secretos, fixtures o usuarios de laboratorio por accidente.
 - Rotar las credenciales usadas durante el desarrollo del consumidor de

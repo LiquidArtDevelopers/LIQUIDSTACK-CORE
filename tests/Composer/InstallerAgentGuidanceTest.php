@@ -86,6 +86,30 @@ final class InstallerAgentGuidanceTest extends TestCase
         );
         self::assertFileEquals(
             dirname(__DIR__, 2)
+                . '/.codex/skills/liquidstack-module-operations/references/production-db-media-promotion.md',
+            $this->projectRoot
+                . '/.codex/skills/liquidstack-module-operations/references/production-db-media-promotion.md'
+        );
+        self::assertFileEquals(
+            dirname(__DIR__, 2)
+                . '/.codex/skills/liquidstack-github-actions/SKILL.md',
+            $this->projectRoot
+                . '/.codex/skills/liquidstack-github-actions/SKILL.md'
+        );
+        self::assertFileEquals(
+            dirname(__DIR__, 2)
+                . '/.codex/skills/liquidstack-github-actions/agents/openai.yaml',
+            $this->projectRoot
+                . '/.codex/skills/liquidstack-github-actions/agents/openai.yaml'
+        );
+        self::assertFileEquals(
+            dirname(__DIR__, 2)
+                . '/.codex/skills/liquidstack-github-actions/references/deployment-topologies.md',
+            $this->projectRoot
+                . '/.codex/skills/liquidstack-github-actions/references/deployment-topologies.md'
+        );
+        self::assertFileEquals(
+            dirname(__DIR__, 2)
                 . '/.codex/skills/liquidstack-content-localization/SKILL.md',
             $this->projectRoot
                 . '/.codex/skills/liquidstack-content-localization/SKILL.md'
@@ -134,6 +158,7 @@ final class InstallerAgentGuidanceTest extends TestCase
                 'dev-stack',
                 'liquidstack-content-localization',
                 'liquidstack-deployment',
+                'liquidstack-github-actions',
                 'liquidstack-module-operations',
                 'liquidstack-resource-migration',
                 'seo-content',
@@ -180,6 +205,7 @@ final class InstallerAgentGuidanceTest extends TestCase
                 'dev-stack',
                 'liquidstack-content-localization',
                 'liquidstack-deployment',
+                'liquidstack-github-actions',
                 'liquidstack-module-operations',
                 'liquidstack-resource-migration',
                 'seo-content',

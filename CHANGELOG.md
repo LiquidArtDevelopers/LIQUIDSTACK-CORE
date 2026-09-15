@@ -4,6 +4,18 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+### Añadido
+- Nueva skill distribuida `liquidstack-github-actions` para crear y auditar
+  pipelines de build/deploy sin mezclar el artefacto con secretos, DB o storage
+  runtime, con patrones separados para releases, in-place y sync con borrado.
+- Runbook operativo distribuido para promocionar DB y Media a producción como
+  una unidad verificable, con inventario, copia inicial, QA y rollback.
+
+### Seguridad
+- La guía deja explícito que `.gitignore` no protege Media frente a Actions y
+  exige una raíz productiva absoluta y persistente fuera del deploy. El deploy
+  ordinario no puede ejecutar migraciones, onboarding ni copiar o borrar datos.
+
 ## [1.31.2] - 2026-09-15
 
 ### Añadido
@@ -58,7 +70,6 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 - El entrypoint del showroom de héroes vuelve a separar y comentar el bloque
   copiable de parallax de `hero00`, incluida su limpieza HMR, y elimina el
   intercambio CSS de fondos que ya sustituye el `<picture>` nativo.
-
 ## [1.29.0] - 2026-09-10
 
 ### Añadido

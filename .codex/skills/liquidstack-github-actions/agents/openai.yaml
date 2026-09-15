@@ -1,0 +1,4 @@
+interface:
+  display_name: "LiquidStack GitHub Actions"
+  short_description: "Build and deploy LiquidStack without losing runtime data"
+  default_prompt: "Use $liquidstack-github-actions to create or audit a safe GitHub Actions deployment for this LiquidStack project."

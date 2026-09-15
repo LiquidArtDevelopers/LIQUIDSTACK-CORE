@@ -122,6 +122,9 @@ de modificadores alojados en una vista consumidora.
      ejecutar el build orquestado antes de publicar, transportar sitemap y
      robots estáticos en el mismo artefacto y mantener el sitemap Blog como
      endpoint dinámico de producción.
+   - `liquidstack-github-actions` separa artefactos de código y estado runtime,
+     protege Media frente a deploys destructivos y deriva cualquier promoción
+     DB + Media al runbook distribuido de `liquidstack-module-operations`.
    - Si una version previa de la sincronizacion dejo un manifiesto gestionado en `.agents/skills`, CORE retira solo esas copias antiguas y conserva las skills locales de ese directorio.
    - La sincronizacion rechaza destinos redirigidos mediante symlinks o junctions para no escribir ni borrar fuera del arbol real del proyecto.
 
@@ -582,6 +585,10 @@ separadas; ALT, title y caption pertenecen a cada uso editorial, no al asset.
 Producción debe declarar una ruta absoluta y persistente mediante
 `LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT`. El único default interno,
 `storage/liquidstack/webadmin/media`, requiere `DEV_MODE=1` y `RAIZ` loopback.
+El `.gitignore` creado dentro de esa raíz evita el tracking, pero no impide que
+Actions, un sync con borrado o la rotación de releases eliminen su contenido.
+Por ello el destino productivo debe quedar fuera del árbol reemplazable y el
+workflow se revisa con la skill distribuida `liquidstack-github-actions`.
 La preparación se autoriza expresamente con
 `composer liquidstack:media:init`; para automatización controlada se usa
 `composer liquidstack:media:init --yes --format=json`. El comando crea el

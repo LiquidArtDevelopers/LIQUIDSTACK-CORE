@@ -94,6 +94,12 @@ En este modo normal no abre PDO, no procesa imágenes y no comprueba SMTP. Es
 idempotente sobre una raíz ya inicializada y puede reparar sus auxiliares
 internos, pero no adopta una raíz no vacía sin el marcador válido.
 
+Ese `.gitignore` evita el tracking accidental, no aporta persistencia frente a
+GitHub Actions, `rsync --delete`, extracción de artefactos o limpieza de
+releases. La raíz productiva debe quedar fuera del destino que el deploy pueda
+reemplazar o borrar. El pipeline se diseña con
+[`liquidstack-github-actions`](../../.codex/skills/liquidstack-github-actions/SKILL.md).
+
 Producción debe declarar una ruta absoluta y persistente mediante
 `LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT`, siempre fuera del árbol del
 proyecto/deploy. El default `storage/liquidstack/webadmin/media` solo es válido
@@ -233,6 +239,11 @@ una revisión aislada no lo hacen público. La lectura verifica bytes y hash en 
 storage privado y responde `404` uniforme ante cualquier fallo.
 
 ## Orden de adopción
+
+Si existen posts o medios creados en local que deban llegar a producción,
+seguir primero el
+[procedimiento coordinado DB + Media](../../.codex/skills/liquidstack-module-operations/references/production-db-media-promotion.md);
+no inicializar una raíz vacía y copiar después solo una parte del estado.
 
 1. Ejecutar `doctor`, `migrate --plan` y `migrate --dry-run`.
 2. Crear y verificar un backup recuperable y coordinado de DB y storage.

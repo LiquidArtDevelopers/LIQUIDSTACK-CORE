@@ -231,6 +231,10 @@ try {
         '.codex/skills/liquidstack-content-localization/references/blog-localizations.md',
         '.codex/skills/liquidstack-deployment/SKILL.md',
         '.codex/skills/liquidstack-deployment/agents/openai.yaml',
+        '.codex/skills/liquidstack-github-actions/SKILL.md',
+        '.codex/skills/liquidstack-github-actions/agents/openai.yaml',
+        '.codex/skills/liquidstack-github-actions/references/deployment-topologies.md',
+        '.codex/skills/liquidstack-module-operations/references/production-db-media-promotion.md',
     ] as $agentGuidancePath) {
         $sourcePath = $coreRoot . '/' . $agentGuidancePath;
         $targetPath = $temporaryRoot . '/' . $agentGuidancePath;
