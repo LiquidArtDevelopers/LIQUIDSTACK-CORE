@@ -229,6 +229,8 @@ try {
         '.codex/skills/liquidstack-content-localization/agents/openai.yaml',
         '.codex/skills/liquidstack-content-localization/references/static-content.md',
         '.codex/skills/liquidstack-content-localization/references/blog-localizations.md',
+        '.codex/skills/liquidstack-deployment/SKILL.md',
+        '.codex/skills/liquidstack-deployment/agents/openai.yaml',
     ] as $agentGuidancePath) {
         $sourcePath = $coreRoot . '/' . $agentGuidancePath;
         $targetPath = $temporaryRoot . '/' . $agentGuidancePath;

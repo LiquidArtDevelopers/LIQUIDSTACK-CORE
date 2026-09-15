@@ -4,6 +4,13 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.31.2] - 2026-09-15
+
+### Añadido
+- Nueva skill distribuida `liquidstack-deployment` para crear y auditar
+  workflows de consumidores sin omitir el build que genera sitemap/robots,
+  y para diferenciar esos artefactos estáticos del sitemap dinámico del Blog.
+
 ## [1.31.1] - 2026-09-15
 
 ### Corregido

@@ -1,0 +1,4 @@
+interface:
+  display_name: "LiquidStack Deployment"
+  short_description: "CI/CD y despliegues seguros de LiquidStack"
+  default_prompt: "Use $liquidstack-deployment para crear o revisar el workflow de despliegue de este stack."

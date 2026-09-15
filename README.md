@@ -118,6 +118,10 @@ de modificadores alojados en una vista consumidora.
    - `liquidstack-content-localization` separa la traducción de catálogos
      estáticos del ciclo editorial de variantes Blog y preserva rutas, SEO,
      medios, taxonomías y estado de publicación.
+   - `liquidstack-deployment` fija el contrato de CI/CD de los consumidores:
+     ejecutar el build orquestado antes de publicar, transportar sitemap y
+     robots estáticos en el mismo artefacto y mantener el sitemap Blog como
+     endpoint dinámico de producción.
    - Si una version previa de la sincronizacion dejo un manifiesto gestionado en `.agents/skills`, CORE retira solo esas copias antiguas y conserva las skills locales de ese directorio.
    - La sincronizacion rechaza destinos redirigidos mediante symlinks o junctions para no escribir ni borrar fuera del arbol real del proyecto.
 

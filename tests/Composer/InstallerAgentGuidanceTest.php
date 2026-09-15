@@ -109,6 +109,18 @@ final class InstallerAgentGuidanceTest extends TestCase
                 . '/.codex/skills/liquidstack-content-localization/references/blog-localizations.md'
         );
         self::assertFileEquals(
+            dirname(__DIR__, 2)
+                . '/.codex/skills/liquidstack-deployment/SKILL.md',
+            $this->projectRoot
+                . '/.codex/skills/liquidstack-deployment/SKILL.md'
+        );
+        self::assertFileEquals(
+            dirname(__DIR__, 2)
+                . '/.codex/skills/liquidstack-deployment/agents/openai.yaml',
+            $this->projectRoot
+                . '/.codex/skills/liquidstack-deployment/agents/openai.yaml'
+        );
+        self::assertFileEquals(
             dirname(__DIR__, 2) . '/.codex/skills/test-functional-ui/SKILL.md',
             $this->projectRoot . '/.codex/skills/test-functional-ui/SKILL.md'
         );
@@ -121,6 +133,7 @@ final class InstallerAgentGuidanceTest extends TestCase
             [
                 'dev-stack',
                 'liquidstack-content-localization',
+                'liquidstack-deployment',
                 'liquidstack-module-operations',
                 'liquidstack-resource-migration',
                 'seo-content',
@@ -166,6 +179,7 @@ final class InstallerAgentGuidanceTest extends TestCase
             [
                 'dev-stack',
                 'liquidstack-content-localization',
+                'liquidstack-deployment',
                 'liquidstack-module-operations',
                 'liquidstack-resource-migration',
                 'seo-content',
