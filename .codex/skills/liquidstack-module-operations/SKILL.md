@@ -436,9 +436,12 @@ composer liquidstack:migrate --dry-run
   SMTP. No llamarlo automáticamente desde `composer install`/`update`.
 - Configurar producción con
   `LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT` apuntando a una ruta absoluta,
-  persistente y fuera del árbol del proyecto/deploy. El único default interno
-  permitido es `storage/liquidstack/webadmin/media` cuando coinciden
-  `DEV_MODE=1` y una `RAIZ` loopback canónica.
+  privada, persistente, fuera del document root efectivo y fuera del árbol que
+  el deploy reemplaza. La ruta canónica interna
+  `storage/liquidstack/webadmin/media` puede declararse explícitamente si el
+  document root es un hijo separado como `www` y el workflow preserva
+  `storage`; sin variable solo actúa como default cuando coinciden `DEV_MODE=1`
+  y una `RAIZ` loopback canónica.
 - No usar `public`, `vendor`, `.git`, la raíz del proyecto, una raíz de disco,
   traversal, symlinks o junctions como storage. DB y storage se respaldan y
   restauran como una unidad; cambiar la variable no mueve ni adopta medios.
@@ -1007,7 +1010,11 @@ composer liquidstack:migrate --dry-run
   `composer liquidstack:blog:sitemap-cache:init`; en producción exige además
   `--shared-storage-confirmed` y
   `LIQUIDSTACK_BLOG_SITEMAP_CACHE_ROOT` absoluto, privado, persistente, fuera
-  del deploy y compartido por todos los nodos. Confirmar operativamente que el
+  del document root y del árbol reemplazado por el deploy, y compartido por
+  todos los nodos. La ruta canónica interna
+  `storage/liquidstack/blog/sitemap-cache` puede declararse si el document root
+  es un hijo separado y el workflow preserva `storage`. Confirmar
+  operativamente que el
   volumen ofrece `flock` coherente y `rename` atómico; el flag no puede probar
   esas propiedades. No inicializar desde Composer ni rotar una generación
   activa por intuición; respaldar y restaurar DB y storage como una unidad.

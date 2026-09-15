@@ -4,12 +4,21 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.31.3] - 2026-09-15
+
 ### Añadido
 - Nueva skill distribuida `liquidstack-github-actions` para crear y auditar
   pipelines de build/deploy sin mezclar el artefacto con secretos, DB o storage
   runtime, con patrones separados para releases, in-place y sync con borrado.
 - Runbook operativo distribuido para promocionar DB y Media a producción como
   una unidad verificable, con inventario, copia inicial, QA y rollback.
+
+### Corregido
+- El storage privado de Media y de la caché LKG del sitemap admite ahora su
+  ruta canónica bajo `project/storage/liquidstack/...` en producción cuando se
+  declara explícitamente, queda fuera del document root efectivo y el deploy la
+  preserva. El solapamiento directo o inverso con la raíz pública sigue fallando
+  cerrado.
 
 ### Seguridad
 - La guía deja explícito que `.gitignore` no protege Media frente a Actions y

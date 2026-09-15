@@ -61,8 +61,12 @@ perfil es obligatoria una ruta absoluta declarada mediante:
 LIQUIDSTACK_BLOG_SITEMAP_CACHE_ROOT=
 ```
 
-En producción debe ser privada, persistente, quedar fuera del árbol del
-proyecto y ser compartida por todos los nodos que atiendan Blog. El volumen
+En producción debe ser privada, persistente, quedar fuera del document root y
+del árbol reemplazado por el deploy, y ser compartida por todos los nodos que
+atiendan Blog. La ruta canónica interna
+`storage/liquidstack/blog/sitemap-cache` puede declararse explícitamente si el
+document root es un hijo separado como `www` y el workflow preserva `storage`;
+si el propio proyecto es el document root, CORE la rechaza. El volumen
 debe ofrecer `flock` advisory coherente entre nodos y `rename` atómico dentro
 del mismo filesystem. CORE rechaza symlinks y junctions detectables, raíces de
 disco, `public`, `vendor`, `.git` y ubicaciones dentro del deploy productivo.

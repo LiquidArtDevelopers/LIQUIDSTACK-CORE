@@ -17,6 +17,8 @@ final class PrivateMediaStorageTest extends TestCase
     private string $sandbox;
     private string $projectRoot;
     private Filesystem $filesystem;
+    private bool $documentRootWasSet;
+    private mixed $previousDocumentRoot;
 
     protected function setUp(): void
     {
@@ -24,9 +26,12 @@ final class PrivateMediaStorageTest extends TestCase
         $this->sandbox = sys_get_temp_dir() . '/liquidstack-media-storage-'
             . bin2hex(random_bytes(8));
         $this->projectRoot = $this->sandbox . '/project';
+        $this->documentRootWasSet = array_key_exists('DOCUMENT_ROOT', $_SERVER);
+        $this->previousDocumentRoot = $_SERVER['DOCUMENT_ROOT'] ?? null;
         $this->filesystem->mkdir([
             $this->projectRoot,
             $this->projectRoot . '/public',
+            $this->projectRoot . '/www',
             $this->projectRoot . '/vendor',
             $this->projectRoot . '/.git',
         ]);
@@ -34,6 +39,11 @@ final class PrivateMediaStorageTest extends TestCase
 
     protected function tearDown(): void
     {
+        if ($this->documentRootWasSet) {
+            $_SERVER['DOCUMENT_ROOT'] = $this->previousDocumentRoot;
+        } else {
+            unset($_SERVER['DOCUMENT_ROOT']);
+        }
         $this->filesystem->remove($this->sandbox);
     }
 
@@ -62,8 +72,10 @@ final class PrivateMediaStorageTest extends TestCase
         ]);
     }
 
-    public function testProductionRequiresExplicitStorageOutsideProject(): void
+    public function testProductionRequiresExplicitStorageOutsidePublicRoot(): void
     {
+        $_SERVER['DOCUMENT_ROOT'] = $this->projectRoot . '/www';
+
         try {
             PrivateMediaStorage::forProject($this->projectRoot, [
                 'DEV_MODE' => '0',
@@ -77,14 +89,24 @@ final class PrivateMediaStorageTest extends TestCase
             );
         }
 
+        $canonicalRoot = $this->projectRoot
+            . '/storage/liquidstack/webadmin/media';
+        $canonical = PrivateMediaStorage::forProject($this->projectRoot, [
+            'DEV_MODE' => '0',
+            'RAIZ' => 'https://example.test',
+            PrivateMediaStorage::ROOT_ENV => $canonicalRoot,
+        ]);
+        $canonical->initialize();
+        self::assertDirectoryExists($canonicalRoot);
+
+        $_SERVER['DOCUMENT_ROOT'] = $this->projectRoot;
         try {
             PrivateMediaStorage::forProject($this->projectRoot, [
                 'DEV_MODE' => '0',
                 'RAIZ' => 'https://example.test',
-                PrivateMediaStorage::ROOT_ENV => $this->projectRoot
-                    . '/storage/liquidstack/webadmin/media',
+                PrivateMediaStorage::ROOT_ENV => $canonicalRoot,
             ]);
-            self::fail('Production storage cannot live in the deploy tree.');
+            self::fail('Production storage cannot overlap the document root.');
         } catch (MediaException $exception) {
             self::assertSame(
                 'webadmin.media.storage_root_dangerous',
@@ -92,6 +114,7 @@ final class PrivateMediaStorageTest extends TestCase
             );
         }
 
+        $_SERVER['DOCUMENT_ROOT'] = $this->projectRoot . '/www';
         $storage = PrivateMediaStorage::forProject($this->projectRoot, [
             'DEV_MODE' => '0',
             'RAIZ' => 'https://example.test',
@@ -99,6 +122,21 @@ final class PrivateMediaStorageTest extends TestCase
         ]);
         $storage->initialize();
         self::assertDirectoryExists($storage->createStagingDirectory());
+
+        try {
+            PrivateMediaStorage::forProject($this->projectRoot, [
+                'DEV_MODE' => '0',
+                'RAIZ' => 'https://example.test',
+                PrivateMediaStorage::ROOT_ENV => $this->projectRoot
+                    . '/www/private-media',
+            ]);
+            self::fail('Storage below the document root must be rejected.');
+        } catch (MediaException $exception) {
+            self::assertSame(
+                'webadmin.media.storage_root_dangerous',
+                $exception->issueCode()
+            );
+        }
     }
 
     /** @dataProvider dangerousRootProvider */

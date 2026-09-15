@@ -26,8 +26,8 @@ con la copia local. Diseñar una reconciliación específica o detener el corte.
 
 ### Recolocación de Media conservando la misma DB
 
-Si el entorno ya usa la DB correcta pero su Media está dentro del árbol de
-deploy, no exportar ni reimportar la DB por rutina. Congelar escrituras, crear
+Si el entorno ya usa la DB correcta pero su Media está dentro del árbol que el
+deploy reemplaza, no exportar ni reimportar la DB por rutina. Congelar escrituras, crear
 un backup conjunto, inventariar la raíz, copiarla completa a un directorio
 externo vacío, verificarla y cambiar únicamente
 `LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT` durante una ventana cerrada. Repetir
@@ -44,8 +44,11 @@ requiriendo rollback coordinado porque la DB referencia esos ficheros.
 - Copiar la raíz Media completa, incluidos marker, dotfiles, cuarentena y
   manifiestos. `.staging` debe estar vacío antes de capturarla.
 - Configurar producción con `LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT` apuntando
-  directamente a una ruta absoluta, privada y persistente fuera del árbol del
-  proyecto, releases y destino de deploy. No usar un symlink o junction.
+  directamente a una ruta absoluta, privada y persistente fuera del document
+  root, releases y destino reemplazado por el deploy. La ruta canónica bajo
+  `project/storage/liquidstack/...` es válida si es hermana de un document root
+  separado como `project/www` y el workflow preserva `storage`. No usar un
+  symlink o junction.
 - No interpretar el `.gitignore` interno como persistencia: GitHub Actions,
   `rsync --delete`, una extracción o una limpieza pueden borrar ficheros
   ignorados.
@@ -61,8 +64,9 @@ requiriendo rollback coordinado porque la DB referencia esos ficheros.
 2. Ejecutar en origen y destino, cuando sean accesibles, `doctor`,
    `migrate --plan` y `migrate --dry-run`. Estos comandos diagnostican; no
    sustituyen el backup ni autorizan escrituras.
-3. Verificar que el destino productivo de Media está fuera del deploy, pertenece
-   al usuario PHP correcto y no contiene datos inesperados.
+3. Verificar que el destino productivo de Media está fuera del document root y
+   del árbol reemplazado por el deploy, pertenece al usuario PHP correcto y no
+   contiene datos inesperados.
 4. Auditar el workflow con `liquidstack-github-actions`: ninguna fase de sync,
    extracción, cleanup o rollback debe poder alcanzar ese destino.
 5. Crear backups recuperables de origen y destino y ensayar su restauración en

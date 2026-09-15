@@ -101,11 +101,14 @@ reemplazar o borrar. El pipeline se diseña con
 [`liquidstack-github-actions`](../../.codex/skills/liquidstack-github-actions/SKILL.md).
 
 Producción debe declarar una ruta absoluta y persistente mediante
-`LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT`, siempre fuera del árbol del
-proyecto/deploy. El default `storage/liquidstack/webadmin/media` solo es válido
-en el laboratorio cuando `DEV_MODE=1` y `RAIZ` es un loopback canónico. Se
-rechazan traversal, raíces de disco, `public`, `vendor`, `.git`, la raíz del
-proyecto y cualquier symlink o junction del recorrido.
+`LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT`, siempre fuera del document root y
+del árbol reemplazado por el deploy. La ruta canónica
+`storage/liquidstack/webadmin/media` puede declararse explícitamente en
+producción si el document root es un hijo separado como `www` y el workflow
+preserva `storage`; como default sin variable solo es válida en el laboratorio
+cuando `DEV_MODE=1` y `RAIZ` es un loopback canónico. Se rechazan traversal,
+raíces de disco, `public`, `vendor`, `.git`, la raíz del proyecto y cualquier
+symlink o junction del recorrido.
 
 ### Adopción excepcional de storage legacy
 

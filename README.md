@@ -582,9 +582,13 @@ genera variantes responsive AVIF sin metadatos y las conserva en storage
 privado. `webadmin.media.view` y `webadmin.media.upload` son capacidades
 separadas; ALT, title y caption pertenecen a cada uso editorial, no al asset.
 
-Producción debe declarar una ruta absoluta y persistente mediante
-`LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT`. El único default interno,
-`storage/liquidstack/webadmin/media`, requiere `DEV_MODE=1` y `RAIZ` loopback.
+Producción debe declarar una ruta absoluta, privada y persistente mediante
+`LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT`, fuera del document root efectivo y
+del árbol que reemplaza el deploy. La ruta canónica interna
+`storage/liquidstack/webadmin/media` también puede declararse explícitamente si
+el document root es un hijo separado como `www` y el despliegue preserva
+`storage`; sin configuración explícita solo se usa con `DEV_MODE=1` y `RAIZ`
+loopback.
 El `.gitignore` creado dentro de esa raíz evita el tracking, pero no impide que
 Actions, un sync con borrado o la rotación de releases eliminen su contenido.
 Por ello el destino productivo debe quedar fuera del árbol reemplazable y el
@@ -837,6 +841,9 @@ clasificada como indisponible puede servir el snapshot vigente, marcado con
 `X-LiquidStack-Sitemap-Source: stale-cache`; los demás fallos responden de forma
 cerrada. Composer nunca inicializa esa raíz ni activa la capacidad. Véase el
 [runbook LKG](docs/blog-sitemap-last-known-good-cache.md).
+La ruta canónica `storage/liquidstack/blog/sitemap-cache` puede declararse en
+producción cuando queda fuera del document root y del árbol reemplazado por el
+deploy; no se adopta de forma implícita.
 
 El ejemplo usa el perfil dedicado y presupone que WebAdmin declara también
 `connection => liquidstack`. Si se omite la configuración de DB en ambos

@@ -17,6 +17,8 @@ final class BlogSitemapCacheStorageTest extends TestCase
 {
     private string $root;
     private Filesystem $filesystem;
+    private bool $documentRootWasSet;
+    private mixed $previousDocumentRoot;
     /** @var array<string, string> */
     private array $environment;
 
@@ -25,7 +27,9 @@ final class BlogSitemapCacheStorageTest extends TestCase
         $this->filesystem = new Filesystem();
         $this->root = sys_get_temp_dir() . '/ls-blog-cache-test-'
             . bin2hex(random_bytes(8));
-        $this->filesystem->mkdir($this->root);
+        $this->filesystem->mkdir([$this->root, $this->root . '/www']);
+        $this->documentRootWasSet = array_key_exists('DOCUMENT_ROOT', $_SERVER);
+        $this->previousDocumentRoot = $_SERVER['DOCUMENT_ROOT'] ?? null;
         $this->environment = [
             'RAIZ' => 'http://localhost:1309',
             'DEV_MODE' => '1',
@@ -34,6 +38,11 @@ final class BlogSitemapCacheStorageTest extends TestCase
 
     protected function tearDown(): void
     {
+        if ($this->documentRootWasSet) {
+            $_SERVER['DOCUMENT_ROOT'] = $this->previousDocumentRoot;
+        } else {
+            unset($_SERVER['DOCUMENT_ROOT']);
+        }
         if (isset($this->filesystem, $this->root)) {
             $this->filesystem->remove($this->root);
         }
@@ -55,13 +64,82 @@ final class BlogSitemapCacheStorageTest extends TestCase
         self::assertFileDoesNotExist($this->root . '/public/sitemap.xml');
     }
 
-    public function testProductionNeedsAnExplicitRootAndRejectsPublicStorage(): void
+    public function testProductionNeedsAnExplicitRoot(): void
     {
         $this->expectException(BlogSitemapCacheException::class);
         PrivateBlogSitemapCacheStorage::forProject($this->root, [
             'RAIZ' => 'https://example.test',
             'DEV_MODE' => '0',
         ]);
+    }
+
+    public function testProductionAllowsCanonicalCacheOutsideDocumentRoot(): void
+    {
+        $_SERVER['DOCUMENT_ROOT'] = $this->root . '/www';
+        $cacheRoot = $this->root
+            . '/storage/liquidstack/blog/sitemap-cache';
+
+        $storage = PrivateBlogSitemapCacheStorage::forProject($this->root, [
+            'RAIZ' => 'https://example.test',
+            'DEV_MODE' => '0',
+            PrivateBlogSitemapCacheStorage::ROOT_ENV => $cacheRoot,
+        ]);
+
+        $storage->initialize();
+        self::assertDirectoryExists($cacheRoot);
+    }
+
+    public function testProductionRejectsCacheOverlappingDocumentRoot(): void
+    {
+        $cacheRoot = $this->root
+            . '/storage/liquidstack/blog/sitemap-cache';
+        $_SERVER['DOCUMENT_ROOT'] = $this->root;
+
+        try {
+            PrivateBlogSitemapCacheStorage::forProject($this->root, [
+                'RAIZ' => 'https://example.test',
+                'DEV_MODE' => '0',
+                PrivateBlogSitemapCacheStorage::ROOT_ENV => $cacheRoot,
+            ]);
+            self::fail('Cache storage cannot overlap the document root.');
+        } catch (BlogSitemapCacheException $exception) {
+            self::assertSame(
+                'blog.sitemap_cache.storage_root_dangerous',
+                $exception->issueCode()
+            );
+        }
+
+        $_SERVER['DOCUMENT_ROOT'] = $this->root . '/www';
+        try {
+            PrivateBlogSitemapCacheStorage::forProject($this->root, [
+                'RAIZ' => 'https://example.test',
+                'DEV_MODE' => '0',
+                PrivateBlogSitemapCacheStorage::ROOT_ENV => $this->root
+                    . '/www/private-sitemap-cache',
+            ]);
+            self::fail('Cache below the document root must be rejected.');
+        } catch (BlogSitemapCacheException $exception) {
+            self::assertSame(
+                'blog.sitemap_cache.storage_root_dangerous',
+                $exception->issueCode()
+            );
+        }
+    }
+
+    public function testProductionAllowsExternalPrivateCache(): void
+    {
+        $_SERVER['DOCUMENT_ROOT'] = $this->root . '/www';
+        $cacheRoot = $this->root . '-persistent-cache';
+
+        $storage = PrivateBlogSitemapCacheStorage::forProject($this->root, [
+            'RAIZ' => 'https://example.test',
+            'DEV_MODE' => '0',
+            PrivateBlogSitemapCacheStorage::ROOT_ENV => $cacheRoot,
+        ]);
+
+        $storage->initialize();
+        self::assertDirectoryExists($cacheRoot);
+        $this->filesystem->remove($cacheRoot);
     }
 
     public function testSnapshotIsBoundedByIdentityExpiryAndDurableFence(): void

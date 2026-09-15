@@ -101,8 +101,11 @@ Antes de escribir el workflow:
   destino vacío, relativo o calculado que no se haya validado.
 - Mantener cada raíz runtime fuera del árbol reemplazable. En producción,
   `LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT` debe apuntar directamente a una
-  ruta absoluta, privada y persistente fuera del proyecto/deploy; no a un
-  symlink o junction dentro de una release.
+  ruta absoluta, privada y persistente fuera del document root y del target que
+  el deploy reemplaza; no a un symlink o junction dentro de una release. La
+  ruta canónica `project/storage/liquidstack/...` solo es válida si queda como
+  hermana de un document root separado —por ejemplo `project/www`— y todas las
+  fases de deploy y rollback preservan `storage`.
 - Aplicar el mismo principio a la caché LKG del sitemap cuando esté activa y a
   cualquier otro estado mutable declarado por el proyecto.
 - Hacer health checks HTTP y funcionales antes de retirar la release anterior.

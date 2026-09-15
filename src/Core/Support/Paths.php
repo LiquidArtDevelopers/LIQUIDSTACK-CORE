@@ -58,27 +58,48 @@ class Paths
 
     public static function publicPath(): string
     {
-        $documentRoot = self::resolveDocumentRoot();
+        return self::publicPathForProject(self::projectRoot());
+    }
+
+    /** @param array<string, mixed> $environment */
+    public static function publicPathForProject(
+        string $projectRoot,
+        array $environment = []
+    ): string {
+        $resolvedProjectRoot = realpath($projectRoot) ?: $projectRoot;
+        $resolvedProjectRoot = rtrim(
+            $resolvedProjectRoot,
+            DIRECTORY_SEPARATOR
+        );
+
+        $documentRoot = self::resolveDocumentRoot($environment);
         if ($documentRoot !== null) {
             return $documentRoot;
         }
 
-        $envPath = self::resolveCustomPath('STACK_LIQUID_CORE_PUBLIC_PATH', 'STACK_CORE_PUBLIC_PATH');
+        $envPath = self::resolveCustomPath(
+            $resolvedProjectRoot,
+            $environment,
+            'STACK_LIQUID_CORE_PUBLIC_PATH',
+            'STACK_CORE_PUBLIC_PATH'
+        );
         if ($envPath !== null) {
             return $envPath;
         }
 
-        $discovered = self::discoverPublicDirectory();
+        $discovered = self::discoverPublicDirectory($resolvedProjectRoot);
         if ($discovered !== null) {
             return $discovered;
         }
 
-        return rtrim(self::projectRoot() . DIRECTORY_SEPARATOR . 'public', DIRECTORY_SEPARATOR);
+        return rtrim(
+            $resolvedProjectRoot . DIRECTORY_SEPARATOR . 'public',
+            DIRECTORY_SEPARATOR
+        );
     }
 
-    private static function discoverPublicDirectory(): ?string
+    private static function discoverPublicDirectory(string $projectRoot): ?string
     {
-        $projectRoot = self::projectRoot();
         $roots       = [$projectRoot];
 
         $parent = dirname($projectRoot);
@@ -113,29 +134,45 @@ class Paths
         return null;
     }
 
-    private static function resolveDocumentRoot(): ?string
+    /** @param array<string, mixed> $environment */
+    private static function resolveDocumentRoot(array $environment): ?string
     {
-        $docRoot = $_SERVER['DOCUMENT_ROOT'] ?? ($_ENV['DOCUMENT_ROOT'] ?? null);
-        if (!is_string($docRoot) || $docRoot === '') {
-            return null;
+        foreach ([
+            $_SERVER['DOCUMENT_ROOT'] ?? null,
+            $environment['DOCUMENT_ROOT'] ?? null,
+            $_ENV['DOCUMENT_ROOT'] ?? null,
+        ] as $docRoot) {
+            if (!is_string($docRoot) || trim($docRoot) === '') {
+                continue;
+            }
+
+            $resolved = realpath($docRoot) ?: $docRoot;
+
+            return rtrim($resolved, DIRECTORY_SEPARATOR);
         }
 
-        $resolved = realpath($docRoot) ?: $docRoot;
-
-        return rtrim($resolved, DIRECTORY_SEPARATOR);
+        return null;
     }
 
-    private static function resolveCustomPath(string $primary, string $legacy): ?string
-    {
+    /** @param array<string, mixed> $environment */
+    private static function resolveCustomPath(
+        string $projectRoot,
+        array $environment,
+        string $primary,
+        string $legacy
+    ): ?string {
         foreach ([$primary, $legacy] as $var) {
-            $value = getenv($var);
+            $value = $environment[$var] ?? null;
+            if (!is_string($value) || trim($value) === '') {
+                $value = getenv($var);
+            }
             if (!is_string($value) || $value === '') {
                 continue;
             }
 
             $path = self::isAbsolutePath($value)
                 ? $value
-                : self::projectRoot() . DIRECTORY_SEPARATOR . $value;
+                : $projectRoot . DIRECTORY_SEPARATOR . $value;
 
             $path = realpath($path) ?: $path;
 

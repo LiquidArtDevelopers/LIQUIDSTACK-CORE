@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\WebAdmin\Media;
 
 use App\Core\Environment\ProjectRuntimeProfile;
+use App\Core\Support\Paths;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use FilesystemIterator;
@@ -49,7 +50,9 @@ final class PrivateMediaStorage implements MediaStorageInterface
 
         $storage = new self($projectRoot, $configured);
         if (!self::isLocalDevelopment($environment)
-            && $storage->isInsideProject()) {
+            && $storage->overlapsPublicRoot(
+                Paths::publicPathForProject($projectRoot, $environment)
+            )) {
             throw new MediaException('webadmin.media.storage_root_dangerous');
         }
 
@@ -1108,6 +1111,16 @@ final class PrivateMediaStorage implements MediaStorageInterface
         $project = $this->normalizedForComparison($this->projectRoot);
 
         return str_starts_with($root . '/', $project . '/');
+    }
+
+    private function overlapsPublicRoot(string $publicRoot): bool
+    {
+        $root = $this->normalizedForComparison($this->root);
+        $public = $this->normalizedForComparison($publicRoot);
+
+        return $root === $public
+            || str_starts_with($root . '/', $public . '/')
+            || str_starts_with($public . '/', $root . '/');
     }
 
     private function ensureDirectory(string $path): void

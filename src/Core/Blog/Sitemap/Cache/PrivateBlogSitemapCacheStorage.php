@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Blog\Sitemap\Cache;
 
 use App\Core\Environment\ProjectRuntimeProfile;
+use App\Core\Support\Paths;
 use JsonException;
 use Throwable;
 
@@ -51,7 +52,9 @@ final class PrivateBlogSitemapCacheStorage
         }
 
         $storage = new self($projectRoot, $configured);
-        if (!$local && $storage->isInsideProject()) {
+        if (!$local && $storage->overlapsPublicRoot(
+            Paths::publicPathForProject($projectRoot, $environment)
+        )) {
             throw new BlogSitemapCacheException(
                 'blog.sitemap_cache.storage_root_dangerous'
             );
@@ -825,6 +828,16 @@ final class PrivateBlogSitemapCacheStorage
             $this->compare($this->root) . '/',
             $this->compare($this->projectRoot) . '/'
         );
+    }
+
+    private function overlapsPublicRoot(string $publicRoot): bool
+    {
+        $root = $this->compare($this->root);
+        $public = $this->compare($publicRoot);
+
+        return $root === $public
+            || str_starts_with($root . '/', $public . '/')
+            || str_starts_with($public . '/', $root . '/');
     }
 
     private function compare(string $path): string

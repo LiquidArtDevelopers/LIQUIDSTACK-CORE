@@ -554,8 +554,11 @@ operativos y las subidas JPEG, PNG y WebP conservan el contrato anterior.
 En desarrollo solo admite el default privado
 `storage/liquidstack/webadmin/media` cuando
 `DEV_MODE=1` y `RAIZ` es loopback canónica; producción exige
-`LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT` absoluto, persistente y fuera del
-árbol del proyecto/deploy. La raíz queda identificada por
+`LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT` absoluto, privado, persistente y fuera
+del document root efectivo y del árbol reemplazado por el deploy. La ruta
+canónica interna también puede declararse en producción cuando el document root
+es un hijo separado —por ejemplo `www`— y el workflow preserva `storage`; nunca
+se selecciona implícitamente en ese perfil. La raíz queda identificada por
 `.liquidstack-webadmin-media`, contiene un `.gitignore` interno y un área de
 staging; repetir el comando es idempotente y el modo normal no adopta una raíz
 no vacía sin marcador. Symlinks, junctions y destinos peligrosos se rechazan.

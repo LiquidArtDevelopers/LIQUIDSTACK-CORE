@@ -48,8 +48,9 @@ DB o credenciales obligue a modificar PHP, rutas, controladores o migraciones.
 - El sitemap dinámico, el origen público, SMTP y cualquier almacenamiento de
   medios se configuran para el mismo entorno que la DB antes de publicar.
 - Un `.gitignore` no constituye una política de persistencia. El storage
-  productivo vive fuera del árbol de proyecto/releases y ninguna fase de
-  Actions, sync, extracción, cleanup o rollback de código puede alcanzarlo.
+  productivo vive fuera del document root y del árbol reemplazado por releases;
+  ninguna fase de Actions, sync, extracción, cleanup o rollback puede
+  alcanzarlo.
 
 ## Dos promociones distintas
 
@@ -101,8 +102,11 @@ comprobaciones y recuperación probados.
 - El build puede generar y desplegar código, `vendor` resuelto y bundles Vite;
   no empaqueta `.env`, dumps, backups, DB ni Media.
 - `LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT` apunta directamente al directorio
-  físico persistente fuera del deploy. No se resuelve con `App/media`, un
-  symlink dentro de una release o una mera exclusión de Git.
+  físico persistente fuera del document root y del target reemplazado por el
+  deploy. Puede ser `project/storage/liquidstack/...` si es hermano de un
+  document root separado como `project/www` y el workflow preserva `storage`;
+  no se resuelve con `App/media`, un symlink dentro de una release o una mera
+  exclusión de Git.
 - Los despliegues in-place y cualquier `rsync --delete` deben probarse con
   dry-run y un target de código acotado. `--delete-excluded` es incompatible
   con una exclusión usada como protección.
