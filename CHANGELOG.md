@@ -4,6 +4,21 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+### Añadido
+- Nueva skill distribuida `liquidstack-content-localization`, con flujos
+  separados para catálogos estáticos y variantes por locale del Blog, más
+  validación SSR, SEO, enlaces, medios, taxonomías y publicación.
+- Nueva skill distribuida `liquidstack-github-actions` para crear y auditar
+  pipelines de build/deploy sin mezclar el artefacto con secretos, DB o storage
+  runtime, con patrones separados para releases, in-place y sync con borrado.
+- Runbook operativo distribuido para promocionar DB y Media a producción como
+  una unidad verificable, con inventario, copia inicial, QA y rollback.
+
+### Seguridad
+- La guía deja explícito que `.gitignore` no protege Media frente a Actions y
+  exige una raíz productiva absoluta y persistente fuera del deploy. El deploy
+  ordinario no puede ejecutar migraciones, onboarding ni copiar o borrar datos.
+
 ## [1.29.0] - 2026-09-10
 
 ### Añadido

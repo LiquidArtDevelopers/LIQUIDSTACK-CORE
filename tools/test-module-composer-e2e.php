@@ -224,6 +224,29 @@ try {
         '--no-progress',
     ]);
 
+    foreach ([
+        '.codex/skills/liquidstack-content-localization/SKILL.md',
+        '.codex/skills/liquidstack-content-localization/agents/openai.yaml',
+        '.codex/skills/liquidstack-content-localization/references/static-content.md',
+        '.codex/skills/liquidstack-content-localization/references/blog-localizations.md',
+        '.codex/skills/liquidstack-github-actions/SKILL.md',
+        '.codex/skills/liquidstack-github-actions/agents/openai.yaml',
+        '.codex/skills/liquidstack-github-actions/references/deployment-topologies.md',
+        '.codex/skills/liquidstack-module-operations/references/production-db-media-promotion.md',
+    ] as $agentGuidancePath) {
+        $sourcePath = $coreRoot . '/' . $agentGuidancePath;
+        $targetPath = $temporaryRoot . '/' . $agentGuidancePath;
+        if (
+            !is_file($targetPath)
+            || hash_file('sha256', $sourcePath) !== hash_file('sha256', $targetPath)
+        ) {
+            throw new RuntimeException(sprintf(
+                'Composer no distribuyó la guía canónica %s.',
+                $agentGuidancePath
+            ));
+        }
+    }
+
     $webAdminRequireOutput = $runComposer([
         'require',
         'liquidstack/webadmin',

@@ -1071,6 +1071,79 @@ h6.blogDocument__module--size-xl {
     }
 }
 
+.blogDocument__text {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.blogDocument__flowBreak {
+    display: block;
+    min-block-size: 1lh;
+}
+
+.blogDocument__textParagraph,
+.blogDocument__textList {
+    margin: 0;
+}
+
+.blogDocument__list,
+.blogDocument__textList,
+.blogDocument__text--custom :is(ul, ol),
+.blogDocument__embedContent :is(ul, ol) {
+    margin-block: 0;
+    padding-block: 0.75rem;
+    padding-inline-start: 1.5rem;
+    display: grid;
+    row-gap: 1.2rem;
+    color: var(--ls-blog-color01, #272727);
+    font: inherit;
+    letter-spacing: inherit;
+    line-height: 1.8;
+    list-style-position: outside;
+}
+
+.blogDocument__list > li,
+.blogDocument__textList > li,
+.blogDocument__text--custom :is(ul, ol) > li,
+.blogDocument__embedContent :is(ul, ol) > li {
+    margin: 0;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+}
+
+.blogDocument__list > li::marker,
+.blogDocument__textList > li::marker,
+.blogDocument__text--custom :is(ul, ol) > li::marker,
+.blogDocument__embedContent :is(ul, ol) > li::marker {
+    color: var(--ls-blog-color02, #24658e);
+    font-family: inherit;
+    font-size: 1em;
+}
+
+.blogDocument__list > li > :is(ul, ol),
+.blogDocument__textList > li > :is(ul, ol),
+.blogDocument__text--custom :is(ul, ol) > li > :is(ul, ol),
+.blogDocument__embedContent :is(ul, ol) > li > :is(ul, ol) {
+    margin-block: 0.75rem 0;
+    padding-block: 0;
+    padding-inline-start: 1.15rem;
+}
+
+:where(ul).blogDocument__list,
+:where(ul).blogDocument__textList,
+.blogDocument__text--custom :where(ul),
+.blogDocument__embedContent :where(ul) {
+    list-style-type: disc;
+}
+
+:where(ol).blogDocument__list,
+:where(ol).blogDocument__textList,
+.blogDocument__text--custom :where(ol),
+.blogDocument__embedContent :where(ol) {
+    list-style-type: decimal;
+}
+
 .blogDocument__list--marker-disc {
     list-style-type: disc;
 }
@@ -1095,31 +1168,14 @@ h6.blogDocument__module--size-xl {
     list-style-type: upper-alpha;
 }
 
-.blogDocument__text {
-    display: grid;
-    gap: 1.5rem;
-}
-
-.blogDocument__flowBreak {
-    display: block;
-    min-block-size: 1lh;
-}
-
-.blogDocument__textParagraph,
-.blogDocument__textList {
-    margin: 0;
-}
-
-.blogDocument__textList {
-    padding-inline-start: 1.25rem;
-    display: grid;
-    gap: 0.75rem;
-    list-style: revert;
-}
-
-.blogDocument__textList :is(ul, ol) {
-    margin-block: 0.5rem 0;
-    padding-inline-start: 1.15rem;
+@media (min-width: 48rem) {
+    .blogDocument__list,
+    .blogDocument__textList,
+    .blogDocument__text--custom :is(ul, ol),
+    .blogDocument__embedContent :is(ul, ol) {
+        padding-block: 1rem;
+        padding-inline-start: 2rem;
+    }
 }
 
 .blogDocument__textHeading {

@@ -446,6 +446,10 @@ composer liquidstack:migrate --dry-run
   ownership. El inicializador crea además el lock, `.staging/` y un `.gitignore`
   interno; puede reparar auxiliares de una raíz marcada, pero nunca adoptar de
   forma implícita una raíz no vacía sin marcador válido.
+- Tratar ese `.gitignore` únicamente como protección frente al tracking. No
+  evita que Actions, `rsync --delete`, una extracción o la limpieza de releases
+  borren Media. El deploy productivo no puede poseer ni alcanzar la raíz
+  persistente; auditarlo con `liquidstack-github-actions`.
 - Reservar
   `composer liquidstack:media:init --adopt-existing --backup-confirmed --yes`
   exclusivamente para upgrades con medios legacy anteriores al marker. No
@@ -1395,6 +1399,10 @@ composer liquidstack:migrate --dry-run
   caso se aplica el catálogo sobre destino vacío; en el segundo se exige un
   plan coordinado para esquemas, `ls_module_migrations`, datos y medios. Un
   cambio de `LIQUIDSTACK_DB_*` nunca mueve ni adopta contenido.
+- Para cualquier creación de DB productiva o traslado local → producción, leer
+  [el procedimiento distribuido de promoción DB y Media](references/production-db-media-promotion.md).
+  Si existe un workflow de despliegue, revisarlo además con
+  `liquidstack-github-actions` antes del corte.
 - Antes de apuntar a producción, rotar cualquier credencial usada o compartida
   durante desarrollo y consultar
   `docs/mejoras-pendientes/promocion-db-modulos-local-produccion.md`.

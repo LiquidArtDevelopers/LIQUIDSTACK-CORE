@@ -134,10 +134,18 @@
         .blogDocument__textParagraph,
         .blogDocument__listItem,
         .blogDocument__textListItem,
-        .blogDocument__calloutContent {
+        .blogDocument__calloutContent,
+        :where(
+            .blogDocument__text--custom p,
+            .blogDocument__text--custom li,
+            .blogDocument__embedContent p,
+            .blogDocument__embedContent li
+        ) {
             color: c.$color01;
+            font-family: c.$fuente02;
             font-size: clamp(1rem, 1.8vw, 1.15rem);
             line-height: 1.8;
+            letter-spacing: 0.5px;
             overflow-wrap: anywhere;
         }
 
@@ -149,13 +157,6 @@
         .blogDocument__flowBreak {
             display: block;
             min-block-size: 1lh;
-        }
-
-        .blogDocument__textList {
-            padding-left: clamp(1.25rem, 4vw, 2rem);
-            display: grid;
-            gap: 0.75rem;
-            list-style: revert;
         }
 
         > p + p {
@@ -816,52 +817,90 @@
         }
     }
 
-    .blogDocument__list {
-        padding-inline-start: 1.25rem;
+    :where(
+        .blogDocument__list,
+        .blogDocument__textList,
+        .blogDocument__text--custom ul,
+        .blogDocument__text--custom ol,
+        .blogDocument__embedContent ul,
+        .blogDocument__embedContent ol
+    ) {
+        margin-block: 0;
+        padding-block: 0.75rem;
+        padding-inline-start: 1.5rem;
         display: grid;
-        gap: 0.75rem;
+        row-gap: 1.2rem;
+        color: c.$color01;
+        font-family: c.$fuente02;
+        font-size: inherit;
+        line-height: 1.8;
+        letter-spacing: 0.5px;
+        list-style-position: outside;
 
-        &[class] {
-            list-style: revert;
+        > li {
+            margin: 0;
+            color: inherit;
+            letter-spacing: inherit;
+
+            &::marker {
+                color: c.$color02;
+                font-family: inherit;
+                font-size: 1em;
+            }
         }
 
-        &.blogDocument__list--marker-disc {
-            list-style-type: disc;
-        }
-
-        &.blogDocument__list--marker-circle {
-            list-style-type: circle;
-        }
-
-        &.blogDocument__list--marker-square {
-            list-style-type: square;
-        }
-
-        &.blogDocument__list--marker-decimal {
-            list-style-type: decimal;
-        }
-
-        &.blogDocument__list--marker-lower-alpha {
-            list-style-type: lower-alpha;
-        }
-
-        &.blogDocument__list--marker-upper-alpha {
-            list-style-type: upper-alpha;
-        }
-
-        :is(ul, ol) {
-            margin-block: 0.5rem 0;
+        > li > :is(ul, ol) {
+            margin-block: 0.75rem 0;
+            padding-block: 0;
             padding-inline-start: 1.15rem;
+        }
+
+        @media (min-width: c.$tablet) {
+            padding-block: 1rem;
+            padding-inline-start: 2rem;
         }
     }
 
-    .blogDocument__textList {
-        padding-inline-start: 1.25rem;
+    :where(
+        ul.blogDocument__list,
+        ul.blogDocument__textList,
+        .blogDocument__text--custom ul,
+        .blogDocument__embedContent ul
+    ) {
+        list-style-type: disc;
+    }
 
-        :is(ul, ol) {
-            margin-block: 0.5rem 0;
-            padding-inline-start: 1.15rem;
-        }
+    :where(
+        ol.blogDocument__list,
+        ol.blogDocument__textList,
+        .blogDocument__text--custom ol,
+        .blogDocument__embedContent ol
+    ) {
+        list-style-type: decimal;
+    }
+
+    .blogDocument__list--marker-disc {
+        list-style-type: disc;
+    }
+
+    .blogDocument__list--marker-circle {
+        list-style-type: circle;
+    }
+
+    .blogDocument__list--marker-square {
+        list-style-type: square;
+    }
+
+    .blogDocument__list--marker-decimal {
+        list-style-type: decimal;
+    }
+
+    .blogDocument__list--marker-lower-alpha {
+        list-style-type: lower-alpha;
+    }
+
+    .blogDocument__list--marker-upper-alpha {
+        list-style-type: upper-alpha;
     }
 
     .blogDocument__textHeading {
