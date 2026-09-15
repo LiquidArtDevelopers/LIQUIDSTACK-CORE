@@ -4,6 +4,20 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.31.1] - 2026-09-15
+
+### Corregido
+- El sitemap dinámico del Blog excluye ahora las variantes publicadas con
+  `noindex`, mantiene las variantes `index,nofollow` y conserva el valor por
+  defecto compatible cuando una localización aún no tiene una fila explícita
+  de preferencias de robots. Las filas incoherentes se omiten de forma segura
+  y la nueva identidad de caché impide reutilizar snapshots anteriores al
+  cambio de elegibilidad.
+- El instalador reconcilia de forma aditiva un bloque delimitado en
+  `public/.htaccess` para que `sitemap.xml` y `robots.txt` no hereden una caché
+  prolongada. Las reglas propias del proyecto se preservan y ambos documentos
+  pasan a exigir revalidación HTTP.
+
 ## [1.31.0] - 2026-09-14
 
 ### Añadido

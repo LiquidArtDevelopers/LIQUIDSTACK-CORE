@@ -1062,6 +1062,7 @@ final class PdoBlogRepository implements
             . 'JOIN ' . $this->localizations . ' l ON l.post_id = p.id '
             . 'WHERE l.status = :status AND l.slug IS NOT NULL '
             . 'AND l.published_at IS NOT NULL'
+            . $this->sitemapIndexablePredicate('l')
             . $this->dummyExclusionPredicate('l')
             . $this->activeVariantPredicate('l') . ' '
             . 'ORDER BY l.locale ASC, l.slug ASC, l.public_id ASC '
@@ -1074,6 +1075,7 @@ final class PdoBlogRepository implements
                     BlogPostVariant::PUBLISHED,
                     PDO::PARAM_STR
                 )
+                || !$this->bindSitemapRobotsPreferences($statement)
                 || !$this->bindReservedDummyCategory($statement)
                 || !$statement->bindValue(
                     ':sitemap_limit',
@@ -1825,6 +1827,53 @@ final class PdoBlogRepository implements
             . 'reserved_pc.category_id WHERE reserved_pc.post_id = '
             . $localizationAlias . '.post_id AND reserved_category.public_id = '
             . ':reserved_dummy_public_id)';
+    }
+
+    /**
+     * A missing preference keeps the legacy index=true default. Follow is an
+     * independent crawl directive and must not remove an indexable URL.
+     */
+    private function sitemapIndexablePredicate(
+        string $localizationAlias
+    ): string {
+        if (!$this->robotsSettingsEnabled) {
+            return '';
+        }
+        if (preg_match('/\A[a-z_]+\z/', $localizationAlias) !== 1) {
+            throw new BlogPersistenceException();
+        }
+
+        $owner = 'sitemap_robots.localization_id = '
+            . $localizationAlias . '.id';
+
+        return ' AND (NOT EXISTS (SELECT 1 FROM ' . $this->robotsSettings
+            . ' sitemap_robots WHERE ' . $owner . ') OR EXISTS (SELECT 1 FROM '
+            . $this->robotsSettings . ' sitemap_robots WHERE ' . $owner
+            . ' AND sitemap_robots.allow_index = 1 AND (('
+            . 'sitemap_robots.allow_follow = 1 AND '
+            . 'sitemap_robots.settings_sha256 = '
+            . ':sitemap_index_follow_sha256) OR ('
+            . 'sitemap_robots.allow_follow = 0 AND '
+            . 'sitemap_robots.settings_sha256 = '
+            . ':sitemap_index_nofollow_sha256))))';
+    }
+
+    private function bindSitemapRobotsPreferences(
+        PDOStatement $statement
+    ): bool {
+        if (!$this->robotsSettingsEnabled) {
+            return true;
+        }
+
+        return $statement->bindValue(
+            ':sitemap_index_follow_sha256',
+            BlogRobotsPreferences::defaults()->integrityHash(),
+            PDO::PARAM_STR
+        ) && $statement->bindValue(
+            ':sitemap_index_nofollow_sha256',
+            (new BlogRobotsPreferences(true, false))->integrityHash(),
+            PDO::PARAM_STR
+        );
     }
 
     private function bindReservedDummyCategory(PDOStatement $statement): bool

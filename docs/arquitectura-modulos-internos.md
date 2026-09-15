@@ -187,7 +187,8 @@ mutaciones nuevas de la cola y debe repetirse el dry-run.
 Esta frontera reutiliza exactamente la cola de CORE, runtime y módulos activos
 que preparan los hooks cuando el contrato SCSS ya está satisfecho. No absorbe
 las otras fases del instalador: ampliacion aditiva de `_config.scss`, parche
-quirurgico de Vite, merge de `package.json` y distribucion de `.codex`. Si el
+quirurgico de Vite, reconciliación acotada de `public/.htaccess`, merge de
+`package.json` y distribucion de `.codex`. Si el
 contrato SCSS no está listo, el comando queda bloqueado y el hook ordinario
 debe reconciliarlo antes de repetir el plan. No existe todavía un lifecycle de
 renames o retires: ninguna ausencia del catalogo autoriza a borrar un target
@@ -255,10 +256,24 @@ Siguen siendo siempre propiedad del proyecto:
 - `.env`;
 - `App/config/routes/get.php` y `post.php`;
 - `App/config/modules/*.php`;
+- `public/.htaccess`, salvo el bloque exacto delimitado
+  `liquidstack-core:discovery-cache-policy`;
 - `robots.txt` y cualquier sitemap existente;
 - copy, vistas publicadas distintas del scaffold neutral reconocido, medios y
   datos del cliente. En cuanto el proyecto personaliza el scaffold, también se
   preserva como propiedad del proyecto.
+
+El hook de instalación/actualización trata ese bloque de `.htaccess` como una
+integración aditiva independiente, no como un fichero gestionado. Mantiene
+intacto todo lo situado fuera de sus dos marcadores y falla cerrado ante un
+destino enlazado, no regular, excesivo o con marcadores ambiguos. En un
+directorio `public` real puede crear un `.htaccess` ausente que contenga solo
+el bloque. La regla se limita a los nombres exactos `sitemap.xml` y
+`robots.txt`: desactiva para ellos `mod_expires` y fija
+`Cache-Control: public, no-cache, must-revalidate`, de modo que no hereden un
+`ExpiresDefault` semanal. El contenido de ambos documentos continúa siendo
+project-owned y los proxies o CDN externos deben respetar esa cabecera o
+purgarse mediante su propia configuración operativa.
 
 ### Perfiles de conexión modular
 
@@ -651,10 +666,13 @@ por el operador. El fallback se limita a conexión DB indisponible y se declara
 en cabeceras; cualquier otra deriva falla cerrada. Los contratos completos
 están en [Liquid Blog](liquid-blog.md) y en
 [la caché LKG del sitemap](blog-sitemap-last-known-good-cache.md).
-Las URLs del sitemap y el HTML público comparten el mismo origen tipado,
-canonical y conjunto de variantes publicadas. Los alternates `hreflang` y
-`x-default` se derivan del agregado multidioma y nunca incluyen borradores;
-solo una portada estructurada y publicable puede convertirse en imagen social.
+Las URLs del sitemap y el HTML público comparten el mismo origen tipado y
+canonical. El sitemap incorpora únicamente variantes publicadas que permiten
+indexación; la navegación de idioma del HTML conserva todas las variantes
+publicadas, incluida una traducción `noindex`, porque sigue siendo una URL
+pública para el usuario. Los alternates `hreflang` y `x-default` se derivan del
+agregado multidioma y nunca incluyen borradores; solo una portada estructurada
+y publicable puede convertirse en imagen social.
 
 ## Estado de implementación
 

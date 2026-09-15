@@ -154,8 +154,9 @@ composer liquidstack:sync --apply --plan-hash=sha256:... --yes
 - El comando cubre la misma cola `managed_hash`, `install_if_missing` y
   `merge_json_additive` de CORE, runtime y módulos activos cuando el contrato
   SCSS ya está satisfecho. No cubre el parche aditivo de `_config.scss`, la
-  integracion de Vite, el merge de `package.json` ni la distribucion de skills;
-  esas fases siguen perteneciendo a `composer install`/`update`.
+  integracion de Vite, el bloque delimitado de caché en `public/.htaccess`, el
+  merge de `package.json` ni la distribucion de skills; esas fases siguen
+  perteneciendo a `composer install`/`update`.
 - Si aparece `sync.scss_contract_not_satisfied`, ejecutar el hook normal,
   revisar su resultado y repetir el dry-run. No modificar `_config.scss` a
   ciegas para desbloquearlo.

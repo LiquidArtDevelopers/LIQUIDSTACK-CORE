@@ -791,6 +791,30 @@ final class BlogServicePersistenceTest extends TestCase
         self::assertNull($service->resolvePublished('es', 'draft-only'));
     }
 
+    public function testSitemapKeepsLegacyDefaultWhenRobotsProjectionIsDisabled(): void
+    {
+        $service = $this->service([self::POST_A, self::LOCAL_A_ES]);
+        $variant = $service->createPost(
+            $this->gate(self::ACTOR_A),
+            'es',
+            $this->draft('legacy-index-default', 'Legacy index default')
+        );
+        $service->publish(
+            $this->gate(self::ACTOR_A),
+            self::POST_A,
+            'es',
+            $variant->lockVersion()
+        );
+
+        self::assertSame(
+            ['legacy-index-default'],
+            array_map(
+                static fn (BlogSitemapEntry $entry): string => $entry->slug(),
+                $service->sitemapEntries()
+            )
+        );
+    }
+
     public function testSitemapFailsClosedAtTheStandardDocumentLimit(): void
     {
         $entry = new BlogSitemapEntry(

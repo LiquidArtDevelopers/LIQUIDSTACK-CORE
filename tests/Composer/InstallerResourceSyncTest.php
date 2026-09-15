@@ -59,6 +59,12 @@ final class InstallerResourceSyncTest extends TestCase
 
     public function testComposerUpdatePromotesResourcesAndBothCatalogViews(): void
     {
+        $apacheConfig = "RewriteEngine On\n"
+            . "ExpiresDefault \"access plus 1 week\"\n";
+        $this->writeFile(
+            $this->projectRoot . '/public/.htaccess',
+            $apacheConfig
+        );
         $localShowroomExtensions = [
             '/App/views/showroom/_local.php'
                 => '<?php echo "project showroom extension";',
@@ -72,6 +78,21 @@ final class InstallerResourceSyncTest extends TestCase
         Installer::postUpdate($this->createEvent());
 
         $coreRoot = dirname(__DIR__, 2);
+        $updatedApacheConfig = (string) file_get_contents(
+            $this->projectRoot . '/public/.htaccess'
+        );
+        self::assertStringStartsWith(
+            $apacheConfig . "\n",
+            $updatedApacheConfig
+        );
+        self::assertStringContainsString(
+            'Header set Cache-Control "public, no-cache, must-revalidate"',
+            $updatedApacheConfig
+        );
+        self::assertStringContainsString(
+            'Integrada la política de revalidación',
+            $this->io->getOutput()
+        );
 
         foreach (['art02little', 'moduleList01', 'moduleParrafo01'] as $resource) {
             self::assertFileEquals(

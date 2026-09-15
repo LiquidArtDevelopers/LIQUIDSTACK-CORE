@@ -51,6 +51,8 @@ class Installer
         );
         $synchronizer->apply();
 
+        self::syncApacheDiscoveryCachePolicy($event);
+
         if (!$scssContractReady) {
             return;
         }
@@ -66,6 +68,27 @@ class Installer
                 . self::VITE_LANGUAGE_PLUGIN_PATH,
             $event->getIO()
         );
+    }
+
+    /**
+     * Reconciles only CORE's delimited block. The rest of public/.htaccess
+     * remains project-owned and is never replaced from a canonical stub.
+     */
+    private static function syncApacheDiscoveryCachePolicy(
+        Event $event
+    ): void {
+        try {
+            (new ApacheDiscoveryCachePolicySynchronizer(
+                $event->getIO()
+            ))->sync(self::resolveProjectRoot($event));
+        } catch (\Throwable $exception) {
+            $event->getIO()->writeError(sprintf(
+                '<warning>No se pudo reconciliar la política de caché de '
+                    . 'sitemap.xml y robots.txt; public/.htaccess se '
+                    . 'preservó: %s</warning>',
+                $exception->getMessage()
+            ));
+        }
     }
 
     /**

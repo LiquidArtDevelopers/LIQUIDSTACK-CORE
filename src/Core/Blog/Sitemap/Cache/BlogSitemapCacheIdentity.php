@@ -11,6 +11,9 @@ use JsonException;
 
 final class BlogSitemapCacheIdentity
 {
+    public const CONTRACT_VERSION = 3;
+    private const ENTRY_POLICY = 'published-indexable-v1';
+
     private function __construct(private readonly string $hash)
     {
     }
@@ -22,8 +25,9 @@ final class BlogSitemapCacheIdentity
     ): self {
         try {
             $payload = json_encode([
-                'schema' => 2,
+                'schema' => self::CONTRACT_VERSION,
                 'renderer' => BlogSitemapRenderer::CONTRACT_VERSION,
+                'entry_policy' => self::ENTRY_POLICY,
                 'origin' => $origin->value(),
                 'public_paths' => $config->publicPaths(),
                 'default_locale' => $config->defaultLocale(),

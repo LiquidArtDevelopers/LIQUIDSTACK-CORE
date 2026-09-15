@@ -96,7 +96,16 @@ de modificadores alojados en una vista consumidora.
    `vite.config.ts`/`.mjs`/`.cjs` se conserva intacta y requiere añadir
    manualmente el import y `createUpdateLanguagesPlugin(env)` a `plugins`.
    CORE nunca copia un `vite.config.js` completo sobre el consumidor.
-6. Se sincroniza la guia base para agentes desde `.codex`:
+6. Se reconcilia de forma aditiva la política HTTP de los documentos de
+   descubrimiento en `public/.htaccess`. CORE añade o actualiza únicamente el
+   bloque delimitado `liquidstack-core:discovery-cache-policy`; conserva las
+   redirecciones, el routing, la seguridad y cualquier otra regla del
+   proyecto. El bloque impide que `sitemap.xml` y `robots.txt` hereden un
+   `ExpiresDefault` prolongado y fuerza
+   `Cache-Control: public, no-cache, must-revalidate`. Si falta `.htaccess`,
+   se crea solo ese bloque dentro de un directorio `public` real; un destino
+   enlazado, no regular o con marcadores ambiguos se preserva con aviso.
+7. Se sincroniza la guia base para agentes desde `.codex`:
    - `.codex/config.toml` se copia al proyecto solo si no existe. Una configuracion local existente nunca se sobrescribe.
    - Solo se consideran skills que sean subdirectorios directos de `.codex/skills` y contengan `SKILL.md`.
    - Las skills base se escriben siempre en `.codex/skills`, tambien en proyectos nuevos.
@@ -157,8 +166,9 @@ El comando no ejecuta retires ni renames de lifecycle sobre destinos del
 consumidor. Cubre exclusivamente las políticas
 `managed_hash`, `install_if_missing` y `merge_json_additive` que ya usa el
 sincronizador. El contrato aditivo de `src/scss/_config.scss`, la integracion
-quirurgica de `vite.config.js`, las dependencias de `package.json` y la guia
-`.codex` siguen siendo fases separadas de `composer install`/`update`. Si el
+quirurgica de `vite.config.js`, el bloque acotado de `public/.htaccess`, las
+dependencias de `package.json` y la guia `.codex` siguen siendo fases separadas
+de `composer install`/`update`. Si el
 preflight devuelve `sync.scss_contract_not_satisfied`, ejecutar primero el
 hook normal para reconciliar ese contrato y volver a generar el dry-run; el
 comando no lo modifica de forma encubierta. También bloquea antes de escribir
@@ -173,6 +183,11 @@ el fichero `vite.config.js` completo, `src/scss/_config.scss`,
 `src/scss/_global.scss`, los SCSS propios de páginas y las configuraciones
 locales. Las vistas, idiomas de páginas y recursos adicionales con nombres
 distintos también se conservan.
+
+`public/.htaccess` también sigue siendo project-owned. La única porción que
+CORE puede reconciliar es el bloque delimitado de caché de `sitemap.xml` y
+`robots.txt`; nunca sustituye el fichero completo ni adopta reglas situadas
+fuera de esos marcadores.
 
 CORE puede migrar de forma quirúrgica el watcher legacy dentro de
 `vite.config.js` únicamente cuando reconoce exactamente su implementación

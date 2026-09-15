@@ -17,6 +17,7 @@ use App\Core\Blog\PublicFeed\BlogPublicArchivePeriodsQuery;
 use App\Core\Blog\PublicFeed\BlogPublicArchiveQuery;
 use App\Core\Blog\PublicFeed\BlogPublicRelatedQuery;
 use App\Core\Blog\PublicFeed\PdoBlogPublicCatalogRepository;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
 use App\Core\Blog\StructuredContent\Document\BlogDocumentTemplateRegistry;
 use App\Core\Blog\StructuredContent\Editing\BlogStructuredDraft;
@@ -468,6 +469,38 @@ final class BlogMySqlIntegrationTest extends TestCase
                 )?->postPublicId()
             );
             self::assertCount(1, $runtime->service()->sitemapEntries());
+            $localizationId = $this->rowIdByPublicId(
+                $connection,
+                $blogScope->quotedTable('post_localizations', 'mysql'),
+                $created->localizationPublicId()
+            );
+            $robotsUpdate = $connection->prepare(
+                'UPDATE ' . $blogScope->quotedTable(
+                    'robots_settings',
+                    'mysql'
+                ) . ' SET allow_index = :allow_index, '
+                . 'allow_follow = :allow_follow, '
+                . 'settings_sha256 = :settings_sha256 '
+                . 'WHERE localization_id = :localization_id'
+            );
+            self::assertNotFalse($robotsUpdate);
+            $noindex = new BlogRobotsPreferences(false, true);
+            self::assertTrue($robotsUpdate->execute([
+                'allow_index' => 0,
+                'allow_follow' => 1,
+                'settings_sha256' => $noindex->integrityHash(),
+                'localization_id' => $localizationId,
+            ]));
+            self::assertSame([], $runtime->service()->sitemapEntries());
+
+            $indexNofollow = new BlogRobotsPreferences(true, false);
+            self::assertTrue($robotsUpdate->execute([
+                'allow_index' => 1,
+                'allow_follow' => 0,
+                'settings_sha256' => $indexNofollow->integrityHash(),
+                'localization_id' => $localizationId,
+            ]));
+            self::assertCount(1, $runtime->service()->sitemapEntries());
             $equivalents = $runtime->service()
                 ->publishedSitemapEntriesForPost($created->postPublicId());
             self::assertCount(1, $equivalents);
@@ -768,7 +801,11 @@ final class BlogMySqlIntegrationTest extends TestCase
             $blogConfig,
             $webAdminConfig,
             new BlogService(
-                new PdoBlogRepository($connection, $blogScope),
+                new PdoBlogRepository(
+                    $connection,
+                    $blogScope,
+                    robotsSettingsEnabled: true
+                ),
                 new RandomUuidV4Generator(),
                 $clock,
                 new WebAdminBlogMutationAuditAdapter(

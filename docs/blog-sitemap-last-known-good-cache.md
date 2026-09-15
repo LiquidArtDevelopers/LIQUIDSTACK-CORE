@@ -109,6 +109,11 @@ prefijo de tablas—, revisión, generación, tamaño máximo de 50 MiB y caduci
 explícita. El instante exacto de expiración ya no es válido. Un fichero
 truncado, corrupto, futuro, vencido o de otra identidad se rechaza.
 
+La identidad incluye una versión del contrato público del sitemap. Si una
+actualización de CORE cambia sus reglas de elegibilidad, los snapshots creados
+con el contrato anterior dejan de ser reutilizables y la siguiente respuesta
+fresca válida los sustituye.
+
 ## Contrato HTTP y observabilidad
 
 Las respuestas frescas y LKG conservan el mismo XML, CSP, comportamiento

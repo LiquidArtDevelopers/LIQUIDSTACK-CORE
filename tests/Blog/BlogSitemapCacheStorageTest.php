@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Core\Blog\Configuration\BlogConfig;
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Configuration\BlogSitemapCacheConfig;
+use App\Core\Blog\Http\BlogSitemapRenderer;
 use App\Core\Blog\Sitemap\Cache\BlogSitemapCacheException;
 use App\Core\Blog\Sitemap\Cache\BlogSitemapCacheIdentity;
 use App\Core\Blog\Sitemap\Cache\BlogSitemapCacheSnapshot;
@@ -153,6 +154,35 @@ final class BlogSitemapCacheStorageTest extends TestCase
         );
     }
 
+    public function testSnapshotFromPreviousEligibilityContractIsRejected(): void
+    {
+        $storage = PrivateBlogSitemapCacheStorage::forProject(
+            $this->root,
+            $this->environment
+        );
+        $generation = $storage->initialize()->generation();
+        $identity = $this->identity('/blog');
+        $legacyIdentityHash = $this->legacyIdentityHash('/blog');
+        $xml = "<?xml version=\"1.0\"?><urlset></urlset>\n";
+        $snapshot = new BlogSitemapCacheSnapshot(
+            $xml,
+            '"' . hash('sha256', $xml) . '"',
+            7,
+            $generation,
+            $legacyIdentityHash,
+            1_700_000_000,
+            1_700_000_300
+        );
+        $lease = $storage->acquireExclusive();
+        $storage->promote($lease, $snapshot);
+        $lease->release();
+
+        self::assertNotSame($legacyIdentityHash, $identity->hash());
+        self::assertNull(
+            $storage->readValid($identity, 1_700_000_100, 7, $generation)
+        );
+    }
+
     public function testInitializationCleansBoundedCrashStaging(): void
     {
         $storage = PrivateBlogSitemapCacheStorage::forProject(
@@ -178,7 +208,39 @@ final class BlogSitemapCacheStorageTest extends TestCase
         string $tablePrefix = 'ls_blog_'
     ): BlogSitemapCacheIdentity
     {
-        $config = new BlogConfig(
+        return BlogSitemapCacheIdentity::fromContract(
+            $this->config($path, $tablePrefix),
+            BlogPublicOrigin::fromEnvironment($this->environment),
+            hash('sha256', 'database-a')
+        );
+    }
+
+    private function legacyIdentityHash(
+        string $path,
+        string $tablePrefix = 'ls_blog_'
+    ): string {
+        $config = $this->config($path, $tablePrefix);
+        $origin = BlogPublicOrigin::fromEnvironment($this->environment);
+        $payload = json_encode([
+            'schema' => 2,
+            'renderer' => BlogSitemapRenderer::CONTRACT_VERSION,
+            'origin' => $origin->value(),
+            'public_paths' => $config->publicPaths(),
+            'default_locale' => $config->defaultLocale(),
+            'sitemap_path' => $config->sitemapPath(),
+            'table_prefix' => $config->tablePrefix(),
+            'ttl_seconds' => $config->sitemapCache()->ttlSeconds(),
+            'database_identity' => hash('sha256', 'database-a'),
+        ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+
+        return hash('sha256', $payload);
+    }
+
+    private function config(
+        string $path,
+        string $tablePrefix = 'ls_blog_'
+    ): BlogConfig {
+        return new BlogConfig(
             ['es' => $path],
             '/blog-sitemap.xml',
             $tablePrefix,
@@ -187,12 +249,6 @@ final class BlogSitemapCacheStorageTest extends TestCase
             'es',
             null,
             new BlogSitemapCacheConfig(true, 300)
-        );
-
-        return BlogSitemapCacheIdentity::fromContract(
-            $config,
-            BlogPublicOrigin::fromEnvironment($this->environment),
-            hash('sha256', 'database-a')
         );
     }
 }

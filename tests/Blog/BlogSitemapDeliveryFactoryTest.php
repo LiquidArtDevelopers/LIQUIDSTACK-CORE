@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Core\Blog\Configuration\BlogPublicOrigin;
 use App\Core\Blog\Http\BlogPublicHttpRuntimeException;
 use App\Core\Blog\Http\BlogSitemapRenderer;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Blog\Sitemap\Cache\PrivateBlogSitemapCacheStorage;
 use App\Core\Blog\Sitemap\Delivery\BlogSitemapDeliveryFactory;
 use App\Core\Blog\Sitemap\Persistence\PdoBlogSitemapStateRepository;
@@ -144,6 +145,53 @@ final class BlogSitemapDeliveryFactoryTest extends TestCase
             $this->root . '/storage/liquidstack/blog/sitemap-cache'
         );
         self::assertSame(1, $this->connection->calls);
+    }
+
+    public function testSitemapExcludesNoindexAndKeepsIndexNofollow(): void
+    {
+        $this->insertPublishedVariant(
+            '11111111-1111-4111-8111-111111111111',
+            '21111111-1111-4111-8111-111111111111',
+            'index-nofollow',
+            new BlogRobotsPreferences(true, false)
+        );
+        $this->insertPublishedVariant(
+            '12222222-2222-4222-8222-222222222222',
+            '22222222-2222-4222-8222-222222222222',
+            'noindex-follow',
+            new BlogRobotsPreferences(false, true)
+        );
+        $this->insertPublishedVariant(
+            '13333333-3333-4333-8333-333333333333',
+            '23333333-3333-4333-8333-333333333333',
+            'implicit-index',
+            null
+        );
+        $this->insertPublishedVariant(
+            '14444444-4444-4444-8444-444444444444',
+            '24444444-4444-4444-8444-444444444444',
+            'corrupt-index-preference',
+            BlogRobotsPreferences::defaults(),
+            str_repeat('0', 64)
+        );
+
+        $response = $this->routes($this->factory())->dispatch($this->request());
+
+        self::assertNotNull($response);
+        self::assertSame(200, $response->status());
+        self::assertStringContainsString(
+            '<loc>http://localhost:1309/blog/index-nofollow</loc>',
+            $response->body()
+        );
+        self::assertStringContainsString(
+            '<loc>http://localhost:1309/blog/implicit-index</loc>',
+            $response->body()
+        );
+        self::assertStringNotContainsString('noindex-follow', $response->body());
+        self::assertStringNotContainsString(
+            'corrupt-index-preference',
+            $response->body()
+        );
     }
 
     public function testFreshRoutePromotesSnapshotAndConnectionOutageUsesIt(): void
@@ -297,6 +345,69 @@ final class BlogSitemapDeliveryFactoryTest extends TestCase
             . "'33333333-3333-4333-8333-333333333333', "
             . "'invalid-timestamp')"
         );
+    }
+
+    private function insertPublishedVariant(
+        string $postPublicId,
+        string $localizationPublicId,
+        string $slug,
+        ?BlogRobotsPreferences $robots,
+        ?string $integrityHash = null
+    ): void {
+        $actor = '33333333-3333-4333-8333-333333333333';
+        $post = $this->pdo->prepare(
+            'INSERT INTO ls_blog_posts '
+                . '(public_id, created_by_user_public_id) '
+                . 'VALUES (:public_id, :actor)'
+        );
+        self::assertTrue($post->execute([
+            'public_id' => $postPublicId,
+            'actor' => $actor,
+        ]));
+        $postId = (int) $this->pdo->lastInsertId();
+        self::assertGreaterThan(0, $postId);
+
+        $localization = $this->pdo->prepare(
+            'INSERT INTO ls_blog_post_localizations '
+                . '(public_id, post_id, locale, slug, h1, seo_title, '
+                . 'meta_description, excerpt, body_text, status, published_at, '
+                . 'created_by_user_public_id, updated_by_user_public_id, '
+                . 'updated_at) VALUES '
+                . '(:public_id, :post_id, :locale, :slug, :h1, :seo_title, '
+                . ':meta_description, :excerpt, :body_text, :status, '
+                . ':published_at, :actor, :actor, :updated_at)'
+        );
+        self::assertTrue($localization->execute([
+            'public_id' => $localizationPublicId,
+            'post_id' => $postId,
+            'locale' => 'es',
+            'slug' => $slug,
+            'h1' => $slug,
+            'seo_title' => $slug . ' SEO',
+            'meta_description' => $slug . ' meta description.',
+            'excerpt' => $slug . ' excerpt.',
+            'body_text' => $slug . ' body.',
+            'status' => 'published',
+            'published_at' => '2026-08-03 12:00:00.000000',
+            'actor' => $actor,
+            'updated_at' => '2026-08-03 12:00:00.000000',
+        ]));
+        if ($robots === null) {
+            return;
+        }
+
+        $settings = $this->pdo->prepare(
+            'INSERT INTO ls_blog_robots_settings '
+                . '(localization_id, allow_index, allow_follow, '
+                . 'settings_sha256) VALUES '
+                . '(:localization_id, :allow_index, :allow_follow, :sha256)'
+        );
+        self::assertTrue($settings->execute([
+            'localization_id' => (int) $this->pdo->lastInsertId(),
+            'allow_index' => $robots->index() ? 1 : 0,
+            'allow_follow' => $robots->follow() ? 1 : 0,
+            'sha256' => $integrityHash ?? $robots->integrityHash(),
+        ]));
     }
 
     private function factory(

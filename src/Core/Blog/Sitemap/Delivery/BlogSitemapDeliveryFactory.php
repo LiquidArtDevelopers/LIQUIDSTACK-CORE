@@ -178,9 +178,16 @@ final class BlogSitemapDeliveryFactory implements
             throw new BlogPublicHttpRuntimeException();
         }
 
+        $robotsSettingsEnabled = $this->featureGate->isReady(
+            $pdo,
+            $registry,
+            $scopes,
+            BlogMigrationRequirements::robotsPreferences()
+        );
         $service = new BlogService(new PdoBlogRepository(
             $pdo,
             $blogScope,
+            robotsSettingsEnabled: $robotsSettingsEnabled,
             reservedCategoryPolicyEnabled: $this->featureGate->isReady(
                 $pdo,
                 $registry,

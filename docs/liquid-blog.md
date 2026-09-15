@@ -1814,8 +1814,13 @@ documento actual publicado.
 ## Sitemap dinámico
 
 El endpoint configurado, `/blog-sitemap.xml` por defecto, consulta únicamente
-variantes publicadas y construye URLs desde `RAIZ`: HTTPS fuera del laboratorio
-y HTTP solo bajo el perfil loopback tipado de desarrollo. Nunca usa `Host`,
+variantes publicadas que permitan indexación y construye URLs desde `RAIZ`:
+HTTPS fuera del laboratorio y HTTP solo bajo el perfil loopback tipado de
+desarrollo. `follow` es una directiva independiente: una variante
+`index,nofollow` permanece en el sitemap, mientras una variante `noindex` queda
+fuera con independencia de su valor `follow`. Una localización sin fila
+explícita de preferencias conserva el default compatible `index,follow`.
+Nunca usa `Host`,
 `Forwarded` o cabeceras del cliente como origen. No modifica
 `public/sitemap.xml`, el repositorio ni el deploy. Publicar o retirar cambia su
 respuesta inmediatamente porque la DB de producción es la fuente de verdad.

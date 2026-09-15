@@ -7,6 +7,7 @@ use App\Core\Blog\BlogException;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Persistence\PdoBlogRepository;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Blog\Sitemap\BlogSitemapPublicationCoordinator;
 use App\Core\Blog\Sitemap\Cache\PrivateBlogSitemapCacheStorage;
 use App\Core\Blog\Sitemap\Persistence\PdoBlogSitemapStateRepository;
@@ -103,6 +104,48 @@ final class BlogSitemapPublicationCoordinatorTest extends TestCase
         self::assertSame(BlogPostVariant::DRAFT, $draft->status());
         self::assertSame(3, $this->state->current()->publicRevision());
         self::assertSame('blocked', $this->storage->diagnostic()['status']);
+    }
+
+    public function testPublishingNoindexStillFencesAndAdvancesRevision(): void
+    {
+        $actor = '123e4567-e89b-42d3-a456-426614174000';
+        $service = new BlogService(
+            new PdoBlogRepository(
+                $this->pdo,
+                $this->scope,
+                robotsSettingsEnabled: true
+            ),
+            sitemapPublicationCoordinator: new BlogSitemapPublicationCoordinator(
+                $this->state,
+                $this->storage
+            )
+        );
+        $draft = new BlogDraft(
+            'Private article title',
+            'Complete private article body.',
+            'private-article-title',
+            'Private article SEO title',
+            'Private article meta description.',
+            'Private article excerpt.',
+            new BlogRobotsPreferences(false, true)
+        );
+        $variant = $service->createPost(
+            static fn (PDO $_pdo): string => $actor,
+            'es',
+            $draft
+        );
+
+        $published = $service->publish(
+            static fn (PDO $_pdo): string => $actor,
+            $variant->postPublicId(),
+            'es',
+            $variant->lockVersion()
+        );
+
+        self::assertSame(BlogPostVariant::PUBLISHED, $published->status());
+        self::assertSame(2, $this->state->current()->publicRevision());
+        self::assertSame('blocked', $this->storage->diagnostic()['status']);
+        self::assertSame([], $service->sitemapEntries());
     }
 
     public function testInvalidationFailureRollsBackVisibilityAndRevision(): void
