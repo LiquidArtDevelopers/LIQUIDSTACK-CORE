@@ -4,6 +4,12 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.32.3] - 2026-09-21
+
+### fixed
+
+- Recurso ModuleButtonType03 corregido el padding.
+
 ## [1.32.2] - 2026-09-21
 
 ### fixed
