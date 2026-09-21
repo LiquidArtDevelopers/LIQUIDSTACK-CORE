@@ -15,6 +15,8 @@ let smoother = ScrollSmoother.create({
   effects: true,
 });
 
+// modificación de darren
+
 gsap.utils.toArray("header .botonSmooth").forEach(function (button, i) {
   button.addEventListener("click", (e) => {
     var id = e.target.getAttribute("href");
