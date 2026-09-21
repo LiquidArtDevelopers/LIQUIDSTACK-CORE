@@ -14,8 +14,10 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 ### Corregido
 - Las suites largas de CORE, E2E y MySQL ya no heredan el timeout general de
   300 segundos de Composer. El gate de release comprueba además el historial
-  gestionado y el E2E modular, y el README ofrece un bloque PowerShell corto
-  mediante `composer release:prepare`.
+  gestionado y el E2E modular. El flujo interactivo detecta la única versión
+  pendiente del changelog, falla claramente si falta o es ambigua y solicita
+  la descripción del tag; el bloque copiable queda reducido a
+  `composer release`.
 
 ### Documentación
 - Se aclara el contrato de conexión modular: `shared` permanece como fallback

@@ -277,6 +277,17 @@ final class ReleaseCommandTest extends TestCase
     public function testComposerScriptUsesComposerIoAndRejectsNonInteractivePrompts(): void
     {
         [$remoteRoot, $repositoryRoot] = $this->createReleaseRepository();
+        $this->filesystem->dumpFile(
+            $repositoryRoot . '/CHANGELOG.md',
+            "# Changelog\n\n"
+                . "## [Unreleased]\n\n"
+                . "## [1.5.0] - 2026-08-20\n"
+        );
+        $this->runChecked(['git', 'add', 'CHANGELOG.md'], $repositoryRoot);
+        $this->runChecked(
+            ['git', 'commit', '-m', 'Keep one pending release'],
+            $repositoryRoot
+        );
         $releaseScript = new ReleaseScript($repositoryRoot);
 
         $nonInteractiveIo = new BufferIO();
@@ -308,7 +319,11 @@ final class ReleaseCommandTest extends TestCase
         );
 
         $interactiveIo = new BufferIO();
-        $interactiveIo->setUserInputs(['v1.5.0', '']);
+        $interactiveIo->setUserInputs([
+            '',
+            'Entrega interactiva de prueba',
+            '',
+        ]);
         $interactiveEvent = new Event(
             'release',
             new Composer(),
@@ -321,7 +336,15 @@ final class ReleaseCommandTest extends TestCase
 
         self::assertTrue($interactiveResult, $interactiveIo->getOutput());
         self::assertStringContainsString(
-            'Etiqueta a publicar [v1.4.2]:',
+            'Versión pendiente detectada en CHANGELOG.md: v1.5.0',
+            $interactiveIo->getOutput()
+        );
+        self::assertStringContainsString(
+            'Versión a publicar [v1.5.0]:',
+            $interactiveIo->getOutput()
+        );
+        self::assertStringContainsString(
+            'Descripción breve de la release:',
             $interactiveIo->getOutput()
         );
         self::assertStringContainsString(
@@ -343,6 +366,61 @@ final class ReleaseCommandTest extends TestCase
         ], $this->fixtureRoot));
 
         self::assertSame($remoteHead, $remoteTag);
+        self::assertSame(
+            'Entrega interactiva de prueba',
+            trim($this->runChecked([
+                'git',
+                '--git-dir=' . $remoteRoot,
+                'for-each-ref',
+                '--format=%(contents)',
+                'refs/tags/v1.5.0',
+            ], $this->fixtureRoot))
+        );
+    }
+
+    public function testInteractiveReleaseRequiresExactlyOnePendingChangelogVersion(): void
+    {
+        [, $repositoryRoot] = $this->createReleaseRepository();
+
+        [$exitCode, $output] = $this->runProcess([
+            PHP_BINARY,
+            'tools/release.php',
+            '--yes',
+            '--skip-tests',
+            '--no-fetch',
+        ], $repositoryRoot);
+
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString(
+            'CHANGELOG.md contiene varias versiones posteriores',
+            $output
+        );
+
+        $this->filesystem->dumpFile(
+            $repositoryRoot . '/CHANGELOG.md',
+            "# Changelog\n\n"
+                . "## [Unreleased]\n\n"
+                . "## [1.4.1] - 2026-08-20\n"
+        );
+        $this->runChecked(['git', 'add', 'CHANGELOG.md'], $repositoryRoot);
+        $this->runChecked(
+            ['git', 'commit', '-m', 'Remove pending releases'],
+            $repositoryRoot
+        );
+
+        [$exitCode, $output] = $this->runProcess([
+            PHP_BINARY,
+            'tools/release.php',
+            '--yes',
+            '--skip-tests',
+            '--no-fetch',
+        ], $repositoryRoot);
+
+        self::assertSame(1, $exitCode);
+        self::assertStringContainsString(
+            'Falta preparar la versión en CHANGELOG.md',
+            $output
+        );
     }
 
     /**

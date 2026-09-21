@@ -193,13 +193,31 @@ final class ReleaseCommand
         $requestedVersion = $options['version'];
 
         if ($requestedVersion === null) {
-            $defaultVersion = $suggestions[$options['bump']]->tag();
+            $defaultVersion = $this->detectPendingChangelogTag($latest);
+
+            if ($options['bump'] !== null) {
+                $expectedVersion = $suggestions[$options['bump']]->tag();
+
+                if ($defaultVersion !== $expectedVersion) {
+                    throw new \RuntimeException(sprintf(
+                        'CHANGELOG.md prepara %s, pero --bump=%s espera %s.',
+                        $defaultVersion,
+                        $options['bump'],
+                        $expectedVersion
+                    ));
+                }
+            }
+
+            $this->write(sprintf(
+                'Versión pendiente detectada en CHANGELOG.md: %s',
+                $defaultVersion
+            ));
 
             if ($options['yes']) {
                 $requestedVersion = $defaultVersion;
             } else {
                 $requestedVersion = $this->prompt(
-                    sprintf('Etiqueta a publicar [%s]: ', $defaultVersion),
+                    sprintf('Versión a publicar [%s]: ', $defaultVersion),
                     $defaultVersion
                 );
             }
@@ -236,6 +254,11 @@ final class ReleaseCommand
         }
 
         $this->assertChangelogDocuments($tag);
+        $description = $this->resolveDescription(
+            $options['description'],
+            $tag,
+            $options['yes']
+        );
 
         $headOid = $this->gitOutput(['rev-parse', 'HEAD']);
         $head = $this->gitOutput(['log', '-1', '--format=%h %s']);
@@ -246,6 +269,7 @@ final class ReleaseCommand
         $this->write(sprintf('  Commit:    %s', $head));
         $this->write(sprintf('  Remoto:    %s (%s)', $remote, $this->redactRemoteUrl($remoteUrl)));
         $this->write(sprintf('  Etiqueta:  %s', $tag));
+        $this->write(sprintf('  Descripción: %s', $description));
         $this->write('');
 
         if ($ahead === 0) {
@@ -295,7 +319,7 @@ final class ReleaseCommand
         $this->assertCleanWorktree();
         $this->assertTagIsStillAvailable($tag);
         $this->runChecked(
-            ['git', 'tag', '-a', $tag, $headOid, '-m', sprintf('Release %s', $tag)],
+            ['git', 'tag', '-a', $tag, $headOid, '-m', $description],
             'No se pudo crear la etiqueta.'
         );
 
@@ -332,7 +356,8 @@ final class ReleaseCommand
      *
      * @return array{
      *     version: string|null,
-     *     bump: string,
+     *     description: string|null,
+     *     bump: string|null,
      *     yes: bool,
      *     dry_run: bool,
      *     no_fetch: bool,
@@ -344,7 +369,8 @@ final class ReleaseCommand
     {
         $options = [
             'version'    => null,
-            'bump'       => 'patch',
+            'description' => null,
+            'bump'       => null,
             'yes'        => false,
             'dry_run'    => false,
             'no_fetch'   => false,
@@ -390,6 +416,16 @@ final class ReleaseCommand
                 continue;
             }
 
+            if (str_starts_with($argument, '--description=')) {
+                $options['description'] = substr($argument, strlen('--description='));
+                continue;
+            }
+
+            if ($argument === '--description' && isset($arguments[$index + 1])) {
+                $options['description'] = $arguments[++$index];
+                continue;
+            }
+
             if (str_starts_with($argument, '--bump=')) {
                 $options['bump'] = substr($argument, strlen('--bump='));
                 continue;
@@ -403,8 +439,14 @@ final class ReleaseCommand
             throw new \RuntimeException(sprintf('Opción desconocida: %s', $argument));
         }
 
-        if (!in_array($options['bump'], ['patch', 'minor', 'major'], true)) {
+        if ($options['bump'] !== null
+            && !in_array($options['bump'], ['patch', 'minor', 'major'], true)
+        ) {
             throw new \RuntimeException('--bump debe ser patch, minor o major.');
+        }
+
+        if ($options['version'] !== null && $options['bump'] !== null) {
+            throw new \RuntimeException('No combines --version y --bump.');
         }
 
         return $options;
@@ -471,6 +513,94 @@ final class ReleaseCommand
             'CHANGELOG.md debe incluir la sección exacta "## [%s] - AAAA-MM-DD" antes de publicar.',
             $version
         ));
+    }
+
+    /**
+     * @param array{tag: string, version: Version}|null $latest
+     */
+    private function detectPendingChangelogTag(?array $latest): string
+    {
+        $path = $this->projectRoot . DIRECTORY_SEPARATOR . 'CHANGELOG.md';
+        $contents = @file_get_contents($path);
+
+        if (!is_string($contents)) {
+            throw new \RuntimeException('No se puede leer CHANGELOG.md.');
+        }
+
+        if (preg_match('/^## \[Unreleased\]\s*$/m', $contents) !== 1) {
+            throw new \RuntimeException(
+                'CHANGELOG.md debe conservar la sección "## [Unreleased]".'
+            );
+        }
+
+        $lines = preg_split('/\R/', $contents) ?: [];
+        $candidates = [];
+        $pattern = '/\A## \[((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\] - [0-9]{4}-[0-9]{2}-[0-9]{2}\z/';
+
+        foreach ($lines as $line) {
+            if (preg_match($pattern, $line, $matches) !== 1) {
+                continue;
+            }
+
+            $version = Version::fromTag($matches[1], true);
+
+            if ($version === null
+                || ($latest !== null && $version->compare($latest['version']) <= 0)
+            ) {
+                continue;
+            }
+
+            $candidates[$version->tag()] = true;
+        }
+
+        $tags = array_keys($candidates);
+
+        if ($tags === []) {
+            $latestTag = $latest['tag'] ?? 'ninguna etiqueta previa';
+            throw new \RuntimeException(sprintf(
+                'Falta preparar la versión en CHANGELOG.md. Debajo de "## [Unreleased]" añade una sección fechada posterior a %s con el formato "## [X.Y.Z] - AAAA-MM-DD", confirma el cambio y súbelo antes de publicar.',
+                $latestTag
+            ));
+        }
+
+        if (count($tags) > 1) {
+            throw new \RuntimeException(sprintf(
+                'CHANGELOG.md contiene varias versiones posteriores a la última etiqueta (%s). Debe quedar una sola versión pendiente antes de publicar.',
+                implode(', ', $tags)
+            ));
+        }
+
+        return $tags[0];
+    }
+
+    private function resolveDescription(
+        ?string $description,
+        string $tag,
+        bool $assumeYes
+    ): string {
+        if ($description === null) {
+            $description = $assumeYes
+                ? sprintf('Release %s', $tag)
+                : $this->prompt('Descripción breve de la release: ', '');
+        }
+
+        $description = trim($description);
+
+        if ($description === '') {
+            throw new \RuntimeException(
+                'La descripción de la release es obligatoria.'
+            );
+        }
+
+        if (strlen($description) > 200
+            || preg_match('/[\r\n\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $description) === 1
+        ) {
+            throw new \RuntimeException(
+                'La descripción debe ser una sola línea de hasta 200 bytes.'
+            );
+        }
+
+        return $description;
     }
 
     /**
@@ -786,12 +916,12 @@ final class ReleaseCommand
         $this->write('');
         $this->write('Uso:');
         $this->write('  composer release');
-        $this->write('  composer release -- --bump=minor');
-        $this->write('  composer release -- --version=v1.5.0');
+        $this->write('  composer release -- --version=v1.5.0 --description="Resumen"');
         $this->write('');
         $this->write('Opciones:');
-        $this->write('  --bump=patch|minor|major  Sugerencia inicial (patch por defecto).');
+        $this->write('  --bump=patch|minor|major  Verifica el incremento detectado en CHANGELOG.');
         $this->write('  --version=vX.Y.Z         Usa una versión concreta.');
+        $this->write('  --description="Texto"    Mensaje de la etiqueta anotada.');
         $this->write('  --dry-run                Valida y muestra el push sin crear el tag.');
         $this->write('  --skip-tests             Omite la suite; usar solo de forma excepcional.');
         $this->write('  --yes, -y                Confirma sin interacción.');

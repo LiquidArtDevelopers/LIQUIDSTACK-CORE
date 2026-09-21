@@ -1489,39 +1489,39 @@ entrada interactiva nativa de Composer, tambien desde PowerShell en Windows:
 
 ### Publicar CORE: bloque corto para PowerShell
 
-Este bloque es **solo para el repositorio CORE**. Antes de pegarlo, mueve las
-entradas de `Unreleased` a `## [X.Y.Z] - AAAA-MM-DD` en `CHANGELOG.md` y cambia
-solo `$Version` y `$CommitMessage`. Comprueba antes `git status --short`:
-`git add -A` incluirá todo el lote que aparezca:
+Este es el bloque completo. Es siempre igual y no hay que editarlo:
 
 ```powershell
-$Version = 'vX.Y.Z'
-$CommitMessage = 'tipo(core): descripción'
-
-composer release:prepare
-if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar el historial gestionado.' }
-
-git add -A
-git diff --cached --check
-if ($LASTEXITCODE -ne 0) { git restore --staged .; throw 'El lote contiene errores.' }
-
-git commit -m $CommitMessage
-if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el commit.' }
-
-composer release -- "--version=$Version" --yes
-if ($LASTEXITCODE -ne 0) { throw 'La release no se publicó.' }
+composer release
 ```
 
-No necesitas ejecutar antes `git push`: `composer release` valida `composer.json`, el
-historial gestionado, la suite completa y el E2E modular; después publica
-`main` y la etiqueta mediante un único push atómico. Las suites ya no usan el
-límite general de 300 segundos de Composer. Si el cambio afecta DDL o
-persistencia, ejecuta además `composer test:mysql-integration` contra una DB
-**TEST aislada** antes de pegar el bloque.
+El flujo ordinario es:
 
-Si el commit exacto ya estaba subido y `git status --short` no muestra nada,
-omite `release:prepare`, `git add` y `git commit`: define `$Version` y ejecuta
-directamente `composer release -- "--version=$Version" --yes`.
+1. Realiza los cambios.
+2. Mueve sus notas desde `Unreleased` a una única sección fechada con el formato
+   exacto `## [X.Y.Z] - AAAA-MM-DD`.
+3. Revisa, confirma y sube el commit a `main` como cualquier otro cambio.
+4. Pega `composer release` sin argumentos.
+
+El comando compara el changelog con las etiquetas existentes. Si encuentra una
+única versión posterior, la propone en consola; pulsa Enter para aceptarla o
+escribe otra versión documentada. Después solicita una descripción breve, que
+se guarda como mensaje de la etiqueta anotada, y finalmente pide confirmación.
+La descripción no modifica retroactivamente el mensaje del commit ya subido.
+
+Si falta cerrar `Unreleased` en una sección fechada, o existen varias versiones
+sin etiquetar, el comando lo explica y se detiene antes de ejecutar las pruebas.
+También exige `main` y un árbol limpio; admite tanto un commit local pendiente
+de push como un commit que ya esté en `origin/main`.
+
+El gate valida `composer.json`, el historial gestionado, la suite completa y el
+E2E modular; después publica `main` y la etiqueta mediante un único push
+atómico. Las suites no usan el límite general de 300 segundos de Composer. Si
+el cambio afecta DDL o persistencia, ejecuta además
+`composer test:mysql-integration` contra una DB **TEST aislada** antes de
+publicar. Si cambian ficheros distribuidos gestionados, ejecuta
+`composer release:prepare` antes de confirmar el commit; el gate avisará si el
+historial quedó desactualizado.
 
 La versión de CORE y la de BASE son independientes: por ejemplo, CORE
 `v1.32.0` no corresponde a BASE `v1.2.0`.
@@ -1537,22 +1537,12 @@ Si la rama local y `origin/main` aparecen como divergidas, no uses
 `git pull --ff-only` ni `git push --force`: conserva primero una referencia de
 respaldo y reconcilia el historial antes de volver a publicar.
 
-Ejemplo desde la etiqueta historica `v1.4.01`:
-
-```text
-Ultima etiqueta: v1.4.01 (interpretada como v1.4.1)
-Patch: v1.4.2
-Minor: v1.5.0
-Major: v2.0.0
-```
-
-Las nuevas etiquetas deben usar SemVer estable canonico `vX.Y.Z`, sin ceros iniciales. Para
-elegir directamente el incremento minor o simular el proceso:
+Las nuevas etiquetas deben usar SemVer estable canonico `vX.Y.Z`, sin ceros
+iniciales. Los flags quedan reservados para automatizaciones y diagnósticos:
 
 ```bash
-composer release -- --bump=minor
-composer release -- --version=v1.5.0
-composer release -- --version=v1.5.0 --dry-run
+composer release -- --version=v1.5.0 --description="Resumen" --yes
+composer release -- --dry-run
 ```
 
 La primera vez, ejecuta `composer install` para disponer de la suite local.
