@@ -182,6 +182,6 @@ final class CanonicalModuleDistributionTest extends TestCase
         ] as $source) {
             self::assertContains($source, $published);
         }
-        self::assertCount(82, $published);
+        self::assertCount(104, $published);
     }
 }
