@@ -36,13 +36,20 @@
         "release": [
             "App\\Core\\Composer\\ReleaseScript::run"
         ],
+        "release:prepare": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php tools/build-managed-file-history.php"
+        ],
         "test": [
+            "Composer\\Config::disableProcessTimeout",
             "@php vendor/bin/phpunit --configuration phpunit.xml.dist --do-not-cache-result"
         ],
         "test:mysql-integration": [
+            "Composer\\Config::disableProcessTimeout",
             "@php vendor/bin/phpunit --configuration phpunit.xml.dist --do-not-cache-result --group mysql-integration"
         ],
         "test:module-e2e": [
+            "Composer\\Config::disableProcessTimeout",
             "@php tools/test-module-composer-e2e.php"
         ],
         "liquidstack-core:sync-resources": [

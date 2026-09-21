@@ -548,10 +548,24 @@ final class ReleaseCommand
             );
         }
 
+        $this->write('Comprobando el historial de ficheros gestionados...');
+        $this->runChecked(
+            [PHP_BINARY, 'tools/build-managed-file-history.php', '--check'],
+            'El historial de ficheros gestionados no está actualizado.',
+            true
+        );
+
         $this->write('Ejecutando la suite de CORE...');
         $this->runChecked(
             [...$this->composerCommand(), 'test'],
             'La suite de CORE ha fallado.',
+            true
+        );
+
+        $this->write('Ejecutando el E2E modular...');
+        $this->runChecked(
+            [...$this->composerCommand(), 'test:module-e2e'],
+            'El E2E modular ha fallado.',
             true
         );
     }

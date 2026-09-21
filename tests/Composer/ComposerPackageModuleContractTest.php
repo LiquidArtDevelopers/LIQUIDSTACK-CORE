@@ -46,6 +46,20 @@ final class ComposerPackageModuleContractTest extends TestCase
                 . 'sanitization and consent-safe iframe projection.',
             $composer['suggest']['ext-dom'] ?? null
         );
+        self::assertSame(
+            [
+                'Composer\\Config::disableProcessTimeout',
+                '@php tools/build-managed-file-history.php',
+            ],
+            $composer['scripts']['release:prepare'] ?? null
+        );
+        foreach (['test', 'test:mysql-integration', 'test:module-e2e'] as $script) {
+            self::assertSame(
+                'Composer\\Config::disableProcessTimeout',
+                $composer['scripts'][$script][0] ?? null,
+                sprintf('%s debe admitir suites superiores a 300 segundos.', $script)
+            );
+        }
 
         $catalog = ModuleCatalog::fromCoreRoot($coreRoot);
         $catalogSelectors = array_map(

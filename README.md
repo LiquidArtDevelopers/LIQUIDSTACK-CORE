@@ -1487,104 +1487,48 @@ CORE incluye un comando interactivo que publica el commit y su etiqueta
 anotada en una unica operacion atomica. Las preguntas se realizan mediante la
 entrada interactiva nativa de Composer, tambien desde PowerShell en Windows:
 
-Antes de publicar, mueve las entradas de `Unreleased` a una sección fechada
-`## [X.Y.Z] - AAAA-MM-DD` de `CHANGELOG.md`. El siguiente bloque PowerShell
-ejecuta el cierre completo, enseña el lote exacto antes del commit y delega el
-tag y el push atómico en el comando canónico. Ajusta únicamente la versión, el
-mensaje y, si existe una DB **TEST aislada**, el flag de integración MySQL:
+### Publicar CORE: bloque corto para PowerShell
+
+Este bloque es **solo para el repositorio CORE**. Antes de pegarlo, mueve las
+entradas de `Unreleased` a `## [X.Y.Z] - AAAA-MM-DD` en `CHANGELOG.md` y cambia
+solo `$Version` y `$CommitMessage`. Comprueba antes `git status --short`:
+`git add -A` incluirá todo el lote que aparezca:
 
 ```powershell
-$CoreRoot = (git rev-parse --show-toplevel).Trim()
-if ($LASTEXITCODE -ne 0 -or $CoreRoot -eq '') {
-    throw 'Ejecuta este bloque desde un clon de liquidstack/core.'
-}
-Set-Location -LiteralPath $CoreRoot
-
 $Version = 'vX.Y.Z'
-$CommitMessage = 'tipo(ámbito): descripción'
-$RunMySqlIntegration = $false
+$CommitMessage = 'tipo(core): descripción'
 
-function Invoke-Checked {
-    param([string]$Name, [scriptblock]$Command)
-    & $Command
-    if ($LASTEXITCODE -ne 0) {
-        throw "$Name falló (exit $LASTEXITCODE)."
-    }
-}
+composer release:prepare
+if ($LASTEXITCODE -ne 0) { throw 'No se pudo preparar el historial gestionado.' }
 
-if ((git branch --show-current).Trim() -ne 'main') {
-    throw 'La release debe salir de main.'
-}
-git diff --cached --quiet
-if ($LASTEXITCODE -eq 1) {
-    throw 'Ya hay cambios staged; revísalos antes de continuar.'
-}
-if ($LASTEXITCODE -gt 1) {
-    throw 'No se pudo comprobar el staging.'
-}
-if ($Version -notmatch '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
-    throw 'Usa vX.Y.Z sin ceros iniciales.'
-}
-$Number = $Version.Substring(1)
-$Heading = '^## \[' + [regex]::Escape($Number) + '\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$'
-if (-not (Select-String -LiteralPath 'CHANGELOG.md' -Pattern $Heading -Quiet)) {
-    throw "Documenta antes ## [$Number] - AAAA-MM-DD en CHANGELOG.md."
-}
+git add -A
+git diff --cached --check
+if ($LASTEXITCODE -ne 0) { git restore --staged .; throw 'El lote contiene errores.' }
 
-Invoke-Checked 'Historial gestionado' {
-    php tools/build-managed-file-history.php
-}
-Invoke-Checked 'Comprobación del historial' {
-    php tools/build-managed-file-history.php --check
-}
-Invoke-Checked 'Contrato del manifest' {
-    php vendor/bin/phpunit --configuration phpunit.xml.dist `
-        --do-not-cache-result --filter ManagedFileManifestTest
-}
-Invoke-Checked 'Validación Composer' {
-    composer validate --strict --no-check-publish
-}
-Invoke-Checked 'Suite CORE' { composer test }
-Invoke-Checked 'E2E modular' { composer test:module-e2e }
-if ($RunMySqlIntegration) {
-    Invoke-Checked 'Integración MySQL/MariaDB' {
-        composer test:mysql-integration
-    }
-}
-Invoke-Checked 'Whitespace/diff' { git diff --check }
+git commit -m $CommitMessage
+if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el commit.' }
 
-Invoke-Checked 'Staging' { git add -A }
-Invoke-Checked 'Comprobación staged' { git diff --cached --check }
-git status --short
-git diff --cached --stat
-if ((Read-Host 'Revisa el lote. Escribe PUBLICAR para crear el commit') -cne 'PUBLICAR') {
-    git restore --staged .
-    throw 'Cancelado; no se creó el commit ni el tag.'
-}
-Invoke-Checked 'Commit' { git commit -m $CommitMessage }
-Invoke-Checked 'Release atómica' {
-    composer release -- "--version=$Version"
-}
+composer release -- "--version=$Version" --yes
+if ($LASTEXITCODE -ne 0) { throw 'La release no se publicó.' }
 ```
 
-`composer release` requiere un árbol completamente limpio. Repite por sí mismo
-`composer validate` y `composer test`, pero no regenera el historial gestionado
-ni ejecuta `test:module-e2e` o `test:mysql-integration`; por eso esas operaciones
-aparecen antes del commit en el bloque completo.
+No necesitas ejecutar antes `git push`: `composer release` valida `composer.json`, el
+historial gestionado, la suite completa y el E2E modular; después publica
+`main` y la etiqueta mediante un único push atómico. Las suites ya no usan el
+límite general de 300 segundos de Composer. Si el cambio afecta DDL o
+persistencia, ejecuta además `composer test:mysql-integration` contra una DB
+**TEST aislada** antes de pegar el bloque.
 
-No es necesario ejecutar antes `git push`: `composer release` sube
-simultaneamente `main` y la etiqueta. El comando:
+Si el commit exacto ya estaba subido y `git status --short` no muestra nada,
+omite `release:prepare`, `git add` y `git commit`: define `$Version` y ejecuta
+directamente `composer release -- "--version=$Version" --yes`.
 
-1. exige estar en `main` con el arbol de trabajo limpio;
-2. actualiza las etiquetas y comprueba que `main` no vaya por detras de
-   `origin/main`;
-3. muestra las siguientes opciones patch, minor y major;
-4. permite escribir otra version antes de continuar;
-5. exige que `CHANGELOG.md` contenga la sección fechada de esa versión;
-6. ejecuta `composer validate` y `composer test`;
-7. muestra commit, remoto y etiqueta y pide confirmacion;
-8. crea un tag anotado y ejecuta un `git push --atomic`;
-9. elimina el tag local recien creado si el push falla.
+La versión de CORE y la de BASE son independientes: por ejemplo, CORE
+`v1.32.0` no corresponde a BASE `v1.2.0`.
+
+El gate se detiene sin etiquetar si la rama, el changelog, el historial o una
+prueba no son correctos. Solo después crea el tag anotado y ejecuta
+`git push --atomic`; si ese push falla, elimina el tag local recién creado.
 
 Una vez completado `composer release`, el commit ya forma parte de
 `origin/main` y tiene una etiqueta asociada. Para añadir cambios posteriores,

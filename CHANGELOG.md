@@ -11,6 +11,12 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
   `EXAMPLE_ONLY_CHANGE_ME_BEFORE_REAL_USE_0000`, aunque tenga formato base64url
   válido; `doctor` lo declara inválido y el runtime falla antes de abrir PDO.
 
+### Corregido
+- Las suites largas de CORE, E2E y MySQL ya no heredan el timeout general de
+  300 segundos de Composer. El gate de release comprueba además el historial
+  gestionado y el E2E modular, y el README ofrece un bloque PowerShell corto
+  mediante `composer release:prepare`.
+
 ### Documentación
 - Se aclara el contrato de conexión modular: `shared` permanece como fallback
   técnico compatible, mientras BASE y los proyectos nuevos seleccionan
