@@ -4,6 +4,12 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.32.1] - 2026-09-21
+
+### fixed
+
+- Se mejora el readme.
+
 ## [1.32.0] - 2026-09-21
 
 ### Seguridad
