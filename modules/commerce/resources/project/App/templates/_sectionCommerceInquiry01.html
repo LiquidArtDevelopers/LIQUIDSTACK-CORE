@@ -1,0 +1,62 @@
+<section id="{root-id}"
+         class="sectionCommerceInquiry01"
+         aria-labelledby="{heading-id}"
+         data-commerce-inquiry-root
+         data-empty-error="{empty-error}">
+    <div class="sectionCommerceInquiry01-shell">
+        <header class="sectionCommerceInquiry01-header">
+            <{header-tag} id="{heading-id}">{header-text}</{header-tag}>
+            <p>{intro-text}</p>
+        </header>
+        <div class="sectionCommerceInquiry01-layout">
+            <div class="sectionCommerceInquiry01-listPanel">
+                <{child-tag}>{list-heading}</{child-tag}>
+                <ul data-commerce-interest-list>{items}</ul>
+                <p data-commerce-interest-empty{empty-hidden}>{empty-text}</p>
+            </div>
+            <div class="sectionCommerceInquiry01-formPanel">
+                <{child-tag}>{form-heading}</{child-tag}>
+                <p class="sectionCommerceInquiry01-notice">{notice}</p>
+                <form id="{form-id}"
+                      action="{action}"
+                      method="post"
+                      novalidate
+                      data-commerce-inquiry-form
+                      {fixture-attribute}
+                      data-success-message="{success-message}"
+                      data-invalid-message="{invalid-message}">
+                    <input type="hidden" name="locale" value="{locale}">
+                    <input type="hidden" name="return_to" value="{return-to}">
+                    <input type="hidden" name="operation_id" value="{operation-id}">
+                    <input type="text" name="company_website" value="" tabindex="-1" autocomplete="off" hidden>
+                    <div class="sectionCommerceInquiry01-field">
+                        <label for="{form-id}-name">{name-label}</label>
+                        <input id="{form-id}-name" name="name" type="text" autocomplete="name" required maxlength="120">
+                    </div>
+                    <div class="sectionCommerceInquiry01-field">
+                        <label for="{form-id}-email">{email-label}</label>
+                        <input id="{form-id}-email" name="email" type="email" autocomplete="email" required maxlength="254">
+                    </div>
+                    <div class="sectionCommerceInquiry01-field">
+                        <label for="{form-id}-phone">{phone-label}</label>
+                        <input id="{form-id}-phone" name="phone" type="tel" autocomplete="tel" maxlength="40">
+                    </div>
+                    <div class="sectionCommerceInquiry01-field sectionCommerceInquiry01-field--wide">
+                        <label for="{form-id}-message">{message-label}</label>
+                        <textarea id="{form-id}-message" name="message" rows="5" maxlength="2000"></textarea>
+                    </div>
+                    <div class="sectionCommerceInquiry01-consent sectionCommerceInquiry01-field--wide">
+                        <input id="{form-id}-privacy" name="privacy_accepted" type="checkbox" value="1" required aria-describedby="{privacy-help-id}">
+                        <label for="{form-id}-privacy">{privacy-label}</label>
+                        <p id="{privacy-help-id}">{privacy-help}</p>
+                    </div>
+                    <div class="sectionCommerceInquiry01-actions sectionCommerceInquiry01-field--wide">
+                        <button type="submit">{submit-label}</button>
+                        <button type="reset">{reset-label}</button>
+                    </div>
+                    <p class="sectionCommerceInquiry01-status sectionCommerceInquiry01-field--wide" role="status" aria-live="polite" tabindex="-1" data-commerce-form-status></p>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>

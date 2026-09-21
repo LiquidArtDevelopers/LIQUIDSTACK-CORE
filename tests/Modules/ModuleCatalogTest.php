@@ -33,7 +33,7 @@ final class ModuleCatalogTest extends TestCase
         $catalog = ModuleCatalog::fromCoreRoot($coreRoot);
 
         self::assertSame(
-            ['blog', 'webadmin'],
+            ['blog', 'commerce', 'webadmin'],
             array_keys($catalog->all())
         );
         self::assertSame(
@@ -45,10 +45,21 @@ final class ModuleCatalogTest extends TestCase
             $catalog->get('blog')->dependencies()
         );
         self::assertSame(
+            ['webadmin'],
+            $catalog->get('commerce')->dependencies()
+        );
+        self::assertSame(
             ['webadmin', 'blog'],
             ModuleSelection::fromRequirementNames(
                 $catalog,
                 ['liquidstack/blog']
+            )->enabledIds()
+        );
+        self::assertSame(
+            ['webadmin', 'commerce'],
+            ModuleSelection::fromRequirementNames(
+                $catalog,
+                ['liquidstack/commerce']
             )->enabledIds()
         );
     }

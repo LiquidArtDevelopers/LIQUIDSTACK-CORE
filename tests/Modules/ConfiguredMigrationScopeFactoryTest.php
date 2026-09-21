@@ -23,16 +23,19 @@ final class ConfiguredMigrationScopeFactoryTest extends TestCase
         $this->filesystem->mkdir([
             $this->root . '/modules/webadmin',
             $this->root . '/modules/blog',
+            $this->root . '/modules/commerce',
             $this->projectRoot . '/App/config/modules',
         ]);
         $this->writeManifest('webadmin', []);
         $this->writeManifest('blog', ['webadmin']);
+        $this->writeManifest('commerce', ['webadmin']);
         $this->filesystem->dumpFile(
             $this->projectRoot . '/composer.json',
             json_encode([
                 'require' => [
                     'liquidstack/core' => '*',
                     'liquidstack/blog' => '*',
+                    'liquidstack/commerce' => '*',
                 ],
             ], JSON_THROW_ON_ERROR)
         );
@@ -59,6 +62,11 @@ final class ConfiguredMigrationScopeFactoryTest extends TestCase
             "<?php\nreturn ['database' => "
                 . "['table_prefix' => 'tenant_blog_']];\n"
         );
+        $this->filesystem->dumpFile(
+            $this->projectRoot . '/App/config/modules/commerce.php',
+            "<?php\nreturn ['database' => "
+                . "['table_prefix' => 'tenant_commerce_']];\n"
+        );
 
         $scopes = (new ConfiguredMigrationScopeFactory())->create(
             ModuleRegistry::forProject($this->projectRoot, $this->root),
@@ -72,6 +80,10 @@ final class ConfiguredMigrationScopeFactoryTest extends TestCase
         self::assertSame(
             'tenant_blog_',
             $scopes->get('blog')?->tablePrefix()
+        );
+        self::assertSame(
+            'tenant_commerce_',
+            $scopes->get('commerce')?->tablePrefix()
         );
     }
 

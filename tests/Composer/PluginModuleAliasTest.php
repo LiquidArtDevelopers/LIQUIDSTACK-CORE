@@ -18,6 +18,7 @@ final class PluginModuleAliasTest extends TestCase
         $input = $this->input([
             'liquidstack/blog',
             'liquidstack/webadmin',
+            'liquidstack/commerce',
             'liquidstack/blog:^1.8',
             'liquidstack/webadmin=1.8.0',
             'vendor/package',
@@ -35,6 +36,7 @@ final class PluginModuleAliasTest extends TestCase
         self::assertSame([
             'liquidstack/blog:*',
             'liquidstack/webadmin:*',
+            'liquidstack/commerce:*',
             'liquidstack/blog:^1.8',
             'liquidstack/webadmin=1.8.0',
             'vendor/package',

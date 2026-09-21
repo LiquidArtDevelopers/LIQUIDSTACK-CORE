@@ -320,6 +320,72 @@
             "sha256:66c3bec715a633e035ff4b1a1d5ef6e3c30da406466d9775cc6393937f5877e8",
             "sha256:8ad671c20ce95534bda20339f4baa88608368e3a4097a5aff077762ce2914e44"
         ],
+        "modules/commerce/resources/project/App/app/_moduleCommercePublic.php": [
+            "sha256:53f004f25786dc04b402642bfd3fcbf0e68d8cb21dd8c6d6749e0b4b48bd5512"
+        ],
+        "modules/commerce/resources/project/App/app/commerce/CommercePresentationAdapter.php": [
+            "sha256:c4ab5be0f9157afe8e18afa32ccc75b45e80cbb29b939da705c9add00f302fd9"
+        ],
+        "modules/commerce/resources/project/App/controllers/_moduleCommerceResources.php": [
+            "sha256:6550af1696931726342c3d314190a8b51ba147ef5aa2cad78bfcedac97687928"
+        ],
+        "modules/commerce/resources/project/App/controllers/artCommerceItem01.php": [
+            "sha256:89b5bd1982021ad48dfa0afb21f0522d4dba5d11860584838132d78268822bef"
+        ],
+        "modules/commerce/resources/project/App/controllers/sectionCommerceCatalog01.php": [
+            "sha256:2fa820c7893647c07b1575d2f26dd3a11e19679f80ef11c45508a322d4d0e1ba"
+        ],
+        "modules/commerce/resources/project/App/controllers/sectionCommerceInquiry01.php": [
+            "sha256:f18cb2b231d346e5da36eaf32f4d7502a24dab9294c78568b04043d68b3f801c"
+        ],
+        "modules/commerce/resources/project/App/templates/_artCommerceItem01.html": [
+            "sha256:8ee526db314f5a3c185a824c7cd6d344093b0515431148109f266097333e1f15"
+        ],
+        "modules/commerce/resources/project/App/templates/_sectionCommerceCatalog01.html": [
+            "sha256:ee597becb8b057f39048c43c7ea09289679f727255f7dc9c17aede48b6729cc7"
+        ],
+        "modules/commerce/resources/project/App/templates/_sectionCommerceInquiry01.html": [
+            "sha256:4edababcb7e9605c47178e587a27283ed0c9d2a93c75974daa1999a7b6f28841"
+        ],
+        "modules/commerce/resources/project/App/views/commerce-inquiry.php": [
+            "sha256:643ddb05beebbc333f76ae26af5d596edb83835b033cc0769cc2d31d3a22470d"
+        ],
+        "modules/commerce/resources/project/App/views/commerce-item.php": [
+            "sha256:63ef6b33ea362ea4fc7dbe48b8bd3c5e4e73c71f673a2c64947151299939a0c6"
+        ],
+        "modules/commerce/resources/project/App/views/commerce.php": [
+            "sha256:8a590f2672ac3fe01e940284793fec49059f161b033449967a2211eb13a9d3b6"
+        ],
+        "modules/commerce/resources/project/src/js/commerce.js": [
+            "sha256:c944fdc9ac523eafc3f8f6db6043d7da99039bfd4a2eb7eb5a71414e9a76f18f"
+        ],
+        "modules/commerce/resources/project/src/js/commerceInquiry.js": [
+            "sha256:5ad54160e1ed3a12b1d36aa45d9eec4b716407ac8b77298cc255b037fe5c7cb9"
+        ],
+        "modules/commerce/resources/project/src/js/commerceItem.js": [
+            "sha256:bf76ae470653b3fbecf4303e6ae9ae19253f1040df35d93d69a7f1c5e4a5ea03"
+        ],
+        "modules/commerce/resources/project/src/js/resources/_commerce.js": [
+            "sha256:f75f856f1f9abe619c4d33e346ab0317e3c32f544e838c292da3cfedc4c65f7e"
+        ],
+        "modules/commerce/resources/project/src/scss/commerce.scss": [
+            "sha256:99e4843646b4f9360666802a9745c08e9da34c35aa160072a8f3371bfdd43384"
+        ],
+        "modules/commerce/resources/project/src/scss/commerceInquiry.scss": [
+            "sha256:59322791865540ddcf87e21aee6104c741d560545d78ecbf11ea206cd2cb794c"
+        ],
+        "modules/commerce/resources/project/src/scss/commerceItem.scss": [
+            "sha256:9b8b6d2b4c4bbbac8fb20ec4ae55c7f790a62c6a355bc64738299d7db22b2487"
+        ],
+        "modules/commerce/resources/project/src/scss/resources/_artCommerceItem01.scss": [
+            "sha256:5faf6d53acf7bf688aa81aa3c88b3252945c8779f1b7a03081b9cd7c4d69d708"
+        ],
+        "modules/commerce/resources/project/src/scss/resources/_sectionCommerceCatalog01.scss": [
+            "sha256:6ec5dd77d7a107d166a534329bc9a70c5ac3ebe5b898208852907c1b5df44a44"
+        ],
+        "modules/commerce/resources/project/src/scss/resources/_sectionCommerceInquiry01.scss": [
+            "sha256:9fc0ef285ed7e9441e6a7a95b379a0169ec35aee7128c03b4e5cf54f6647f9da"
+        ],
         "modules/webadmin/published/assets/webadmin-media-picker.css": [
             "sha256:899fcd8cd615fb6f626b552d3b082c875c64e19673783a5ab5954d2855523fec"
         ],

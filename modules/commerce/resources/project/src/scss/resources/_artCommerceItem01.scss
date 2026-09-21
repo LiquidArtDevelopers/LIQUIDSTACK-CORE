@@ -1,0 +1,196 @@
+@use '../config' as c;
+
+.artCommerceItem01 {
+  width: min(100%, c.$textMax);
+  margin-inline: auto;
+  padding: clamp(3.5rem, 9vw, 7rem) c.$padMin;
+  box-sizing: border-box;
+  display: grid;
+  gap: clamp(2rem, 6vw, 5rem);
+  color: c.$color01;
+  background: c.$color00;
+
+  .artCommerceItem01-media {
+    position: relative;
+    aspect-ratio: 3 / 2;
+    margin: 0;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    background: c.$color01bis4;
+
+    img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+    }
+  }
+
+  .artCommerceItem01-content {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 1.25rem;
+
+    > * {
+      margin: 0;
+    }
+
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+
+    > h2,
+    > h3,
+    > h4,
+    > h5,
+    > h6 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+    }
+
+    > p:not(.artCommerceItem01-reference) {
+      color: c.$color01bis;
+      line-height: 1.7;
+    }
+  }
+
+  .artCommerceItem01-reference {
+    color: c.$color02;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .artCommerceItem01-summary {
+    font-size: clamp(1.1rem, 2vw, 1.3rem);
+    font-weight: 700;
+  }
+
+  .artCommerceItem01-socialProof {
+    color: c.$color02;
+    font-weight: 700;
+  }
+
+  .artCommerceItem01-status,
+  .artCommerceItem01-features dl {
+    display: grid;
+    gap: 0.75rem;
+
+    div {
+      padding-block: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      border-bottom: 1px solid c.$color01bis4;
+    }
+
+    dt,
+    dd {
+      margin: 0;
+    }
+
+    dt {
+      font-weight: 700;
+    }
+
+    dd {
+      color: c.$color02;
+      text-align: right;
+    }
+  }
+
+  .artCommerceItem01-features {
+    display: grid;
+    gap: 0.5rem;
+
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin: 0;
+      font-size: clamp(1.25rem, 2.5vw, 1.6rem);
+    }
+  }
+
+  .artCommerceItem01-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+
+    button,
+    a {
+      min-height: 2.75rem;
+      padding: 0.7rem 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid c.$color02;
+      border-radius: 999px;
+      font: inherit;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    button {
+      color: c.$color00;
+      background: c.$color02;
+      cursor: pointer;
+
+      &[aria-pressed='true'] {
+        color: c.$color01;
+        background: c.$color03;
+      }
+    }
+
+    a {
+      color: c.$color02;
+      background: c.$color00;
+    }
+  }
+
+  .artCommerceItem01-live {
+    min-height: 1.5em;
+  }
+
+  .artCommerceItem01-back {
+    width: fit-content;
+    color: c.$color02;
+    text-underline-offset: 0.18em;
+  }
+
+  .artCommerceItem01-srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  a:focus-visible,
+  button:focus-visible {
+    outline: 0.18rem solid c.$color03;
+    outline-offset: 0.2rem;
+  }
+
+  @media (min-width: c.$tablet) {
+    padding-inline: c.$padMax;
+    grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
+    align-items: start;
+
+    .artCommerceItem01-media {
+      position: sticky;
+      top: 2rem;
+    }
+  }
+}

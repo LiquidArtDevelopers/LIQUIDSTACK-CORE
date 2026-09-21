@@ -38,6 +38,7 @@ final class LiquidStackCommandProviderTest extends TestCase
             'liquidstack:webadmin:onboard',
             'liquidstack:webadmin:bootstrap',
             'liquidstack:webadmin:mail:dispatch',
+            'liquidstack:commerce-mail-dispatch',
         ], array_map(
             static fn ($command): ?string => $command->getName(),
             $commands

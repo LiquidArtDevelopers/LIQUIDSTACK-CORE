@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Core\Composer;
 
-use App\Core\Composer\Command\DoctorCommand;
+use App\Core\Composer\Command\CommerceMailDispatchCommand;
 use App\Core\Composer\Command\BlogSitemapCacheInitCommand;
 use App\Core\Composer\Command\BlogAnalyticsPurgeCommand;
 use App\Core\Composer\Command\BlogQaSeedMatrixCommand;
 use App\Core\Composer\Command\BlogUnifiedTextAdoptionCommand;
 use App\Core\Composer\Command\BlogPublicShellAdoptionCommand;
+use App\Core\Composer\Command\DoctorCommand;
 use App\Core\Composer\Command\MediaInitCommand;
 use App\Core\Composer\Command\ManagedSyncCommand;
 use App\Core\Composer\Command\MigrateCommand;
@@ -49,6 +50,7 @@ final class LiquidStackCommandProvider implements CommandProvider
             new WebAdminOnboardCommand(),
             new WebAdminBootstrapCommand(),
             new WebAdminMailDispatchCommand(),
+            new CommerceMailDispatchCommand(),
         ];
     }
 }

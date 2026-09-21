@@ -1,0 +1,28 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Core\Modules\Commerce;
+
+use App\Core\Commerce\CommerceCapabilities;
+use App\Core\Modules\ModuleWebAdminNavigationProviderInterface;
+use App\Core\WebAdmin\Navigation\WebAdminNavigationItem;
+
+final class CommerceWebAdminNavigationProvider implements
+    ModuleWebAdminNavigationProviderInterface
+{
+    public static function moduleId(): string
+    {
+        return 'commerce';
+    }
+
+    public function webAdminNavigationItem(): WebAdminNavigationItem
+    {
+        return new WebAdminNavigationItem(
+            self::moduleId(),
+            'Gestionar comercio',
+            '/commerce',
+            CommerceCapabilities::PRODUCTS_VIEW
+        );
+    }
+}

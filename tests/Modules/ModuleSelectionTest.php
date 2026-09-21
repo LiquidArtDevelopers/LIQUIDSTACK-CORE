@@ -75,6 +75,14 @@ final class ModuleSelectionTest extends TestCase
                 ['blog'],
                 ['webadmin', 'blog'],
             ],
+            'commerce closes only webadmin' => [
+                [
+                    'liquidstack/core' => '^1.8',
+                    'liquidstack/commerce' => '*',
+                ],
+                ['commerce'],
+                ['webadmin', 'commerce'],
+            ],
             'both without duplicates' => [
                 [
                     'liquidstack/core' => '^1.8',

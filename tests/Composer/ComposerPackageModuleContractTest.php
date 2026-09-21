@@ -26,12 +26,20 @@ final class ComposerPackageModuleContractTest extends TestCase
             'self.version',
             $composer['replace']['liquidstack/blog'] ?? null
         );
+        self::assertSame(
+            'self.version',
+            $composer['replace']['liquidstack/commerce'] ?? null
+        );
         self::assertArrayNotHasKey(
             'liquidstack/webadmin',
             $composer['require']
         );
         self::assertArrayNotHasKey(
             'liquidstack/blog',
+            $composer['require']
+        );
+        self::assertArrayNotHasKey(
+            'liquidstack/commerce',
             $composer['require']
         );
         self::assertArrayNotHasKey('ext-dom', $composer['require']);
@@ -77,6 +85,10 @@ final class ComposerPackageModuleContractTest extends TestCase
         self::assertSame(
             'blog',
             $catalog->forPackage('liquidstack/blog')?->id()
+        );
+        self::assertSame(
+            'commerce',
+            $catalog->forPackage('liquidstack/commerce')?->id()
         );
     }
 }

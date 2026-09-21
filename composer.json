@@ -22,7 +22,8 @@
     },
     "replace": {
         "liquidstack/webadmin": "self.version",
-        "liquidstack/blog": "self.version"
+        "liquidstack/blog": "self.version",
+        "liquidstack/commerce": "self.version"
     },
     "autoload": {
         "psr-4": {

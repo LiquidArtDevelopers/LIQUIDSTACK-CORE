@@ -4,6 +4,46 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.33.0] - 2026-09-21
+
+### Añadido
+
+- Nuevo selector lógico `liquidstack/commerce`, dependiente de WebAdmin y
+  desacoplado de Blog. Incluye catálogo localizado, productos con estados y
+  precio opcional, categorías jerárquicas, etiquetas, atributos tipados,
+  portada/galería sobre Media, slugs canónicos con historial y sitemap.
+- WebAdmin incorpora gestión de productos, taxonomías, atributos, medios,
+  solicitudes y ajustes mediante capacidades, CSRF, optimistic locking y
+  archivado seguro. La venta permanece visible como evolución deshabilitada;
+  el único modo operativo es la solicitud de información.
+- La superficie pública distribuye shells personalizables de catálogo, ficha y
+  lista de interés, búsqueda y filtros, fallback localizado y recursos
+  responsive. CORE sirve los shells exactos tras un miss del router estático,
+  sin exigir duplicar rutas project-owned.
+- Lista de interés persistida en servidor mediante cookie opaca necesaria y
+  dos correos idempotentes por solicitud —visitante y administración— a través
+  de un outbox propio y el comando acotado
+  `liquidstack:commerce-mail-dispatch`.
+
+### Seguridad
+
+- El envío revalida productos y consentimiento dentro de la transacción,
+  aplica honeypot, comprobación same-origin, idempotencia y límites persistentes
+  por HMAC de IP y correo. Los contadores públicos representan solicitudes
+  aceptadas y no identidades de usuarios.
+- Las imágenes públicas sólo exponen derivados AVIF de Media referenciados por
+  productos activos; nunca publican `storage_key`. La cesta no contiene PII,
+  no usa storage del navegador y queda aislada por proyecto en localhost.
+
+### Operación y documentación
+
+- Tres migraciones iniciales crean catálogo, interacción/outbox y capacidades
+  sin escribir en DB durante Composer. Se documentan configuración, backup,
+  migración explícita, Media compartido, worker de correo y activación pública.
+- Commerce distribuye 26 ficheros project-owned y tres recursos visuales con
+  catálogos ES/EU/EN; las rutas se derivan de los idiomas activos y los fixtures
+  requieren doble opt-in de desarrollo.
+
 ## [1.32.4] - 2026-09-21
 
 ### fixed

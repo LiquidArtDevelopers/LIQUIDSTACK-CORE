@@ -1,0 +1,216 @@
+{
+    "title": {
+        "text": "Catalog | LiquidStack project"
+    },
+    "description": {
+        "content": "Browse published products and prepare an interest list to request information."
+    },
+    "robots": {
+        "content": "index, follow"
+    },
+    "commerce_catalog_meta_title": {
+        "text": "Catalog | LiquidStack project"
+    },
+    "commerce_catalog_meta_description": {
+        "text": "Browse products, availability and features before preparing your information request."
+    },
+    "commerce_inquiry_meta_title": {
+        "text": "Interest list | LiquidStack project"
+    },
+    "commerce_inquiry_meta_description": {
+        "text": "Review the selected products and send a single information request."
+    },
+    "hero00_bg_mobile": {
+        "src": "assets/img/dummy/dummy_900.avif"
+    },
+    "hero00_bg_tablet": {
+        "src": "assets/img/dummy/dummy_1800.avif"
+    },
+    "hero00_bg_desktop": {
+        "src": "assets/img/dummy/dummy_2560.avif"
+    },
+    "hero00_bg_fallback": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Catalog header image",
+        "title": "Product catalog",
+        "width": "2560",
+        "height": "1600"
+    },
+    "moduleH1Type01_00_h1_text": {
+        "text": "Product catalog"
+    },
+    "moduleH1Type01_00_p01_text": {
+        "text": "Browse available products and open each page to review its information before adding it to your interest list."
+    },
+    "moduleH1Type01_00_p02_text": {
+        "text": "You can collect several products and send a single information request."
+    },
+    "moduleH1Type01_01_h1_text": {
+        "text": "Product information"
+    },
+    "moduleH1Type01_01_p01_text": {
+        "text": "Review the description, availability and features of this product."
+    },
+    "moduleH1Type01_01_p02_text": {
+        "text": "Add it to your interest list to request information with other products."
+    },
+    "moduleH1Type01_02_h1_text": {
+        "text": "Interest list"
+    },
+    "moduleH1Type01_02_p01_text": {
+        "text": "Review the selected products and complete your contact details."
+    },
+    "moduleH1Type01_02_p02_text": {
+        "text": "You will receive a copy of the request and the responsible team can reply to you."
+    },
+    "commerce_catalog_heading": {
+        "text": "Available products"
+    },
+    "commerce_catalog_intro": {
+        "text": "Browse the catalog and collect the products you want to ask about in a single information request."
+    },
+    "commerce_action_detail": {
+        "text": "View details"
+    },
+    "commerce_action_add": {
+        "text": "Add to list"
+    },
+    "commerce_action_added": {
+        "text": "Remove from list"
+    },
+    "commerce_action_interest": {
+        "text": "View interest list"
+    },
+    "commerce_action_inquiry_unavailable": {
+        "text": "Inquiry unavailable"
+    },
+    "commerce_interest_summary": {
+        "text": "selected products"
+    },
+    "commerce_interest_added_status": {
+        "text": "Product added to the interest list."
+    },
+    "commerce_interest_removed_status": {
+        "text": "Product removed from the interest list."
+    },
+    "commerce_catalog_empty": {
+        "text": "There are no products available at this time."
+    },
+    "commerce_label_reference": {
+        "text": "Reference"
+    },
+    "commerce_label_availability": {
+        "text": "Availability"
+    },
+    "commerce_label_commercial": {
+        "text": "Commercial terms"
+    },
+    "commerce_item_features_heading": {
+        "text": "Features"
+    },
+    "commerce_item_back": {
+        "text": "Back to catalog"
+    },
+    "commerce_inquiry_heading": {
+        "text": "Prepare your inquiry"
+    },
+    "commerce_inquiry_intro": {
+        "text": "Review your selection and complete the form to send an information request."
+    },
+    "commerce_inquiry_list_heading": {
+        "text": "Your interest list"
+    },
+    "commerce_inquiry_form_heading": {
+        "text": "Contact details"
+    },
+    "commerce_inquiry_empty": {
+        "text": "The list is empty. Return to the catalog to add a product."
+    },
+    "commerce_inquiry_remove": {
+        "text": "Remove"
+    },
+    "commerce_inquiry_name": {
+        "text": "Name"
+    },
+    "commerce_inquiry_email": {
+        "text": "Email address"
+    },
+    "commerce_inquiry_phone": {
+        "text": "Optional phone"
+    },
+    "commerce_inquiry_message": {
+        "text": "Optional message"
+    },
+    "commerce_inquiry_privacy": {
+        "text": "I agree to the use of these details to reply to my inquiry"
+    },
+    "commerce_inquiry_privacy_help": {
+        "text": "In production, this text must link to the current policy and record its version."
+    },
+    "commerce_inquiry_submit": {
+        "text": "Send request"
+    },
+    "commerce_inquiry_reset": {
+        "text": "Clear form"
+    },
+    "commerce_inquiry_success": {
+        "text": "Request registered successfully."
+    },
+    "commerce_inquiry_invalid": {
+        "text": "Review the required fields before continuing."
+    },
+    "commerce_inquiry_empty_error": {
+        "text": "Add at least one product before sending the request."
+    },
+    "commerce_inquiry_notice": {
+        "text": "The details will only be used to handle this information request."
+    },
+    "commerce_inquiry_development_notice": {
+        "text": "Development mode: the form is validated but no data is sent or stored."
+    },
+    "commerce_commercial_inquiry": {
+        "text": "Price on request"
+    },
+    "commerce_availability_available": {
+        "text": "Available"
+    },
+    "commerce_availability_reserved": {
+        "text": "Reserved"
+    },
+    "commerce_availability_sold": {
+        "text": "Sold"
+    },
+    "commerce_availability_unavailable": {
+        "text": "Unavailable"
+    },
+    "commerce_search_label": {
+        "text": "Search products"
+    },
+    "commerce_search_placeholder": {
+        "text": "Enter a name or reference"
+    },
+    "commerce_filter_category_label": {
+        "text": "Category"
+    },
+    "commerce_filter_tag_label": {
+        "text": "Tag"
+    },
+    "commerce_filter_all": {
+        "text": "All"
+    },
+    "commerce_filter_submit": {
+        "text": "Apply filters"
+    },
+    "commerce_filter_clear": {
+        "text": "Clear filters"
+    },
+    "commerce_value_yes": {
+        "text": "Yes"
+    },
+    "commerce_value_no": {
+        "text": "No"
+    },
+    "commerce_social_proof": {
+        "text": "{count} information requests received"
+    }
+}

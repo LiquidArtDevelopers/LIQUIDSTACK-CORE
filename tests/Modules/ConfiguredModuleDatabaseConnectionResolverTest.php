@@ -25,16 +25,19 @@ final class ConfiguredModuleDatabaseConnectionResolverTest extends TestCase
         $this->filesystem->mkdir([
             $this->coreRoot . '/modules/webadmin',
             $this->coreRoot . '/modules/blog',
+            $this->coreRoot . '/modules/commerce',
             $this->projectRoot . '/App/config/modules',
         ]);
         $this->writeManifest('webadmin', []);
         $this->writeManifest('blog', ['webadmin']);
+        $this->writeManifest('commerce', ['webadmin']);
         $this->filesystem->dumpFile(
             $this->projectRoot . '/composer.json',
             json_encode([
                 'require' => [
                     'liquidstack/core' => '*',
                     'liquidstack/blog' => '*',
+                    'liquidstack/commerce' => '*',
                 ],
             ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . PHP_EOL
         );
@@ -62,6 +65,11 @@ final class ConfiguredModuleDatabaseConnectionResolverTest extends TestCase
 return ['database' => ['connection' => 'liquidstack']];
 PHP);
         $this->writeModuleConfig('blog', <<<'PHP'
+<?php
+
+return ['database' => ['connection' => 'liquidstack']];
+PHP);
+        $this->writeModuleConfig('commerce', <<<'PHP'
 <?php
 
 return ['database' => ['connection' => 'liquidstack']];

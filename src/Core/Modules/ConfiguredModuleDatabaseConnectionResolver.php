@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Modules;
 
 use App\Core\Blog\Configuration\BlogConfigLoader;
+use App\Core\Commerce\Configuration\CommerceConfigLoader;
 use App\Core\Database\DatabaseConnectionException;
 use App\Core\Database\DatabaseConnectionProfile;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
@@ -16,7 +17,9 @@ final class ConfiguredModuleDatabaseConnectionResolver
         private readonly WebAdminConfigLoader $webAdminConfigLoader =
             new WebAdminConfigLoader(),
         private readonly BlogConfigLoader $blogConfigLoader =
-            new BlogConfigLoader()
+            new BlogConfigLoader(),
+        private readonly CommerceConfigLoader $commerceConfigLoader =
+            new CommerceConfigLoader()
     ) {
     }
 
@@ -33,6 +36,10 @@ final class ConfiguredModuleDatabaseConnectionResolver
         }
         if ($registry->isEnabled('blog')) {
             $connections['blog'] = $this->blogConfigLoader
+                ->databaseConnection($projectRoot);
+        }
+        if ($registry->isEnabled('commerce')) {
+            $connections['commerce'] = $this->commerceConfigLoader
                 ->databaseConnection($projectRoot);
         }
 

@@ -1,0 +1,342 @@
+{
+    "title": {
+        "text": "Katalogoa | LiquidStack proiektua"
+    },
+    "description": {
+        "content": "Kontsultatu argitaratutako produktuak eta prestatu interes-zerrenda informazioa eskatzeko."
+    },
+    "robots": {
+        "content": "index, follow"
+    },
+    "commerce_catalog_meta_title": {
+        "text": "Katalogoa | LiquidStack proiektua"
+    },
+    "commerce_catalog_meta_description": {
+        "text": "Kontsultatu produktuak, erabilgarritasuna eta ezaugarriak informazio-eskaera prestatu aurretik."
+    },
+    "commerce_inquiry_meta_title": {
+        "text": "Interes-zerrenda | LiquidStack proiektua"
+    },
+    "commerce_inquiry_meta_description": {
+        "text": "Berrikusi hautatutako produktuak eta bidali informazio-eskaera bakarra."
+    },
+    "hero00_bg_mobile": {
+        "src": "assets/img/dummy/dummy_900.avif"
+    },
+    "hero00_bg_tablet": {
+        "src": "assets/img/dummy/dummy_1800.avif"
+    },
+    "hero00_bg_desktop": {
+        "src": "assets/img/dummy/dummy_2560.avif"
+    },
+    "hero00_bg_fallback": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Katalogoaren goiburuko irudia",
+        "title": "Produktuen katalogoa",
+        "width": "2560",
+        "height": "1600"
+    },
+    "moduleH1Type01_00_h1_text": {
+        "text": "Produktuen katalogoa"
+    },
+    "moduleH1Type01_00_p01_text": {
+        "text": "Kontsultatu eskuragarri dauden erreferentziak eta ireki fitxa bakoitza informazioa berrikusteko."
+    },
+    "moduleH1Type01_00_p02_text": {
+        "text": "Hainbat produktu bildu eta informazio-eskaera bakarra bidal dezakezu."
+    },
+    "moduleH1Type01_01_h1_text": {
+        "text": "Produktuaren informazioa"
+    },
+    "moduleH1Type01_01_p01_text": {
+        "text": "Berrikusi erreferentzia honen deskribapena, erabilgarritasuna eta ezaugarriak."
+    },
+    "moduleH1Type01_01_p02_text": {
+        "text": "Gehitu interes-zerrendara beste erreferentziekin batera informazioa eskatzeko."
+    },
+    "moduleH1Type01_02_h1_text": {
+        "text": "Interes-zerrenda"
+    },
+    "moduleH1Type01_02_p01_text": {
+        "text": "Berrikusi hautatutako produktuak eta bete harremanetarako datuak."
+    },
+    "moduleH1Type01_02_p02_text": {
+        "text": "Eskaeraren kopia jasoko duzu eta arduradunek erantzun ahal izango dizute."
+    },
+    "commerce_catalog_heading": {
+        "text": "Produktu erabilgarriak"
+    },
+    "commerce_catalog_intro": {
+        "text": "Arakatu katalogoa eta bildu eskaera bakarrean informazioa jaso nahi duzun erreferentziak."
+    },
+    "commerce_action_detail": {
+        "text": "Ikusi fitxa"
+    },
+    "commerce_action_add": {
+        "text": "Gehitu zerrendara"
+    },
+    "commerce_action_added": {
+        "text": "Kendu zerrendatik"
+    },
+    "commerce_action_interest": {
+        "text": "Ikusi interes-zerrenda"
+    },
+    "commerce_interest_summary": {
+        "text": "produktu hautatuta"
+    },
+    "commerce_interest_added_status": {
+        "text": "Produktua interes-zerrendara gehitu da."
+    },
+    "commerce_interest_removed_status": {
+        "text": "Produktua interes-zerrendatik kendu da."
+    },
+    "commerce_catalog_empty": {
+        "text": "Une honetan ez dago produktu erabilgarririk."
+    },
+    "commerce_label_reference": {
+        "text": "Erreferentzia"
+    },
+    "commerce_label_availability": {
+        "text": "Erabilgarritasuna"
+    },
+    "commerce_label_commercial": {
+        "text": "Merkataritza-baldintza"
+    },
+    "commerce_item_features_heading": {
+        "text": "Ezaugarriak"
+    },
+    "commerce_item_back": {
+        "text": "Itzuli katalogora"
+    },
+    "commerce_inquiry_heading": {
+        "text": "Prestatu zure kontsulta"
+    },
+    "commerce_inquiry_intro": {
+        "text": "Egiaztatu hautaketa eta bete inprimakia informazio-eskaera bidaltzeko."
+    },
+    "commerce_inquiry_list_heading": {
+        "text": "Zure interes-zerrenda"
+    },
+    "commerce_inquiry_form_heading": {
+        "text": "Erantzuteko datuak"
+    },
+    "commerce_inquiry_empty": {
+        "text": "Zerrenda hutsik dago. Itzuli katalogora erreferentzia bat gehitzeko."
+    },
+    "commerce_inquiry_remove": {
+        "text": "Kendu"
+    },
+    "commerce_inquiry_name": {
+        "text": "Izena"
+    },
+    "commerce_inquiry_email": {
+        "text": "Helbide elektronikoa"
+    },
+    "commerce_inquiry_phone": {
+        "text": "Aukerako telefonoa"
+    },
+    "commerce_inquiry_message": {
+        "text": "Aukerako mezua"
+    },
+    "commerce_inquiry_privacy": {
+        "text": "Datu hauek nire kontsultari erantzuteko erabiltzea onartzen dut"
+    },
+    "commerce_inquiry_privacy_help": {
+        "text": "Produkzioan, testu honek indarreko politika lotu eta haren bertsioa erregistratu beharko du."
+    },
+    "commerce_inquiry_submit": {
+        "text": "Bidali eskaera"
+    },
+    "commerce_inquiry_reset": {
+        "text": "Garbitu inprimakia"
+    },
+    "commerce_inquiry_success": {
+        "text": "Eskaera behar bezala erregistratu da."
+    },
+    "commerce_inquiry_invalid": {
+        "text": "Berrikusi nahitaezko eremuak jarraitu aurretik."
+    },
+    "commerce_inquiry_empty_error": {
+        "text": "Gehitu gutxienez produktu bat eskaera bidali aurretik."
+    },
+    "commerce_product_mesa_modular_title": {
+        "text": "Erakustaldiko mahai modularra"
+    },
+    "commerce_product_mesa_modular_summary": {
+        "text": "Azalera konbinagarrien fikziozko sistema, informazio argiko fitxa eta kontsulta-ekintzak probatzeko."
+    },
+    "commerce_product_mesa_modular_description": {
+        "text": "Erreferentzia neutro honek produktu konfiguragarri bat irudikatzen du, marka, hornitzaile edo benetako prezio bati lotu gabe. Edukiak testu luzeak, datu teknikoak eta katalogoaren, fitxaren eta interes-zerrendaren arteko trantsizioa berrikusteko aukera ematen du."
+    },
+    "commerce_product_mesa_modular_reference": {
+        "text": "DEMO-MOD-01"
+    },
+    "commerce_product_mesa_modular_availability": {
+        "text": "Kontsultarako erabilgarri"
+    },
+    "commerce_product_mesa_modular_commercial": {
+        "text": "Prezioa kontsultapean"
+    },
+    "commerce_product_mesa_modular_image_alt": {
+        "text": "Fikziozko mahai modular gisa erabilitako irudi abstraktua"
+    },
+    "commerce_product_mesa_modular_image_title": {
+        "text": "Erakustaldiko mahai modularra"
+    },
+    "commerce_product_mesa_modular_feature_1_label": {
+        "text": "Konfigurazioa"
+    },
+    "commerce_product_mesa_modular_feature_1_value": {
+        "text": "Hiru modulu"
+    },
+    "commerce_product_mesa_modular_feature_2_label": {
+        "text": "Akabera"
+    },
+    "commerce_product_mesa_modular_feature_2_value": {
+        "text": "Neutro matea"
+    },
+    "commerce_product_mesa_modular_feature_3_label": {
+        "text": "Erabilera"
+    },
+    "commerce_product_mesa_modular_feature_3_value": {
+        "text": "Barrualdea"
+    },
+    "commerce_product_lampara_lineal_title": {
+        "text": "Erakustaldiko lanpara lineala"
+    },
+    "commerce_product_lampara_lineal_summary": {
+        "text": "Txartelak, erabilgarritasun-egoerak eta lokalizatutako ezaugarriak egiaztatzeko sortutako fikziozko argiztapen-pieza."
+    },
+    "commerce_product_lampara_lineal_description": {
+        "text": "Erakustaldiko lanparak bigarren ikusizko familia bat gehitzen dio proba-inguruneari eta txantiloia sektore jakin baten mende ez dagoela erakusten du. Balio guztiak adierazgarriak dira eta moduluko proiekzio tipatuek ordezkatu beharko dituzte benetako katalogoa argitaratu aurretik."
+    },
+    "commerce_product_lampara_lineal_reference": {
+        "text": "DEMO-LUZ-02"
+    },
+    "commerce_product_lampara_lineal_availability": {
+        "text": "Aurretiko kontsulta"
+    },
+    "commerce_product_lampara_lineal_commercial": {
+        "text": "Prezioa kontsultapean"
+    },
+    "commerce_product_lampara_lineal_image_alt": {
+        "text": "Fikziozko lanpara lineal gisa erabilitako irudi abstraktua"
+    },
+    "commerce_product_lampara_lineal_image_title": {
+        "text": "Erakustaldiko lanpara lineala"
+    },
+    "commerce_product_lampara_lineal_feature_1_label": {
+        "text": "Luzera"
+    },
+    "commerce_product_lampara_lineal_feature_1_value": {
+        "text": "120 zentimetro"
+    },
+    "commerce_product_lampara_lineal_feature_2_label": {
+        "text": "Tenperatura"
+    },
+    "commerce_product_lampara_lineal_feature_2_value": {
+        "text": "Erregulagarria"
+    },
+    "commerce_product_lampara_lineal_feature_3_label": {
+        "text": "Muntaketa"
+    },
+    "commerce_product_lampara_lineal_feature_3_value": {
+        "text": "Zintzilikatua"
+    },
+    "commerce_product_organizador_flexible_title": {
+        "text": "Erakustaldiko antolatzaile malgua"
+    },
+    "commerce_product_organizador_flexible_summary": {
+        "text": "Azken errenkada bakoitia osatu eta saretaren erantzuna berrikusteko aukera ematen duen fikziozko osagarria."
+    },
+    "commerce_product_organizador_flexible_description": {
+        "text": "Hirugarren fixture honek kopuru bakoitiko konposizioak, luzera desberdineko testuak eta hautaketa konbinatua egiaztatzeko balio du. Ez du material ziurtaturik, merkataritza-baldintzarik edo benetako produktu-datuekin nahas daitekeen promesarik definitzen."
+    },
+    "commerce_product_organizador_flexible_reference": {
+        "text": "DEMO-ORG-03"
+    },
+    "commerce_product_organizador_flexible_availability": {
+        "text": "Kontsultarako erabilgarri"
+    },
+    "commerce_product_organizador_flexible_commercial": {
+        "text": "Prezioa kontsultapean"
+    },
+    "commerce_product_organizador_flexible_image_alt": {
+        "text": "Fikziozko antolatzaile malgu gisa erabilitako irudi abstraktua"
+    },
+    "commerce_product_organizador_flexible_image_title": {
+        "text": "Erakustaldiko antolatzaile malgua"
+    },
+    "commerce_product_organizador_flexible_feature_1_label": {
+        "text": "Formatua"
+    },
+    "commerce_product_organizador_flexible_feature_1_value": {
+        "text": "Pilatua"
+    },
+    "commerce_product_organizador_flexible_feature_2_label": {
+        "text": "Moduluak"
+    },
+    "commerce_product_organizador_flexible_feature_2_value": {
+        "text": "Lau unitate"
+    },
+    "commerce_product_organizador_flexible_feature_3_label": {
+        "text": "Erabilera"
+    },
+    "commerce_product_organizador_flexible_feature_3_value": {
+        "text": "Barrualdea"
+    },
+    "commerce_inquiry_notice": {
+        "text": "Datuak informazio-eskaera hau kudeatzeko soilik erabiliko dira."
+    },
+    "commerce_inquiry_development_notice": {
+        "text": "Garapen modua: inprimakia balioztatzen da, baina ez da daturik bidali edo gordetzen."
+    },
+    "commerce_commercial_inquiry": {
+        "text": "Prezioa kontsultapean"
+    },
+    "commerce_availability_available": {
+        "text": "Eskuragarri"
+    },
+    "commerce_availability_reserved": {
+        "text": "Erreserbatuta"
+    },
+    "commerce_availability_sold": {
+        "text": "Salduta"
+    },
+    "commerce_availability_unavailable": {
+        "text": "Ez dago eskuragarri"
+    },
+    "commerce_search_label": {
+        "text": "Bilatu produktuak"
+    },
+    "commerce_search_placeholder": {
+        "text": "Idatzi izena edo erreferentzia"
+    },
+    "commerce_filter_category_label": {
+        "text": "Kategoria"
+    },
+    "commerce_filter_tag_label": {
+        "text": "Etiketa"
+    },
+    "commerce_filter_all": {
+        "text": "Guztiak"
+    },
+    "commerce_filter_submit": {
+        "text": "Aplikatu iragazkiak"
+    },
+    "commerce_filter_clear": {
+        "text": "Garbitu iragazkiak"
+    },
+    "commerce_action_inquiry_unavailable": {
+        "text": "Kontsulta ez dago erabilgarri"
+    },
+    "commerce_value_yes": {
+        "text": "Bai"
+    },
+    "commerce_value_no": {
+        "text": "Ez"
+    },
+    "commerce_social_proof": {
+        "text": "{count} informazio-eskaera jaso dira"
+    }
+}

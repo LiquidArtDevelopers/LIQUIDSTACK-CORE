@@ -232,15 +232,17 @@ necesita comandos manuales, debe declararlos expresamente en el
 }
 ```
 
-## WebAdmin y Blog como módulos internos
+## WebAdmin, Blog y Commerce como módulos internos
 
-CORE es el único paquete físico. `liquidstack/webadmin` y `liquidstack/blog`
-son selectores lógicos declarados por el proyecto consumidor; Blog activa
-también WebAdmin como dependencia interna:
+CORE es el único paquete físico. `liquidstack/webadmin`, `liquidstack/blog` y
+`liquidstack/commerce` son selectores lógicos declarados por el proyecto
+consumidor; Blog y Commerce activan también WebAdmin como dependencia interna,
+pero no dependen entre sí:
 
 ```bash
 composer require liquidstack/webadmin
 composer require liquidstack/blog
+composer require liquidstack/commerce
 ```
 
 El atajo sin versión requiere que CORE ya esté instalado y que los plugins de
@@ -275,6 +277,8 @@ composer liquidstack:blog:analytics:purge --yes
 composer liquidstack:blog:analytics:purge --yes --format=json
 composer liquidstack:blog:adopt-public-shell
 composer liquidstack:blog:adopt-public-shell --apply --yes
+composer liquidstack:commerce-mail-dispatch
+composer liquidstack:commerce-mail-dispatch --limit=20 --format=json
 ```
 
 `doctor` valida el catálogo, la selección, los providers tipados, la
@@ -337,7 +341,7 @@ onboarding o del dispatcher explícito.
 
 ### Base de datos de los módulos
 
-WebAdmin y Blog admiten dos perfiles lógicos de conexión:
+WebAdmin, Blog y Commerce admiten dos perfiles lógicos de conexión:
 
 - `shared` es el fallback compatible con proyectos existentes y reutiliza
   `BBDD_SERVER`, `BBDD_USER`, `BBDD_PASS` y `BBDD_NAME`; representa la conexión
@@ -968,6 +972,32 @@ al consumidor. RESOURCE-001 forma parte de CORE versionado desde `v1.22.0`.
 La QA funcional-visual en Chrome real está cerrada a 390, 768 y
 1280 px, con filtros, paginación, sliders multiinstancia y geometría responsive
 sin overflow ni errores de consola.
+
+### Liquid Commerce: catálogo y solicitudes de información
+
+`liquidstack/commerce` activa WebAdmin como dependencia, pero no depende de
+Blog. Distribuye la gestión localizada de productos, categorías jerárquicas,
+etiquetas, atributos y Media; catálogo, ficha, filtros, sitemap y lista de
+interés; y un outbox propio que genera exactamente un aviso al visitante y otro
+al destinatario administrativo. La única transacción disponible inicialmente
+es `inquiry`: la venta y el pago siguen visibles como evolución futura, nunca
+como opción seleccionable.
+
+La configuración project-owned queda en `App/config/modules/commerce.php`.
+`public.enabled=false` permite preparar el contenido sin reclamar rutas; al
+activarlo, CORE sirve también los shells exactos después de un miss del router
+estático, por lo que no hay que duplicar rutas en cada consumidor. Las vistas y
+recursos distribuidos siguen siendo personalizables y las rutas de producto se
+derivan de la categoría canónica con historial de redirecciones.
+
+El correo reutiliza el transporte WebAdmin y requiere
+`LIQUIDSTACK_COMMERCE_INQUIRY_RECIPIENT` (con `MAIL_ADMIN` como compatibilidad)
+y `LIQUIDSTACK_COMMERCE_PRIVACY_VERSION`. El worker se ejecuta de forma acotada
+con `composer liquidstack:commerce-mail-dispatch --limit=20`; nunca forma parte
+de `install`, `update` o migraciones. La cookie de cesta es necesaria,
+`HttpOnly`, host-only y aislada por proyecto en localhost; no usa storage del
+navegador ni depende de consentimiento opcional. El contrato completo está en
+[Liquid Commerce](docs/liquid-commerce.md).
 
 La frontera HTTP exige HTTPS fuera del laboratorio. `npm run lad` puede usar
 HTTP únicamente con `DEV_MODE=1`, una `RAIZ` loopback, coincidencia exacta de

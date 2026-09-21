@@ -1,0 +1,342 @@
+{
+    "title": {
+        "text": "Catálogo | Proyecto LiquidStack"
+    },
+    "description": {
+        "content": "Consulta los productos publicados y prepara una lista de interés para solicitar información."
+    },
+    "robots": {
+        "content": "index, follow"
+    },
+    "commerce_catalog_meta_title": {
+        "text": "Catálogo | Proyecto LiquidStack"
+    },
+    "commerce_catalog_meta_description": {
+        "text": "Consulta productos, disponibilidad y características antes de preparar tu solicitud de información."
+    },
+    "commerce_inquiry_meta_title": {
+        "text": "Lista de interés | Proyecto LiquidStack"
+    },
+    "commerce_inquiry_meta_description": {
+        "text": "Revisa los productos seleccionados y envía una única solicitud de información."
+    },
+    "hero00_bg_mobile": {
+        "src": "assets/img/dummy/dummy_900.avif"
+    },
+    "hero00_bg_tablet": {
+        "src": "assets/img/dummy/dummy_1800.avif"
+    },
+    "hero00_bg_desktop": {
+        "src": "assets/img/dummy/dummy_2560.avif"
+    },
+    "hero00_bg_fallback": {
+        "src": "assets/img/dummy/dummy_900.avif",
+        "alt": "Imagen de cabecera del catálogo",
+        "title": "Catálogo de productos",
+        "width": "2560",
+        "height": "1600"
+    },
+    "moduleH1Type01_00_h1_text": {
+        "text": "Catálogo de productos"
+    },
+    "moduleH1Type01_00_p01_text": {
+        "text": "Consulta las referencias disponibles y abre cada ficha para revisar su información antes de añadirla a tu lista de interés."
+    },
+    "moduleH1Type01_00_p02_text": {
+        "text": "Puedes reunir varios productos y enviar una única solicitud de información."
+    },
+    "moduleH1Type01_01_h1_text": {
+        "text": "Información del producto"
+    },
+    "moduleH1Type01_01_p01_text": {
+        "text": "Revisa la descripción, disponibilidad y características de esta referencia."
+    },
+    "moduleH1Type01_01_p02_text": {
+        "text": "Añádela a tu lista de interés para solicitar información junto con otras referencias."
+    },
+    "moduleH1Type01_02_h1_text": {
+        "text": "Lista de interés"
+    },
+    "moduleH1Type01_02_p01_text": {
+        "text": "Revisa los productos seleccionados y completa tus datos de contacto."
+    },
+    "moduleH1Type01_02_p02_text": {
+        "text": "Recibirás una copia de la solicitud y el equipo responsable podrá responderte."
+    },
+    "commerce_catalog_heading": {
+        "text": "Productos disponibles"
+    },
+    "commerce_catalog_intro": {
+        "text": "Explora el catálogo y reúne en una sola solicitud las referencias sobre las que quieras recibir información."
+    },
+    "commerce_action_detail": {
+        "text": "Ver ficha"
+    },
+    "commerce_action_add": {
+        "text": "Añadir a la lista"
+    },
+    "commerce_action_added": {
+        "text": "Quitar de la lista"
+    },
+    "commerce_action_interest": {
+        "text": "Ver lista de interés"
+    },
+    "commerce_interest_summary": {
+        "text": "productos seleccionados"
+    },
+    "commerce_interest_added_status": {
+        "text": "Producto añadido a la lista de interés."
+    },
+    "commerce_interest_removed_status": {
+        "text": "Producto retirado de la lista de interés."
+    },
+    "commerce_catalog_empty": {
+        "text": "No hay productos disponibles en este momento."
+    },
+    "commerce_label_reference": {
+        "text": "Referencia"
+    },
+    "commerce_label_availability": {
+        "text": "Disponibilidad"
+    },
+    "commerce_label_commercial": {
+        "text": "Condición comercial"
+    },
+    "commerce_item_features_heading": {
+        "text": "Características"
+    },
+    "commerce_item_back": {
+        "text": "Volver al catálogo"
+    },
+    "commerce_inquiry_heading": {
+        "text": "Prepara tu consulta"
+    },
+    "commerce_inquiry_intro": {
+        "text": "Comprueba tu selección y completa el formulario para enviar una solicitud de información."
+    },
+    "commerce_inquiry_list_heading": {
+        "text": "Tu lista de interés"
+    },
+    "commerce_inquiry_form_heading": {
+        "text": "Datos para responder"
+    },
+    "commerce_inquiry_empty": {
+        "text": "La lista está vacía. Vuelve al catálogo para añadir una referencia."
+    },
+    "commerce_inquiry_remove": {
+        "text": "Quitar"
+    },
+    "commerce_inquiry_name": {
+        "text": "Nombre"
+    },
+    "commerce_inquiry_email": {
+        "text": "Correo electrónico"
+    },
+    "commerce_inquiry_phone": {
+        "text": "Teléfono opcional"
+    },
+    "commerce_inquiry_message": {
+        "text": "Mensaje opcional"
+    },
+    "commerce_inquiry_privacy": {
+        "text": "Acepto el uso de estos datos para responder a mi consulta"
+    },
+    "commerce_inquiry_privacy_help": {
+        "text": "En producción, este texto deberá enlazar la política vigente y registrar su versión."
+    },
+    "commerce_inquiry_submit": {
+        "text": "Enviar solicitud"
+    },
+    "commerce_inquiry_reset": {
+        "text": "Limpiar formulario"
+    },
+    "commerce_inquiry_success": {
+        "text": "Solicitud registrada correctamente."
+    },
+    "commerce_inquiry_invalid": {
+        "text": "Revisa los campos obligatorios antes de continuar."
+    },
+    "commerce_inquiry_empty_error": {
+        "text": "Añade al menos un producto antes de enviar la solicitud."
+    },
+    "commerce_product_mesa_modular_title": {
+        "text": "Mesa modular de muestra"
+    },
+    "commerce_product_mesa_modular_summary": {
+        "text": "Sistema ficticio de superficies combinables para probar una ficha con información clara y acciones de consulta."
+    },
+    "commerce_product_mesa_modular_description": {
+        "text": "Esta referencia neutral representa un producto configurable sin asociarlo a una marca, un proveedor ni un precio real. Su contenido permite revisar textos largos, datos técnicos y la transición entre catálogo, ficha y lista de interés."
+    },
+    "commerce_product_mesa_modular_reference": {
+        "text": "DEMO-MOD-01"
+    },
+    "commerce_product_mesa_modular_availability": {
+        "text": "Disponible para consulta"
+    },
+    "commerce_product_mesa_modular_commercial": {
+        "text": "Precio bajo consulta"
+    },
+    "commerce_product_mesa_modular_image_alt": {
+        "text": "Imagen abstracta usada como mesa modular ficticia"
+    },
+    "commerce_product_mesa_modular_image_title": {
+        "text": "Mesa modular de demostración"
+    },
+    "commerce_product_mesa_modular_feature_1_label": {
+        "text": "Configuración"
+    },
+    "commerce_product_mesa_modular_feature_1_value": {
+        "text": "Tres módulos"
+    },
+    "commerce_product_mesa_modular_feature_2_label": {
+        "text": "Acabado"
+    },
+    "commerce_product_mesa_modular_feature_2_value": {
+        "text": "Neutro mate"
+    },
+    "commerce_product_mesa_modular_feature_3_label": {
+        "text": "Uso"
+    },
+    "commerce_product_mesa_modular_feature_3_value": {
+        "text": "Interior"
+    },
+    "commerce_product_lampara_lineal_title": {
+        "text": "Lámpara lineal de muestra"
+    },
+    "commerce_product_lampara_lineal_summary": {
+        "text": "Pieza ficticia de iluminación creada para comprobar tarjetas, estados de disponibilidad y características localizadas."
+    },
+    "commerce_product_lampara_lineal_description": {
+        "text": "La lámpara de muestra aporta una segunda familia visual al entorno de prueba y demuestra que la plantilla no depende de un sector concreto. Todos sus valores son ilustrativos y deberán sustituirse por proyecciones tipadas del módulo antes de publicar un catálogo real."
+    },
+    "commerce_product_lampara_lineal_reference": {
+        "text": "DEMO-LUZ-02"
+    },
+    "commerce_product_lampara_lineal_availability": {
+        "text": "Consulta previa"
+    },
+    "commerce_product_lampara_lineal_commercial": {
+        "text": "Precio bajo consulta"
+    },
+    "commerce_product_lampara_lineal_image_alt": {
+        "text": "Imagen abstracta usada como lámpara lineal ficticia"
+    },
+    "commerce_product_lampara_lineal_image_title": {
+        "text": "Lámpara lineal de demostración"
+    },
+    "commerce_product_lampara_lineal_feature_1_label": {
+        "text": "Longitud"
+    },
+    "commerce_product_lampara_lineal_feature_1_value": {
+        "text": "120 centímetros"
+    },
+    "commerce_product_lampara_lineal_feature_2_label": {
+        "text": "Temperatura"
+    },
+    "commerce_product_lampara_lineal_feature_2_value": {
+        "text": "Regulable"
+    },
+    "commerce_product_lampara_lineal_feature_3_label": {
+        "text": "Montaje"
+    },
+    "commerce_product_lampara_lineal_feature_3_value": {
+        "text": "Suspendido"
+    },
+    "commerce_product_organizador_flexible_title": {
+        "text": "Organizador flexible de muestra"
+    },
+    "commerce_product_organizador_flexible_summary": {
+        "text": "Accesorio ficticio que completa una última fila impar y permite revisar la respuesta de la rejilla."
+    },
+    "commerce_product_organizador_flexible_description": {
+        "text": "Este tercer fixture sirve para comprobar composiciones con cantidades impares, textos de diferente longitud y una selección combinada. No define materiales certificados, condiciones comerciales ni promesas que puedan confundirse con datos de producto reales."
+    },
+    "commerce_product_organizador_flexible_reference": {
+        "text": "DEMO-ORG-03"
+    },
+    "commerce_product_organizador_flexible_availability": {
+        "text": "Disponible para consulta"
+    },
+    "commerce_product_organizador_flexible_commercial": {
+        "text": "Precio bajo consulta"
+    },
+    "commerce_product_organizador_flexible_image_alt": {
+        "text": "Imagen abstracta usada como organizador flexible ficticio"
+    },
+    "commerce_product_organizador_flexible_image_title": {
+        "text": "Organizador flexible de demostración"
+    },
+    "commerce_product_organizador_flexible_feature_1_label": {
+        "text": "Formato"
+    },
+    "commerce_product_organizador_flexible_feature_1_value": {
+        "text": "Apilable"
+    },
+    "commerce_product_organizador_flexible_feature_2_label": {
+        "text": "Módulos"
+    },
+    "commerce_product_organizador_flexible_feature_2_value": {
+        "text": "Cuatro unidades"
+    },
+    "commerce_product_organizador_flexible_feature_3_label": {
+        "text": "Uso"
+    },
+    "commerce_product_organizador_flexible_feature_3_value": {
+        "text": "Interior"
+    },
+    "commerce_inquiry_notice": {
+        "text": "Los datos se usarán únicamente para gestionar esta solicitud de información."
+    },
+    "commerce_inquiry_development_notice": {
+        "text": "Modo de desarrollo: el formulario se valida, pero no envía ni almacena datos."
+    },
+    "commerce_commercial_inquiry": {
+        "text": "Precio bajo consulta"
+    },
+    "commerce_availability_available": {
+        "text": "Disponible"
+    },
+    "commerce_availability_reserved": {
+        "text": "Reservado"
+    },
+    "commerce_availability_sold": {
+        "text": "Vendido"
+    },
+    "commerce_availability_unavailable": {
+        "text": "No disponible"
+    },
+    "commerce_search_label": {
+        "text": "Buscar productos"
+    },
+    "commerce_search_placeholder": {
+        "text": "Escribe un nombre o referencia"
+    },
+    "commerce_filter_category_label": {
+        "text": "Categoría"
+    },
+    "commerce_filter_tag_label": {
+        "text": "Etiqueta"
+    },
+    "commerce_filter_all": {
+        "text": "Todas"
+    },
+    "commerce_filter_submit": {
+        "text": "Aplicar filtros"
+    },
+    "commerce_filter_clear": {
+        "text": "Limpiar filtros"
+    },
+    "commerce_action_inquiry_unavailable": {
+        "text": "Consulta no disponible"
+    },
+    "commerce_value_yes": {
+        "text": "Sí"
+    },
+    "commerce_value_no": {
+        "text": "No"
+    },
+    "commerce_social_proof": {
+        "text": "{count} solicitudes de información recibidas"
+    }
+}

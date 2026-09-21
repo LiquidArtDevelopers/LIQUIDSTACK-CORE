@@ -555,6 +555,30 @@ final class ModuleDefinition
                 return;
             }
 
+            if (
+                $id === 'commerce'
+                && in_array($target, [
+                    'App/config/modules/commerce.php',
+                    'App/config/languages/commerce/es.json',
+                    'App/config/languages/commerce/eu.json',
+                    'App/config/languages/commerce/en.json',
+                    'App/app/_moduleCommercePublic.php',
+                    'App/app/commerce/CommercePresentationAdapter.php',
+                    'App/views/commerce.php',
+                    'App/views/commerce-item.php',
+                    'App/views/commerce-inquiry.php',
+                    'src/js/commerce.js',
+                    'src/js/commerceItem.js',
+                    'src/js/commerceInquiry.js',
+                    'src/scss/commerce.scss',
+                    'src/scss/commerceItem.scss',
+                    'src/scss/commerceInquiry.scss',
+                    'src/js/resources/_commerce.js',
+                ], true)
+            ) {
+                return;
+            }
+
             $moduleClassId = implode('', array_map(
                 static fn (string $part): string => ucfirst($part),
                 explode('-', $id)

@@ -1,0 +1,262 @@
+@use '../config' as c;
+
+.sectionCommerceInquiry01 {
+  box-sizing: border-box;
+  padding: clamp(3.5rem, 9vw, 7rem) c.$padMin;
+  color: c.$color01;
+  background: c.$color00bis;
+
+  .sectionCommerceInquiry01-shell {
+    width: min(100%, c.$textMax);
+    margin-inline: auto;
+    display: grid;
+    gap: clamp(2rem, 5vw, 3.5rem);
+  }
+
+  .sectionCommerceInquiry01-header {
+    width: min(100%, 48rem);
+    display: grid;
+    gap: 1rem;
+
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p {
+      margin: 0;
+    }
+
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      font-size: clamp(2rem, 6vw, 4rem);
+      line-height: 1.05;
+    }
+
+    p {
+      color: c.$color01bis;
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      line-height: 1.7;
+    }
+  }
+
+  .sectionCommerceInquiry01-layout {
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 3rem);
+  }
+
+  .sectionCommerceInquiry01-listPanel,
+  .sectionCommerceInquiry01-formPanel {
+    min-width: 0;
+    padding: clamp(1.5rem, 5vw, 3rem);
+    border: 1px solid c.$color01bis4;
+    border-radius: 1.25rem;
+    background: c.$color00;
+    box-shadow: 0 1rem 2.5rem c.$color01bis4;
+
+    > h3,
+    > h4,
+    > h5,
+    > h6 {
+      margin: 0 0 1.5rem;
+      font-size: clamp(1.4rem, 3vw, 2rem);
+    }
+  }
+
+  .sectionCommerceInquiry01-listPanel {
+    ul {
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 1rem;
+      list-style: none;
+    }
+
+    li {
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      border: 1px solid c.$color01bis4;
+      border-radius: 0.85rem;
+
+      h3,
+      h4,
+      h5,
+      h6,
+      p {
+        margin: 0;
+      }
+
+      h3,
+      h4,
+      h5,
+      h6 {
+        font-size: 1rem;
+
+        a {
+          color: c.$color01;
+        }
+      }
+
+      p {
+        margin-top: 0.25rem;
+        color: c.$color01bis;
+        font-size: 0.8rem;
+      }
+
+      button {
+        min-height: 2.5rem;
+        padding: 0.55rem 0.8rem;
+        border: 1px solid c.$color02;
+        border-radius: 999px;
+        color: c.$color02;
+        background: c.$color00;
+        font: inherit;
+        cursor: pointer;
+      }
+    }
+  }
+
+  .sectionCommerceInquiry01-notice {
+    margin: -0.75rem 0 1.5rem;
+    padding: 0.85rem 1rem;
+    border-left: 0.25rem solid c.$color03;
+    color: c.$color01bis;
+    background: c.$color00bis;
+    line-height: 1.55;
+  }
+
+  form {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .sectionCommerceInquiry01-field {
+    min-width: 0;
+    display: grid;
+    gap: 0.45rem;
+
+    label {
+      font-weight: 700;
+    }
+
+    input,
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 3rem;
+      padding: 0.75rem 0.9rem;
+      border: 1px solid c.$color01bis;
+      border-radius: 0.65rem;
+      color: c.$color01;
+      background: c.$color00;
+      font: inherit;
+
+      &:focus-visible {
+        border-color: c.$color02;
+        outline: 0.18rem solid c.$color02;
+        outline-offset: 0.1rem;
+      }
+    }
+
+    textarea {
+      min-height: 8rem;
+      resize: vertical;
+    }
+  }
+
+  .sectionCommerceInquiry01-consent {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.35rem 0.75rem;
+
+    input {
+      width: 1.25rem;
+      height: 1.25rem;
+      margin: 0.1rem 0 0;
+    }
+
+    label {
+      font-weight: 700;
+    }
+
+    p {
+      grid-column: 2;
+      margin: 0;
+      color: c.$color01bis;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+  }
+
+  .sectionCommerceInquiry01-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+
+    button {
+      min-height: 2.75rem;
+      padding: 0.7rem 1rem;
+      border: 1px solid c.$color02;
+      border-radius: 999px;
+      color: c.$color00;
+      background: c.$color02;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+
+      &[type='reset'] {
+        color: c.$color02;
+        background: c.$color00;
+      }
+
+      &:disabled {
+        cursor: wait;
+        opacity: 0.6;
+      }
+
+      &:focus-visible {
+        outline: 0.18rem solid c.$color03;
+        outline-offset: 0.2rem;
+      }
+    }
+  }
+
+  .sectionCommerceInquiry01-status {
+    min-height: 1.5em;
+    margin: 0;
+
+    &[data-state='error'] {
+      color: c.$color02;
+    }
+
+    &[data-state='success'] {
+      color: c.$color01;
+      font-weight: 700;
+    }
+  }
+
+  @media (min-width: c.$tablet) {
+    padding-inline: c.$padMax;
+
+    form {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .sectionCommerceInquiry01-field--wide {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (min-width: c.$desktop) {
+    .sectionCommerceInquiry01-layout {
+      grid-template-columns: minmax(18rem, 0.8fr) minmax(0, 1.2fr);
+      align-items: start;
+    }
+  }
+}

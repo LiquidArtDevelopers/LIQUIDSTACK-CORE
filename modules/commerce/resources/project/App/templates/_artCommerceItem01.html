@@ -1,0 +1,28 @@
+<article id="{root-id}"
+         class="artCommerceItem01"
+         aria-labelledby="{heading-id}"
+         data-commerce-interest-scope
+         data-commerce-inquiry-url="{inquiry-path}"
+         data-commerce-selected-items="{selected-items}"
+         data-commerce-added-status="{added-status}"
+         data-commerce-removed-status="{removed-status}">
+    {media}
+    <div class="artCommerceItem01-content">
+        <p class="artCommerceItem01-reference">{reference-label}: {reference}</p>
+        <{header-tag} id="{heading-id}">{title}</{header-tag}>
+        {summary-html}
+        {description-html}
+        <dl class="artCommerceItem01-status">
+            <div><dt>{availability-label}</dt><dd>{availability}</dd></div>
+            {commercial-html}
+        </dl>
+        {social-proof}
+        {features-block}
+        <div class="artCommerceItem01-actions">
+            {add-control}
+            <a href="{inquiry-path}" data-commerce-interest-link>{interest-label} (<span data-commerce-interest-count>{interest-count}</span> {interest-summary})</a>
+        </div>
+        <p class="artCommerceItem01-live" role="status" aria-live="polite" data-commerce-interest-status></p>
+        <a class="artCommerceItem01-back" href="{catalog-path}">{back-label}</a>
+    </div>
+</article>
