@@ -743,6 +743,7 @@
             "sha256:9a75555d01326659a758161e1280c7b54e3adb23b013fdefa3e8997fa6e6e404"
         ],
         "resources/js/_gsapScroll.js": [
+            "sha256:37b506a994f1b8438a59e8a4a16187c9da61e040fa8d9ecd98be0a433d6c9abe",
             "sha256:f578ae8cb58ebedf3db59bb89b626bb4c39647d7c88cc39ad50fdf77db67a441"
         ],
         "resources/js/_hero03.js": [
