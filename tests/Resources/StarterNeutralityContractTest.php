@@ -57,14 +57,17 @@ final class StarterNeutralityContractTest extends TestCase
             $root . '/stubs/App/templates/_footerInfo01.html'
         );
 
-        self::assertStringContainsString(
-            "\$href === '' || \$imageSource === ''",
-            $navigation
-        );
+        self::assertStringContainsString('$socialItems = [', $navigation);
         self::assertStringContainsString(
             "\$col2SocialItems === ''",
             $navigation
         );
+        foreach (['fb', 'in', 'yt', 'ig'] as $network) {
+            self::assertStringContainsString(
+                "'default_src' => 'assets/img/system/{$network}.svg'",
+                $navigation
+            );
+        }
         self::assertStringContainsString(
             "\$params['public_link_keys'] ?? []",
             $navigation

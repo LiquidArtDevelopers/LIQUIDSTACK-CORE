@@ -592,10 +592,19 @@
         "resources/img/system/enviado.jpg": [
             "sha256:98e9b81bcc88879b0f84a9eba1ab16ceb9489eb271ae7c14ebc1be23f01194c8"
         ],
+        "resources/img/system/fb.svg": [
+            "sha256:816e1471b5138ab6fc2df4b91d22187e143148a0d4de62a03c33dbce009b05c8"
+        ],
         "resources/img/system/hidePassword.svg": [
             "sha256:06cae3757000593a6cfc8421f3b65f1b4aae5fe3bfbf0030cad8a9edeaff2a36",
             "sha256:32c452dbcadf59236d5945ae01cd69d257add4bcc17a8fc523dbf187d28f81fe",
             "sha256:ed72d648c94a5b8feaa28dc0c31fbb8f8d7e34dfbd305e0b6fcaf459f0b3992a"
+        ],
+        "resources/img/system/ig.svg": [
+            "sha256:80de4f5b3bf026344395a9e0425a30f2c67059676383e4219463787470868b8d"
+        ],
+        "resources/img/system/in.svg": [
+            "sha256:518a5a356998d45822c77740f9a0307bb7fa09554419cb3b6ec7dc9e9f3d7cdb"
         ],
         "resources/img/system/mail.svg": [
             "sha256:0e51f47d561626a18b1ecc757ead02a1c4e25a32811f4168d43e456a945beae8",
@@ -659,6 +668,9 @@
             "sha256:56a909a672aa9b5952f8333e04773a9a6723b44b169cb24bf6d14146f937ebdf",
             "sha256:a0021f5e022b93355eea349ac815c01ab46cf79c75d0245665fe12bb7f149ace",
             "sha256:f877a29ace2e6d358b56ee976e55439ea9c4ef22be4bc3c8a57b762430926878"
+        ],
+        "resources/img/system/yt.svg": [
+            "sha256:23c1ea081d3f5e25513f3cc9666d3f4d934cf8408e51cae274b9c25104d9ec16"
         ],
         "resources/js/_aniBackground01.js": [
             "sha256:cd84d0b7e5787b21f4b0a521f2d3c6bb289472f7655fda4b36097b809c3dc4f7",
@@ -1836,6 +1848,7 @@
         "stubs/App/controllers/navMegamenu01.php": [
             "sha256:20228c72982aae0ca7696823d30cb42948a9f59a76bd59b2bd1f0459255b694a",
             "sha256:4b5d325389fb877684055fd4ae4aa401b93edf3a220bd6831b2213e770b06e78",
+            "sha256:5ee5f36363f2e2212ec8051879ffd00c98b172369e557c4ad309845082f96923",
             "sha256:73a820b15b013c3530fa622d63ac22344c910a8be2f6ec64c222f4ca92c9e203",
             "sha256:7a8717e676510ad5f30e30762054c7c0ef3c4c64c546764205cb383bd4befe54",
             "sha256:9078ebbf250a8cdec3e061a90b4a2399cbfa1893438b1bf2ffdfcc6ca963c177"

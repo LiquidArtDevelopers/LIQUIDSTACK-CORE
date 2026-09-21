@@ -198,33 +198,76 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
     }
     $col2Links2 .= '</ul>';
 
-    $readField = static function (mixed $value, string $field): string {
-        if (is_object($value) && isset($value->{$field})) {
-            return (string) $value->{$field};
-        }
-        if (is_array($value) && isset($value[$field])) {
-            return (string) $value[$field];
-        }
+    /* Añadir, quitar o reordenar entradas; un array vacío anula el bloque. */
+    $socialItems = [
+        [
+            'link_key' => "{$pref}rrss_fb",
+            'href' => $GLOBALS["{$pref}rrss_fb_href"] ?? '',
+            'title' => $GLOBALS["{$pref}rrss_fb"]->title ?? '',
+            'image_key' => "{$pref}rrss_fb_img",
+            'src' => $GLOBALS["{$pref}rrss_fb_img"]->src ?? '',
+            'alt' => $GLOBALS["{$pref}rrss_fb_img"]->alt ?? '',
+            'image_title' => $GLOBALS["{$pref}rrss_fb_img"]->title ?? '',
+            'default_src' => 'assets/img/system/fb.svg',
+        ],
+        [
+            'link_key' => "{$pref}rrss_in",
+            'href' => $GLOBALS["{$pref}rrss_in_href"] ?? '',
+            'title' => $GLOBALS["{$pref}rrss_in"]->title ?? '',
+            'image_key' => "{$pref}rrss_in_img",
+            'src' => $GLOBALS["{$pref}rrss_in_img"]->src ?? '',
+            'alt' => $GLOBALS["{$pref}rrss_in_img"]->alt ?? '',
+            'image_title' => $GLOBALS["{$pref}rrss_in_img"]->title ?? '',
+            'default_src' => 'assets/img/system/in.svg',
+        ],
+        [
+            'link_key' => "{$pref}rrss_yt",
+            'href' => $GLOBALS["{$pref}rrss_yt_href"] ?? '',
+            'title' => $GLOBALS["{$pref}rrss_yt"]->title ?? '',
+            'image_key' => "{$pref}rrss_yt_img",
+            'src' => $GLOBALS["{$pref}rrss_yt_img"]->src ?? '',
+            'alt' => $GLOBALS["{$pref}rrss_yt_img"]->alt ?? '',
+            'image_title' => $GLOBALS["{$pref}rrss_yt_img"]->title ?? '',
+            'default_src' => 'assets/img/system/yt.svg',
+        ],
+        [
+            'link_key' => "{$pref}rrss_ig",
+            'href' => $GLOBALS["{$pref}rrss_ig_href"] ?? '',
+            'title' => $GLOBALS["{$pref}rrss_ig"]->title ?? '',
+            'image_key' => "{$pref}rrss_ig_img",
+            'src' => $GLOBALS["{$pref}rrss_ig_img"]->src ?? '',
+            'alt' => $GLOBALS["{$pref}rrss_ig_img"]->alt ?? '',
+            'image_title' => $GLOBALS["{$pref}rrss_ig_img"]->title ?? '',
+            'default_src' => 'assets/img/system/ig.svg',
+        ],
+    ];
 
-        return '';
-    };
+    $escape = static fn (mixed $value): string => htmlspecialchars(
+        (string) $value,
+        ENT_QUOTES,
+        'UTF-8'
+    );
     $col2SocialItems = '';
-    foreach (['yt', 'in', 'fb', 'ig'] as $network) {
-        $linkKey = "{$pref}rrss_{$network}";
-        $imageKey = "{$linkKey}_img";
-        $href = trim((string) ($GLOBALS["{$linkKey}_href"] ?? ''));
-        $image = $GLOBALS[$imageKey] ?? null;
-        $imageSource = trim($readField($image, 'src'));
-        if ($href === '' || $imageSource === '') {
-            continue;
+    foreach ($socialItems as $social) {
+        $href = trim((string) $social['href']);
+        $imageSource = trim((string) $social['src']);
+        if ($imageSource === '') {
+            $imageSource = $social['default_src'];
         }
+        $title = trim((string) $social['title']);
+        $imageTitle = trim((string) $social['image_title']);
+        $alt = trim((string) $social['alt']);
+        $label = $title !== '' ? $title : ($alt !== '' ? $alt : $imageTitle);
+        $linkAttributes = $href === ''
+            ? ''
+            : ' href="'.$escape($href).'" target="_blank" rel="noopener noreferrer"';
 
-        $link = $GLOBALS[$linkKey] ?? null;
-        $col2SocialItems .= '<a data-lang="'.$linkKey.'" href="'.$href
-            .'" target="_blank" title="'.$readField($link, 'title').'">'
-            .'<img data-lang="'.$imageKey.'" src="'.$_ENV['RAIZ'].'/'
-            .$imageSource.'" alt="'.$readField($image, 'alt').'" title="'
-            .$readField($image, 'title').'"></a>';
+        $col2SocialItems .= '<a data-lang="'.$escape($social['link_key']).'"'
+            .$linkAttributes.' aria-label="'.$escape($label).'" title="'
+            .$escape($title).'"><img data-lang="'.$escape($social['image_key'])
+            .'" src="'.$escape(rtrim((string) $_ENV['RAIZ'], '/').'/'.ltrim($imageSource, '/'))
+            .'" alt="'.$escape($alt).'" title="'.$escape($imageTitle).'">'
+            .'</a>';
     }
     $col2Social = $col2SocialItems === ''
         ? ''

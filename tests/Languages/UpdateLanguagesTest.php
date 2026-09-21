@@ -311,6 +311,40 @@ PHP
         self::assertArrayNotHasKey('art17_00_classVar', $catalog);
     }
 
+    public function testGlobalMegamenuHydratesEveryEditableSocialEntry(): void
+    {
+        $coreRoot = dirname(__DIR__, 2);
+        $this->filesystem->copy(
+            $coreRoot . '/stubs/App/controllers/navMegamenu01.php',
+            $this->fixtureRoot . '/App/controllers/navMegamenu01.php'
+        );
+        $this->writeFile(
+            $this->fixtureRoot . '/App/includes/_nav.php',
+            "<?php echo controller('navMegamenu01', 0);\n"
+        );
+
+        $this->runUpdater('global');
+
+        foreach (['es', 'en'] as $language) {
+            $catalog = $this->readJson(
+                $this->fixtureRoot
+                    . "/App/config/languages/global/{$language}.json"
+            );
+
+            foreach (['fb', 'in', 'yt', 'ig'] as $network) {
+                $linkKey = "navMegamenu01_00_rrss_{$network}";
+                $imageKey = "{$linkKey}_img";
+
+                self::assertSame(['title'], array_keys($catalog[$linkKey]));
+                self::assertSame(
+                    ['src', 'alt', 'title'],
+                    array_keys($catalog[$imageKey])
+                );
+                self::assertArrayHasKey("{$linkKey}_href", $catalog);
+            }
+        }
+    }
+
     public function testProjectedItemsDoNotHydrateCatalogItemFixtures(): void
     {
         $this->writeFile(

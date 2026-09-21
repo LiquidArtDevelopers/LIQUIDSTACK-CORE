@@ -4,6 +4,12 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.32.4] - 2026-09-21
+
+### fixed
+
+- Recurso Megamenu01 corregido lo de RRSS.
+
 ## [1.32.3] - 2026-09-21
 
 ### fixed

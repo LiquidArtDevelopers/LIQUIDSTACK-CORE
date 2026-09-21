@@ -59,7 +59,7 @@ final class OptionalGlobalMediaControllerTest extends TestCase
         parent::tearDown();
     }
 
-    public function testNavigationOmitsIncompleteSocialLinks(): void
+    public function testNavigationKeepsEditableDefaultSocialSlots(): void
     {
         $this->configureNavigationGlobals();
 
@@ -74,9 +74,16 @@ final class OptionalGlobalMediaControllerTest extends TestCase
             ])
         );
 
-        self::assertStringNotContainsString('class="rrss"', $html);
+        self::assertStringContainsString('class="rrss"', $html);
+        self::assertSame(4, substr_count($html, '<a data-lang="navMegamenu01_00_rrss_'));
         self::assertStringNotContainsString('src="http://localhost:1309/"', $html);
         self::assertStringNotContainsString('href=""', $html);
+        foreach (['fb', 'in', 'yt', 'ig'] as $network) {
+            self::assertStringContainsString(
+                'src="http://localhost:1309/assets/img/system/' . $network . '.svg"',
+                $html
+            );
+        }
         self::assertStringContainsString('href="/es/blog"', $html);
         self::assertStringNotContainsString('Acceder', $html);
     }
