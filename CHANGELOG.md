@@ -4,6 +4,14 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.33.1] - 2026-09-21
+
+### Corregido
+
+- La migración inicial de Commerce ya es compatible con MariaDB 10.4: la
+  prevención de ciclos permanece en el repositorio de dominio sin declarar un
+  `CHECK` que MariaDB rechaza por referenciar la clave `AUTO_INCREMENT`.
+
 ## [1.33.0] - 2026-09-21
 
 ### Añadido

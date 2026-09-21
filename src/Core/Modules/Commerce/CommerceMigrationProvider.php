@@ -81,8 +81,7 @@ CREATE TABLE IF NOT EXISTS {{table:categories}} (
         REFERENCES {{table:categories}} (`id`) ON DELETE RESTRICT,
     CONSTRAINT {{table:c_cat_public}} CHECK (CHAR_LENGTH(`public_id`) = 36),
     CONSTRAINT {{table:c_cat_lock}} CHECK (`lock_version` > 0),
-    CONSTRAINT {{table:c_cat_sort}} CHECK (`sort_order` <= 10000),
-    CONSTRAINT {{table:c_cat_parent}} CHECK (`parent_id` IS NULL OR `parent_id` <> `id`)
+    CONSTRAINT {{table:c_cat_sort}} CHECK (`sort_order` <= 10000)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
             <<<'SQL'

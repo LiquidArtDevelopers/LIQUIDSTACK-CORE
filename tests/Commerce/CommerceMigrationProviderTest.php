@@ -62,6 +62,24 @@ final class CommerceMigrationProviderTest extends TestCase
         );
     }
 
+    public function testMysqlCatalogAvoidsAutoIncrementCheckExpressions(): void
+    {
+        $migration = iterator_to_array(
+            CommerceMigrationProvider::migrations(),
+            false
+        )[0];
+        $scope = MigrationScope::forTablePrefix(
+            'commerce',
+            'ls_commerce_'
+        );
+        $sql = implode("\n", $migration->statementsFor('mysql', $scope));
+
+        self::assertStringNotContainsString(
+            '`parent_id` <> `id`',
+            $sql
+        );
+    }
+
     public function testConfiguredPrefixBudgetCoversEveryIdentifier(): void
     {
         $source = file_get_contents(
