@@ -19,6 +19,9 @@ final class SecurityKey
     public const MAXIMUM_BYTES = 1024;
     public const BASE64_URL_LENGTH = 43;
 
+    private const PUBLIC_EXAMPLE_KEY =
+        'EXAMPLE_ONLY_CHANGE_ME_BEFORE_REAL_USE_0000';
+
     private readonly OpaqueSecret $rawBytes;
 
     private function __construct(#[\SensitiveParameter] string $rawBytes)
@@ -43,7 +46,8 @@ final class SecurityKey
     ): self
     {
         if (
-            strlen($encoded) !== self::BASE64_URL_LENGTH
+            $encoded === self::PUBLIC_EXAMPLE_KEY
+            || strlen($encoded) !== self::BASE64_URL_LENGTH
             || preg_match('/\A[A-Za-z0-9_-]{43}\z/', $encoded) !== 1
         ) {
             throw new InvalidSecurityKey();

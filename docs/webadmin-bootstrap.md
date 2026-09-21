@@ -185,8 +185,9 @@ agotaron sus cinco intentos.
 
 La frontera que invoque el servicio directamente debe cargar el entorno con
 `ProjectEnvironmentLoader`, cargar `WebAdminConfig`, resolver su perfil y abrir
-la factoría PDO correspondiente. `shared` sigue siendo el default compatible y
-usa `BBDD_*`; el opt-in `liquidstack` exige
+la factoría PDO correspondiente. `shared` sigue siendo el fallback compatible
+para consumidores legacy y usa `BBDD_*`; BASE y proyectos nuevos seleccionan
+explícitamente `liquidstack`, que exige
 `LIQUIDSTACK_DB_HOST`, `LIQUIDSTACK_DB_PORT`, `LIQUIDSTACK_DB_NAME`,
 `LIQUIDSTACK_DB_USER`, `LIQUIDSTACK_DB_PASSWORD` y
 `LIQUIDSTACK_DB_CHARSET=utf8mb4`. Si Blog está activo debe seleccionar el mismo

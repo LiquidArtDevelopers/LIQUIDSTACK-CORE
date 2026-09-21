@@ -55,7 +55,9 @@ Antes de crear el runtime HTTP, WebAdmin exige:
 - la ruta neutral libre, la conexión PDO estricta y las migraciones
   fundacionales requeridas por autenticación aplicadas sin deriva;
 - `LIQUIDSTACK_WEBADMIN_SECURITY_KEY` con 32 bytes aleatorios como base64url
-  canónico de 43 caracteres;
+  canónico de 43 caracteres; el sentinel público
+  `EXAMPLE_ONLY_CHANGE_ME_BEFORE_REAL_USE_0000` es inválido aunque cumpla esa
+  forma y debe sustituirse antes de usar WebAdmin;
 - `zend.exception_ignore_args=On` en CLI y en el SAPI web, para impedir que
   contraseña, token o CSRF queden retenidos en trazas;
 - soporte para la política productiva fija `argon2id-v1`: Argon2id con

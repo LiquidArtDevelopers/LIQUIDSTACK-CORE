@@ -101,7 +101,7 @@ Usar opcionalmente `App/config/modules/webadmin.php`, propiedad del proyecto:
 return [
     'path' => '/admin',
     'database' => [
-        'connection' => 'shared',
+        'connection' => 'liquidstack',
         'table_prefix' => 'ls_webadmin_',
     ],
     'session' => [
@@ -127,12 +127,24 @@ return [
   exige consentimiento `cookie_custom` de CookieLad.
 
 - Mantener secretos fuera de este fichero. Composer no debe crearlo, fusionarlo ni sobrescribirlo.
-- Conservar `shared` como default compatible: reutiliza `BBDD_SERVER`,
-  `BBDD_USER`, `BBDD_PASS` y `BBDD_NAME`.
-- Usar `liquidstack` solo como opt-in explícito para una DB modular por proyecto
-  y entorno. Requiere `LIQUIDSTACK_DB_HOST`, `LIQUIDSTACK_DB_PORT`,
+- Conservar `shared` como fallback de compatibilidad del runtime: reutiliza
+  `BBDD_SERVER`, `BBDD_USER`, `BBDD_PASS` y `BBDD_NAME`. No presentarlo como
+  selector de desarrollo/producción. En consumidores legacy esas variables
+  pueden pertenecer a una zona privada de negocio independiente.
+- En BASE y proyectos nuevos, seleccionar explícitamente `liquidstack` para la
+  única DB modular de WebAdmin, Blog y futuras extensiones. Requiere
+  `LIQUIDSTACK_DB_HOST`, `LIQUIDSTACK_DB_PORT`,
   `LIQUIDSTACK_DB_NAME`, `LIQUIDSTACK_DB_USER`,
   `LIQUIDSTACK_DB_PASSWORD` y `LIQUIDSTACK_DB_CHARSET=utf8mb4`.
+- Tratar el host como endpoint del runtime, no como tipo de entorno: desde
+  desarrollo puede ser loopback o un túnel/red confiable; en producción suele
+  ser el endpoint interno del proveedor. `LIQUIDSTACK_DB_HOST` admite solo el
+  hostname o IP, sin esquema ni puerto; el puerto se declara por separado en
+  `LIQUIDSTACK_DB_PORT`. No duplicar la misma DB modular bajo `BBDD_*` y
+  `LIQUIDSTACK_DB_*`, ni elegirla implícitamente mediante `DEV_MODE`.
+- CORE no configura todavía TLS/CA en PDO. No normalizar una conexión directa
+  por Internet a una DB productiva; exigir red confiable, VPN/túnel o un
+  contrato TLS verificable antes de recomendar ese acceso.
 - No aceptar DSN ni opciones PDO libres. Una variable dedicada ausente o
   inválida debe fallar cerrada, nunca volver silenciosamente a `shared`.
 - Cuando Blog esté activo, exigir que Blog y WebAdmin declaren la misma
@@ -141,12 +153,12 @@ return [
 - Tratar `.env` y `App/config/modules/*.php` como project-owned. Cambiar el
   perfil con tablas o datos existentes requiere backup, migración y
   verificación manual; Composer no traslada ni adopta datos.
-- Limitar por ahora `liquidstack` a `localhost` o redes confiables. No usarlo
-  contra un host no confiable hasta disponer de TLS con CA y verificación del
-  servidor.
 - Guardar `LIQUIDSTACK_WEBADMIN_SECURITY_KEY` únicamente en el entorno o gestor
   de secretos: debe contener 32 bytes aleatorios como base64url canónico de 43
-  caracteres. No reutilizar una contraseña ni registrar su valor.
+  caracteres. El sentinel público
+  `EXAMPLE_ONLY_CHANGE_ME_BEFORE_REAL_USE_0000` es deliberadamente inválido y
+  debe bloquear tanto `doctor` como el runtime hasta sustituirlo. No reutilizar
+  una contraseña ni registrar su valor.
 - Exigir en toda creación, activación o restablecimiento un mínimo de ocho
   caracteres Unicode, una minúscula, una mayúscula, un número y un signo,
   UTF-8 válido y un máximo de 1024 bytes. Mantener separada la validación de
@@ -1394,14 +1406,17 @@ composer liquidstack:migrate --dry-run
 - Para una instalación nueva con DB dedicada, crear primero una DB vacía y un
   usuario acotado, declarar las seis variables `LIQUIDSTACK_DB_*` fuera de Git
   y seleccionar `connection => liquidstack` en los dos configs project-owned.
+  BASE ya nace con esa selección; `shared` queda para consumidores legacy.
 - Antes del primer onboarding, obtener desde la fuente privada del operador las
   dos variables bootstrap distintas y preparar el transporte. No copiar sus
   valores a documentación, `.env.example`, commits, salidas o informes.
-- Registrar el entorno real antes de operar. El consumidor de referencia usa
-  actualmente una DB modular local de XAMPP; otros consumidores pueden usar
-  local, staging o
-  producción, pero el código no cambia entre ellos y los secretos nunca se
-  reutilizan.
+- Registrar el entorno real antes de operar. Otros consumidores pueden usar
+  una DB local, staging o producción, pero el código no cambia entre ellos. El
+  `.env` privado de cada runtime declara un único bloque modular activo; un
+  perfil del tooling del consumidor puede materializar en `.env` solo otro
+  host si nombre/usuario/clave son realmente los mismos, sin versionar secretos.
+  CORE no carga por sí mismo `.env.development` o `.env.production`: consume el
+  `.env` ya resuelto y las variables de proceso, que tienen prioridad.
 - Distinguir una producción vacía de una promoción con datos. En el primer
   caso se aplica el catálogo sobre destino vacío; en el segundo se exige un
   plan coordinado para esquemas, `ls_module_migrations`, datos y medios. Un

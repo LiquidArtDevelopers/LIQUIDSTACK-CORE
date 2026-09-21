@@ -280,10 +280,11 @@ purgarse mediante su propia configuración operativa.
 Todos los módulos activos utilizan una única conexión física. El contrato
 admite dos nombres lógicos:
 
-- `shared`, default compatible con las instalaciones existentes, obtiene sus
-  parámetros de `BBDD_SERVER`, `BBDD_USER`, `BBDD_PASS` y `BBDD_NAME`;
-- `liquidstack`, opt-in explícito para una DB modular por proyecto y entorno,
-  exige `LIQUIDSTACK_DB_HOST`, `LIQUIDSTACK_DB_PORT`,
+- `shared`, fallback compatible con instalaciones existentes y aplicaciones
+  legacy, obtiene sus parámetros de `BBDD_SERVER`, `BBDD_USER`, `BBDD_PASS` y
+  `BBDD_NAME`;
+- `liquidstack`, selección explícita de BASE y de proyectos nuevos para una DB
+  modular, exige `LIQUIDSTACK_DB_HOST`, `LIQUIDSTACK_DB_PORT`,
   `LIQUIDSTACK_DB_NAME`, `LIQUIDSTACK_DB_USER`,
   `LIQUIDSTACK_DB_PASSWORD` y `LIQUIDSTACK_DB_CHARSET`.
 
@@ -293,6 +294,13 @@ estar entre 1 y 65535, la contraseña no puede estar vacía y el charset solo
 puede ser `utf8mb4`. No se admiten un DSN completo ni opciones PDO procedentes
 del entorno. Los diagnósticos muestran únicamente el nombre lógico y los
 nombres de variables, nunca sus valores.
+
+Los nombres lógicos no distinguen local de producción. El host del único bloque
+activo es el endpoint visto desde ese runtime y contiene solo hostname o IP,
+sin esquema ni puerto; este se declara en la variable de puerto correspondiente.
+`BBDD_*` puede coexistir con `LIQUIDSTACK_DB_*` únicamente cuando pertenece a
+una zona privada de negocio separada; no se duplica la misma DB modular bajo
+ambos namespaces.
 
 La selección se declara en `database.connection` dentro de los ficheros
 project-owned `App/config/modules/webadmin.php` y
@@ -319,10 +327,8 @@ El primer contrato dedicado está limitado a `localhost` o redes confiables.
 No debe utilizarse a través de un transporte no confiable hasta que CORE
 incorpore un perfil TLS probado con CA y verificación del servidor.
 
-El consumidor de referencia desarrolla actualmente estos módulos contra una DB
-local de XAMPP. El mismo código deberá poder apuntar en otros proyectos a local,
-staging o
-producción cambiando únicamente secretos `LIQUIDSTACK_DB_*`. La promoción a
+El mismo código puede apuntar en cada proyecto a local, staging o producción
+cambiando únicamente el endpoint y secretos `LIQUIDSTACK_DB_*`. La promoción a
 una DB vacía y el traslado de datos existentes son operaciones diferentes;
 ninguna se infiere de un cambio de entorno. El diseño y runbook pendientes se
 mantienen en
@@ -456,7 +462,9 @@ El contrato SQL ejecutable es deliberadamente limitado en este corte:
 WebAdmin usa defaults seguros y puede recibir ajustes no secretos desde el
 fichero opcional y project-owned `App/config/modules/webadmin.php`. Composer no
 crea, fusiona ni sobrescribe ese fichero. El contrato inicial admite solo el
-prefijo neutro, el perfil y prefijo de DB y los tiempos/nombre de su sesión:
+prefijo neutro, el perfil y prefijo de DB y los tiempos/nombre de su sesión. El
+siguiente ejemplo conserva el fallback técnico `shared` para consumidores
+legacy; BASE y los proyectos nuevos seleccionan explícitamente `liquidstack`:
 
 ```php
 <?php
@@ -516,7 +524,9 @@ aleatoria de 32 bytes codificada como 43 caracteres base64url canónicos, y
 `zend.exception_ignore_args=On` tanto en CLI como en el SAPI web. PHP debe
 soportar además la política productiva fija `argon2id-v1`; no se degrada a
 bcrypt según el host. La clave se genera una vez, se guarda fuera del
-repositorio y no se rota mediante Composer.
+repositorio y no se rota mediante Composer. El sentinel público
+`EXAMPLE_ONLY_CHANGE_ME_BEFORE_REAL_USE_0000` se considera inválido en el mismo
+parser canónico que comparten runtime y diagnóstico.
 
 Las contraseñas nuevas exigen ocho caracteres Unicode, minúscula, mayúscula,
 número y signo, además de UTF-8 válido y un máximo de 1024 bytes. Esa

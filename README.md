@@ -339,10 +339,11 @@ onboarding o del dispatcher explícito.
 
 WebAdmin y Blog admiten dos perfiles lógicos de conexión:
 
-- `shared` es el valor predeterminado compatible con proyectos existentes y
-  reutiliza `BBDD_SERVER`, `BBDD_USER`, `BBDD_PASS` y `BBDD_NAME`;
-- `liquidstack` es un opt-in explícito para una DB modular propia del proyecto
-  y del entorno. Usa exclusivamente:
+- `shared` es el fallback compatible con proyectos existentes y reutiliza
+  `BBDD_SERVER`, `BBDD_USER`, `BBDD_PASS` y `BBDD_NAME`; representa la conexión
+  legacy de la aplicación, no un entorno local;
+- `liquidstack` es el perfil explícito y recomendado por BASE para la DB propia
+  de WebAdmin, Blog y futuros módulos. Usa exclusivamente:
 
   ```dotenv
   LIQUIDSTACK_DB_HOST=<host>
@@ -358,6 +359,15 @@ no puede estar vacía y el único charset admitido es `utf8mb4`. Las credenciale
 permanecen en el entorno o gestor de secretos y nunca en los ficheros PHP. Si
 falta o es inválida una variable, CORE falla cerrado: no vuelve silenciosamente
 a `shared`.
+
+`LIQUIDSTACK_DB_HOST` es el endpoint visto desde el runtime actual, no un
+selector implícito de desarrollo/producción. Admite un hostname o IP sin
+esquema ni puerto; este último se declara en `LIQUIDSTACK_DB_PORT`. Puede ser
+loopback para una DB local, el extremo de un túnel o red confiable desde
+desarrollo, o el hostname interno del proveedor en producción. No se debe
+duplicar la misma DB modular en `BBDD_*` y `LIQUIDSTACK_DB_*`. Un consumidor
+con una zona privada de negocio legacy sí puede conservar ambos bloques cuando
+realmente representan bases o dominios de datos distintos.
 
 La selección vive en los ficheros project-owned de ambos módulos:
 
@@ -443,7 +453,10 @@ bytes bajo `LIQUIDSTACK_WEBADMIN_SECURITY_KEY`. Puede generarse una vez con:
 php -r "echo rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '='), PHP_EOL;"
 ```
 
-Guárdala solo en el gestor de secretos o `.env` no versionado. La directiva
+El sentinel público `EXAMPLE_ONLY_CHANGE_ME_BEFORE_REAL_USE_0000` se rechaza
+expresamente aunque tenga una forma base64url canónica; solo sirve para señalar
+en una plantilla que falta generar la clave real. Guárdala solo en el gestor de
+secretos o `.env` no versionado. La directiva
 `zend.exception_ignore_args=On` debe estar activa tanto en el PHP de consola
 como en el SAPI que sirve la web; reinicia el proceso correspondiente tras
 cambiar `php.ini`.

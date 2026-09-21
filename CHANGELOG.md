@@ -4,6 +4,21 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.32.0] - 2026-09-21
+
+### Seguridad
+- El parser canónico de la clave WebAdmin rechaza ahora el sentinel público
+  `EXAMPLE_ONLY_CHANGE_ME_BEFORE_REAL_USE_0000`, aunque tenga formato base64url
+  válido; `doctor` lo declara inválido y el runtime falla antes de abrir PDO.
+
+### Documentación
+- Se aclara el contrato de conexión modular: `shared` permanece como fallback
+  técnico compatible, mientras BASE y los proyectos nuevos seleccionan
+  explícitamente `liquidstack` con un único bloque `LIQUIDSTACK_DB_*`.
+- Se documenta que el host es el endpoint visto desde cada runtime, sin esquema
+  ni puerto, que CORE solo consume el entorno ya resuelto y que una DB remota
+  requiere una red confiable o un túnel mientras PDO no tenga contrato TLS/CA.
+
 ## [1.31.3] - 2026-09-15
 
 ### Añadido

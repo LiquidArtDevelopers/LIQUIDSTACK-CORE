@@ -69,6 +69,16 @@ final class SecurityKeyTest extends TestCase
         SecurityKey::fromRawBytes(str_repeat('x', 31));
     }
 
+    public function testRejectsTheKnownPublicExampleKey(): void
+    {
+        $this->expectException(InvalidSecurityKey::class);
+        $this->expectExceptionMessage('Invalid WebAdmin security key.');
+
+        SecurityKey::fromBase64Url(
+            'EXAMPLE_ONLY_CHANGE_ME_BEFORE_REAL_USE_0000'
+        );
+    }
+
     public function testKeyCannotBeCastOrSerializedAccidentally(): void
     {
         $key = SecurityKey::fromRawBytes(str_repeat('k', 32));

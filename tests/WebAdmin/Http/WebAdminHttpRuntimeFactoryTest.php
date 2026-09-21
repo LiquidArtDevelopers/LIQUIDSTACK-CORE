@@ -253,6 +253,33 @@ final class WebAdminHttpRuntimeFactoryTest extends TestCase
         self::assertSame(0, $calls);
     }
 
+    public function testPublicExampleSecurityKeyFailsBeforeConnecting(): void
+    {
+        $calls = 0;
+        $factory = new WebAdminHttpRuntimeFactory(
+            dirname(__DIR__, 3),
+            static function () use (&$calls): PdoConnectionFactoryInterface {
+                ++$calls;
+                throw new RuntimeException('must not connect');
+            }
+        );
+        $context = new ModuleRuntimeContext($this->projectRoot, [
+            WebAdminHttpRuntimeFactory::SECURITY_KEY_ENV
+                => 'EXAMPLE_ONLY_CHANGE_ME_BEFORE_REAL_USE_0000',
+        ]);
+
+        try {
+            $factory->create($context, WebAdminConfig::defaults());
+            self::fail('The public example key must fail closed.');
+        } catch (WebAdminHttpRuntimeException $exception) {
+            self::assertSame(
+                'webadmin.security_key_invalid',
+                $exception->issueCode()
+            );
+        }
+        self::assertSame(0, $calls);
+    }
+
     public function testRuntimePropagatesLiquidStackAsSecondResolverArgument(): void
     {
         $this->writeModuleDatabaseConfig('webadmin', 'liquidstack');

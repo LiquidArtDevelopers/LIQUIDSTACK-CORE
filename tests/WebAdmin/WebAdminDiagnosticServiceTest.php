@@ -567,6 +567,37 @@ PHP
         );
     }
 
+    public function testPublicExampleSecurityKeyIsReportedAsInvalid(): void
+    {
+        $environment = $this->databaseEnvironment() + [
+            'LIQUIDSTACK_WEBADMIN_SYSTEM_SUPERADMIN_EMAIL'
+                => 'superadmin@example.invalid',
+            'LIQUIDSTACK_WEBADMIN_SITE_ADMIN_EMAIL'
+                => 'siteadmin@example.invalid',
+            WebAdminConfig::SECURITY_KEY_ENV
+                => 'EXAMPLE_ONLY_CHANGE_ME_BEFORE_REAL_USE_0000',
+        ];
+
+        $report = (new WebAdminDiagnosticService())->inspect(
+            $this->fixtureRoot,
+            $environment,
+            [],
+            $this->readyDatabaseDiagnostic()
+        );
+        $data = $report->toArray();
+
+        self::assertFalse($report->isRuntimeReady());
+        self::assertTrue($report->isBootstrapReady());
+        self::assertSame(
+            [WebAdminConfig::SECURITY_KEY_ENV],
+            $data['environment']['security_key']['invalid']
+        );
+        self::assertContains(
+            'environment.security_key_invalid',
+            $data['readiness']['blockers']
+        );
+    }
+
     public function testMissingSecurityKeyReportsOnlyItsName(): void
     {
         $report = (new WebAdminDiagnosticService())->inspect(
