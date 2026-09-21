@@ -4,6 +4,14 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.33.2] - 2026-09-21
+
+### Documentación
+
+- La skill operativa canónica incorpora Commerce: selector y dependencias,
+  configuración segura, migraciones, Media, lista de interés, inquiry/outbox
+  y el inventario mínimo de QA que recibirán los stacks consumidores.
+
 ## [1.33.1] - 2026-09-21
 
 ### Corregido
