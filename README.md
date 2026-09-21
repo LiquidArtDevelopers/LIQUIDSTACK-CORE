@@ -1487,21 +1487,32 @@ CORE incluye un comando interactivo que publica el commit y su etiqueta
 anotada en una unica operacion atomica. Las preguntas se realizan mediante la
 entrada interactiva nativa de Composer, tambien desde PowerShell en Windows:
 
-### Publicar CORE: bloque corto para PowerShell
+### Publicar CORE: pasos A–B–C
 
-Este es el bloque completo. Es siempre igual y no hay que editarlo:
+Ejecuta el procedimiento desde la raíz de CORE. No utiliza rutas locales fijas.
+
+#### A. Preparar y documentar
+
+- Realiza los cambios.
+- Si cambian ficheros distribuidos gestionados, ejecuta
+  `composer release:prepare` antes del commit.
+- Mueve sus notas desde `Unreleased` a una única sección fechada con el formato
+  exacto `## [X.Y.Z] - AAAA-MM-DD`.
+
+#### B. Confirmar y subir
+
+Revisa el lote, crea el commit y súbelo a `main` mediante el flujo Git habitual.
+Antes de continuar, `git status --short` debe quedar vacío. El comando admite
+tanto un commit local pendiente de push como uno que ya esté en `origin/main`,
+pero el procedimiento recomendado es subirlo primero.
+
+#### C. Crear y publicar la etiqueta
+
+Copia y pega este bloque completo sin editar nada:
 
 ```powershell
 composer release
 ```
-
-El flujo ordinario es:
-
-1. Realiza los cambios.
-2. Mueve sus notas desde `Unreleased` a una única sección fechada con el formato
-   exacto `## [X.Y.Z] - AAAA-MM-DD`.
-3. Revisa, confirma y sube el commit a `main` como cualquier otro cambio.
-4. Pega `composer release` sin argumentos.
 
 El comando compara el changelog con las etiquetas existentes. Si encuentra una
 única versión posterior, la propone en consola; pulsa Enter para aceptarla o
@@ -1519,9 +1530,7 @@ E2E modular; después publica `main` y la etiqueta mediante un único push
 atómico. Las suites no usan el límite general de 300 segundos de Composer. Si
 el cambio afecta DDL o persistencia, ejecuta además
 `composer test:mysql-integration` contra una DB **TEST aislada** antes de
-publicar. Si cambian ficheros distribuidos gestionados, ejecuta
-`composer release:prepare` antes de confirmar el commit; el gate avisará si el
-historial quedó desactualizado.
+publicar. El gate avisará si el historial gestionado quedó desactualizado.
 
 La versión de CORE y la de BASE son independientes: por ejemplo, CORE
 `v1.32.0` no corresponde a BASE `v1.2.0`.
