@@ -40,7 +40,7 @@
         "title": "Hemos recibido tu consulta",
         "saludo": "Hola",
         "contexto": "Hemos recibido tu consulta a través de la web",
-        "explicacion": "A continuación dispones de todos los datos que nos has facilitado. Recuerda que para poder enviarnos este formulario, has tenido que aceptar primero nuestra política de privaciadad y tratamiento de datos.",
+        "explicacion": "A continuación dispones de todos los datos que nos has facilitado. Recuerda que para poder enviarnos este formulario, has tenido que aceptar primero nuestra política de privacidad y tratamiento de datos.",
         "datosEncabezado": "Estos son los datos que nos has facilitado",
         "headerNombre": "Nombre:",
         "headerTelefono": "Teléfono:",
