@@ -116,6 +116,7 @@ const installInterestScope = (root) => {
 };
 
 const installInquiry = (root) => {
+  const documentRef = root.ownerDocument;
   const form = root.querySelector('[data-commerce-inquiry-form]');
   const list = root.querySelector('[data-commerce-interest-list]');
   const empty = root.querySelector('[data-commerce-interest-empty]');
@@ -192,6 +193,7 @@ const installInquiry = (root) => {
   sync();
   if ((documentRef.defaultView?.location?.hash ?? '') === '#solicitud-enviada') {
     announce(form?.dataset.successMessage ?? '', 'success');
+    status?.focus?.();
   }
 
   return () => {

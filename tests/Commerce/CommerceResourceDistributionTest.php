@@ -100,6 +100,14 @@ final class CommerceResourceDistributionTest extends TestCase
         $javascript = (string) file_get_contents(
             $projectResources . '/src/js/resources/_commerce.js'
         );
+        $inquiryController = (string) file_get_contents(
+            $projectResources
+                . '/App/controllers/sectionCommerceInquiry01.php'
+        );
+        $inquiryTemplate = (string) file_get_contents(
+            $projectResources
+                . '/App/templates/_sectionCommerceInquiry01.html'
+        );
 
         self::assertStringContainsString(
             'CommercePublicHttpRuntimeFactory',
@@ -134,6 +142,18 @@ final class CommerceResourceDistributionTest extends TestCase
         self::assertStringNotContainsString('localStorage', $javascript);
         self::assertStringNotContainsString('sessionStorage', $javascript);
         self::assertStringNotContainsString('document.cookie', $javascript);
+        self::assertGreaterThanOrEqual(2, substr_count(
+            $javascript,
+            'const documentRef = root.ownerDocument;'
+        ));
+        self::assertStringContainsString(
+            "'{success-target-id}' => 'solicitud-enviada'",
+            $inquiryController
+        );
+        self::assertStringContainsString(
+            'id="{success-target-id}"',
+            $inquiryTemplate
+        );
     }
 
     public function testDistributedConfigDerivesRoutesFromActiveLanguages(): void

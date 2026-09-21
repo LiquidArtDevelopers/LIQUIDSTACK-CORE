@@ -161,6 +161,7 @@ function controller_sectionCommerceInquiry01(
         '{success-message}' => liquidstack_commerce_escape(
             $labels['success'] ?? ''
         ),
+        '{success-target-id}' => 'solicitud-enviada',
         '{invalid-message}' => liquidstack_commerce_escape(
             $labels['invalid'] ?? ''
         ),

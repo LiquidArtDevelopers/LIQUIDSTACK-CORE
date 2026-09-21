@@ -44,7 +44,7 @@ final class CommerceAdminReadRepository
     public function categories(string $locale, string $primaryLocale): array
     {
         return $this->all(
-            'SELECT c.public_id, parent.public_id AS parent_public_id, '
+            'SELECT c.public_id, parent.public_id AS parent_public_id, l.locale, '
             . 'c.sort_order, c.lock_version, COALESCE(NULLIF(l.name, \'\'), s.name) AS name, '
             . 'COALESCE(NULLIF(l.slug, \'\'), s.slug) AS slug, '
             . 'l.translation_status FROM '
@@ -65,7 +65,7 @@ final class CommerceAdminReadRepository
     public function tags(string $locale, string $primaryLocale): array
     {
         return $this->all(
-            'SELECT t.public_id, COALESCE(NULLIF(l.name, \'\'), s.name) AS name, '
+            'SELECT t.public_id, l.locale, COALESCE(NULLIF(l.name, \'\'), s.name) AS name, '
             . 'COALESCE(NULLIF(l.slug, \'\'), s.slug) AS slug, '
             . 'l.translation_status FROM '
             . $this->tables->table('tags') . ' t INNER JOIN '

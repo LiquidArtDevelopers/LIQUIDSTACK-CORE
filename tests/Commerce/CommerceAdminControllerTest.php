@@ -207,6 +207,15 @@ final class CommerceAdminControllerTest extends TestCase
         self::assertSame(200, $taxonomies->status());
         self::assertStringContainsString('Furgonetas', $taxonomies->body());
         self::assertStringContainsString('Ocasión', $taxonomies->body());
+        $category = (string) $this->pdo->query(
+            'SELECT public_id FROM ls_commerce_categories LIMIT 1'
+        )->fetchColumn();
+        self::assertGreaterThanOrEqual(2, substr_count(
+            $taxonomies->body(),
+            '<option value="' . $category . '">Furgonetas</option>'
+        ));
+        self::assertStringContainsString('<td>ES</td>', $taxonomies->body());
+        self::assertStringContainsString('<td>EU</td>', $taxonomies->body());
     }
 
     public function testLocalizedCatalogAttributesAndSharedMediaAreManageable(): void

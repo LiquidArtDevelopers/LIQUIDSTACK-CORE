@@ -4,6 +4,16 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.33.3] - 2026-09-21
+
+### Corregido
+
+- Commerce vuelve a identificar el idioma de categorías y etiquetas en
+  WebAdmin, por lo que los selectores de jerarquía y familia muestran las
+  categorías disponibles y la tabla indica correctamente cada locale.
+- La lista de interés muestra la confirmación accesible tras registrar una
+  solicitud, sin lanzar un error JavaScript al procesar el hash del redirect.
+
 ## [1.33.2] - 2026-09-21
 
 ### Documentación
