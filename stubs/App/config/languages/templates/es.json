@@ -4126,6 +4126,12 @@
     "showroom_catalog_category_blog_description": {
         "text": "Recursos dinámicos para índices y entradas del blog."
     },
+    "showroom_catalog_category_commerce_label": {
+        "text": "Commerce"
+    },
+    "showroom_catalog_category_commerce_description": {
+        "text": "Catálogo, ficha y solicitud de información de Commerce."
+    },
     "sectionBlogGrid01_00_headerPrimary": {
         "text": "sectionBlogGrid01 · Últimas señales de Matrix"
     },

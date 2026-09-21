@@ -25,6 +25,7 @@ final class ShowroomCategoryRouteTest extends TestCase
     private const CATEGORIES = [
         ...self::BASE_CATEGORIES,
         'blog',
+        'commerce',
     ];
 
     public function testOnlyAllowlistedChildrenOfRegisteredCatalogParentsResolve(): void
@@ -127,15 +128,27 @@ final class ShowroomCategoryRouteTest extends TestCase
             );
         }
 
-        $moduleProject = $root . '/modules/blog/resources/project';
-        self::assertFileExists(
-            $moduleProject . '/App/views/showroom/_blog.php'
-        );
-        self::assertFileExists($moduleProject . '/src/js/showroom/blog.js');
-        self::assertFileExists($moduleProject . '/src/scss/showroom/blog.scss');
-        self::assertStringContainsString("case 'blog':", $shell);
-        self::assertStringContainsString(". '/showroom/_blog.php';", $shell);
-        self::assertStringContainsString('is_file($blogShowroomPartial)', $shell);
+        foreach (['blog', 'commerce'] as $module) {
+            $moduleProject = $root . "/modules/{$module}/resources/project";
+            self::assertFileExists(
+                $moduleProject . "/App/views/showroom/_{$module}.php"
+            );
+            self::assertFileExists(
+                $moduleProject . "/src/js/showroom/{$module}.js"
+            );
+            self::assertFileExists(
+                $moduleProject . "/src/scss/showroom/{$module}.scss"
+            );
+            self::assertStringContainsString("case '{$module}':", $shell);
+            self::assertStringContainsString(
+                ". '/showroom/_{$module}.php';",
+                $shell
+            );
+            self::assertStringContainsString(
+                'is_file($' . $module . 'ShowroomPartial)',
+                $shell
+            );
+        }
     }
 
     public function testBlogCategoryAndRouteRequireTheDirectBlogSelector(): void
@@ -225,12 +238,100 @@ final class ShowroomCategoryRouteTest extends TestCase
         }
     }
 
-    public function testBlogCategoryIsHiddenFromTheRenderedMenuUntilEnabled(): void
+    public function testCommerceCategoryAndRouteRequireTheDirectCommerceSelector(): void
     {
         $filesystem = new Filesystem();
         $fixtureRoot = sys_get_temp_dir()
             . DIRECTORY_SEPARATOR
-            . 'liquidstack-showroom-blog-menu-'
+            . 'liquidstack-showroom-commerce-'
+            . bin2hex(random_bytes(8));
+        $coreRoot = dirname(__DIR__, 2);
+        $routes = [
+            '/es/showroom' => [
+                'resources' => 'templates',
+                'content' => 'templates',
+                'view' => '../App/views/_showroom.php',
+            ],
+        ];
+
+        try {
+            $filesystem->mkdir($fixtureRoot);
+            $filesystem->dumpFile(
+                $fixtureRoot . '/composer.json',
+                json_encode([
+                    'require' => ['liquidstack/core' => '^1.0'],
+                ], JSON_THROW_ON_ERROR)
+            );
+
+            self::assertNotContains(
+                'commerce',
+                ShowroomCategoryRoute::availableCategories(
+                    $fixtureRoot,
+                    $coreRoot
+                )
+            );
+            self::assertNull(ShowroomCategoryRoute::resolve(
+                '/es/showroom/commerce',
+                $routes,
+                $fixtureRoot,
+                $coreRoot
+            ));
+
+            $filesystem->dumpFile(
+                $fixtureRoot . '/composer.json',
+                json_encode([
+                    'require' => [
+                        'liquidstack/core' => '^1.0',
+                        'liquidstack/blog' => '*',
+                        'liquidstack/webadmin' => '*',
+                    ],
+                ], JSON_THROW_ON_ERROR)
+            );
+            self::assertNotContains(
+                'commerce',
+                ShowroomCategoryRoute::availableCategories(
+                    $fixtureRoot,
+                    $coreRoot
+                )
+            );
+
+            $filesystem->dumpFile(
+                $fixtureRoot . '/composer.json',
+                json_encode([
+                    'require' => [
+                        'liquidstack/core' => '^1.0',
+                        'liquidstack/commerce' => '*',
+                    ],
+                ], JSON_THROW_ON_ERROR)
+            );
+            self::assertContains(
+                'commerce',
+                ShowroomCategoryRoute::availableCategories(
+                    $fixtureRoot,
+                    $coreRoot
+                )
+            );
+
+            $resolved = ShowroomCategoryRoute::resolve(
+                '/es/showroom/commerce',
+                $routes,
+                $fixtureRoot,
+                $coreRoot
+            );
+            self::assertIsArray($resolved);
+            self::assertSame('commerce', $resolved['showroom_category']);
+            self::assertSame('/es/showroom', $resolved['showroom_base_path']);
+        } finally {
+            $filesystem->remove($fixtureRoot);
+        }
+    }
+
+    public function testOptionalCategoriesAreHiddenFromTheMenuUntilEnabled(): void
+    {
+        $filesystem = new Filesystem();
+        $fixtureRoot = sys_get_temp_dir()
+            . DIRECTORY_SEPARATOR
+            . 'liquidstack-showroom-module-menu-'
             . bin2hex(random_bytes(8));
         $source = dirname(__DIR__, 2) . '/stubs/App/views/_showroom.php';
         $previousProjectRoot = Paths::projectRoot();
@@ -278,6 +379,10 @@ final class ShowroomCategoryRouteTest extends TestCase
                 'data-showroom-link="blog"',
                 $render()
             );
+            self::assertStringNotContainsString(
+                'data-showroom-link="commerce"',
+                $render()
+            );
 
             $filesystem->dumpFile(
                 $fixtureRoot . '/composer.json',
@@ -290,6 +395,47 @@ final class ShowroomCategoryRouteTest extends TestCase
             );
             self::assertStringContainsString(
                 'data-showroom-link="blog"',
+                $render()
+            );
+            self::assertStringNotContainsString(
+                'data-showroom-link="commerce"',
+                $render()
+            );
+
+            $filesystem->dumpFile(
+                $fixtureRoot . '/composer.json',
+                json_encode([
+                    'require' => [
+                        'liquidstack/core' => '^1.0',
+                        'liquidstack/commerce' => '*',
+                    ],
+                ], JSON_THROW_ON_ERROR)
+            );
+            self::assertStringNotContainsString(
+                'data-showroom-link="blog"',
+                $render()
+            );
+            self::assertStringContainsString(
+                'data-showroom-link="commerce"',
+                $render()
+            );
+
+            $filesystem->dumpFile(
+                $fixtureRoot . '/composer.json',
+                json_encode([
+                    'require' => [
+                        'liquidstack/core' => '^1.0',
+                        'liquidstack/blog' => '*',
+                        'liquidstack/commerce' => '*',
+                    ],
+                ], JSON_THROW_ON_ERROR)
+            );
+            self::assertStringContainsString(
+                'data-showroom-link="blog"',
+                $render()
+            );
+            self::assertStringContainsString(
+                'data-showroom-link="commerce"',
                 $render()
             );
         } finally {
@@ -348,12 +494,60 @@ final class ShowroomCategoryRouteTest extends TestCase
             );
         }
 
-        $moduleProject = $root . '/modules/blog/resources/project';
-        self::assertFileExists(
-            $moduleProject . '/App/views/showroom/_blog.php'
-        );
-        self::assertFileExists($moduleProject . '/src/js/showroom/blog.js');
-        self::assertFileExists($moduleProject . '/src/scss/showroom/blog.scss');
+        foreach (['blog', 'commerce'] as $module) {
+            $moduleProject = $root . "/modules/{$module}/resources/project";
+            self::assertFileExists(
+                $moduleProject . "/App/views/showroom/_{$module}.php"
+            );
+            self::assertFileExists(
+                $moduleProject . "/src/js/showroom/{$module}.js"
+            );
+            self::assertFileExists(
+                $moduleProject . "/src/scss/showroom/{$module}.scss"
+            );
+        }
+    }
+
+    public function testCommerceCategoryCopyExistsInEveryTemplateCatalog(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $expected = [
+            'es' => [
+                'label' => 'Commerce',
+                'description' => 'Catálogo, ficha y solicitud de información de Commerce.',
+            ],
+            'en' => [
+                'label' => 'Commerce',
+                'description' => 'Commerce catalogue, item and inquiry resources.',
+            ],
+            'eu' => [
+                'label' => 'Commerce',
+                'description' => 'Commerce katalogo, fitxa eta informazio-eskaera baliabideak.',
+            ],
+        ];
+
+        foreach ($expected as $language => $copy) {
+            $catalog = json_decode(
+                (string) file_get_contents(
+                    $root
+                    . "/stubs/App/config/languages/templates/{$language}.json"
+                ),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            );
+
+            self::assertSame(
+                $copy['label'],
+                $catalog['showroom_catalog_category_commerce_label']['text']
+                    ?? null
+            );
+            self::assertSame(
+                $copy['description'],
+                $catalog['showroom_catalog_category_commerce_description']['text']
+                    ?? null
+            );
+        }
     }
 
     public function testDynamicEntrypointLoadsOnlyTheRequestedCategoryAndLocalHook(): void

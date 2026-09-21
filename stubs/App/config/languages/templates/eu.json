@@ -4126,6 +4126,12 @@
     "showroom_catalog_category_blog_description": {
         "text": "Blogaren aurkibide eta sarreretarako baliabide dinamikoak."
     },
+    "showroom_catalog_category_commerce_label": {
+        "text": "Commerce"
+    },
+    "showroom_catalog_category_commerce_description": {
+        "text": "Commerce katalogo, fitxa eta informazio-eskaera baliabideak."
+    },
     "sectionBlogGrid01_00_headerPrimary": {
         "text": "sectionBlogGrid01 · Matrixeko azken seinaleak"
     },

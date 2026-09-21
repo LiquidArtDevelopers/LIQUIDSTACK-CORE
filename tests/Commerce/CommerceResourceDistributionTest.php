@@ -54,6 +54,7 @@ final class CommerceResourceDistributionTest extends TestCase
             'sectionCommerceInquiry01',
         ], $manifest['resources']);
         self::assertNotEmpty($manifest['project_files']);
+        self::assertCount(29, $manifest['project_files']);
 
         $targets = [];
         foreach ($manifest['project_files'] as $entry) {
@@ -77,6 +78,59 @@ final class CommerceResourceDistributionTest extends TestCase
             'App/app/commerce/CommercePresentationAdapter.php',
             $targets
         );
+        foreach ([
+            'App/views/showroom/_commerce.php',
+            'src/js/showroom/commerce.js',
+            'src/scss/showroom/commerce.scss',
+        ] as $showroomTarget) {
+            self::assertContains($showroomTarget, $targets);
+        }
+    }
+
+    public function testShowroomFixturesStayVisualAndDatabaseFree(): void
+    {
+        $projectResources = $this->root
+            . '/modules/commerce/resources/project';
+        $showroom = (string) file_get_contents(
+            $projectResources . '/App/views/showroom/_commerce.php'
+        );
+        $javascript = (string) file_get_contents(
+            $projectResources . '/src/js/showroom/commerce.js'
+        );
+        $styles = (string) file_get_contents(
+            $projectResources . '/src/scss/showroom/commerce.scss'
+        );
+
+        self::assertSame(20, substr_count($showroom, "'MX-APP-"));
+        foreach ([
+            "controller('sectionCommerceCatalog01'",
+            "controller('artCommerceItem01'",
+            "controller('sectionCommerceInquiry01'",
+            "'development_fixture' => '1'",
+        ] as $contract) {
+            self::assertStringContainsString($contract, $showroom);
+        }
+        foreach ([
+            'PDO',
+            'mysqli',
+            'CommercePresentationAdapter',
+            'CommerceDevelopmentFixtureAdapter',
+            'CommerceCorePresentationAdapter',
+            '_moduleCommercePublic',
+        ] as $forbidden) {
+            self::assertStringNotContainsString($forbidden, $showroom);
+        }
+        self::assertStringContainsString(
+            "initCommerce(document)",
+            $javascript
+        );
+        foreach ([
+            "@use '../resources/artCommerceItem01';",
+            "@use '../resources/sectionCommerceCatalog01';",
+            "@use '../resources/sectionCommerceInquiry01';",
+        ] as $import) {
+            self::assertStringContainsString($import, $styles);
+        }
     }
 
     public function testPublicBridgeUsesCoreAndKeepsFixturesExplicit(): void
@@ -235,6 +289,15 @@ final class CommerceResourceDistributionTest extends TestCase
             $this->project
                 . '/src/scss/resources/_sectionCommerceCatalog01.scss'
         );
+        foreach ([
+            'App/views/showroom/_commerce.php',
+            'src/js/showroom/commerce.js',
+            'src/scss/showroom/commerce.scss',
+        ] as $showroomTarget) {
+            self::assertFileExists(
+                $this->project . '/' . $showroomTarget
+            );
+        }
 
         $second = $this->synchronize($history);
         self::assertSame([], $second->blockers());

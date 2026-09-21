@@ -175,6 +175,9 @@ final class CanonicalModuleDistributionTest extends TestCase
             'modules/blog/resources/project/src/scss/resources/_sectionBlogRelated01.scss',
             'modules/blog/resources/project/src/scss/resources/_artBlogArticle01.scss',
             'modules/blog/resources/project/src/scss/showroom/blog.scss',
+            'modules/commerce/resources/project/App/views/showroom/_commerce.php',
+            'modules/commerce/resources/project/src/js/showroom/commerce.js',
+            'modules/commerce/resources/project/src/scss/showroom/commerce.scss',
             'modules/webadmin/published/assets/webadmin.css',
             'modules/webadmin/published/assets/webadmin.js',
             'modules/webadmin/published/assets/webadmin-media-picker.css',
@@ -182,6 +185,6 @@ final class CanonicalModuleDistributionTest extends TestCase
         ] as $source) {
             self::assertContains($source, $published);
         }
-        self::assertCount(104, $published);
+        self::assertCount(107, $published);
     }
 }

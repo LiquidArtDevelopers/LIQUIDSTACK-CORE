@@ -27,6 +27,8 @@
  * data-lang="showroom_catalog_category_modules_sections_description"
  * data-lang="showroom_catalog_category_blog_label"
  * data-lang="showroom_catalog_category_blog_description"
+ * data-lang="showroom_catalog_category_commerce_label"
+ * data-lang="showroom_catalog_category_commerce_description"
  */
 $showroomCategories = [
     'heroes' => [
@@ -126,6 +128,17 @@ $showroomCategories = [
             'es' => 'Recursos dinámicos para índices y entradas del blog.',
             'en' => 'Dynamic resources for blog indexes and posts.',
             'eu' => 'Blogaren aurkibide eta sarreretarako baliabide dinamikoak.',
+        ],
+    ],
+    'commerce' => [
+        'key' => 'showroom_catalog_category_commerce',
+        'es' => 'Commerce',
+        'en' => 'Commerce',
+        'eu' => 'Commerce',
+        'description' => [
+            'es' => 'Catálogo, ficha y solicitud de información de Commerce.',
+            'en' => 'Commerce catalogue, item and inquiry resources.',
+            'eu' => 'Commerce katalogo, fitxa eta informazio-eskaera baliabideak.',
         ],
     ],
 ];
@@ -350,6 +363,14 @@ $showroomCategoryDescription = static function (
                             require $blogShowroomPartial;
                         }
                         unset($blogShowroomPartial);
+                        break;
+                    case 'commerce':
+                        $commerceShowroomPartial = __DIR__
+                            . '/showroom/_commerce.php';
+                        if (is_file($commerceShowroomPartial)) {
+                            require $commerceShowroomPartial;
+                        }
+                        unset($commerceShowroomPartial);
                         break;
                 }
 

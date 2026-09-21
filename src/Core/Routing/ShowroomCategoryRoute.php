@@ -23,6 +23,7 @@ final class ShowroomCategoryRoute
         'forms-interactive',
         'modules-sections',
         'blog',
+        'commerce',
     ];
 
     /**
@@ -30,6 +31,7 @@ final class ShowroomCategoryRoute
      */
     private const REQUIRED_MODULE_BY_CATEGORY = [
         'blog' => 'blog',
+        'commerce' => 'commerce',
     ];
 
     /**

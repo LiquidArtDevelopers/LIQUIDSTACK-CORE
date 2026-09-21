@@ -4,6 +4,20 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.34.0] - 2026-09-21
+
+### Añadido
+
+- El showroom reconoce `commerce` y distribuye sus hooks PHP, JavaScript y
+  SCSS para previsualizar los tres recursos públicos.
+- Veinte prendas Matrix localizadas ejercitan catálogo, ficha, taxonomías,
+  filtros y solicitud como fixtures visuales, sin DB, WebAdmin ni correo.
+
+### Cambiado
+
+- El catálogo admite hasta veinte elementos por render y el megamenú acepta
+  una ruta project-owned exacta para enlaces públicos opcionales.
+
 ## [1.33.3] - 2026-09-21
 
 ### Corregido

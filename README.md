@@ -990,6 +990,13 @@ estático, por lo que no hay que duplicar rutas en cada consumidor. Las vistas y
 recursos distribuidos siguen siendo personalizables y las rutas de producto se
 derivan de la categoría canónica con historial de redirecciones.
 
+El showroom incorpora la categoría `commerce` con los tres recursos públicos
+y veinte prendas ficticias localizadas en ES/EN/EU. Son fixtures de
+presentación: viven exclusivamente en `App/views/showroom/_commerce.php`, no
+leen ni escriben la base de datos y nunca aparecen en WebAdmin ni en el
+catálogo público. El JavaScript y el SCSS propios viajan como hooks gestionados
+del módulo Commerce.
+
 El correo reutiliza el transporte WebAdmin y requiere
 `LIQUIDSTACK_COMMERCE_INQUIRY_RECIPIENT` (con `MAIL_ADMIN` como compatibilidad)
 y `LIQUIDSTACK_COMMERCE_PRIVACY_VERSION`. El worker se ejecuta de forma acotada
@@ -1392,7 +1399,10 @@ controller('navMegamenu01', 0, [
 `public_link_keys` es opcional y parte de `[]`. Cada elemento referencia dos
 claves ya hidratadas del catálogo activo: `link` apunta a un objeto con `href`
 y `title`, mientras `text` apunta a otro objeto con `text`. Las entradas
-incompletas se omiten.
+incompletas se omiten. Un `href` absoluto o root-relative opcional permite al
+proyecto usar exactamente una ruta modular ya resuelta. La decisión de mostrar
+ese enlace sigue perteneciendo al consumidor: Commerce solo debe añadirse
+cuando `public.enabled=true`, y Composer no reescribe menús personalizados.
 `show_private_access` vale `true` por defecto para no romper consumidores
 existentes y, al establecerlo en `false`, oculta tanto login como enlaces de
 sesión. `offices` parte siempre de `[]`; las sedes son datos del proyecto y cada
@@ -1416,7 +1426,7 @@ Reglas de fusion en proyecto cliente:
   `php tools/build-managed-file-history.php`.
 - Ejecutar `php -l` sobre los controladores y vistas añadidos.
 - Validar los JSON de `templates` en todos los idiomas base.
-- Compilar `src/scss/templates.scss` y comprobar los ocho chunks de
+- Compilar `src/scss/templates.scss` y comprobar los chunks registrados de
   `src/scss/showroom/`.
 - Ejecutar `composer test`.
 - Probar `/showroom` y `/templates` en un consumidor enlazado, sin usar como

@@ -4142,6 +4142,12 @@
     "showroom_catalog_category_blog_description": {
         "text": "Dynamic resources for blog indexes and posts."
     },
+    "showroom_catalog_category_commerce_label": {
+        "text": "Commerce"
+    },
+    "showroom_catalog_category_commerce_description": {
+        "text": "Commerce catalogue, item and inquiry resources."
+    },
     "sectionBlogGrid01_00_headerPrimary": {
         "text": "sectionBlogGrid01 · Latest Matrix signals"
     },

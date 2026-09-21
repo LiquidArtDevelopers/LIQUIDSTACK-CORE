@@ -82,17 +82,19 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
             }
             $linkKey = $publicLinkKey['link'] ?? null;
             $textKey = $publicLinkKey['text'] ?? null;
+            $overrideHref = $publicLinkKey['href'] ?? null;
             if (
                 !is_string($linkKey)
                 || !is_string($textKey)
+                || ($overrideHref !== null && !is_string($overrideHref))
                 || !isset($GLOBALS[$linkKey], $GLOBALS[$textKey])
-                || trim($extractHref($linkKey)) === ''
+                || trim($overrideHref ?? $extractHref($linkKey)) === ''
             ) {
                 continue;
             }
             $col1Items[] = [
                 'type' => 'simple',
-                'value' => $buildLink($linkKey, $textKey),
+                'value' => $buildLink($linkKey, $textKey, $overrideHref),
             ];
         }
     }

@@ -333,7 +333,8 @@
             "sha256:89b5bd1982021ad48dfa0afb21f0522d4dba5d11860584838132d78268822bef"
         ],
         "modules/commerce/resources/project/App/controllers/sectionCommerceCatalog01.php": [
-            "sha256:2fa820c7893647c07b1575d2f26dd3a11e19679f80ef11c45508a322d4d0e1ba"
+            "sha256:2fa820c7893647c07b1575d2f26dd3a11e19679f80ef11c45508a322d4d0e1ba",
+            "sha256:4d55c6a8828ada67c1d1f46840fc4124ce19d8e02af1d68cc2f970a59ac22dcf"
         ],
         "modules/commerce/resources/project/App/controllers/sectionCommerceInquiry01.php": [
             "sha256:05db6a1742424f062c68badab72430dc04eddaa84dd240e89de1b5ff66745686",
@@ -358,6 +359,9 @@
         "modules/commerce/resources/project/App/views/commerce.php": [
             "sha256:8a590f2672ac3fe01e940284793fec49059f161b033449967a2211eb13a9d3b6"
         ],
+        "modules/commerce/resources/project/App/views/showroom/_commerce.php": [
+            "sha256:fd73ab74a8cce58015cd666959b93c050528b437062f2c0acbe22837c842ac8a"
+        ],
         "modules/commerce/resources/project/src/js/commerce.js": [
             "sha256:c944fdc9ac523eafc3f8f6db6043d7da99039bfd4a2eb7eb5a71414e9a76f18f"
         ],
@@ -370,6 +374,9 @@
         "modules/commerce/resources/project/src/js/resources/_commerce.js": [
             "sha256:3d974740a7a5b330cb29483d8d37250f8b861ec38eba4180060d67e42ddf9df6",
             "sha256:f75f856f1f9abe619c4d33e346ab0317e3c32f544e838c292da3cfedc4c65f7e"
+        ],
+        "modules/commerce/resources/project/src/js/showroom/commerce.js": [
+            "sha256:6df9b4b82b31056caaf87e07bbc11498be67a915558bd3c656926f7557b85fb3"
         ],
         "modules/commerce/resources/project/src/scss/commerce.scss": [
             "sha256:99e4843646b4f9360666802a9745c08e9da34c35aa160072a8f3371bfdd43384"
@@ -388,6 +395,9 @@
         ],
         "modules/commerce/resources/project/src/scss/resources/_sectionCommerceInquiry01.scss": [
             "sha256:9fc0ef285ed7e9441e6a7a95b379a0169ec35aee7128c03b4e5cf54f6647f9da"
+        ],
+        "modules/commerce/resources/project/src/scss/showroom/commerce.scss": [
+            "sha256:5722bd2b0807421450dba3c7b3d53a32839339e59b2f60d1ae3db44eda1d518d"
         ],
         "modules/webadmin/published/assets/webadmin-media-picker.css": [
             "sha256:899fcd8cd615fb6f626b552d3b082c875c64e19673783a5ab5954d2855523fec"
@@ -1916,6 +1926,7 @@
         ],
         "stubs/App/controllers/navMegamenu01.php": [
             "sha256:20228c72982aae0ca7696823d30cb42948a9f59a76bd59b2bd1f0459255b694a",
+            "sha256:4963d1ff0269b39197f3932c8488a372050d4aaad0052d588003012b26749a16",
             "sha256:4b5d325389fb877684055fd4ae4aa401b93edf3a220bd6831b2213e770b06e78",
             "sha256:5ee5f36363f2e2212ec8051879ffd00c98b172369e557c4ad309845082f96923",
             "sha256:73a820b15b013c3530fa622d63ac22344c910a8be2f6ec64c222f4ca92c9e203",
@@ -2340,7 +2351,8 @@
             "sha256:c08275f5de2a37fb5668c2d1458bf17cd723282bd08fcc98c533db2e766d9cc3",
             "sha256:cddce0b517497066e6f5c21bf4e29133773aa2fb1aba32450db44db6f5711a9d",
             "sha256:d3e24e8bd127a99d03cc6e48db01e5a64c3b8680eb5f9abdbfaa53eaa4e76798",
-            "sha256:d4a447fee9ace2bfc09a236b71e919ec502a005035cca081087142d795cda07a"
+            "sha256:d4a447fee9ace2bfc09a236b71e919ec502a005035cca081087142d795cda07a",
+            "sha256:f0b8eeb3de8925b9d6c47a7a4e0db911a5ccf1ae114f294ff548524a49c93a9c"
         ],
         "stubs/App/views/_templates.php": [
             "sha256:17c63b1c6105d1ce64658202a9ef3863903543859bc7c016e239c6a7a3a080fe",

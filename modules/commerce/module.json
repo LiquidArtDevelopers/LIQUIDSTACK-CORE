@@ -213,6 +213,27 @@
             "type": "file",
             "policy": "managed_hash",
             "group": "resource-sectionCommerceInquiry01"
+        },
+        {
+            "source": "resources/project/App/views/showroom/_commerce.php",
+            "target": "App/views/showroom/_commerce.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "showroom-hooks"
+        },
+        {
+            "source": "resources/project/src/js/showroom/commerce.js",
+            "target": "src/js/showroom/commerce.js",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "showroom-hooks"
+        },
+        {
+            "source": "resources/project/src/scss/showroom/commerce.scss",
+            "target": "src/scss/showroom/commerce.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "showroom-hooks"
         }
     ]
 }

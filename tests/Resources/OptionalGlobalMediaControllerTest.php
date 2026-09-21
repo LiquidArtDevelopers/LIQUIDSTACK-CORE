@@ -123,6 +123,37 @@ final class OptionalGlobalMediaControllerTest extends TestCase
         );
     }
 
+    public function testNavigationAcceptsAnExactProjectOwnedPublicHref(): void
+    {
+        $this->configureNavigationGlobals();
+        $this->putGlobal(
+            'navMegamenu01_00_commerce',
+            (object) ['href' => 'commerce', 'title' => 'Tienda']
+        );
+        $this->putGlobal(
+            'navMegamenu01_00_commerceText',
+            (object) ['text' => 'Tienda']
+        );
+
+        $html = $this->fromStubRoot(static fn (): string =>
+            controller_navMegamenu01(0, [
+                'offices' => [],
+                'show_private_access' => false,
+                'public_link_keys' => [[
+                    'link' => 'navMegamenu01_00_commerce',
+                    'text' => 'navMegamenu01_00_commerceText',
+                    'href' => '/es/catalogo-personalizado',
+                ]],
+            ])
+        );
+
+        self::assertStringContainsString(
+            'href="/es/catalogo-personalizado"',
+            $html
+        );
+        self::assertStringNotContainsString('href="/es/commerce"', $html);
+    }
+
     public function testNavigationKeepsPrivateAccessByDefault(): void
     {
         $this->configureNavigationGlobals();

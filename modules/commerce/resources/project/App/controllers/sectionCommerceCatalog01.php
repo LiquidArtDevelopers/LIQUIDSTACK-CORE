@@ -120,8 +120,8 @@ function controller_sectionCommerceCatalog01(
         ? array_values($params['items_data'])
         : [];
     $limit = array_key_exists('items', $params)
-        ? max(0, min(12, (int) $params['items']))
-        : min(12, count($rawItems));
+        ? max(0, min(20, (int) $params['items']))
+        : min(20, count($rawItems));
     $cards = '';
     $rendered = 0;
     foreach (array_slice($rawItems, 0, $limit) as $rawItem) {
