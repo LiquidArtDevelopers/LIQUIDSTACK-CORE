@@ -4,6 +4,11 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+
+## [1.34.2] - 2026-09-22
+- Solución al **BUG** de desplazamiento por anchor desde una URL
+- Mejorar la gestión del desplazamiento suave y el manejo de hashes
+
 ## [1.34.1] - 2026-09-22
 
 ### Corregido
