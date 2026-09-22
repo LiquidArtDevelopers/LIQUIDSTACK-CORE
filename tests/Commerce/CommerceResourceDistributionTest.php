@@ -228,7 +228,7 @@ final class CommerceResourceDistributionTest extends TestCase
         $config = require $this->project
             . '/App/config/modules/commerce.php';
 
-        self::assertFalse($config['public']['enabled']);
+        self::assertTrue($config['public']['enabled']);
         self::assertSame('/es/comercio', $config['public_paths']['es']);
         self::assertSame('/eu/merkataritza', $config['public_paths']['eu']);
         self::assertSame('/en/commerce', $config['public_paths']['en']);

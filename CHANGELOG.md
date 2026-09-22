@@ -4,6 +4,13 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.34.1] - 2026-09-22
+
+### Corregido
+
+- Commerce deja activa por defecto su superficie pública en proyectos nuevos;
+  cada consumidor puede desactivarla expresamente cuando no vaya a utilizarla.
+
 ## [1.34.0] - 2026-09-21
 
 ### Añadido

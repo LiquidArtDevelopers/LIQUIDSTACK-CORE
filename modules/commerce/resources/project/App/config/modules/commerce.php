@@ -37,7 +37,7 @@ foreach ($commerceLanguages as $commerceLocale) {
 
 return [
     'public' => [
-        'enabled' => false,
+        'enabled' => true,
     ],
     'public_paths' => $commercePublicPaths,
     'inquiry_paths' => $commerceInquiryPaths,

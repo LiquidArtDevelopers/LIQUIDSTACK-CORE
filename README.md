@@ -984,11 +984,12 @@ es `inquiry`: la venta y el pago siguen visibles como evolución futura, nunca
 como opción seleccionable.
 
 La configuración project-owned queda en `App/config/modules/commerce.php`.
-`public.enabled=false` permite preparar el contenido sin reclamar rutas; al
-activarlo, CORE sirve también los shells exactos después de un miss del router
-estático, por lo que no hay que duplicar rutas en cada consumidor. Las vistas y
-recursos distribuidos siguen siendo personalizables y las rutas de producto se
-derivan de la categoría canónica con historial de redirecciones.
+`public.enabled=true` deja la superficie pública activa en instalaciones nuevas;
+un proyecto puede cerrarla expresamente con `false` mientras prepara contenido.
+CORE sirve los shells exactos después de un miss del router estático, por lo que
+no hay que duplicar rutas en cada consumidor. Las vistas y recursos distribuidos
+siguen siendo personalizables y las rutas de producto se derivan de la categoría
+canónica con historial de redirecciones.
 
 El showroom incorpora la categoría `commerce` con los tres recursos públicos
 y veinte prendas ficticias localizadas en ES/EN/EU. Son fixtures de
