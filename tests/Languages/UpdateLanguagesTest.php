@@ -171,6 +171,23 @@ PHP
         $this->filesystem->remove($this->fixtureRoot);
     }
 
+    public function testUsageReferencesTheManagedProjectPath(): void
+    {
+        $script = file_get_contents(
+            dirname(__DIR__, 2) . '/stubs/App/tools/update-languages.php'
+        );
+
+        self::assertIsString($script);
+        self::assertStringContainsString(
+            'Usage: php App/tools/update-languages.php <slug> [--prune-unused]',
+            $script
+        );
+        self::assertStringNotContainsString(
+            'Usage: php tools/update-languages.php',
+            $script
+        );
+    }
+
     public function testHydrationPreservesExistingDataAndExpandsEveryDeclaredAxis(): void
     {
         $this->runUpdater('home');

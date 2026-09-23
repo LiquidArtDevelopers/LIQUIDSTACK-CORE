@@ -1,9 +1,10 @@
 # Módulos internos de LiquidStack
 
 LiquidStack mantiene un único repositorio, paquete físico, versión y release:
-`liquidstack/core`. WebAdmin y Blog viven dentro de CORE como módulos internos;
-los nombres `liquidstack/webadmin` y `liquidstack/blog` son selectores lógicos,
-no repositorios ni descargas independientes.
+`liquidstack/core`. WebAdmin, Blog y Commerce viven dentro de CORE como módulos
+internos; los nombres `liquidstack/webadmin`, `liquidstack/blog` y
+`liquidstack/commerce` son selectores lógicos, no repositorios ni descargas
+independientes.
 
 ## Selección desde un proyecto
 
@@ -15,10 +16,12 @@ del `composer.json` raíz:
 | `liquidstack/core` | Core |
 | `liquidstack/webadmin` | Core + WebAdmin |
 | `liquidstack/blog` | Core + WebAdmin + Blog |
+| `liquidstack/commerce` | Core + WebAdmin + Commerce |
 
-Blog declara internamente su dependencia de WebAdmin. No se inspeccionan
+Blog y Commerce declaran internamente su dependencia de WebAdmin, pero no
+dependen entre sí. No se inspeccionan
 `require-dev`, `replace`, `provide`, `composer.lock` ni
-`Composer\InstalledVersions`: CORE reemplaza ambos nombres lógicos y esas
+`Composer\InstalledVersions`: CORE reemplaza los tres nombres lógicos y esas
 fuentes producirían falsos positivos.
 
 Con una versión compatible de CORE ya instalada y sus plugins habilitados:
@@ -26,6 +29,7 @@ Con una versión compatible de CORE ya instalada y sus plugins habilitados:
 ```bash
 composer require liquidstack/webadmin
 composer require liquidstack/blog
+composer require liquidstack/commerce
 ```
 
 El plugin transforma únicamente esos nombres exactos en selectores `:*` antes
@@ -35,6 +39,7 @@ antigua de CORE, el fallback explícito es:
 ```bash
 composer require liquidstack/webadmin:*
 composer require liquidstack/blog:*
+composer require liquidstack/commerce:*
 ```
 
 Con `--no-plugins` el alias puede quedar registrado, pero no se ejecuta la

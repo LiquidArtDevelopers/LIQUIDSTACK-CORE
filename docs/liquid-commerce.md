@@ -11,10 +11,12 @@ capacidades y migraciones. Retirar el selector deja de registrar el modulo,
 pero nunca elimina datos, medios ni ficheros publicados.
 
 La configuracion project-owned vive en `App/config/modules/commerce.php` y
-separa la seleccion del modulo de su exposicion publica. `public.enabled=false`
-permite preparar el catalogo desde WebAdmin sin reclamar rutas publicas. Las
-migraciones siempre se planifican y aplican mediante los comandos explicitos de
-LiquidStack; Composer no conecta a la DB ni crea contenido.
+separa la seleccion del modulo de su exposicion publica. El scaffold nace con
+`public.enabled=true` para que BASE y los proyectos nuevos tengan el catalogo
+disponible; un consumidor puede cambiarlo a `false` mientras prepara rutas y
+contenido. Las migraciones siempre se planifican y aplican mediante los
+comandos explicitos de LiquidStack; Composer no conecta a la DB ni crea
+contenido.
 
 Commerce, WebAdmin y cualquier otro modulo activo usan el mismo perfil fisico
 de conexion. Commerce conserva un namespace de tablas propio, cuyo prefijo
@@ -167,8 +169,9 @@ y LiquidStack nunca almacena datos de tarjeta.
    módulo, ejecutar después `composer require liquidstack/commerce`; el plugin
    registra el selector lógico `"*"` y cierra la dependencia WebAdmin sin
    instalar otro paquete físico.
-2. Revisar `App/config/modules/commerce.php`; `public.enabled=false` mantiene el
-   catálogo privado mientras se prepara.
+2. Revisar `App/config/modules/commerce.php`; el scaffold usa
+   `public.enabled=true`. Cambiarlo a `false` si el catálogo debe permanecer
+   privado mientras se prepara.
 3. Configurar `LIQUIDSTACK_COMMERCE_INQUIRY_RECIPIENT` y una versión estable en
    `LIQUIDSTACK_COMMERCE_PRIVACY_VERSION`; las credenciales SMTP siguen siendo
    las compartidas con WebAdmin.
@@ -177,8 +180,9 @@ y LiquidStack nunca almacena datos de tarjeta.
    autorizar `migrate --apply`.
 5. Inicializar Media cuando corresponda, generar el bundle y completar el QA
    de WebAdmin, catálogo, ficha, lista de interés, correo y sitemap.
-6. Activar `public.enabled=true` únicamente cuando rutas, traducciones, política
-   de privacidad y contenido estén listos.
+6. Si se desactivó durante la preparación, restaurar `public.enabled=true`
+   únicamente cuando rutas, traducciones, política de privacidad y contenido
+   estén listos.
 
 Las migraciones, cambios de `.env`, inicialización de storage y envío de correo
 son acciones explícitas. Ni `composer install` ni `composer update` escriben en

@@ -17,7 +17,7 @@ $langs = require $appPath . '/config/langs.php';
 $routes = require $appPath . '/config/routes/get.php';
 
 if ($argc < 2) {
-    fwrite(STDERR, "Usage: php tools/update-languages.php <slug> [--prune-unused]\n");
+    fwrite(STDERR, "Usage: php App/tools/update-languages.php <slug> [--prune-unused]\n");
     exit(1);
 }
 

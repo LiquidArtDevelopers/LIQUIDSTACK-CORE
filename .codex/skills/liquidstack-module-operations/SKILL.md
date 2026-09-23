@@ -533,9 +533,9 @@ composer liquidstack:migrate --dry-run
   ampliar su dominio, rutas, persistencia o flujo de correo.
 - Tratar `App/config/modules/commerce.php` como configuración project-owned.
   Debe usar la misma conexión que WebAdmin, declarar rutas únicas para todos
-  los locales activos y nacer con `public.enabled=false`. Composer puede
-  instalar el scaffold inicial, pero no debe activar la superficie pública,
-  los fixtures, el contador social ni una ruta de pago.
+  los locales activos y el scaffold canónico nace con `public.enabled=true`.
+  El consumidor puede desactivarlo mientras prepara el catálogo. Composer no
+  debe activar fixtures persistidos, el contador social ni una ruta de pago.
 - Mantener inquiry como único modo operativo. La venta online permanece
   visible solo como evolución deshabilitada y no seleccionable; no simular una
   compra ni conectar pasarelas desde el flujo de solicitud de información.

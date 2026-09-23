@@ -10,6 +10,201 @@ Centraliza:
 - Dependencias frontend minimas del core (`package.core.json`).
 - Configuracion y skills base para agentes (`.codex`).
 
+## Recetas operativas para proyectos consumidores
+
+Esta guía viaja con CORE y queda disponible en cada proyecto en
+`vendor/liquidstack/core/README.md`. Se ejecuta siempre desde la raíz del
+proyecto consumidor. CORE sincroniza código y recursos, pero Composer nunca
+migra la base de datos, inicializa Media, crea cuentas ni envía correo de forma
+implícita.
+
+### A. Actualizar un proyecto existente
+
+1. Comprueba que conoces los cambios locales. Una restricción exacta como
+   `"1.35"` inmoviliza CORE; una restricción caret como `"^1.35"` admite las
+   siguientes releases compatibles `1.x`. Este comando resuelve la release
+   estable actual y deja que Composer escriba la restricción adecuada:
+
+   ```powershell
+   git status --short
+   composer validate --strict --no-check-publish
+   composer require liquidstack/core --with-all-dependencies
+   npm install
+   ```
+
+2. Verifica la versión instalada y el estado modular sin escribir en la DB:
+
+   ```powershell
+   composer show liquidstack/core --locked
+   composer liquidstack:doctor --format=json
+   composer liquidstack:migrate --plan --format=json
+   composer liquidstack:migrate --dry-run --format=json
+   ```
+
+3. Si el dry-run informa cero migraciones pendientes, no ejecutes
+   `migrate --apply`. Cierra la actualización con `npm run build`, el smoke de
+   las superficies activas y la revisión de `git diff`/`git status`.
+
+En actualizaciones posteriores, cuando `composer.json` ya tenga una restricción
+compatible, basta con `composer update liquidstack/core --with-all-dependencies`.
+
+### B. Añadir WebAdmin, Blog o Commerce a un proyecto existente
+
+1. Actualiza primero CORE como en la receta A.
+2. Ejecuta solo el bloque correspondiente. Blog y Commerce activan también
+   WebAdmin, pero no se activan entre sí:
+
+   ```powershell
+   # Solo WebAdmin
+   composer require "liquidstack/webadmin:*" --with-all-dependencies
+   ```
+
+   ```powershell
+   # Blog + WebAdmin
+   composer require "liquidstack/blog:*" --with-all-dependencies
+   ```
+
+   ```powershell
+   # Commerce + WebAdmin
+   composer require "liquidstack/commerce:*" --with-all-dependencies
+   ```
+
+   ```powershell
+   # Blog + Commerce + WebAdmin
+   composer require "liquidstack/blog:*" "liquidstack/commerce:*" `
+       --with-all-dependencies
+   ```
+
+3. Revisa los ficheros project-owned de `App/config/modules/` y configura en
+   el `.env` privado una sola conexión física `LIQUIDSTACK_DB_*` compartida por
+   WebAdmin, Blog y Commerce. Configura además la clave de seguridad, las dos
+   identidades bootstrap, SMTP, origen público y storage Media. Commerce añade
+   `LIQUIDSTACK_COMMERCE_INQUIRY_RECIPIENT` y
+   `LIQUIDSTACK_COMMERCE_PRIVACY_VERSION`. El scaffold de Commerce nace con su
+   superficie pública activa; el proyecto puede poner `public.enabled=false`
+   mientras prepara rutas y contenido.
+
+4. Con Blog nuevo, adopta su shell público antes de migrar. El primer comando
+   solo inspecciona; el segundo es la mutación confirmada:
+
+   ```powershell
+   composer liquidstack:blog:adopt-public-shell
+   npm run build
+   composer liquidstack:blog:adopt-public-shell --apply --yes
+   composer liquidstack:doctor --format=json
+   ```
+
+5. Ejecuta el preflight de DB y aplica exclusivamente el plan revisado mediante
+   la receta de migraciones siguiente. Cuando el dry-run quede a cero,
+   inicializa Media si todavía no existe:
+
+   ```powershell
+   composer liquidstack:media:init --yes --format=json
+   ```
+
+6. En una DB nueva, completa después el onboarding con el origen real anunciado
+   por `npm run lad`, abre las invitaciones y comprueba `/admin`, Blog, Commerce
+   y la web pública. En una DB ya operativa no repitas onboarding solo por haber
+   actualizado código.
+
+### C. Revisar y aplicar migraciones
+
+`migrate --plan` es offline. `migrate --dry-run` abre la conexión configurada,
+pero no escribe. El destino lo determinan `App/config/modules/*.php` y el bloque
+`LIQUIDSTACK_DB_*`, no `DEV_MODE`: si el entorno local apunta a producción, un
+`--apply` escribirá en producción.
+
+```powershell
+composer liquidstack:doctor --format=json
+composer liquidstack:migrate --plan --format=json
+composer liquidstack:migrate --dry-run --format=json
+```
+
+Solo tras verificar el destino y crear un backup recuperable de DB y Media:
+
+```powershell
+composer liquidstack:migrate --apply --yes --format=json
+composer liquidstack:migrate --dry-run --format=json
+```
+
+Añade los siguientes flags únicamente si el plan identifica una migración
+destructiva. `--backup-confirmed` declara que el backup ya existe; no lo crea:
+
+```powershell
+composer liquidstack:migrate --apply --yes --format=json `
+    --allow-destructive --backup-confirmed
+composer liquidstack:migrate --dry-run --format=json
+```
+
+No continúes hasta obtener cero pendientes y cero bloqueadores. Un driver PHP o
+una directiva de runtime ausentes se corrigen en PHP, no ejecutando migraciones.
+
+### D. Crear un proyecto nuevo con todo
+
+La release estable de BASE ya selecciona CORE, WebAdmin, Blog y Commerce. El
+hook de `create-project` cambia automáticamente la identidad Composer/npm según
+la carpeta y retira las herramientas exclusivas de publicación de BASE:
+
+```powershell
+$LiquidStackProject = Read-Host 'Nombre de la carpeta del proyecto'
+composer create-project liquidstack/base $LiquidStackProject "^1.0" `
+    --prefer-dist --remove-vcs
+Set-Location -LiteralPath $LiquidStackProject
+composer validate --strict --no-check-publish --no-check-all
+composer check-platform-reqs --no-dev
+Copy-Item -LiteralPath '.env.example' -Destination '.env'
+```
+
+Revisa después `name`, `description`, `license`, `homepage` y `support` en
+`composer.json`, y `name`/`private` en `package.json`; la identidad básica ya
+estará desvinculada, pero el inicializador no puede inventar dominio, remoto ni
+datos del cliente. Configura `.env`, módulos, DB, SMTP, Media y el acceso privado
+a GSAP; conserva `composer.lock` y `package-lock.json`, y ejecuta `npm ci`.
+
+Con la configuración privada lista, sigue la receta C. Cuando el dry-run quede
+a cero, inicializa Media y levanta el stack:
+
+```powershell
+composer liquidstack:media:init --yes --format=json
+npm run lad
+```
+
+Mantén LAD abierto. En otra consola, introduce el origen PHP exacto anunciado
+por LAD —el puerto es dinámico— y completa el onboarding inicial:
+
+```powershell
+$LiquidStackOrigin = Read-Host 'Origen PHP anunciado por LAD'
+$env:RAIZ = $LiquidStackOrigin
+composer liquidstack:webadmin:onboard --yes --format=json
+composer liquidstack:doctor --format=json
+Remove-Item Env:RAIZ
+```
+
+Abre las dos invitaciones, repite onboarding para comprobar el estado 2/2 y
+vacía después las variables bootstrap en el `.env` privado. Termina con smoke,
+`composer test`, `npm run build` y revisión de `git diff`/`git status` antes del
+primer commit. El README de BASE conserva el procedimiento ampliado para elegir
+entre snapshot demo, DB vacía local o DB remota/productiva.
+
+### E. Actualizar los JSON de idiomas estáticos
+
+Usa siempre el script gestionado del proyecto. `global` inspecciona los includes
+globales; `templates`, el showroom; cualquier otro argumento debe ser un
+`content` real de `App/config/routes/get.php`:
+
+```powershell
+php App/tools/update-languages.php global
+php App/tools/update-languages.php templates
+$LiquidStackContent = Read-Host 'Slug content de la vista'
+php App/tools/update-languages.php $LiquidStackContent
+```
+
+La hidratación es aditiva y conserva valores existentes, incluso vacíos o
+`null`. `--prune-unused` solo debe usarse sobre una vista concreta tras revisar
+el diff; nunca poda `global`. El watcher de Vite ya ejecuta la hidratación salvo
+que `LANG_SKIP_UPDATE=1|true`. Este script no traduce contenido editorial de
+Blog o Commerce, que vive en la DB y se gestiona desde WebAdmin.
+
 ## Como sincroniza en proyectos cliente
 
 Al ejecutar `composer install` o `composer update` en un proyecto que consume este paquete:

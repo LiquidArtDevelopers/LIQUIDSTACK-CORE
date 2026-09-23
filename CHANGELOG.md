@@ -4,6 +4,25 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.35.1] - 2026-09-23
+
+### Cambiado
+
+- El README canónico de CORE incorpora recetas copiables para actualizar un
+  consumidor, añadir WebAdmin/Blog/Commerce, revisar y aplicar migraciones,
+  crear un proyecto completo desde BASE y regenerar los JSON estáticos de
+  idiomas.
+- La documentación y la skill operativa de Commerce reflejan el contrato real
+  del scaffold: la superficie pública nace activa y cada consumidor puede
+  desactivarla mientras prepara su catálogo.
+- La arquitectura de módulos internos incluye Commerce y sus selectores junto
+  a WebAdmin y Blog.
+
+### Corregido
+
+- La ayuda de `App/tools/update-languages.php` muestra su ruta gestionada real
+  dentro de los proyectos consumidores.
+
 
 ## [1.35.0] - 2026-09-23
 
