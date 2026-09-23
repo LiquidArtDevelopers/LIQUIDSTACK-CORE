@@ -4,6 +4,12 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.35.2] - 2026-09-23
+
+### Cambiado
+
+- Mejora del megamenu01
+
 ## [1.35.1] - 2026-09-23
 
 ### Cambiado
