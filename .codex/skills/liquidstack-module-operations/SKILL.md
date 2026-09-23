@@ -1462,7 +1462,11 @@ composer liquidstack:migrate --dry-run
    - Config inválida, prefijo localizado o colisión: la web pública permanece operativa.
 
 8. Ejecutar `composer validate --strict --no-check-publish`, `composer test` y `composer test:module-e2e`. Las suites canónicas deben desactivar el timeout general de Composer: superar 300 segundos no equivale a un fallo funcional. El E2E debe usar un consumidor temporal y demostrar que `doctor` y `migrate --plan` no modifican configuración, lock, `.env` ni datos. Los tests SQLite deben demostrar además que `--dry-run` no muta y que solo `--apply` confirmado escribe. Ante cambios de DDL o persistencia, ejecutar también `composer test:mysql-integration` con sus variables TEST contra versiones soportadas reales; debe cubrir el ciclo outbox/acciones, gestión de editores, carrera de identidad única y los órdenes concurrentes de locks, y nunca apuntar a la DB de un proyecto. El gate normal `composer release` debe detectar una única versión pendiente fechada en `CHANGELOG.md`, pedir la descripción del tag, comprobar el historial gestionado y ejecutar la suite CORE y el E2E; `composer release:prepare` solo regenera el historial antes del commit.
-9. Actualizar README, arquitectura, changelog y esta skill cuando cambie el contrato operativo.
+9. Mantener separadas las audiencias documentales: `README.md` explica cómo
+   desarrollar, validar y publicar CORE; `stubs/README.LIQUIDSTACK.md` contiene
+   los comandos y variables operativos que Composer publica como
+   `README.LIQUIDSTACK.md` en cada consumidor. Actualizar esta última guía,
+   arquitectura, changelog y esta skill cuando cambie el contrato operativo.
 
 ## Adoptar cambios en un consumidor
 

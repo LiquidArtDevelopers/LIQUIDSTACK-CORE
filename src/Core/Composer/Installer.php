@@ -107,6 +107,7 @@ class Installer
         // package.json must never point at a file withheld by an unrelated
         // config failure.
         self::queueDevelopmentRuntimeAssets($event, $synchronizer);
+        self::queueConsumerOperationsGuide($event, $synchronizer);
 
         if ($includeStandardResources) {
             self::syncProjectAssets($event, $synchronizer);
@@ -119,6 +120,32 @@ class Installer
         );
 
         return $synchronizer;
+    }
+
+    private static function queueConsumerOperationsGuide(
+        Event $event,
+        ManagedFileSynchronizer $synchronizer
+    ): void {
+        $projectRoot = self::resolveProjectRoot($event);
+        $packageRoot = dirname(__DIR__, 3);
+        $relativePath = 'README.LIQUIDSTACK.md';
+        $source = $packageRoot . '/stubs/' . $relativePath;
+
+        if (!is_file($source)) {
+            $synchronizer->block('sync.canonical_source_missing');
+            $event->getIO()->writeError(sprintf(
+                '<warning>Skipping missing consumer guide: %s</warning>',
+                $source
+            ));
+            return;
+        }
+
+        $synchronizer->queueFile(
+            $source,
+            $projectRoot . '/' . $relativePath,
+            'stubs/' . $relativePath,
+            $relativePath
+        );
     }
 
     public static function syncAgentGuidance(Event $event): void

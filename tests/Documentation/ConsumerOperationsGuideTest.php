@@ -6,14 +6,14 @@ use PHPUnit\Framework\TestCase;
 
 final class ConsumerOperationsGuideTest extends TestCase
 {
-    public function testCanonicalReadmeKeepsTheConsumerRecipes(): void
+    public function testManagedConsumerReadmeKeepsTheOperationalRecipes(): void
     {
-        $readme = file_get_contents(dirname(__DIR__, 2) . '/README.md');
+        $root = dirname(__DIR__, 2);
+        $readme = file_get_contents($root . '/stubs/README.LIQUIDSTACK.md');
 
         self::assertIsString($readme);
 
         foreach ([
-            'composer create-project liquidstack/base',
             'composer require "liquidstack/blog:*"',
             'composer require "liquidstack/commerce:*"',
             'composer liquidstack:migrate --plan --format=json',
@@ -21,8 +21,30 @@ final class ConsumerOperationsGuideTest extends TestCase
             'composer liquidstack:migrate --apply --yes --format=json',
             'php App/tools/update-languages.php global',
             'php App/tools/update-languages.php templates',
+            'composer liquidstack:commerce-mail-dispatch',
         ] as $command) {
             self::assertStringContainsString($command, $readme);
         }
+    }
+
+    public function testCoreReadmeKeepsReleaseWorkSeparate(): void
+    {
+        $readme = file_get_contents(dirname(__DIR__, 2) . '/README.md');
+
+        self::assertIsString($readme);
+        self::assertStringContainsString(
+            '## Trabajar y publicar cambios en CORE',
+            $readme
+        );
+        self::assertStringContainsString('composer release:prepare', $readme);
+        self::assertStringContainsString('composer release', $readme);
+        self::assertStringContainsString(
+            'stubs/README.LIQUIDSTACK.md',
+            $readme
+        );
+        self::assertStringNotContainsString(
+            '## Recetas operativas para proyectos consumidores',
+            $readme
+        );
     }
 }

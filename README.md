@@ -10,200 +10,53 @@ Centraliza:
 - Dependencias frontend minimas del core (`package.core.json`).
 - Configuracion y skills base para agentes (`.codex`).
 
-## Recetas operativas para proyectos consumidores
+## Trabajar y publicar cambios en CORE
 
-Esta guía viaja con CORE y queda disponible en cada proyecto en
-`vendor/liquidstack/core/README.md`. Se ejecuta siempre desde la raíz del
-proyecto consumidor. CORE sincroniza código y recursos, pero Composer nunca
-migra la base de datos, inicializa Media, crea cuentas ni envía correo de forma
-implícita.
+Este README pertenece exclusivamente al repositorio `liquidstack/core`.
+Ejecuta los comandos desde su raíz.
 
-### A. Actualizar un proyecto existente
-
-1. Comprueba que conoces los cambios locales. Una restricción exacta como
-   `"1.35"` inmoviliza CORE; una restricción caret como `"^1.35"` admite las
-   siguientes releases compatibles `1.x`. Este comando resuelve la release
-   estable actual y deja que Composer escriba la restricción adecuada:
+1. Realiza los cambios y anótalos en `CHANGELOG.md`. Antes de publicar, mueve
+   el lote desde `Unreleased` a una única versión fechada `X.Y.Z`.
+2. Copia y pega este bloque sin modificarlo. Solo te pedirá el mensaje del
+   commit; `composer release` preguntará versión, descripción y confirmación:
 
    ```powershell
    git status --short
-   composer validate --strict --no-check-publish
-   composer require liquidstack/core --with-all-dependencies
-   npm install
+   $CommitMessage = Read-Host 'Mensaje del commit'
+   composer release:prepare
+   git add -A
+   git diff --cached --check
+   git commit -m $CommitMessage
+   composer release
    ```
 
-2. Verifica la versión instalada y el estado modular sin escribir en la DB:
+`release:prepare` regenera `manifests/managed-file-history.json` antes del
+commit. `composer release` exige `main` y árbol limpio, verifica el changelog y
+el historial, ejecuta la suite CORE y el E2E modular y publica el commit y la
+etiqueta anotada mediante un push atómico. No hace falta ejecutar `git push`
+por separado. Si el commit ya está en `origin/main`, el mismo comando también
+puede publicar únicamente la etiqueta pendiente.
 
-   ```powershell
-   composer show liquidstack/core --locked
-   composer liquidstack:doctor --format=json
-   composer liquidstack:migrate --plan --format=json
-   composer liquidstack:migrate --dry-run --format=json
-   ```
+Si el lote cambia DDL o persistencia, ejecuta antes
+`composer test:mysql-integration` contra una DB TEST aislada. La etiqueta
+publicada actualiza Packagist mediante el webhook del repositorio.
 
-3. Si el dry-run informa cero migraciones pendientes, no ejecutes
-   `migrate --apply`. Cierra la actualización con `npm run build`, el smoke de
-   las superficies activas y la revisión de `git diff`/`git status`.
-
-En actualizaciones posteriores, cuando `composer.json` ya tenga una restricción
-compatible, basta con `composer update liquidstack/core --with-all-dependencies`.
-
-### B. Añadir WebAdmin, Blog o Commerce a un proyecto existente
-
-1. Actualiza primero CORE como en la receta A.
-2. Ejecuta solo el bloque correspondiente. Blog y Commerce activan también
-   WebAdmin, pero no se activan entre sí:
-
-   ```powershell
-   # Solo WebAdmin
-   composer require "liquidstack/webadmin:*" --with-all-dependencies
-   ```
-
-   ```powershell
-   # Blog + WebAdmin
-   composer require "liquidstack/blog:*" --with-all-dependencies
-   ```
-
-   ```powershell
-   # Commerce + WebAdmin
-   composer require "liquidstack/commerce:*" --with-all-dependencies
-   ```
-
-   ```powershell
-   # Blog + Commerce + WebAdmin
-   composer require "liquidstack/blog:*" "liquidstack/commerce:*" `
-       --with-all-dependencies
-   ```
-
-3. Revisa los ficheros project-owned de `App/config/modules/` y configura en
-   el `.env` privado una sola conexión física `LIQUIDSTACK_DB_*` compartida por
-   WebAdmin, Blog y Commerce. Configura además la clave de seguridad, las dos
-   identidades bootstrap, SMTP, origen público y storage Media. Commerce añade
-   `LIQUIDSTACK_COMMERCE_INQUIRY_RECIPIENT` y
-   `LIQUIDSTACK_COMMERCE_PRIVACY_VERSION`. El scaffold de Commerce nace con su
-   superficie pública activa; el proyecto puede poner `public.enabled=false`
-   mientras prepara rutas y contenido.
-
-4. Con Blog nuevo, adopta su shell público antes de migrar. El primer comando
-   solo inspecciona; el segundo es la mutación confirmada:
-
-   ```powershell
-   composer liquidstack:blog:adopt-public-shell
-   npm run build
-   composer liquidstack:blog:adopt-public-shell --apply --yes
-   composer liquidstack:doctor --format=json
-   ```
-
-5. Ejecuta el preflight de DB y aplica exclusivamente el plan revisado mediante
-   la receta de migraciones siguiente. Cuando el dry-run quede a cero,
-   inicializa Media si todavía no existe:
-
-   ```powershell
-   composer liquidstack:media:init --yes --format=json
-   ```
-
-6. En una DB nueva, completa después el onboarding con el origen real anunciado
-   por `npm run lad`, abre las invitaciones y comprueba `/admin`, Blog, Commerce
-   y la web pública. En una DB ya operativa no repitas onboarding solo por haber
-   actualizado código.
-
-### C. Revisar y aplicar migraciones
-
-`migrate --plan` es offline. `migrate --dry-run` abre la conexión configurada,
-pero no escribe. El destino lo determinan `App/config/modules/*.php` y el bloque
-`LIQUIDSTACK_DB_*`, no `DEV_MODE`: si el entorno local apunta a producción, un
-`--apply` escribirá en producción.
+Si es la primera ejecución en ese ordenador:
 
 ```powershell
-composer liquidstack:doctor --format=json
-composer liquidstack:migrate --plan --format=json
-composer liquidstack:migrate --dry-run --format=json
+composer install
 ```
 
-Solo tras verificar el destino y crear un backup recuperable de DB y Media:
+## Manual gestionado de los stacks consumidores
 
-```powershell
-composer liquidstack:migrate --apply --yes --format=json
-composer liquidstack:migrate --dry-run --format=json
-```
+La fuente canónica es `stubs/README.LIQUIDSTACK.md`. Composer la publica como
+`README.LIQUIDSTACK.md` en la raíz de cada stack y la actualiza mientras
+conserve una huella conocida de CORE. El `README.md` propio del cliente nunca
+se sustituye.
 
-Añade los siguientes flags únicamente si el plan identifica una migración
-destructiva. `--backup-confirmed` declara que el backup ya existe; no lo crea:
-
-```powershell
-composer liquidstack:migrate --apply --yes --format=json `
-    --allow-destructive --backup-confirmed
-composer liquidstack:migrate --dry-run --format=json
-```
-
-No continúes hasta obtener cero pendientes y cero bloqueadores. Un driver PHP o
-una directiva de runtime ausentes se corrigen en PHP, no ejecutando migraciones.
-
-### D. Crear un proyecto nuevo con todo
-
-La release estable de BASE ya selecciona CORE, WebAdmin, Blog y Commerce. El
-hook de `create-project` cambia automáticamente la identidad Composer/npm según
-la carpeta y retira las herramientas exclusivas de publicación de BASE:
-
-```powershell
-$LiquidStackProject = Read-Host 'Nombre de la carpeta del proyecto'
-composer create-project liquidstack/base $LiquidStackProject "^1.0" `
-    --prefer-dist --remove-vcs
-Set-Location -LiteralPath $LiquidStackProject
-composer validate --strict --no-check-publish --no-check-all
-composer check-platform-reqs --no-dev
-Copy-Item -LiteralPath '.env.example' -Destination '.env'
-```
-
-Revisa después `name`, `description`, `license`, `homepage` y `support` en
-`composer.json`, y `name`/`private` en `package.json`; la identidad básica ya
-estará desvinculada, pero el inicializador no puede inventar dominio, remoto ni
-datos del cliente. Configura `.env`, módulos, DB, SMTP, Media y el acceso privado
-a GSAP; conserva `composer.lock` y `package-lock.json`, y ejecuta `npm ci`.
-
-Con la configuración privada lista, sigue la receta C. Cuando el dry-run quede
-a cero, inicializa Media y levanta el stack:
-
-```powershell
-composer liquidstack:media:init --yes --format=json
-npm run lad
-```
-
-Mantén LAD abierto. En otra consola, introduce el origen PHP exacto anunciado
-por LAD —el puerto es dinámico— y completa el onboarding inicial:
-
-```powershell
-$LiquidStackOrigin = Read-Host 'Origen PHP anunciado por LAD'
-$env:RAIZ = $LiquidStackOrigin
-composer liquidstack:webadmin:onboard --yes --format=json
-composer liquidstack:doctor --format=json
-Remove-Item Env:RAIZ
-```
-
-Abre las dos invitaciones, repite onboarding para comprobar el estado 2/2 y
-vacía después las variables bootstrap en el `.env` privado. Termina con smoke,
-`composer test`, `npm run build` y revisión de `git diff`/`git status` antes del
-primer commit. El README de BASE conserva el procedimiento ampliado para elegir
-entre snapshot demo, DB vacía local o DB remota/productiva.
-
-### E. Actualizar los JSON de idiomas estáticos
-
-Usa siempre el script gestionado del proyecto. `global` inspecciona los includes
-globales; `templates`, el showroom; cualquier otro argumento debe ser un
-`content` real de `App/config/routes/get.php`:
-
-```powershell
-php App/tools/update-languages.php global
-php App/tools/update-languages.php templates
-$LiquidStackContent = Read-Host 'Slug content de la vista'
-php App/tools/update-languages.php $LiquidStackContent
-```
-
-La hidratación es aditiva y conserva valores existentes, incluso vacíos o
-`null`. `--prune-unused` solo debe usarse sobre una vista concreta tras revisar
-el diff; nunca poda `global`. El watcher de Vite ya ejecuta la hidratación salvo
-que `LANG_SKIP_UPDATE=1|true`. Este script no traduce contenido editorial de
-Blog o Commerce, que vive en la DB y se gestiona desde WebAdmin.
+Todo cambio operativo para consumidores —módulos, variables, migraciones,
+idiomas o comandos— debe actualizar `stubs/README.LIQUIDSTACK.md` en el mismo
+lote. No se documentan esos procedimientos en este README de mantenedores.
 
 ## Como sincroniza en proyectos cliente
 
@@ -432,17 +285,8 @@ necesita comandos manuales, debe declararlos expresamente en el
 CORE es el único paquete físico. `liquidstack/webadmin`, `liquidstack/blog` y
 `liquidstack/commerce` son selectores lógicos declarados por el proyecto
 consumidor; Blog y Commerce activan también WebAdmin como dependencia interna,
-pero no dependen entre sí:
-
-```bash
-composer require liquidstack/webadmin
-composer require liquidstack/blog
-composer require liquidstack/commerce
-```
-
-El atajo sin versión requiere que CORE ya esté instalado y que los plugins de
-Composer estén activos. El fallback es añadir `:*`. Para actualizar el código
-se sigue usando `composer update liquidstack/core`.
+pero no dependen entre sí. Los comandos para seleccionarlos y actualizar un
+stack viven exclusivamente en `stubs/README.LIQUIDSTACK.md`.
 
 El plugin expone los comandos operativos en los proyectos consumidores.
 `doctor`, `migrate --plan` y `migrate --dry-run` son de solo lectura;
@@ -450,31 +294,8 @@ bootstrap, onboarding, `migrate --apply` y `media:init` requieren confirmación
 explícita.
 La recuperación de contraseña intenta entregar su mensaje de forma síncrona y
 no usa el outbox. El dispatcher de correo procesa únicamente un lote finito ya
-encolado por los flujos de invitación:
-
-```bash
-composer liquidstack:doctor
-composer liquidstack:doctor --format=json
-composer liquidstack:sync --plan
-composer liquidstack:sync --dry-run
-composer liquidstack:migrate --plan
-composer liquidstack:migrate --dry-run
-composer liquidstack:migrate --apply
-composer liquidstack:media:init
-composer liquidstack:media:init --yes --format=json
-composer liquidstack:webadmin:bootstrap
-composer liquidstack:webadmin:bootstrap --resend-invites
-composer liquidstack:webadmin:onboard --yes
-composer liquidstack:webadmin:onboard --yes --format=json
-composer liquidstack:webadmin:mail:dispatch
-composer liquidstack:webadmin:mail:dispatch --limit=20 --format=json
-composer liquidstack:blog:analytics:purge --yes
-composer liquidstack:blog:analytics:purge --yes --format=json
-composer liquidstack:blog:adopt-public-shell
-composer liquidstack:blog:adopt-public-shell --apply --yes
-composer liquidstack:commerce-mail-dispatch
-composer liquidstack:commerce-mail-dispatch --limit=20 --format=json
-```
+encolado por los flujos de invitación. La guía gestionada del consumidor reúne
+los comandos; esta sección conserva solamente sus contratos internos.
 
 `doctor` valida el catálogo, la selección, los providers tipados, la
 configuración conocida, el entorno de seguridad y, con WebAdmin activo, abre
@@ -510,21 +331,9 @@ es el procedimiento de upgrade legacy, expresamente solicitado con
 `--adopt-existing --backup-confirmed --yes` y condicionado a una coincidencia
 completa entre DB y filesystem.
 
-El orden de una instalación nueva es: activar el selector, actualizar CORE,
-configurar entorno y, con Blog activo, preparar las dependencias project-owned
-de su shell público. Después se ejecuta el preflight de solo lectura
-`liquidstack:blog:adopt-public-shell`, se genera el bundle con `npm run build` y
-se comprueba que el manifest de producción contiene `src/js/blogArticle.js`.
-Solo entonces se activa `public_article_view` con
-`liquidstack:blog:adopt-public-shell --apply --yes` y se ejecuta `doctor`. A
-continuación se revisan `migrate --plan` y `migrate --dry-run`, se crea y
-comprueba un backup recuperable de DB y storage y,
-tras autorización explícita, aplicar las migraciones; después se inicializa el
-storage con `liquidstack:media:init` y se ejecuta obligatoriamente
-`liquidstack:webadmin:onboard --yes`. Este último paso compone el bootstrap
-idempotente con la entrega acotada de las dos invitaciones protegidas y verifica
-que cada identidad esté activa o tenga una invitación aceptada por el
-transporte y un token entregado. Solo entonces se repiten `doctor` y el QA HTTP.
+El orden operativo de una instalación nueva se mantiene en
+`stubs/README.LIQUIDSTACK.md`. A nivel de contrato, Composer nunca aplica
+migraciones, inicializa storage, crea cuentas ni envía invitaciones.
 
 El onboarding nunca forma parte de `composer install` o `composer update`, no
 despacha otras filas del outbox y no reenvía implícitamente invitaciones
@@ -593,33 +402,11 @@ explícito de adopción del shell Blog: limita su cambio a
 `public_article_view`, exige `--apply --yes` y falla sin escribir ante una forma
 dinámica o un valor incompatible.
 
-Adopción segura en un consumidor nuevo:
-
-```bash
-composer require liquidstack/blog
-composer update liquidstack/core
-composer liquidstack:blog:adopt-public-shell
-npm run build
-composer liquidstack:blog:adopt-public-shell --apply --yes
-composer liquidstack:doctor
-composer liquidstack:migrate --plan
-composer liquidstack:migrate --dry-run
-```
-
-Antes del preflight deben estar preparados los includes y entradas globales,
-los catálogos activos y el head con metadata, nonce y política CSP/CookieLad
-cuando corresponda. El build debe terminar correctamente y dejar en
-`public/.vite/manifest.json` la entrada exacta `src/js/blogArticle.js` antes de
-aplicar la configuración; hasta ese momento el renderer standalone continúa
-siendo la salida pública segura.
-
-Solo después de revisar el dry-run, disponer de un backup recuperable y
-autorizar la mutación se ejecuta `composer liquidstack:migrate --apply`; a
-continuación se completa el alta operativa con
-`composer liquidstack:webadmin:onboard --yes`. Cambiar de `shared` a
-`liquidstack` cuando ya existen tablas o datos no los copia ni los adopta:
-exige un plan manual de backup, traslado y verificación antes de cambiar la
-configuración.
+La receta de adopción vive en `stubs/README.LIQUIDSTACK.md`. Antes de activar
+el shell deben estar preparados sus includes, catálogos, metadata, nonce,
+política CSP/CookieLad y bundle. Cambiar de `shared` a `liquidstack` cuando ya
+existen tablas o datos no los copia ni adopta: exige backup, traslado y
+verificación manual.
 
 El perfil dedicado inicial no configura TLS para MySQL/MariaDB. Es apto para
 `localhost` o una red confiable; no debe conectarse a un host no confiable
@@ -1072,28 +859,11 @@ se exige entonces el bloque anterior completo. Para adoptar el correo canónico
 se alinea primero `RAIZ` y se retiran las claves WebAdmin SMTP/FROM legacy. La
 `RAIZ` loopback prevalece en desarrollo. Blog no necesita que SMTP esté
 configurado.
-Después de activar el selector se deben revisar y aplicar las migraciones
-explícitas y volver a ejecutar el
-bootstrap idempotente de WebAdmin para garantizar las capacidades protegidas:
-
-```bash
-composer liquidstack:doctor
-composer liquidstack:migrate --plan
-composer liquidstack:migrate --dry-run
-# Crear y verificar aquí un backup recuperable de DB y storage.
-composer liquidstack:migrate --apply
-composer liquidstack:media:init
-# Solo si sitemap_cache.enabled=true:
-composer liquidstack:blog:sitemap-cache:init
-composer liquidstack:webadmin:onboard --yes
-composer liquidstack:doctor
-```
-
-Después se realiza el QA HTTP de `/admin`, `/admin/media` y Blog antes de
-rendir la adopción por completada. El onboarding solo entrega invitaciones de
-las dos cuentas protegidas; el dispatcher general continúa reservado al outbox
-ordinario y a su scheduler. Composer no ejecuta esos pasos ni toca la DB, el
-storage o SMTP durante un update. El contrato de
+La secuencia operativa posterior a activar el selector vive en
+`stubs/README.LIQUIDSTACK.md`. El onboarding solo entrega invitaciones de las
+dos cuentas protegidas; el dispatcher general continúa reservado al outbox
+ordinario y a su scheduler. Composer no toca DB, storage o SMTP durante un
+update. El contrato de
 rutas, categorías, editor, revisiones, medios, estados y permisos está en
 [Liquid Blog](docs/liquid-blog.md).
 
@@ -1199,17 +969,15 @@ parcial cuando JavaScript está disponible; el formulario GET y la paginación
 anterior/siguiente siguen siendo el fallback funcional sin JavaScript. Cada
 página entrega seis fichas para completar las rejillas de dos o tres columnas.
 
-Un consumidor antiguo que aún no seleccione Commerce debe actualizar primero
-`liquidstack/core` y ejecutar después `composer require liquidstack/commerce`.
-El selector queda registrado como `"*"` en el `composer.json` raíz y activa
-WebAdmin como dependencia lógica; no instala un paquete físico separado ni
+La activación de Commerce en un consumidor existente se documenta únicamente
+en `stubs/README.LIQUIDSTACK.md`. El selector registrado en el `composer.json`
+raíz activa WebAdmin como dependencia lógica; no instala otro paquete físico ni
 ejecuta migraciones automáticamente.
 
 El correo reutiliza el transporte WebAdmin y requiere
 `LIQUIDSTACK_COMMERCE_INQUIRY_RECIPIENT` (con `MAIL_ADMIN` como compatibilidad)
-y `LIQUIDSTACK_COMMERCE_PRIVACY_VERSION`. El worker se ejecuta de forma acotada
-con `composer liquidstack:commerce-mail-dispatch --limit=20`; nunca forma parte
-de `install`, `update` o migraciones. La cookie de cesta es necesaria,
+y `LIQUIDSTACK_COMMERCE_PRIVACY_VERSION`. El worker siempre procesa un lote
+acotado y nunca forma parte de `install`, `update` o migraciones. La cookie de cesta es necesaria,
 `HttpOnly`, host-only y aislada por proyecto en localhost; no usa storage del
 navegador ni depende de consentimiento opcional. El contrato completo está en
 [Liquid Commerce](docs/liquid-commerce.md).
@@ -1728,94 +1496,6 @@ Esto refresca stubs, recursos, dependencias frontend y guia para agentes.
 `liquidstack:sync` se registra directamente mediante el `CommandProvider` de
 CORE. Solo los aliases opcionales `liquidstack-core:*` necesitan declararse en
 el `composer.json` raiz como se muestra en "Scripts Composer y paquete raiz".
-
-## Publicacion de cambios del core
-
-CORE incluye un comando interactivo que publica el commit y su etiqueta
-anotada en una unica operacion atomica. Las preguntas se realizan mediante la
-entrada interactiva nativa de Composer, tambien desde PowerShell en Windows:
-
-### Publicar CORE: pasos A–B–C
-
-Ejecuta el procedimiento desde la raíz de CORE. No utiliza rutas locales fijas.
-
-#### A. Preparar y documentar
-
-- Realiza los cambios.
-- Si cambian ficheros distribuidos gestionados, ejecuta
-  `composer release:prepare` antes del commit.
-- Mueve sus notas desde `Unreleased` a una única sección fechada con el formato
-  exacto `## [X.Y.Z] - AAAA-MM-DD`.
-
-#### B. Confirmar y subir
-
-Revisa el lote, crea el commit y súbelo a `main` mediante el flujo Git habitual.
-Antes de continuar, `git status --short` debe quedar vacío. El comando admite
-tanto un commit local pendiente de push como uno que ya esté en `origin/main`,
-pero el procedimiento recomendado es subirlo primero.
-
-#### C. Crear y publicar la etiqueta
-
-Copia y pega este bloque completo sin editar nada:
-
-```powershell
-composer release
-```
-
-El comando compara el changelog con las etiquetas existentes. Si encuentra una
-única versión posterior, la propone en consola; pulsa Enter para aceptarla o
-escribe otra versión documentada. Después solicita una descripción breve, que
-se guarda como mensaje de la etiqueta anotada, y finalmente pide confirmación.
-La descripción no modifica retroactivamente el mensaje del commit ya subido.
-
-Si falta cerrar `Unreleased` en una sección fechada, o existen varias versiones
-sin etiquetar, el comando lo explica y se detiene antes de ejecutar las pruebas.
-También exige `main` y un árbol limpio; admite tanto un commit local pendiente
-de push como un commit que ya esté en `origin/main`.
-
-El gate valida `composer.json`, el historial gestionado, la suite completa y el
-E2E modular; después publica `main` y la etiqueta mediante un único push
-atómico. Las suites no usan el límite general de 300 segundos de Composer. Si
-el cambio afecta DDL o persistencia, ejecuta además
-`composer test:mysql-integration` contra una DB **TEST aislada** antes de
-publicar. El gate avisará si el historial gestionado quedó desactualizado.
-
-La versión de CORE y la de BASE son independientes: por ejemplo, CORE
-`v1.32.0` no corresponde a BASE `v1.2.0`.
-
-El gate se detiene sin etiquetar si la rama, el changelog, el historial o una
-prueba no son correctos. Solo después crea el tag anotado y ejecuta
-`git push --atomic`; si ese push falla, elimina el tag local recién creado.
-
-Una vez completado `composer release`, el commit ya forma parte de
-`origin/main` y tiene una etiqueta asociada. Para añadir cambios posteriores,
-crea un commit nuevo; no uses `git commit --amend` sobre el commit publicado.
-Si la rama local y `origin/main` aparecen como divergidas, no uses
-`git pull --ff-only` ni `git push --force`: conserva primero una referencia de
-respaldo y reconcilia el historial antes de volver a publicar.
-
-Las nuevas etiquetas deben usar SemVer estable canonico `vX.Y.Z`, sin ceros
-iniciales. Los flags quedan reservados para automatizaciones y diagnósticos:
-
-```bash
-composer release -- --version=v1.5.0 --description="Resumen" --yes
-composer release -- --dry-run
-```
-
-La primera vez, ejecuta `composer install` para disponer de la suite local.
-`vendor`, `composer.lock` y la cache de PHPUnit estan ignorados en este
-repositorio.
-
-El webhook de Packagist configurado en GitHub recibe el evento `push`, por lo
-que una etiqueta publicada aparece automaticamente como nueva version del
-paquete. No hace falta crear una GitHub Release ni guardar un token de
-Packagist en el repositorio.
-
-Despues de publicar:
-
-1. En cada proyecto cliente: `composer update liquidstack/core`.
-2. Ejecutar instalacion frontend (`npm install`, `pnpm install` o
-   `yarn install`) si se anadieron dependencias.
 
 ## Contratos y mejoras pendientes
 

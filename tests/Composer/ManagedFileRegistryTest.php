@@ -7,6 +7,21 @@ use PHPUnit\Framework\TestCase;
 
 final class ManagedFileRegistryTest extends TestCase
 {
+    public function testConsumerReadmeIsManagedByCore(): void
+    {
+        self::assertSame(
+            ManagedFileRegistry::POLICY_MANAGED,
+            ManagedFileRegistry::policyForSource(
+                'stubs/README.LIQUIDSTACK.md'
+            )
+        );
+        self::assertNull(
+            ManagedFileRegistry::groupForSource(
+                'stubs/README.LIQUIDSTACK.md'
+            )
+        );
+    }
+
     public function testDevelopmentRuntimeUpdatesAtomically(): void
     {
         foreach ([

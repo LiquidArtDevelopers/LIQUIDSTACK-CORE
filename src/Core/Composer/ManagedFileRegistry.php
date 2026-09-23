@@ -35,6 +35,7 @@ final class ManagedFileRegistry
     private const DISTRIBUTED_FILES = [
         'src/js/templates.js',
         'src/scss/templates.scss',
+        'stubs/README.LIQUIDSTACK.md',
         'stubs/App/app/_phpmailer.php',
         'stubs/App/app/formContact.php',
         'stubs/App/app/updateLanguage.php',

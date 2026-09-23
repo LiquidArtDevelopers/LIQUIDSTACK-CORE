@@ -50,6 +50,10 @@ final class InstallerResourceSyncTest extends TestCase
             $this->projectRoot . '/App/config/rutas.js',
             'export default { projectRoute: true };'
         );
+        $this->writeFile(
+            $this->projectRoot . '/README.md',
+            '# Documentación propia del cliente'
+        );
     }
 
     protected function tearDown(): void
@@ -255,6 +259,14 @@ final class InstallerResourceSyncTest extends TestCase
         self::assertFileEquals(
             $coreRoot . '/stubs/App/tools/update-languages.php',
             $this->projectRoot . '/App/tools/update-languages.php'
+        );
+        self::assertFileEquals(
+            $coreRoot . '/stubs/README.LIQUIDSTACK.md',
+            $this->projectRoot . '/README.LIQUIDSTACK.md'
+        );
+        self::assertSame(
+            '# Documentación propia del cliente',
+            file_get_contents($this->projectRoot . '/README.md')
         );
         self::assertFileEquals(
             $coreRoot . '/stubs/App/app/formContact.php',

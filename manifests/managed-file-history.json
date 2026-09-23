@@ -2476,6 +2476,9 @@
         "stubs/App/views/showroom/_particles.php": [
             "sha256:4b1cf06c796a557aec7e0fe515e69e52ff5e1e7beb181f797b3423a68d1d3ca8"
         ],
+        "stubs/README.LIQUIDSTACK.md": [
+            "sha256:05ecff0eb94bed86b3faa6ce46c22b531ea1082040ad3ba7cbc0f55526343554"
+        ],
         "stubs/public/index.php": [
             "sha256:908fe3651ac273a7a80c68f2f01066304541b78df05b0365464f7b34fbd048aa",
             "sha256:9d8880e9ee4125d0c092ed36e6d0f20cfbdfe42dd65c6101ca8aa786b3dc8583"

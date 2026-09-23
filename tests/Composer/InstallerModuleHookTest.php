@@ -65,6 +65,7 @@ final class InstallerModuleHookTest extends TestCase
 
         self::assertContains('App/tools/liquidstack-dev.mjs', $targets);
         self::assertContains('App/tools/php-dev-router.php', $targets);
+        self::assertContains('README.LIQUIDSTACK.md', $targets);
         self::assertContains('App/controllers/hero00.php', $targets);
         self::assertContains(
             'public/assets/modules/blog/blog-public.css',
@@ -142,6 +143,10 @@ final class InstallerModuleHookTest extends TestCase
         self::assertFileExists(
             $this->projectRoot
                 . '/src/js/modules/blog/blogCollectionLoader.js'
+        );
+        self::assertFileEquals(
+            dirname(__DIR__, 2) . '/stubs/README.LIQUIDSTACK.md',
+            $this->projectRoot . '/README.LIQUIDSTACK.md'
         );
         self::assertDirectoryDoesNotExist(
             $this->projectRoot . '/App/controllers'

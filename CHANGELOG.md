@@ -8,10 +8,11 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ### Cambiado
 
-- El README canónico de CORE incorpora recetas copiables para actualizar un
-  consumidor, añadir WebAdmin/Blog/Commerce, revisar y aplicar migraciones,
-  crear un proyecto completo desde BASE y regenerar los JSON estáticos de
-  idiomas.
+- CORE separa su guía de desarrollo/release del nuevo
+  `README.LIQUIDSTACK.md` gestionado que Composer instala y actualiza en cada
+  consumidor. Este último incorpora recetas copiables para actualizar CORE,
+  añadir WebAdmin/Blog/Commerce, revisar y aplicar migraciones, crear un
+  proyecto desde BASE, configurar el entorno y regenerar idiomas.
 - La documentación y la skill operativa de Commerce reflejan el contrato real
   del scaffold: la superficie pública nace activa y cada consumidor puede
   desactivarla mientras prepara su catálogo.
