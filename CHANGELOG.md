@@ -4,6 +4,23 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+
+## [1.35.4] - 2026-09-23
+
+### Corregido
+
+- `moduleFormContact` separa visualmente el indicador de carga de su texto de
+  envío.
+- `art15` incorpora la separación lateral responsive que evita desbordamientos
+  en móvil y tablet, conservando su composición 25/75 en escritorio.
+
+### Documentación
+
+- La skill de migración exige cerrar cada promoción con los cambios
+  reutilizables, sus huellas gestionadas y la entrada correspondiente en el
+  changelog, sin ejecutar ni esperar una release que vaya a realizar el
+  responsable del repositorio.
+
 ## [1.35.3] - 2026-09-23
 
 ### Corregido

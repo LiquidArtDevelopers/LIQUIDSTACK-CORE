@@ -2,24 +2,22 @@
 
 .art15{
     width: c.$anchoFull;
+    padding: 0 c.$padMin;
     @media only screen and (min-width:c.$desktop){
-        &{
-            width: c.$anchoMedio;
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-end;            
-            align-items: flex-start;
-            row-gap: 2rem;
-        }
+        width: c.$anchoMedio;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;            
+        align-items: flex-start;
+        row-gap: 2rem;
+        padding: initial;
     }
     .art15-header{
         width: 100%;
         display: flex;
         justify-content: flex-start;
          @media only screen and (min-width:c.$desktop){
-            &{
-                width: 25%; 
-            }
+            width: 25%;
         }
     }
     .art15-content{
@@ -29,11 +27,9 @@
         row-gap: 1.5rem;
         padding: 0 c.$padMin;
         @media only screen and (min-width:c.$desktop){
-            &{
-                width: 75%;
-                row-gap: 2.5rem;
-                padding: initial;
-            }
+            width: 75%;
+            row-gap: 2.5rem;
+            padding: initial;
         }
         .art15-destacado{
             line-height: clamp(1.3rem, 2.1vw, 3.1rem);

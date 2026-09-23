@@ -210,6 +210,10 @@ php vendor/bin/phpunit --configuration phpunit.xml.dist --do-not-cache-result --
   ajenos, detenerse e identificar primero a su propietario.
 - Regenerar al final: un cambio posterior en controlador, template, SCSS, JS o
   cualquier otro origen gestionado invalida de nuevo la huella.
+- Dar por preparada una promoción solo cuando se hayan trasladado todos los
+  cambios reutilizables, regenerado su huella y descrito el resultado en
+  `CHANGELOG.md`, normalmente bajo `Unreleased`. No inventar la versión o la
+  fecha si la persona responsable de la release va a completarlas.
 - No confundir este manifiesto de CORE con
   `.liquidstack/core/managed-files.json`, que es estado de sincronización de
   cada proyecto consumidor y no se regenera con esta herramienta.
@@ -306,3 +310,7 @@ las propuestas patch/minor/major, permite editar la versión, repite las
 validaciones y publica rama + tag anotado mediante un push atómico. Si solo se
 prepara la migración, informar de la versión recomendada y dejar la publicación
 pendiente.
+
+No ejecutar, monitorizar ni esperar `composer release` cuando el usuario haya
+indicado que lo ejecutará personalmente. En ese caso, detenerse tras dejar
+fuentes, huellas y `CHANGELOG.md` preparados para su commit y release.
