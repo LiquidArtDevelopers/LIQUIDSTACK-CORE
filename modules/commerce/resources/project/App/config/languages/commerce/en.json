@@ -204,6 +204,15 @@
     "commerce_filter_clear": {
         "text": "Clear filters"
     },
+    "commerce_pagination_previous": {
+        "text": "Previous page"
+    },
+    "commerce_pagination_next": {
+        "text": "Next page"
+    },
+    "commerce_pagination_label": {
+        "text": "Catalogue pagination"
+    },
     "commerce_value_yes": {
         "text": "Yes"
     },

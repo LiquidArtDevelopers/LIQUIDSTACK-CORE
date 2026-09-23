@@ -327,6 +327,15 @@
     "commerce_filter_clear": {
         "text": "Garbitu iragazkiak"
     },
+    "commerce_pagination_previous": {
+        "text": "Aurreko orria"
+    },
+    "commerce_pagination_next": {
+        "text": "Hurrengo orria"
+    },
+    "commerce_pagination_label": {
+        "text": "Katalogoaren orrikatzea"
+    },
     "commerce_action_inquiry_unavailable": {
         "text": "Kontsulta ez dago erabilgarri"
     },

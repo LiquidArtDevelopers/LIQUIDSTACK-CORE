@@ -49,6 +49,7 @@ final class BlogResourceFamilyContractTest extends TestCase
             'moduleBlogResults01',
             'moduleBlogSearch01',
             'sectionBlogCatalog01',
+            'sectionBlogCatalog02',
         ] as $resource) {
             self::assertFileExists($root . "/App/controllers/{$resource}.php");
             self::assertFileExists($root . "/App/templates/_{$resource}.html");
@@ -687,6 +688,7 @@ final class BlogResourceFamilyContractTest extends TestCase
             'moduleBlogResults01',
             'moduleBlogSearch01',
             'sectionBlogCatalog01',
+            'sectionBlogCatalog02',
         ];
 
         foreach ($resources as $resource) {
@@ -724,6 +726,7 @@ final class BlogResourceFamilyContractTest extends TestCase
             'moduleBlogResults01',
             'moduleBlogSearch01',
             'sectionBlogCatalog01',
+            'sectionBlogCatalog02',
             'sectionBlogFeatured01',
             'sectionBlogGrid01',
             'sectionBlogList01',
@@ -760,6 +763,7 @@ final class BlogResourceFamilyContractTest extends TestCase
         self::assertCount(3, $groups['resource-moduleBlogResults01']);
         self::assertCount(3, $groups['resource-moduleBlogSearch01']);
         self::assertCount(3, $groups['resource-sectionBlogCatalog01']);
+        self::assertCount(3, $groups['resource-sectionBlogCatalog02']);
         self::assertCount(3, $groups['resource-sectionBlogFeatured01']);
         self::assertCount(3, $groups['resource-sectionBlogGrid01']);
         self::assertCount(3, $groups['resource-sectionBlogList01']);

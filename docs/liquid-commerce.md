@@ -143,8 +143,16 @@ capa publica usa hooks tipados y shells project-owned para catalogo, ficha y
 consulta. Las vistas no consultan PDO ni emiten cabeceras de seguridad.
 
 Los recursos visuales Commerce pueden inspirarse en Blog, pero conservan
-controladores, templates, SCSS, JS y semantica propios. Commerce no consulta
-tablas, repositorios ni clases del dominio Blog.
+controladores, templates, SCSS, JS y semantica propios. Commerce distribuye
+`artCommerceItem01`, `sectionCommerceCatalog01`,
+`sectionCommerceCatalog02`, `sectionCommerceSlider01` y
+`sectionCommerceInquiry01`. Commerce no consulta tablas, repositorios ni
+clases del dominio Blog.
+
+Los dos catálogos comparten filtros reactivos de texto, categoría y etiqueta,
+paginación de seis elementos y fallback GET sin JavaScript. El filtrado vuelve
+a la primera página y actualiza resultados, historial y paginación sin una
+recarga completa.
 
 ## Venta futura
 
@@ -155,7 +163,10 @@ y LiquidStack nunca almacena datos de tarjeta.
 
 ## Puesta en marcha
 
-1. Seleccionar `liquidstack/commerce` y actualizar `liquidstack/core`.
+1. Actualizar `liquidstack/core`. Si el proyecto todavía no selecciona el
+   módulo, ejecutar después `composer require liquidstack/commerce`; el plugin
+   registra el selector lógico `"*"` y cierra la dependencia WebAdmin sin
+   instalar otro paquete físico.
 2. Revisar `App/config/modules/commerce.php`; `public.enabled=false` mantiene el
    catálogo privado mientras se prepara.
 3. Configurar `LIQUIDSTACK_COMMERCE_INQUIRY_RECIPIENT` y una versión estable en

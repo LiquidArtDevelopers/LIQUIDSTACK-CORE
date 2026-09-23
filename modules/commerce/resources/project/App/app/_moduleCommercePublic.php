@@ -344,7 +344,6 @@ unset(
     $commerceValue,
     $commerceText,
     $commerceEnvFlag,
-    $commerceDevelopmentFixtures,
     $commerceProjectRoot,
     $commerceEnvironment,
     $commerceContext,

@@ -33,6 +33,7 @@ final class CanonicalModuleDistributionTest extends TestCase
             'moduleBlogResults01',
             'moduleBlogSearch01',
             'sectionBlogCatalog01',
+            'sectionBlogCatalog02',
             'sectionBlogFeatured01',
             'sectionBlogGrid01',
             'sectionBlogList01',
@@ -41,7 +42,7 @@ final class CanonicalModuleDistributionTest extends TestCase
             'sectionBlogSlider02',
             'sectionBlogStack01',
         ], $blog->resources());
-        self::assertCount(66, $blog->projectFiles());
+        self::assertCount(69, $blog->projectFiles());
 
         $targets = array_column($blog->projectFiles(), 'target');
         self::assertSame($targets, array_values(array_unique($targets)));
@@ -81,6 +82,9 @@ final class CanonicalModuleDistributionTest extends TestCase
             'App/controllers/sectionBlogCatalog01.php',
             'App/templates/_sectionBlogCatalog01.html',
             'src/scss/resources/_sectionBlogCatalog01.scss',
+            'App/controllers/sectionBlogCatalog02.php',
+            'App/templates/_sectionBlogCatalog02.html',
+            'src/scss/resources/_sectionBlogCatalog02.scss',
             'App/controllers/sectionBlogFeatured01.php',
             'App/controllers/sectionBlogGrid01.php',
             'App/controllers/moduleBlogGrid02.php',
@@ -151,6 +155,9 @@ final class CanonicalModuleDistributionTest extends TestCase
             'modules/blog/resources/project/App/controllers/sectionBlogCatalog01.php',
             'modules/blog/resources/project/App/templates/_sectionBlogCatalog01.html',
             'modules/blog/resources/project/src/scss/resources/_sectionBlogCatalog01.scss',
+            'modules/blog/resources/project/App/controllers/sectionBlogCatalog02.php',
+            'modules/blog/resources/project/App/templates/_sectionBlogCatalog02.html',
+            'modules/blog/resources/project/src/scss/resources/_sectionBlogCatalog02.scss',
             'modules/blog/resources/project/App/controllers/sectionBlogGrid01.php',
             'modules/blog/resources/project/App/templates/_sectionBlogGrid01.html',
             'modules/blog/resources/project/App/controllers/moduleBlogGrid02.php',
@@ -185,6 +192,6 @@ final class CanonicalModuleDistributionTest extends TestCase
         ] as $source) {
             self::assertContains($source, $published);
         }
-        self::assertCount(107, $published);
+        self::assertCount(117, $published);
     }
 }

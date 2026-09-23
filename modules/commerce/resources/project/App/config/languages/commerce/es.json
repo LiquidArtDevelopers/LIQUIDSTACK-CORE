@@ -327,6 +327,15 @@
     "commerce_filter_clear": {
         "text": "Limpiar filtros"
     },
+    "commerce_pagination_previous": {
+        "text": "Página anterior"
+    },
+    "commerce_pagination_next": {
+        "text": "Página siguiente"
+    },
+    "commerce_pagination_label": {
+        "text": "Paginación del catálogo"
+    },
     "commerce_action_inquiry_unavailable": {
         "text": "Consulta no disponible"
     },

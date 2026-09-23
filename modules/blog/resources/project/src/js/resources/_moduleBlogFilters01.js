@@ -410,6 +410,13 @@ const installFormGroup = (forms) => {
     return () => {};
   }
 
+  const enhancedSubmitButtons = enhancedForms
+    .map((form) => querySafely(form, '[data-blog-filter-submit]'))
+    .filter(Boolean);
+  for (const button of enhancedSubmitButtons) {
+    button.hidden = true;
+  }
+
   const listenerController = new (view.AbortController
     ?? globalThis.AbortController)();
   const statuses = new Map(enhancedForms.map((form) => [
@@ -672,6 +679,25 @@ const installFormGroup = (forms) => {
     return true;
   };
 
+  const scheduleRequestFromForm = (form, resetHistory = false) => {
+    synchronizeSharedFormState(enhancedForms);
+    if (resetHistory) {
+      resetLiveSearchSequence();
+    }
+    invalidateActiveRequest();
+    setResultsStale(currentTarget(), true);
+    setFilterStatus(statuses.get(form), 'idle');
+    clearQueryTimer();
+    if (!communicateValidity(form)) {
+      return;
+    }
+    setBusy(null, currentTarget(), true);
+    queryTimer = view.setTimeout(() => {
+      queryTimer = null;
+      requestFromForm(form, 'live-search');
+    }, QUERY_DEBOUNCE_MS);
+  };
+
   for (const form of enhancedForms) {
     const onSubmit = (event) => {
       synchronizeSharedFormState(enhancedForms);
@@ -688,35 +714,40 @@ const installFormGroup = (forms) => {
       if (event.target?.name !== 'q') {
         return;
       }
-      synchronizeSharedFormState(enhancedForms);
-      invalidateActiveRequest();
-      setResultsStale(currentTarget(), true);
-      const status = statuses.get(form);
-      setFilterStatus(status, 'idle');
-      clearQueryTimer();
-      if (!communicateValidity(form)) {
-        return;
-      }
-      setBusy(null, currentTarget(), true);
-      queryTimer = view.setTimeout(() => {
-        queryTimer = null;
-        requestFromForm(form, 'live-search');
-      }, QUERY_DEBOUNCE_MS);
+      scheduleRequestFromForm(form);
     };
     const onChange = (event) => {
       const control = event.target;
       if (PRESERVED_STATE_NAMES.has(control?.name ?? '')) {
         synchronizeSharedFormState(enhancedForms);
       }
-      if (control?.name !== 'category[]' && control?.name !== 'category_mode') {
+      if (
+        control?.name !== 'order'
+        && control?.name !== 'category[]'
+        && control?.name !== 'category_mode'
+      ) {
         return;
       }
+      scheduleRequestFromForm(form, true);
+    };
+    const onClick = (event) => {
+      const reset = event.target?.closest?.('[data-blog-filter-reset]');
+      if (!reset || !form.contains?.(reset)) {
+        return;
+      }
+      let url;
+      try {
+        url = new URL(reset.href, view.location.href);
+      } catch {
+        return;
+      }
+      if (url.origin !== view.location.origin) {
+        return;
+      }
+      event.preventDefault();
       clearQueryTimer();
       resetLiveSearchSequence();
-      invalidateActiveRequest();
-      setResultsStale(currentTarget(), true);
-      const status = statuses.get(form);
-      setFilterStatus(status, 'idle');
+      void request(url, form, 'push');
     };
 
     form.addEventListener('submit', onSubmit, {
@@ -726,6 +757,9 @@ const installFormGroup = (forms) => {
       signal: listenerController.signal,
     });
     form.addEventListener('change', onChange, {
+      signal: listenerController.signal,
+    });
+    form.addEventListener('click', onClick, {
       signal: listenerController.signal,
     });
   }
@@ -755,6 +789,9 @@ const installFormGroup = (forms) => {
     clearQueryTimer();
     setGroupBusy(false);
     setResultsStale(currentTarget(), false);
+    for (const button of enhancedSubmitButtons) {
+      button.hidden = false;
+    }
   };
 };
 

@@ -142,6 +142,7 @@ const testFilters = async () => {
   const status = new FakeElement(documentRef);
   status.dataset.message = 'Resultados actualizados';
   status.textContent = '';
+  const submitButton = new FakeElement(documentRef);
   const search = { name: 'q', value: '', type: 'search' };
   const category = {
     name: 'category[]', value: 'matrix', type: 'checkbox', checked: true,
@@ -162,9 +163,10 @@ const testFilters = async () => {
   let formIsValid = true;
   form.checkValidity = () => formIsValid;
   form.getAttribute = (name) => (name === 'method' ? 'get' : null);
-  form.querySelector = (selector) => (
-    selector === '[data-blog-filter-status]' ? status : null
-  );
+  form.querySelector = (selector) => ({
+    '[data-blog-filter-status]': status,
+    '[data-blog-filter-submit]': submitButton,
+  })[selector] ?? null;
   form.querySelectorAll = () => [];
 
   const incomingForm = {
@@ -247,7 +249,17 @@ const testFilters = async () => {
   globalThis.window = view;
   globalThis.document = documentRef;
   const module = await importSource('src/js/resources/_moduleBlogFilters01.js');
+  assert.equal(
+    submitButton.hidden,
+    false,
+    'the native GET submit remains visible before enhancement',
+  );
   const cleanup = module.initModuleBlogFilters01(documentRef);
+  assert.equal(
+    submitButton.hidden,
+    true,
+    'enhancement hides the redundant native submit',
+  );
 
   assert.equal(form.dispatch('submit'), true, 'fetch intercepts a valid GET form');
   await tick();
@@ -275,18 +287,17 @@ const testFilters = async () => {
     ['empty', ''],
   ];
   form.dispatch('change', category);
+  await tick(100);
+  form.dispatch('change', mode);
+  await tick(300);
+  assert.equal(fetchCount, 1, 'rapid filter changes stay inside the debounce');
+  await tick(80);
   await tick();
-  await tick();
-  assert.equal(fetchCount, 1, 'category changes wait for explicit apply');
-  assert.equal(historyOperations.length, 1);
-  form.dispatch('submit');
-  await tick();
-  await tick();
-  assert.equal(fetchCount, 2, 'apply refreshes combined category state once');
+  assert.equal(fetchCount, 2, 'category and mode auto-apply in one request');
   assert.equal(
     historyOperations.at(-1).method,
     'push',
-    'category apply creates a navigable history entry',
+    'auto-applied filters create a navigable history entry',
   );
 
   target.innerHTML = '<article>before race</article>';
@@ -360,6 +371,11 @@ const testFilters = async () => {
   );
 
   cleanup();
+  assert.equal(
+    submitButton.hidden,
+    false,
+    'cleanup restores the native fallback submit',
+  );
   assert.equal(form.dispatch('submit'), false, 'cleanup removes listeners');
   assert.deepEqual(location.assigned, [], 'successful enhancement never navigates');
 };

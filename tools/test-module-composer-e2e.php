@@ -366,6 +366,116 @@ try {
         '--no-audit',
     ]);
 
+    $composerPath = $temporaryRoot . '/composer.json';
+    $commerceResourceFiles = [
+        'modules/commerce/resources/project/App/controllers/'
+            . 'sectionCommerceCatalog02.php'
+            => 'App/controllers/sectionCommerceCatalog02.php',
+        'modules/commerce/resources/project/App/templates/'
+            . '_sectionCommerceCatalog02.html'
+            => 'App/templates/_sectionCommerceCatalog02.html',
+        'modules/commerce/resources/project/src/scss/resources/'
+            . '_sectionCommerceCatalog02.scss'
+            => 'src/scss/resources/_sectionCommerceCatalog02.scss',
+        'modules/commerce/resources/project/App/controllers/'
+            . 'sectionCommerceSlider01.php'
+            => 'App/controllers/sectionCommerceSlider01.php',
+        'modules/commerce/resources/project/App/templates/'
+            . '_sectionCommerceSlider01.html'
+            => 'App/templates/_sectionCommerceSlider01.html',
+        'modules/commerce/resources/project/src/js/resources/'
+            . '_sectionCommerceSlider01.js'
+            => 'src/js/resources/_sectionCommerceSlider01.js',
+        'modules/commerce/resources/project/src/scss/resources/'
+            . '_sectionCommerceSlider01.scss'
+            => 'src/scss/resources/_sectionCommerceSlider01.scss',
+    ];
+    $coreOnlyComposer = json_decode(
+        (string) file_get_contents($composerPath),
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    if (isset($coreOnlyComposer['require']['liquidstack/commerce'])) {
+        throw new RuntimeException(
+            'El consumidor inicial seleccionó Commerce antes de solicitarlo.'
+        );
+    }
+    foreach ($commerceResourceFiles as $target) {
+        if (is_file($temporaryRoot . '/' . $target)) {
+            throw new RuntimeException(sprintf(
+                'Core-only publicó el recurso Commerce %s sin seleccionarlo.',
+                $target
+            ));
+        }
+    }
+
+    $commerceRequireOutput = $runComposer([
+        'require',
+        'liquidstack/commerce',
+        '--no-interaction',
+        '--no-progress',
+        '--no-audit',
+    ]);
+    if (!str_contains(
+        $commerceRequireOutput,
+        'Módulos LiquidStack activos: core, webadmin, commerce.'
+    )) {
+        throw new RuntimeException(
+            'El alta tardía de Commerce no cerró su dependencia WebAdmin.'
+        );
+    }
+    $commerceComposer = json_decode(
+        (string) file_get_contents($composerPath),
+        true,
+        512,
+        JSON_THROW_ON_ERROR
+    );
+    if (
+        ($commerceComposer['require']['liquidstack/commerce'] ?? null) !== '*'
+        || isset($commerceComposer['require']['liquidstack/webadmin'])
+    ) {
+        throw new RuntimeException(
+            'El selector Commerce no quedó normalizado y aislado en composer.json.'
+        );
+    }
+    $commerceLockedPackages = $runComposer([
+        'show',
+        '--locked',
+        '--name-only',
+    ]);
+    if (
+        !str_contains($commerceLockedPackages, 'liquidstack/core')
+        || str_contains($commerceLockedPackages, 'liquidstack/commerce')
+        || str_contains($commerceLockedPackages, 'liquidstack/webadmin')
+    ) {
+        throw new RuntimeException(
+            'Commerce o WebAdmin aparecieron como paquetes físicos separados.'
+        );
+    }
+    foreach ($commerceResourceFiles as $source => $target) {
+        $sourcePath = $coreRoot . '/' . $source;
+        $targetPath = $temporaryRoot . '/' . $target;
+        if (
+            !is_file($sourcePath)
+            || !is_file($targetPath)
+            || hash_file('sha256', $sourcePath)
+                !== hash_file('sha256', $targetPath)
+        ) {
+            throw new RuntimeException(sprintf(
+                'Commerce no entregó íntegro el recurso %s.',
+                $target
+            ));
+        }
+    }
+    $runComposer([
+        'remove',
+        'liquidstack/commerce',
+        '--no-interaction',
+        '--no-progress',
+        '--no-audit',
+    ]);
+
     $requireOutput = $runComposer([
         'require',
         'liquidstack/blog',
@@ -382,7 +492,6 @@ try {
         );
     }
 
-    $composerPath = $temporaryRoot . '/composer.json';
     $composer = json_decode(
         (string) file_get_contents($composerPath),
         true,

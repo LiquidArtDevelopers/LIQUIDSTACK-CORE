@@ -51,10 +51,12 @@ final class CommerceResourceDistributionTest extends TestCase
         self::assertSame([
             'artCommerceItem01',
             'sectionCommerceCatalog01',
+            'sectionCommerceCatalog02',
             'sectionCommerceInquiry01',
+            'sectionCommerceSlider01',
         ], $manifest['resources']);
         self::assertNotEmpty($manifest['project_files']);
-        self::assertCount(29, $manifest['project_files']);
+        self::assertCount(36, $manifest['project_files']);
 
         $targets = [];
         foreach ($manifest['project_files'] as $entry) {
@@ -104,6 +106,8 @@ final class CommerceResourceDistributionTest extends TestCase
         self::assertSame(20, substr_count($showroom, "'MX-APP-"));
         foreach ([
             "controller('sectionCommerceCatalog01'",
+            "controller('sectionCommerceCatalog02'",
+            "controller('sectionCommerceSlider01'",
             "controller('artCommerceItem01'",
             "controller('sectionCommerceInquiry01'",
             "'development_fixture' => '1'",
@@ -127,7 +131,9 @@ final class CommerceResourceDistributionTest extends TestCase
         foreach ([
             "@use '../resources/artCommerceItem01';",
             "@use '../resources/sectionCommerceCatalog01';",
+            "@use '../resources/sectionCommerceCatalog02';",
             "@use '../resources/sectionCommerceInquiry01';",
+            "@use '../resources/sectionCommerceSlider01';",
         ] as $import) {
             self::assertStringContainsString($import, $styles);
         }
@@ -196,6 +202,17 @@ final class CommerceResourceDistributionTest extends TestCase
         self::assertStringNotContainsString('localStorage', $javascript);
         self::assertStringNotContainsString('sessionStorage', $javascript);
         self::assertStringNotContainsString('document.cookie', $javascript);
+        self::assertStringContainsString(
+            'data-commerce-pagination-link',
+            (string) file_get_contents(
+                $projectResources
+                    . '/App/controllers/_moduleCommerceResources.php'
+            )
+        );
+        self::assertStringContainsString(
+            'installCatalogFilters(scope)',
+            $javascript
+        );
         self::assertGreaterThanOrEqual(2, substr_count(
             $javascript,
             'const documentRef = root.ownerDocument;'
@@ -289,6 +306,19 @@ final class CommerceResourceDistributionTest extends TestCase
             $this->project
                 . '/src/scss/resources/_sectionCommerceCatalog01.scss'
         );
+        foreach ([
+            'App/controllers/sectionCommerceCatalog02.php',
+            'App/templates/_sectionCommerceCatalog02.html',
+            'src/scss/resources/_sectionCommerceCatalog02.scss',
+            'App/controllers/sectionCommerceSlider01.php',
+            'App/templates/_sectionCommerceSlider01.html',
+            'src/js/resources/_sectionCommerceSlider01.js',
+            'src/scss/resources/_sectionCommerceSlider01.scss',
+        ] as $resourceTarget) {
+            self::assertFileExists(
+                $this->project . '/' . $resourceTarget
+            );
+        }
         foreach ([
             'App/views/showroom/_commerce.php',
             'src/js/showroom/commerce.js',

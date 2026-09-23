@@ -5,13 +5,14 @@
          data-commerce-inquiry-url="{inquiry-path}"
          data-commerce-selected-items="{selected-items}"
          data-commerce-added-status="{added-status}"
-         data-commerce-removed-status="{removed-status}">
+         data-commerce-removed-status="{removed-status}"
+         data-commerce-filter-catalog>
     <div class="sectionCommerceCatalog01-shell">
         <header class="sectionCommerceCatalog01-header">
             <{header-tag} id="{heading-id}">{header-text}</{header-tag}>
             <p>{intro-text}</p>
         </header>
-        <form class="sectionCommerceCatalog01-filters" action="{catalog-path}" method="get" role="search">
+        <form id="{root-id}-filters" class="sectionCommerceCatalog01-filters" action="{catalog-path}" method="get" role="search" aria-controls="{root-id}-results" data-commerce-filter-form data-commerce-results-target="#{root-id}-results">
             <div>
                 <label for="{root-id}-search">{search-label}</label>
                 <input id="{root-id}-search" name="q" type="search" value="{search-value}" placeholder="{search-placeholder}" maxlength="100">
@@ -24,17 +25,20 @@
                 <label for="{root-id}-tag">{tag-label}</label>
                 <select id="{root-id}-tag" name="tag"{tag-disabled}>{tag-options}</select>
             </div>
-            <button type="submit">{filter-submit}</button>
-            <a href="{catalog-path}">{filter-clear}</a>
+            <button type="submit" data-commerce-filter-submit>{filter-submit}</button>
+            <a href="{catalog-path}" data-commerce-filter-reset>{filter-clear}</a>
         </form>
-        <div class="sectionCommerceCatalog01-grid">
-            {items}
+        <div id="{root-id}-results" class="sectionCommerceCatalog01-results" data-commerce-filter-results>
+            <div class="sectionCommerceCatalog01-grid">
+                {items}
+            </div>
+            <p class="sectionCommerceCatalog01-empty"{empty-hidden}>{empty-text}</p>
+            {pagination}
+            <aside class="sectionCommerceCatalog01-interest" aria-label="{interest-label}">
+                <p><strong data-commerce-interest-count>{interest-count}</strong> {interest-summary}</p>
+                <a href="{inquiry-path}" data-commerce-interest-link>{interest-label}</a>
+                <p class="sectionCommerceCatalog01-status" role="status" aria-live="polite" data-commerce-interest-status></p>
+            </aside>
         </div>
-        <p class="sectionCommerceCatalog01-empty"{empty-hidden}>{empty-text}</p>
-        <aside class="sectionCommerceCatalog01-interest" aria-label="{interest-label}">
-            <p><strong data-commerce-interest-count>{interest-count}</strong> {interest-summary}</p>
-            <a href="{inquiry-path}" data-commerce-interest-link>{interest-label}</a>
-            <p class="sectionCommerceCatalog01-status" role="status" aria-live="polite" data-commerce-interest-status></p>
-        </aside>
     </div>
 </section>

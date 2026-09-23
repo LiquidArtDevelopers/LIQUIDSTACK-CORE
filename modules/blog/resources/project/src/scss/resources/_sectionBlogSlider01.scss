@@ -1,6 +1,7 @@
 @use '../config' as c;
 
 .sectionBlogSlider01 {
+    font-family: c.$fuente02;
     box-sizing: border-box;
     width: 100%;
     padding: clamp(3rem, 8vw, 6rem) 0;

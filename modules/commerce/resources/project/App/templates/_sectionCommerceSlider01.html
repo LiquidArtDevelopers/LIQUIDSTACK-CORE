@@ -1,0 +1,55 @@
+<section id="{root-id}"
+         class="sectionCommerceSlider01 sectionCommerceSlider01--items-{items-count}"
+         aria-labelledby="{heading-id}"
+         data-commerce-slider
+         data-commerce-slider-autoplay="{autoplay}"
+         data-commerce-slider-autoplay-delay="{autoplay-delay}"
+         data-commerce-slider-duration="{transition-duration}"
+         data-commerce-interest-scope
+         data-commerce-inquiry-url="{inquiry-path}"
+         data-commerce-selected-items="{selected-items}"
+         data-commerce-added-status="{added-status}"
+         data-commerce-removed-status="{removed-status}">
+    <div class="sectionCommerceSlider01-heading">
+        <div class="sectionCommerceSlider01-headingCopy">
+            <{header-tag} id="{heading-id}">{header-text}</{header-tag}>
+            {intro}
+        </div>
+
+        <div class="sectionCommerceSlider01-controls" data-commerce-slider-controls hidden>
+            <button type="button"
+                    data-commerce-slider-previous
+                    aria-controls="{viewport-id}"
+                    aria-label="{previous-label}">&larr;</button>
+            <button type="button"
+                    data-commerce-slider-next
+                    aria-controls="{viewport-id}"
+                    aria-label="{next-label}">&rarr;</button>
+            <button type="button"
+                    class="sectionCommerceSlider01-autoplay"
+                    data-commerce-slider-autoplay-toggle
+                    data-pause-label="{pause-label}"
+                    data-resume-label="{resume-label}"
+                    aria-controls="{viewport-id}"
+                    aria-label="{pause-label}"
+                    aria-pressed="false"
+                    hidden>
+                <span aria-hidden="true">&#10074;&#10074;</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="{viewport-id}"
+         class="sectionCommerceSlider01-viewport"
+         data-commerce-slider-viewport{viewport-tabindex}>
+        <div class="sectionCommerceSlider01-track" data-commerce-slider-track>
+            {items}
+        </div>
+    </div>
+
+    <aside class="sectionCommerceSlider01-interest" aria-label="{interest-label}">
+        <p><strong data-commerce-interest-count>{interest-count}</strong> {interest-summary}</p>
+        <a href="{inquiry-path}" data-commerce-interest-link>{interest-label}</a>
+        <p class="sectionCommerceSlider01-status" role="status" aria-live="polite" data-commerce-interest-status></p>
+    </aside>
+</section>

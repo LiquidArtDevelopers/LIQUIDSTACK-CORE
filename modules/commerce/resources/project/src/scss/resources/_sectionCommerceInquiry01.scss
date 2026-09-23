@@ -1,6 +1,7 @@
 @use '../config' as c;
 
 .sectionCommerceInquiry01 {
+  font-family: c.$fuente02;
   box-sizing: border-box;
   padding: clamp(3.5rem, 9vw, 7rem) c.$padMin;
   color: c.$color01;
@@ -52,7 +53,6 @@
   .sectionCommerceInquiry01-formPanel {
     min-width: 0;
     padding: clamp(1.5rem, 5vw, 3rem);
-    border: 1px solid c.$color01bis4;
     border-radius: 1.25rem;
     background: c.$color00;
     box-shadow: 0 1rem 2.5rem c.$color01bis4;
@@ -81,8 +81,8 @@
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
-      border: 1px solid c.$color01bis4;
       border-radius: 0.85rem;
+      background: c.$color01bis5;
 
       h3,
       h4,
@@ -151,14 +151,13 @@
       width: 100%;
       min-height: 3rem;
       padding: 0.75rem 0.9rem;
-      border: 1px solid c.$color01bis;
+      border: 0;
       border-radius: 0.65rem;
       color: c.$color01;
-      background: c.$color00;
+      background: c.$color01bis5;
       font: inherit;
 
       &:focus-visible {
-        border-color: c.$color02;
         outline: 0.18rem solid c.$color02;
         outline-offset: 0.1rem;
       }

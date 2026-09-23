@@ -199,7 +199,7 @@ $blogShowroomCopy = [
 ];
 $blogShowroomHeadings = [
     'es' => [
-        'catalog' => 'sectionBlogCatalog01 · Catálogo interactivo de noticias',
+        'catalog' => 'sectionBlogCatalog02 · Catálogo interactivo de noticias',
         'grid' => 'sectionBlogGrid01 · Rejilla de entradas recientes',
         'grid02' => 'moduleBlogGrid02 + moduleBlogPagination01 · Resultado paginado',
         'list' => 'sectionBlogList01 · Listado editorial de entradas',
@@ -211,7 +211,7 @@ $blogShowroomHeadings = [
         'archive' => 'moduleBlogArchive01 · Archivo de noticias',
     ],
     'en' => [
-        'catalog' => 'sectionBlogCatalog01 · Interactive news catalogue',
+        'catalog' => 'sectionBlogCatalog02 · Interactive news catalogue',
         'grid' => 'sectionBlogGrid01 · Recent posts grid',
         'grid02' => 'moduleBlogGrid02 + moduleBlogPagination01 · Paginated result',
         'list' => 'sectionBlogList01 · Editorial post list',
@@ -223,7 +223,7 @@ $blogShowroomHeadings = [
         'archive' => 'moduleBlogArchive01 · News archive',
     ],
     'eu' => [
-        'catalog' => 'sectionBlogCatalog01 · Albisteen katalogo interaktiboa',
+        'catalog' => 'sectionBlogCatalog02 · Albisteen katalogo interaktiboa',
         'grid' => 'sectionBlogGrid01 · Azken sarreren sareta',
         'grid02' => 'moduleBlogGrid02 + moduleBlogPagination01 · Orrikatutako emaitza',
         'list' => 'sectionBlogList01 · Sarreren zerrenda editoriala',
@@ -609,7 +609,7 @@ $blogShowroomPage = is_string($blogShowroomRawPage)
     && preg_match('/\A[1-9][0-9]*\z/', $blogShowroomRawPage) === 1
         ? (int) $blogShowroomRawPage
         : 1;
-$blogShowroomPageSize = 4;
+$blogShowroomPageSize = 6;
 $blogShowroomPageCount = max(1, (int) ceil(
     count($blogShowroomFilteredItems) / $blogShowroomPageSize
 ));
@@ -889,13 +889,14 @@ $blogShowroomResultsRegion = controller('moduleBlogResults01', 0, [
     '{archive-slot}' => $blogShowroomArchiveModule,
 ]);
 
-// sectionBlogCatalog01:
+// sectionBlogCatalog02:
 // - Es singleton porque contiene la unica region reactiva blog-results.
 // - header_level admite 2-5; los hijos se configuran desde sus snipers.
 // - header_text es obligatorio; header_lang puede enlazar la clave editorial.
 // - {search-slot} y {categories-slot} son opcionales; {results-slot} es
-//   obligatorio. Todos se insertan como hermanos directos, sin wrappers.
-echo controller('sectionBlogCatalog01', 0, [
+//   obligatorio. En desktop agrupa los filtros a la izquierda y los resultados
+//   a la derecha; en viewports estrechos los apila.
+echo controller('sectionBlogCatalog02', 0, [
     'header_level' => 2,
     'header_text' => $blogHeadings['catalog'],
     '{search-slot}' => $blogShowroomSearch,

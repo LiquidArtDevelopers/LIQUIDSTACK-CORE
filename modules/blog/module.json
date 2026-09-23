@@ -15,6 +15,7 @@
         "moduleBlogResults01",
         "moduleBlogSearch01",
         "sectionBlogCatalog01",
+        "sectionBlogCatalog02",
         "sectionBlogFeatured01",
         "sectionBlogGrid01",
         "sectionBlogList01",
@@ -290,6 +291,27 @@
             "type": "file",
             "policy": "managed_hash",
             "group": "resource-sectionBlogCatalog01"
+        },
+        {
+            "source": "resources/project/App/controllers/sectionBlogCatalog02.php",
+            "target": "App/controllers/sectionBlogCatalog02.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogCatalog02"
+        },
+        {
+            "source": "resources/project/App/templates/_sectionBlogCatalog02.html",
+            "target": "App/templates/_sectionBlogCatalog02.html",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogCatalog02"
+        },
+        {
+            "source": "resources/project/src/scss/resources/_sectionBlogCatalog02.scss",
+            "target": "src/scss/resources/_sectionBlogCatalog02.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionBlogCatalog02"
         },
         {
             "source": "resources/project/App/controllers/sectionBlogFeatured01.php",

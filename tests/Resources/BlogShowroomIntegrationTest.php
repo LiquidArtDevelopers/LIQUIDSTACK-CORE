@@ -54,7 +54,7 @@ final class BlogShowroomIntegrationTest extends TestCase
         );
         self::assertSame(
             1,
-            substr_count($view, "controller('sectionBlogCatalog01'")
+            substr_count($view, "controller('sectionBlogCatalog02'")
         );
 
         foreach ([
@@ -63,7 +63,7 @@ final class BlogShowroomIntegrationTest extends TestCase
             "controller('moduleBlogCategoryBar01', 0",
             "controller('moduleBlogPagination01', 0",
             "controller('moduleBlogResults01', 0",
-            "controller('sectionBlogCatalog01', 0",
+            "controller('sectionBlogCatalog02', 0",
             "'{results-slot}' => \$blogShowroomResults",
             "'{pagination-slot}' => \$blogShowroomPagination",
             "'{archive-slot}' => \$blogShowroomArchiveModule",
@@ -121,7 +121,7 @@ final class BlogShowroomIntegrationTest extends TestCase
         self::assertSame(4, substr_count($view, "'srcset' => "));
 
         foreach ([
-            'sectionBlogCatalog01',
+            'sectionBlogCatalog02',
             'moduleBlogGrid02',
             'sectionBlogSlider02',
             'sectionBlogStack01',
@@ -211,6 +211,7 @@ final class BlogShowroomIntegrationTest extends TestCase
             "@use '../resources/moduleBlogResults01';",
             "@use '../resources/moduleBlogSearch01';",
             "@use '../resources/sectionBlogCatalog01';",
+            "@use '../resources/sectionBlogCatalog02';",
         ] as $import) {
             self::assertStringContainsString($import, $scss);
         }

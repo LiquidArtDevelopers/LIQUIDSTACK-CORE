@@ -1,6 +1,7 @@
 @use '../config' as c;
 
 .moduleBlogResults01 {
+    font-family: c.$fuente02;
     width: 100%;
     min-width: 0;
     margin-block: clamp(2rem, 6vw, 5rem);

@@ -4,7 +4,7 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
     $pad  = sprintf('%02d', $i);
     $pref = "navMegamenu01_{$pad}_";
 
-    $iconForward = '<img data-lang="forward" src="'.
+    $iconForward = '<img data-lang="'.$pref.'forward" src="'.
         $_ENV['RAIZ'].'/'.$GLOBALS["{$pref}forward"]->src.'" alt="'.
         $GLOBALS["{$pref}forward"]->alt.'" title="'.
         $GLOBALS["{$pref}forward"]->title.'">';
@@ -174,21 +174,18 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
     $col2Simple2 = [
         // Cookies
         [
-            'aDL'   => "{$pref}col02link2_01",
             'spanDL'=> "{$pref}col02span2_01",            
             'text'  => $GLOBALS["{$pref}col02span2_01"]->text,
             'tipo'  => "cookies",
         ],
         // Privacidad
         [
-            'aDL'   => "{$pref}col02link2_02",
             'spanDL'=> "{$pref}col02span2_02",            
             'text'  => $GLOBALS["{$pref}col02span2_02"]->text,
             'tipo'  => "privacidad",
         ],
         // Aviso legal
         [
-            'aDL'   => "{$pref}col02link2_03",
             'spanDL'=> "{$pref}col02span2_03",            
             'text'  => $GLOBALS["{$pref}col02span2_03"]->text,
             'tipo'  => "",
@@ -196,7 +193,7 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
     ];
     $col2Links2 = '<ul>';
     foreach ($col2Simple2 as $s) {
-        $col2Links2 .= '<li><span data-lang="'.$s['aDL'].'" class="legal" data-tipo="'.$s['tipo'].'">'.$iconForward.'<span data-lang="'.$s['spanDL'].'">'.$s['text'].'</span></span></li>';
+        $col2Links2 .= '<li><span class="legal" data-tipo="'.$s['tipo'].'">'.$iconForward.'<span data-lang="'.$s['spanDL'].'">'.$s['text'].'</span></span></li>';
     }
     $col2Links2 .= '</ul>';
 

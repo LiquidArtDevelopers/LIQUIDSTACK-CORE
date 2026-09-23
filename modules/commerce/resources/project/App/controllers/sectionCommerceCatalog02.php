@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 /**
- * sectionCommerceCatalog01 copy ranges:
+ * sectionCommerceCatalog02 copy ranges:
  * Heading: 2-7 words. Intro: 18-42 words. Card title: 2-8 words.
  * Card summary: 14-32 words. Action labels: 1-5 words.
  */
-function controller_sectionCommerceCatalog01(
+function controller_sectionCommerceCatalog02(
     int $i = 0,
     array $params = []
 ): string {
@@ -179,7 +179,7 @@ function controller_sectionCommerceCatalog01(
         }
 
         ++$rendered;
-        $headingId = "sectionCommerceCatalog01-{$pad}-{$id}-heading";
+        $headingId = "sectionCommerceCatalog02-{$pad}-{$id}-heading";
         $detailLabel = $labels['detail'] ?? '';
         $addLabel = $labels['add'] ?? '';
         $addedLabel = $labels['added'] ?? $addLabel;
@@ -213,7 +213,7 @@ function controller_sectionCommerceCatalog01(
             $validVariants
         ));
         $media = $imageSrc === '' ? ''
-            : '<figure class="sectionCommerceCatalog01-media"><img src="'
+            : '<figure class="sectionCommerceCatalog02-media"><img src="'
                 . liquidstack_commerce_escape($imageSrc) . '" alt="'
                 . liquidstack_commerce_escape($imageAlt) . '"'
                 . ($imageTitle === '' ? '' : ' title="'
@@ -228,7 +228,7 @@ function controller_sectionCommerceCatalog01(
         $summaryHtml = $summary === '' ? ''
             : '<p>' . liquidstack_commerce_escape($summary) . '</p>';
         $commercialHtml = $commercial === '' ? ''
-            : '<div><dt class="sectionCommerceCatalog01-srOnly">'
+            : '<div><dt class="sectionCommerceCatalog02-srOnly">'
                 . liquidstack_commerce_escape($labels['commercial'] ?? '')
                 . '</dt><dd>' . liquidstack_commerce_escape($commercial)
                 . '</dd></div>';
@@ -265,12 +265,12 @@ function controller_sectionCommerceCatalog01(
                 . liquidstack_commerce_escape(
                     $labels['inquiry_unavailable'] ?? ''
                 ) . '</button>';
-        $cards .= '<article class="sectionCommerceCatalog01-card"'
+        $cards .= '<article class="sectionCommerceCatalog02-card"'
             . ' data-commerce-product-card data-commerce-item-id="'
             . liquidstack_commerce_escape($id) . '" aria-labelledby="'
             . liquidstack_commerce_escape($headingId) . '">'
-            . $media . '<div class="sectionCommerceCatalog01-cardBody">'
-            . '<p class="sectionCommerceCatalog01-reference">'
+            . $media . '<div class="sectionCommerceCatalog02-cardBody">'
+            . '<p class="sectionCommerceCatalog02-reference">'
             . liquidstack_commerce_escape($labels['reference'] ?? '')
             . ': ' . liquidstack_commerce_escape($reference) . '</p>'
             . '<h' . $levels['child'] . ' id="'
@@ -283,14 +283,14 @@ function controller_sectionCommerceCatalog01(
             . '</dt><dd>'
             . liquidstack_commerce_escape($availability)
             . '</dd></div>' . $commercialHtml
-            . '</dl><div class="sectionCommerceCatalog01-actions">'
-            . '<a class="sectionCommerceCatalog01-detail" href="'
+            . '</dl><div class="sectionCommerceCatalog02-actions">'
+            . '<a class="sectionCommerceCatalog02-detail" href="'
             . liquidstack_commerce_escape($path) . '">'
             . liquidstack_commerce_escape($detailLabel) . '</a>'
             . $addControl . '</div></div></article>';
     }
 
-    $rootId = "sectionCommerceCatalog01-{$pad}";
+    $rootId = "sectionCommerceCatalog02-{$pad}";
     $headingId = $rootId . '-heading';
     $emptyHidden = $rendered === 0 ? '' : ' hidden';
     $pagination = liquidstack_commerce_pagination(
@@ -298,10 +298,10 @@ function controller_sectionCommerceCatalog01(
         $query,
         ($params['has_next'] ?? false) === true,
         $labels,
-        'sectionCommerceCatalog01-pagination'
+        'sectionCommerceCatalog02-pagination'
     );
 
-    return render('App/templates/_sectionCommerceCatalog01.html', [
+    return render('App/templates/_sectionCommerceCatalog02.html', [
         '{root-id}' => $rootId,
         '{heading-id}' => $headingId,
         '{item-count}' => (string) $rendered,

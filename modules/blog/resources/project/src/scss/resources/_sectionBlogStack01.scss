@@ -1,6 +1,7 @@
 @use '../config' as c;
 
 .sectionBlogStack01 {
+    font-family: c.$fuente02;
     --blog-stack-enabled: 0;
     --blog-stack-top: 4rem;
     --blog-stack-step: 0.75rem;

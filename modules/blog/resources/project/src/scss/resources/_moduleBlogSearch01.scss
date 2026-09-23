@@ -1,6 +1,7 @@
 @use '../config' as c;
 
 .moduleBlogSearch01 {
+    font-family: c.$fuente02;
     width: min(calc(100% - (2 * c.$padMin)), c.$textMax);
     margin-block: clamp(0.75rem, 2vw, 1.25rem);
     margin-inline: auto;
@@ -33,6 +34,7 @@
         border-radius: 0.5rem;
         color: c.$color01;
         background: c.$color00;
+        font-family: c.$fuente02;
 
         &:focus-visible {
             outline: 0.18rem solid c.$color02;
@@ -49,6 +51,7 @@
         button {
             min-height: 2.75rem;
             padding: 0.65rem 1.1rem;
+            font-family: c.$fuente02;
             border: 1px solid c.$color02;
             border-radius: 999px;
             color: c.$color00;
@@ -66,6 +69,7 @@
             display: inline-flex;
             align-items: center;
             color: c.$color02;
+            font-family: c.$fuente02;
             text-underline-offset: 0.18em;
         }
 

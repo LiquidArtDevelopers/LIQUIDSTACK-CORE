@@ -275,8 +275,12 @@ final class SectionBlogCatalog01ContractTest extends TestCase
             $projectRoot . '/App/views/showroom/_blog.php'
         );
         self::assertSame(
-            1,
+            0,
             substr_count($showroom, "controller('sectionBlogCatalog01', 0")
+        );
+        self::assertSame(
+            1,
+            substr_count($showroom, "controller('sectionBlogCatalog02', 0")
         );
         foreach ([
             '$blogShowroomSearch = controller(',
@@ -356,11 +360,12 @@ final class SectionBlogCatalog01ContractTest extends TestCase
         );
 
         self::assertMatchesRegularExpression(
-            '/\.sectionBlogCatalog01\s*\{\s*'
-                . 'width:\s*100%;\s*'
-                . 'min-width:\s*0;\s*'
-                . 'display:\s*grid;\s*'
-                . 'grid-template-columns:\s*minmax\(0,\s*1fr\);/',
+            '/\.sectionBlogCatalog01\s*\{'
+                . '(?=[^}]*font-family:\s*c\.\$fuente02;)'
+                . '(?=[^}]*width:\s*100%;)'
+                . '(?=[^}]*min-width:\s*0;)'
+                . '(?=[^}]*display:\s*grid;)'
+                . '(?=[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);)/s',
             $scss
         );
         self::assertMatchesRegularExpression(

@@ -275,6 +275,8 @@ view.CustomEvent = class FakeCustomEvent {
   }
 };
 const requestTimeouts = [];
+const debounceTimeouts = [];
+const QUERY_DEBOUNCE_MS = 350;
 view.setTimeout = (callback, delay, ...args) => {
   if (delay === REQUEST_TIMEOUT_MS) {
     const timeout = {
@@ -284,11 +286,19 @@ view.setTimeout = (callback, delay, ...args) => {
     requestTimeouts.push(timeout);
     return timeout;
   }
+  if (delay === QUERY_DEBOUNCE_MS) {
+    const timeout = {
+      active: true,
+      callback: () => callback(...args),
+    };
+    debounceTimeouts.push(timeout);
+    return timeout;
+  }
 
   return setTimeout(callback, delay, ...args);
 };
 view.clearTimeout = (timeout) => {
-  if (requestTimeouts.includes(timeout)) {
+  if (requestTimeouts.includes(timeout) || debounceTimeouts.includes(timeout)) {
     timeout.active = false;
     return;
   }
@@ -299,6 +309,12 @@ const fireRequestTimeout = (timeout, allowCleared = false) => {
   if (!allowCleared) {
     assert.equal(timeout.active, true, 'request timeout must still be active');
   }
+  timeout.active = false;
+  timeout.callback();
+};
+const fireDebounce = (timeout) => {
+  assert.ok(timeout, 'a debounce must have been scheduled');
+  assert.equal(timeout.active, true, 'only the latest debounce stays active');
   timeout.active = false;
   timeout.callback();
 };
@@ -460,13 +476,13 @@ matrix.checked = true;
 assert.equal(categoryForm.dispatch('change', matrix), false);
 categoryMode.value = 'all';
 assert.equal(categoryForm.dispatch('change', categoryMode), false);
-assert.equal(pending.length, 0, 'category changes wait for explicit apply');
+assert.equal(pending.length, 0, 'rapid category changes stay inside debounce');
 assert.equal(target.hidden, false);
 assert.equal(target.getAttribute('aria-hidden'), null);
-assert.equal(target.getAttribute('aria-busy'), null);
-assert.equal(categoryForm.dispatch('submit'), true);
+assert.equal(target.getAttribute('aria-busy'), 'true');
+fireDebounce(debounceTimeouts.at(-1));
 const latestCategory = pending.at(-1);
-assert.equal(pending.length, 1, 'apply performs one combined request');
+assert.equal(pending.length, 1, 'filters auto-apply in one combined request');
 assert.equal(new URL(latestCategory.href).searchParams.get('q'), 'Trinity');
 assert.deepEqual(
   new URL(latestCategory.href).searchParams.getAll('category[]'),
@@ -493,14 +509,9 @@ assert.equal(target.getAttribute('data-blog-results-stale'), null);
 // Secuencia 2: categorizar y buscar mientras la primera petición sigue viva.
 matrix.checked = false;
 categoryForm.dispatch('change', matrix);
-const unchangedAfterCategoryChange = pending.at(-1);
-assert.equal(
-  unchangedAfterCategoryChange,
-  latestCategory,
-  'change alone creates no request',
-);
+assert.equal(pending.at(-1), latestCategory);
 assert.deepEqual(hiddenValues(searchForm, 'category[]'), ['zion']);
-categoryForm.dispatch('submit');
+fireDebounce(debounceTimeouts.at(-1));
 const pendingCategory = pending.at(-1);
 search.value = 'Oracle';
 searchForm.dispatch('submit');
@@ -534,8 +545,8 @@ zion.checked = false;
 matrix.checked = false;
 const beforeClearApply = pending.length;
 categoryForm.dispatch('change', zion);
-assert.equal(pending.length, beforeClearApply, 'clearing waits for apply');
-categoryForm.dispatch('submit');
+assert.equal(pending.length, beforeClearApply, 'clearing waits for debounce');
+fireDebounce(debounceTimeouts.at(-1));
 assert.equal(pending.length, beforeClearApply + 1);
 await resolvePending(pending.at(-1));
 assert.deepEqual(hiddenValues(searchForm, 'category[]'), []);
@@ -546,7 +557,6 @@ const beforeInvalid = pending.length;
 const resultBeforeInvalidQuery = target.innerHTML;
 search.value = 'N';
 searchForm.dispatch('input', search);
-await new Promise((resolveTick) => setTimeout(resolveTick, 380));
 assert.equal(pending.length, beforeInvalid);
 assert.equal(target.hidden, false);
 assert.equal(target.getAttribute('aria-hidden'), null);
@@ -563,7 +573,7 @@ assert.equal(target.hidden, false);
 assert.equal(target.getAttribute('aria-hidden'), null);
 assert.equal(target.getAttribute('aria-busy'), 'true');
 assert.equal(target.innerHTML, resultBeforeInvalidQuery);
-await new Promise((resolveTick) => setTimeout(resolveTick, 380));
+fireDebounce(debounceTimeouts.at(-1));
 assert.equal(pending.length, beforeInvalid + 1);
 assert.equal(new URL(pending.at(-1).href).searchParams.get('q'), 'Ne');
 assert.equal(target.hidden, false);
@@ -580,7 +590,7 @@ assert.equal(search.getAttribute('aria-invalid'), null);
 
 search.value = '';
 searchForm.dispatch('input', search);
-await new Promise((resolveTick) => setTimeout(resolveTick, 380));
+fireDebounce(debounceTimeouts.at(-1));
 await resolvePending(pending.at(-1));
 assert.deepEqual(hiddenValues(categoryForm, 'q'), []);
 assert.equal(target.hidden, false);
@@ -593,7 +603,7 @@ zion.checked = true;
 const beforeOrderApply = pending.length;
 categoryForm.dispatch('change', zion);
 assert.equal(pending.length, beforeOrderApply);
-categoryForm.dispatch('submit');
+fireDebounce(debounceTimeouts.at(-1));
 assert.equal(pending.length, beforeOrderApply + 1);
 assert.equal(new URL(pending.at(-1).href).searchParams.get('order'), 'oldest');
 await resolvePending(pending.at(-1));

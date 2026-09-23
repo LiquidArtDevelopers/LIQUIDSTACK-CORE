@@ -1,6 +1,7 @@
 @use '../config' as c;
 
 .artBlogArticle01 {
+    font-family: c.$fuente02;
     width: min(100%, 92rem);
     margin-inline: auto;
     padding-inline: c.$padMin;

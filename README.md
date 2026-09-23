@@ -991,12 +991,24 @@ no hay que duplicar rutas en cada consumidor. Las vistas y recursos distribuidos
 siguen siendo personalizables y las rutas de producto se derivan de la categoría
 canónica con historial de redirecciones.
 
-El showroom incorpora la categoría `commerce` con los tres recursos públicos
-y veinte prendas ficticias localizadas en ES/EN/EU. Son fixtures de
-presentación: viven exclusivamente en `App/views/showroom/_commerce.php`, no
-leen ni escriben la base de datos y nunca aparecen en WebAdmin ni en el
-catálogo público. El JavaScript y el SCSS propios viajan como hooks gestionados
-del módulo Commerce.
+El showroom incorpora la categoría `commerce` con cinco recursos públicos:
+ficha, dos catálogos, slider y solicitud. Sus veinte prendas ficticias
+localizadas en ES/EN/EU no leen ni escriben la base de datos ni aparecen en
+WebAdmin. También pueden vestir un catálogo público vacío, exclusivamente en
+desarrollo y con el doble opt-in `DEV_MODE=1` y
+`LIQUIDSTACK_COMMERCE_DEVELOPMENT_FIXTURES=1`. El JavaScript y el SCSS propios
+viajan como hooks gestionados del módulo Commerce.
+
+Los filtros de texto, categoría y etiqueta se mejoran con debounce y carga
+parcial cuando JavaScript está disponible; el formulario GET y la paginación
+anterior/siguiente siguen siendo el fallback funcional sin JavaScript. Cada
+página entrega seis fichas para completar las rejillas de dos o tres columnas.
+
+Un consumidor antiguo que aún no seleccione Commerce debe actualizar primero
+`liquidstack/core` y ejecutar después `composer require liquidstack/commerce`.
+El selector queda registrado como `"*"` en el `composer.json` raíz y activa
+WebAdmin como dependencia lógica; no instala un paquete físico separado ni
+ejecuta migraciones automáticamente.
 
 El correo reutiliza el transporte WebAdmin y requiere
 `LIQUIDSTACK_COMMERCE_INQUIRY_RECIPIENT` (con `MAIL_ADMIN` como compatibilidad)

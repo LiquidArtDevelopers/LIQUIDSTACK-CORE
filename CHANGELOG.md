@@ -5,9 +5,42 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 ## [Unreleased]
 
 
-## [1.34.2] - 2026-09-22
-- Solución al **BUG** de desplazamiento por anchor desde una URL
-- Mejorar la gestión del desplazamiento suave y el manejo de hashes
+## [1.35.0] - 2026-09-23
+
+### Añadido
+
+- Nuevos recursos `sectionBlogCatalog02`, `sectionCommerceCatalog02` y
+  `sectionCommerceSlider01`, distribuidos con sus controladores, templates,
+  estilos, runtime y ejemplos de showroom.
+- Commerce incorpora paginación pública de seis elementos con enlaces
+  anterior/siguiente y conserva filtros y página en su contrato tipado.
+
+### Cambiado
+
+- Los filtros de Blog y de los dos catálogos Commerce reaccionan con debounce
+  a texto, categorías, etiquetas y ordenación, sustituyen resultados y
+  paginación sin recargar la página y mantienen el formulario GET como
+  fallback sin JavaScript.
+- Las familias visuales Blog y Commerce unifican la tipografía de texto y
+  controles, mejoran contraste y aire, y eliminan los bordes decorativos de
+  las fichas Commerce.
+- Los fixtures Matrix de Commerce pueden vestir un catálogo público vacío
+  solo con el doble opt-in de desarrollo.
+
+### Corregido
+
+- La navegación suave resuelve correctamente anchors recibidos desde otra URL
+  y mejora la coordinación del desplazamiento con hashes.
+- `navMegamenu01` hidrata la flecha con su clave prefijada y deja de generar
+  claves falsas para los wrappers legales al ejecutar `update-languages.php`.
+
+### Instrucciones de actualización
+
+- Si Commerce ya está seleccionado, ejecuta `composer update liquidstack/core`.
+- En un consumidor antiguo sin Commerce, actualiza primero CORE y ejecuta
+  después `composer require liquidstack/commerce`; esto no aplica migraciones.
+- Revisa `composer liquidstack:sync --plan`, genera el bundle frontend y valida
+  Blog/Commerce antes de desplegar.
 
 ## [1.34.1] - 2026-09-22
 

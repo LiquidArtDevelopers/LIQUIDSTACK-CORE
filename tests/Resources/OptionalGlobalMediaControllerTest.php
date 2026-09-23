@@ -75,6 +75,14 @@ final class OptionalGlobalMediaControllerTest extends TestCase
         );
 
         self::assertStringContainsString('class="rrss"', $html);
+        self::assertStringContainsString(
+            '<img data-lang="navMegamenu01_00_forward"',
+            $html
+        );
+        self::assertStringNotContainsString(
+            'data-lang="navMegamenu01_00_col02link2_',
+            $html
+        );
         self::assertSame(4, substr_count($html, '<a data-lang="navMegamenu01_00_rrss_'));
         self::assertStringNotContainsString('src="http://localhost:1309/"', $html);
         self::assertStringNotContainsString('href=""', $html);

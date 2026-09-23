@@ -1,6 +1,7 @@
 @use '../config' as c;
 
 .moduleBlogGrid02 {
+    font-family: c.$fuente02;
     width: 100%;
     padding: clamp(3rem, 8vw, 7rem) c.$padMin;
     display: grid;

@@ -98,6 +98,105 @@ function liquidstack_commerce_labels(mixed $value): array
     return $labels;
 }
 
+function liquidstack_commerce_pagination(
+    string $catalogPath,
+    mixed $query,
+    bool $hasNext,
+    array $labels,
+    string $className
+): string {
+    $pageValue = liquidstack_commerce_value($query, 'page');
+    $page = is_int($pageValue) ? $pageValue : (int) $pageValue;
+    $page = max(1, $page);
+    if ($page === 1 && !$hasNext) {
+        return '';
+    }
+    if (
+        liquidstack_commerce_path($catalogPath) === ''
+        || preg_match('/\A[a-zA-Z][a-zA-Z0-9_-]*\z/D', $className) !== 1
+    ) {
+        return '';
+    }
+
+    $previousLabel = liquidstack_commerce_text(
+        $labels['pagination_previous'] ?? '',
+        200
+    );
+    $nextLabel = liquidstack_commerce_text(
+        $labels['pagination_next'] ?? '',
+        200
+    );
+    $paginationLabel = liquidstack_commerce_text(
+        $labels['pagination_label'] ?? '',
+        200
+    );
+    if (
+        $paginationLabel === ''
+        || ($page > 1 && $previousLabel === '')
+        || ($hasNext && $nextLabel === '')
+    ) {
+        return '';
+    }
+
+    $baseQuery = [];
+    $search = liquidstack_commerce_text(
+        liquidstack_commerce_value($query, 'search'),
+        100
+    );
+    $category = liquidstack_commerce_token(
+        liquidstack_commerce_value($query, 'category')
+    );
+    $tag = liquidstack_commerce_token(
+        liquidstack_commerce_value($query, 'tag')
+    );
+    if ($search !== '') {
+        $baseQuery['q'] = $search;
+    }
+    if ($category !== '') {
+        $baseQuery['category'] = $category;
+    }
+    if ($tag !== '') {
+        $baseQuery['tag'] = $tag;
+    }
+    $pageUrl = static function (int $targetPage) use (
+        $catalogPath,
+        $baseQuery
+    ): string {
+        $params = $baseQuery;
+        if ($targetPage > 1) {
+            $params['page'] = $targetPage;
+        }
+        $queryString = $params === []
+            ? ''
+            : '?' . http_build_query(
+                $params,
+                '',
+                '&',
+                PHP_QUERY_RFC3986
+            );
+
+        return $catalogPath . $queryString;
+    };
+
+    $previous = $page <= 1 ? ''
+        : '<a rel="prev" href="'
+            . liquidstack_commerce_escape($pageUrl($page - 1))
+            . '" data-commerce-pagination-link>'
+            . liquidstack_commerce_escape($previousLabel) . '</a>';
+    $next = !$hasNext ? ''
+        : '<a rel="next" href="'
+            . liquidstack_commerce_escape($pageUrl($page + 1))
+            . '" data-commerce-pagination-link>'
+            . liquidstack_commerce_escape($nextLabel) . '</a>';
+    if ($previous === '' && $next === '') {
+        return '';
+    }
+
+    return '<nav class="' . liquidstack_commerce_escape($className)
+        . '" aria-label="' . liquidstack_commerce_escape($paginationLabel)
+        . '">' . $previous . $next . '</nav>';
+}
+
 /** @return list<array{label:string,value:string}> */
 function liquidstack_commerce_features(mixed $value): array
 {

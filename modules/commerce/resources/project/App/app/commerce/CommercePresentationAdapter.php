@@ -41,7 +41,8 @@ final class CommerceCatalogQuery
     private function __construct(
         private readonly string $search,
         private readonly ?string $category,
-        private readonly ?string $tag
+        private readonly ?string $tag,
+        private readonly int $page
     ) {
     }
 
@@ -72,16 +73,26 @@ final class CommerceCatalogQuery
                 : null;
         };
 
+        $page = is_string($input['page'] ?? null)
+            && preg_match('/\A[1-9][0-9]*\z/D', $input['page']) === 1
+                ? (int) $input['page']
+                : 1;
+        if ($page > 166_667) {
+            $page = 1;
+        }
+
         return new self(
             $search,
             $term($input['category'] ?? null),
-            $term($input['tag'] ?? null)
+            $term($input['tag'] ?? null),
+            $page
         );
     }
 
     public function search(): string { return $this->search; }
     public function category(): ?string { return $this->category; }
     public function tag(): ?string { return $this->tag; }
+    public function page(): int { return $this->page; }
 }
 
 final class CommerceProductViewModel
@@ -207,7 +218,8 @@ final class CommerceCatalogViewModel
         private readonly CommerceCatalogQuery $query,
         private readonly array $categoryOptions = [],
         private readonly array $tagOptions = [],
-        private readonly array $basketProductIds = []
+        private readonly array $basketProductIds = [],
+        private readonly bool $hasNext = false
     ) {
     }
 
@@ -248,6 +260,9 @@ final class CommerceCatalogViewModel
 
     /** @return list<string> */
     public function basketProductIds(): array { return $this->basketProductIds; }
+
+    public function hasPrevious(): bool { return $this->query->page() > 1; }
+    public function hasNext(): bool { return $this->hasNext; }
 }
 
 final class CommerceItemViewModel
@@ -471,13 +486,15 @@ final class CommerceCorePresentationAdapter implements CommercePresentationAdapt
     ): CommerceCatalogViewModel
     {
         $query ??= CommerceCatalogQuery::fromInput([]);
+        $pageSize = 6;
         $page = $this->publicRuntime->catalogPage(
             $locale,
             new CoreCatalogQuery(
                 $query->search() !== '' ? $query->search() : null,
                 $query->category(),
                 $query->tag(),
-                24
+                $pageSize,
+                ($query->page() - 1) * $pageSize
             )
         );
         $products = $page->items();
@@ -505,7 +522,8 @@ final class CommerceCorePresentationAdapter implements CommercePresentationAdapt
                     CommercePublicTaxonomyTerm::TAG
                 )
             ),
-            $this->basketProductIds()
+            $this->basketProductIds(),
+            $page->hasNext()
         );
     }
 
@@ -708,6 +726,11 @@ final class CommerceCorePresentationAdapter implements CommercePresentationAdapt
             'all' => $this->t('commerce_filter_all'),
             'filter_submit' => $this->t('commerce_filter_submit'),
             'filter_clear' => $this->t('commerce_filter_clear'),
+            'pagination_previous' => $this->t(
+                'commerce_pagination_previous'
+            ),
+            'pagination_next' => $this->t('commerce_pagination_next'),
+            'pagination_label' => $this->t('commerce_pagination_label'),
             'inquiry_unavailable' => $this->t(
                 'commerce_action_inquiry_unavailable'
             ),
@@ -777,13 +800,22 @@ final class CommerceDevelopmentFixtureAdapter implements CommercePresentationAda
             ));
         }
 
+        $pageSize = 6;
+        $offset = ($query->page() - 1) * $pageSize;
+        $hasNext = count($products) > $offset + $pageSize;
+        $products = array_slice($products, $offset, $pageSize);
+
         return new CommerceCatalogViewModel(
             $products,
             $this->t('commerce_catalog_heading'),
             $this->t('commerce_catalog_intro'),
             $this->inquiryPath($locale),
             $this->sharedLabels(),
-            $query
+            $query,
+            [],
+            [],
+            [],
+            $hasNext
         );
     }
 
@@ -953,6 +985,11 @@ final class CommerceDevelopmentFixtureAdapter implements CommercePresentationAda
             'all' => $this->t('commerce_filter_all'),
             'filter_submit' => $this->t('commerce_filter_submit'),
             'filter_clear' => $this->t('commerce_filter_clear'),
+            'pagination_previous' => $this->t(
+                'commerce_pagination_previous'
+            ),
+            'pagination_next' => $this->t('commerce_pagination_next'),
+            'pagination_label' => $this->t('commerce_pagination_label'),
             'inquiry_unavailable' => $this->t(
                 'commerce_action_inquiry_unavailable'
             ),

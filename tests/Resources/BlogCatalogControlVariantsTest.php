@@ -34,6 +34,10 @@ final class BlogCatalogControlVariantsTest extends TestCase
                 $template
             );
             self::assertStringContainsString('type="submit"', $template);
+            self::assertStringContainsString(
+                'data-blog-filter-submit',
+                $template
+            );
             self::assertStringContainsString('aria-live="polite"', $template);
             self::assertStringContainsString('data-state="idle"', $template);
             self::assertStringContainsString(
@@ -67,6 +71,22 @@ final class BlogCatalogControlVariantsTest extends TestCase
         );
         self::assertStringContainsString('name="category_mode"', $categories);
         self::assertStringContainsString('{mode-disabled}', $categories);
+
+        $runtime = (string) file_get_contents(
+            $root . '/src/js/resources/_moduleBlogFilters01.js'
+        );
+        self::assertStringContainsString(
+            "querySafely(form, '[data-blog-filter-submit]')",
+            $runtime
+        );
+        self::assertStringContainsString(
+            "control?.name !== 'category[]'",
+            $runtime
+        );
+        self::assertStringContainsString(
+            'scheduleRequestFromForm(form, true);',
+            $runtime
+        );
     }
 
     public function testCompactSearchPreservesCategoryStateAndClearsOnlyQuery(): void

@@ -1,6 +1,7 @@
 @use '../config' as c;
 
 .artCommerceItem01 {
+  font-family: c.$fuente02;
   width: min(100%, c.$textMax);
   margin-inline: auto;
   padding: clamp(3.5rem, 9vw, 7rem) c.$padMin;

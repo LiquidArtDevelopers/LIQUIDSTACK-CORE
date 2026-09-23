@@ -8,7 +8,9 @@
     "resources": [
         "artCommerceItem01",
         "sectionCommerceCatalog01",
-        "sectionCommerceInquiry01"
+        "sectionCommerceCatalog02",
+        "sectionCommerceInquiry01",
+        "sectionCommerceSlider01"
     ],
     "providers": {
         "routes": [
@@ -194,6 +196,27 @@
             "group": "resource-sectionCommerceCatalog01"
         },
         {
+            "source": "resources/project/App/controllers/sectionCommerceCatalog02.php",
+            "target": "App/controllers/sectionCommerceCatalog02.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionCommerceCatalog02"
+        },
+        {
+            "source": "resources/project/App/templates/_sectionCommerceCatalog02.html",
+            "target": "App/templates/_sectionCommerceCatalog02.html",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionCommerceCatalog02"
+        },
+        {
+            "source": "resources/project/src/scss/resources/_sectionCommerceCatalog02.scss",
+            "target": "src/scss/resources/_sectionCommerceCatalog02.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionCommerceCatalog02"
+        },
+        {
             "source": "resources/project/App/controllers/sectionCommerceInquiry01.php",
             "target": "App/controllers/sectionCommerceInquiry01.php",
             "type": "file",
@@ -213,6 +236,34 @@
             "type": "file",
             "policy": "managed_hash",
             "group": "resource-sectionCommerceInquiry01"
+        },
+        {
+            "source": "resources/project/App/controllers/sectionCommerceSlider01.php",
+            "target": "App/controllers/sectionCommerceSlider01.php",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionCommerceSlider01"
+        },
+        {
+            "source": "resources/project/App/templates/_sectionCommerceSlider01.html",
+            "target": "App/templates/_sectionCommerceSlider01.html",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionCommerceSlider01"
+        },
+        {
+            "source": "resources/project/src/js/resources/_sectionCommerceSlider01.js",
+            "target": "src/js/resources/_sectionCommerceSlider01.js",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionCommerceSlider01"
+        },
+        {
+            "source": "resources/project/src/scss/resources/_sectionCommerceSlider01.scss",
+            "target": "src/scss/resources/_sectionCommerceSlider01.scss",
+            "type": "file",
+            "policy": "managed_hash",
+            "group": "resource-sectionCommerceSlider01"
         },
         {
             "source": "resources/project/App/views/showroom/_commerce.php",

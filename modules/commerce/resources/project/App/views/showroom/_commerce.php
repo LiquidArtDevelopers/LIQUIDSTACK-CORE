@@ -1,9 +1,8 @@
 <?php
 
 /**
- * Recursos públicos de Commerce. Estos veinte artículos de ropa son
- * fixtures exclusivos del showroom: no consultan ni se insertan en la base
- * de datos y nunca forman parte del catálogo público del proyecto.
+ * Veinte artículos de ropa ficticios para el showroom y para el fallback de
+ * desarrollo del catálogo vacío. Nunca se insertan en la base de datos.
  */
 $commerceShowroomLanguage = in_array(
     (string) ($showroomLanguage ?? 'es'),
@@ -11,11 +10,15 @@ $commerceShowroomLanguage = in_array(
     true
 ) ? (string) $showroomLanguage : 'es';
 
-$commerceShowroomBasePath = match ($commerceShowroomLanguage) {
-    'en' => '/en/showroom/commerce',
-    'eu' => '/eu/showroom/commerce',
-    default => '/es/showroom/commerce',
-};
+$commerceShowroomBasePath = isset($commerceShowroomBasePathOverride)
+    && is_string($commerceShowroomBasePathOverride)
+    && str_starts_with($commerceShowroomBasePathOverride, '/')
+        ? $commerceShowroomBasePathOverride
+        : match ($commerceShowroomLanguage) {
+            'en' => '/en/showroom/commerce',
+            'eu' => '/eu/showroom/commerce',
+            default => '/es/showroom/commerce',
+        };
 $commerceShowroomCopy = [
     'es' => [
         'catalog_heading' => 'sectionCommerceCatalog01 · Catálogo Matrix de moda',
@@ -509,6 +512,23 @@ $commerceShowroomFilteredProducts = array_values(array_filter(
             || in_array($commerceShowroomTag, $product['tags'], true);
     }
 ));
+$commerceShowroomRawPage = $_GET['page'] ?? '1';
+$commerceShowroomPage = is_string($commerceShowroomRawPage)
+    && preg_match('/\A[1-9]\d{0,5}\z/D', $commerceShowroomRawPage) === 1
+        ? min((int) $commerceShowroomRawPage, 166667)
+        : 1;
+$commerceShowroomPageSize = 6;
+$commerceShowroomPageCount = max(
+    1,
+    (int) ceil(count($commerceShowroomFilteredProducts) / $commerceShowroomPageSize)
+);
+$commerceShowroomPage = min($commerceShowroomPage, $commerceShowroomPageCount);
+$commerceShowroomPaginatedProducts = array_slice(
+    $commerceShowroomFilteredProducts,
+    ($commerceShowroomPage - 1) * $commerceShowroomPageSize,
+    $commerceShowroomPageSize
+);
+$commerceShowroomHasNext = $commerceShowroomPage < $commerceShowroomPageCount;
 $commerceShowroomProductsById = [];
 foreach ($commerceShowroomProducts as $product) {
     $commerceShowroomProductsById[$product['id']] = $product;
@@ -575,6 +595,38 @@ $commerceShowroomLabels = [
     'social_proof' => $commerceCopy['social_proof'],
     'development_fixture' => '1',
 ];
+$commerceShowroomLabels = array_merge(
+    $commerceShowroomLabels,
+    match ($commerceShowroomLanguage) {
+        'en' => [
+            'previous' => 'View previous products',
+            'next' => 'View next products',
+            'pause' => 'Pause automatic playback',
+            'resume' => 'Resume automatic playback',
+            'pagination_previous' => 'Previous page',
+            'pagination_next' => 'Next page',
+            'pagination_label' => 'Catalogue pagination',
+        ],
+        'eu' => [
+            'previous' => 'Ikusi aurreko produktuak',
+            'next' => 'Ikusi hurrengo produktuak',
+            'pause' => 'Pausatu erreprodukzio automatikoa',
+            'resume' => 'Jarraitu erreprodukzio automatikoarekin',
+            'pagination_previous' => 'Aurreko orria',
+            'pagination_next' => 'Hurrengo orria',
+            'pagination_label' => 'Katalogoaren orrikatzea',
+        ],
+        default => [
+            'previous' => 'Ver productos anteriores',
+            'next' => 'Ver productos siguientes',
+            'pagination_previous' => 'Página anterior',
+            'pagination_next' => 'Página siguiente',
+            'pagination_label' => 'Paginación del catálogo',
+            'pause' => 'Pausar reproducción automática',
+            'resume' => 'Reanudar reproducción automática',
+        ],
+    }
+);
 $commerceShowroomInquiryLabels = [
     'list_heading' => $commerceCopy['list_heading'],
     'form_heading' => $commerceCopy['form_heading'],
@@ -595,12 +647,32 @@ $commerceShowroomInquiryLabels = [
     'development_fixture' => '1',
 ];
 
+echo controller('sectionCommerceSlider01', 0, [
+    'header_level' => 2,
+    'header_text' => str_replace(
+        'sectionCommerceCatalog01',
+        'sectionCommerceSlider01',
+        $commerceCopy['catalog_heading']
+    ),
+    'intro_text' => $commerceCopy['catalog_intro'],
+    'items_data' => $commerceShowroomProducts,
+    'items' => count($commerceShowroomProducts),
+    'inquiry_path' => $commerceShowroomBasePath
+        . '#showroom-commerce-inquiry',
+    'basket_add_path' => $commerceShowroomBasePath,
+    'basket_remove_path' => $commerceShowroomBasePath,
+    'return_to' => $commerceShowroomBasePath,
+    'locale' => $commerceShowroomLanguage,
+    'labels' => $commerceShowroomLabels,
+    'selected_items' => array_values($commerceShowroomSelectedItems),
+]);
+
 echo controller('sectionCommerceCatalog01', 0, [
     'header_level' => 2,
     'header_text' => $commerceCopy['catalog_heading'],
     'intro_text' => $commerceCopy['catalog_intro'],
-    'items_data' => $commerceShowroomFilteredProducts,
-    'items' => count($commerceShowroomFilteredProducts),
+    'items_data' => $commerceShowroomPaginatedProducts,
+    'items' => count($commerceShowroomPaginatedProducts),
     'inquiry_path' => $commerceShowroomBasePath
         . '#showroom-commerce-inquiry',
     'catalog_path' => $commerceShowroomBasePath,
@@ -613,7 +685,39 @@ echo controller('sectionCommerceCatalog01', 0, [
         'search' => $commerceShowroomQuery,
         'category' => $commerceShowroomCategory,
         'tag' => $commerceShowroomTag,
+        'page' => $commerceShowroomPage,
     ],
+    'has_next' => $commerceShowroomHasNext,
+    'category_options' => $commerceShowroomCategoryOptions,
+    'tag_options' => $commerceShowroomTagOptions,
+    'selected_items' => array_values($commerceShowroomSelectedItems),
+]);
+
+echo controller('sectionCommerceCatalog02', 0, [
+    'header_level' => 2,
+    'header_text' => str_replace(
+        'sectionCommerceCatalog01',
+        'sectionCommerceCatalog02',
+        $commerceCopy['catalog_heading']
+    ),
+    'intro_text' => $commerceCopy['catalog_intro'],
+    'items_data' => $commerceShowroomPaginatedProducts,
+    'items' => count($commerceShowroomPaginatedProducts),
+    'inquiry_path' => $commerceShowroomBasePath
+        . '#showroom-commerce-inquiry',
+    'catalog_path' => $commerceShowroomBasePath,
+    'basket_add_path' => $commerceShowroomBasePath,
+    'basket_remove_path' => $commerceShowroomBasePath,
+    'return_to' => $commerceShowroomBasePath,
+    'locale' => $commerceShowroomLanguage,
+    'labels' => $commerceShowroomLabels,
+    'query' => [
+        'search' => $commerceShowroomQuery,
+        'category' => $commerceShowroomCategory,
+        'tag' => $commerceShowroomTag,
+        'page' => $commerceShowroomPage,
+    ],
+    'has_next' => $commerceShowroomHasNext,
     'category_options' => $commerceShowroomCategoryOptions,
     'tag_options' => $commerceShowroomTagOptions,
     'selected_items' => array_values($commerceShowroomSelectedItems),
@@ -685,6 +789,12 @@ unset(
     $commerceShowroomFold,
     $commerceShowroomNeedle,
     $commerceShowroomFilteredProducts,
+    $commerceShowroomRawPage,
+    $commerceShowroomPage,
+    $commerceShowroomPageSize,
+    $commerceShowroomPageCount,
+    $commerceShowroomPaginatedProducts,
+    $commerceShowroomHasNext,
     $commerceShowroomProductsById,
     $commerceShowroomSelectedId,
     $commerceShowroomSelectedProduct,

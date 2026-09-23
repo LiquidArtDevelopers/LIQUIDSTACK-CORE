@@ -1,20 +1,20 @@
 @use '../config' as c;
 
-.sectionCommerceCatalog01 {
+.sectionCommerceCatalog02 {
   font-family: c.$fuente02;
   box-sizing: border-box;
   padding: clamp(3.5rem, 9vw, 7rem) c.$padMin;
   color: c.$color01;
   background: c.$color00bis;
 
-  .sectionCommerceCatalog01-shell {
+  .sectionCommerceCatalog02-shell {
     width: min(100%, c.$textMax);
     margin-inline: auto;
     display: grid;
     gap: clamp(2rem, 5vw, 3.5rem);
   }
 
-  .sectionCommerceCatalog01-header {
+  .sectionCommerceCatalog02-header {
     width: min(100%, 48rem);
     display: grid;
     gap: 1rem;
@@ -44,19 +44,20 @@
     }
   }
 
-  .sectionCommerceCatalog01-grid {
+  .sectionCommerceCatalog02-layout,
+  .sectionCommerceCatalog02-results {
+    min-width: 0;
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 2.5rem);
+  }
+
+  .sectionCommerceCatalog02-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: clamp(1.25rem, 3vw, 2rem);
   }
 
-  .sectionCommerceCatalog01-results {
-    min-width: 0;
-    display: grid;
-    gap: clamp(2rem, 5vw, 3.5rem);
-  }
-
-  .sectionCommerceCatalog01-filters {
+  .sectionCommerceCatalog02-filters {
     padding: clamp(1rem, 3vw, 1.5rem);
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -125,7 +126,7 @@
     }
   }
 
-  .sectionCommerceCatalog01-card {
+  .sectionCommerceCatalog02-card {
     min-width: 0;
     overflow: hidden;
     display: flex;
@@ -136,7 +137,7 @@
     transition: transform 180ms ease;
   }
 
-  .sectionCommerceCatalog01-media {
+  .sectionCommerceCatalog02-media {
     position: relative;
     aspect-ratio: 3 / 2;
     margin: 0;
@@ -153,7 +154,7 @@
     }
   }
 
-  .sectionCommerceCatalog01-cardBody {
+  .sectionCommerceCatalog02-cardBody {
     padding: clamp(1.25rem, 4vw, 2rem);
     display: flex;
     flex: 1;
@@ -184,7 +185,7 @@
       }
     }
 
-    > p:not(.sectionCommerceCatalog01-reference) {
+    > p:not(.sectionCommerceCatalog02-reference) {
       color: c.$color01bis;
       line-height: 1.65;
     }
@@ -215,14 +216,14 @@
     }
   }
 
-  .sectionCommerceCatalog01-reference {
+  .sectionCommerceCatalog02-reference {
     color: c.$color01bis;
     font-size: 0.78rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
-  .sectionCommerceCatalog01-actions {
+  .sectionCommerceCatalog02-actions {
     margin-top: auto;
     display: flex;
     flex-wrap: wrap;
@@ -268,7 +269,7 @@
     }
   }
 
-    .sectionCommerceCatalog01-interest {
+  .sectionCommerceCatalog02-interest {
     padding: clamp(1.25rem, 4vw, 2rem);
     display: flex;
     flex-wrap: wrap;
@@ -276,49 +277,49 @@
     gap: 0.75rem 1.5rem;
     border-radius: 1rem;
     color: c.$color00;
-    background: c.$color02bis2;
+    background: c.$color01;
 
-        p {
-            margin: 0;
-            color: c.$color00;
-        }
+    p {
+      margin: 0;
+      color: c.$color00;
+    }
 
-        strong {
-            color: inherit;
-        }
+    strong {
+      color: inherit;
+    }
 
     a {
       min-height: 2.75rem;
       margin-left: auto;
       padding: 0.65rem 1rem;
-            display: inline-flex;
-            align-items: center;
-            border-radius: 999px;
-            color: c.$color00;
-            background: c.$color02;
-            font-weight: 700;
-            text-decoration: none;
-            transition: color 180ms ease, background-color 180ms ease;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      color: c.$color00;
+      background: c.$color02;
+      font-weight: 700;
+      text-decoration: none;
+      transition: color 180ms ease, background-color 180ms ease;
 
-            &:hover {
-                color: c.$color01;
-                background: c.$color00;
-            }
+      &:hover {
+        color: c.$color01;
+        background: c.$color00;
+      }
 
-            &:focus-visible {
-                outline: 0.18rem solid c.$color00;
-                outline-offset: 0.2rem;
-            }
-        }
+      &:focus-visible {
+        outline: 0.18rem solid c.$color00;
+        outline-offset: 0.2rem;
+      }
+    }
   }
 
-    .sectionCommerceCatalog01-status {
-        flex-basis: 100%;
-        min-height: 1.5em;
-        color: c.$color00;
-    }
+  .sectionCommerceCatalog02-status {
+    flex-basis: 100%;
+    min-height: 1.5em;
+    color: c.$color00;
+  }
 
-  .sectionCommerceCatalog01-empty {
+  .sectionCommerceCatalog02-empty {
     margin: 0;
     padding: 2rem;
     border-radius: 1rem;
@@ -326,7 +327,7 @@
     text-align: center;
   }
 
-  .sectionCommerceCatalog01-pagination {
+  .sectionCommerceCatalog02-pagination {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -361,7 +362,7 @@
     }
   }
 
-  .sectionCommerceCatalog01-srOnly {
+  .sectionCommerceCatalog02-srOnly {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -373,13 +374,13 @@
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .sectionCommerceCatalog01-card:hover {
+    .sectionCommerceCatalog02-card:hover {
       transform: translateY(-0.2rem);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .sectionCommerceCatalog01-card {
+    .sectionCommerceCatalog02-card {
       transition: none;
     }
   }
@@ -387,11 +388,11 @@
   @media (min-width: c.$tablet) {
     padding-inline: c.$padMax;
 
-    .sectionCommerceCatalog01-grid {
+    .sectionCommerceCatalog02-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .sectionCommerceCatalog01-card:last-child:nth-child(odd) {
+    .sectionCommerceCatalog02-card:last-child:nth-child(odd) {
       grid-column: 1 / -1;
       width: calc(50% - 0.625rem);
       justify-self: center;
@@ -399,26 +400,13 @@
   }
 
   @media (min-width: c.$desktop) {
-    .sectionCommerceCatalog01-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+    .sectionCommerceCatalog02-shell {
+      width: 80%;
     }
 
-    .sectionCommerceCatalog01-card:last-child:nth-child(odd) {
-      grid-column: auto;
-      width: auto;
-      justify-self: stretch;
-    }
-
-    .sectionCommerceCatalog01-card:last-child:nth-child(3n + 1) {
-      grid-column: 2;
+    .sectionCommerceCatalog02-layout {
+      grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
+      align-items: start;
     }
   }
 }
-    .sectionCommerceCatalog01-filters {
-      grid-template-columns: minmax(12rem, 2fr) repeat(2, minmax(9rem, 1fr));
-
-      button,
-      a {
-        width: max-content;
-      }
-    }

@@ -1,6 +1,7 @@
 @use '../config' as c;
 
 .moduleBlogCategoryBar01 {
+    font-family: c.$fuente02;
     width: min(calc(100% - (2 * c.$padMin)), c.$textMax);
     margin-block: clamp(0.75rem, 2vw, 1.25rem);
     margin-inline: auto;
@@ -117,6 +118,7 @@
             min-height: 2.75rem;
             padding: 0.65rem 0.85rem;
             border-radius: 0.5rem;
+            font-family: c.$fuente02;
         }
 
         select {

@@ -1,6 +1,7 @@
 @use '../config' as c;
 
 .sectionBlogRelated01 {
+    font-family: c.$fuente02;
     box-sizing: border-box;
     width: 100%;
     min-width: 0;

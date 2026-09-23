@@ -331,6 +331,23 @@ PHP
                     . "/App/config/languages/global/{$language}.json"
             );
 
+            self::assertSame(
+                ['src', 'alt', 'title'],
+                array_keys($catalog['navMegamenu01_00_forward'])
+            );
+            self::assertArrayNotHasKey('forward', $catalog);
+            foreach (range(1, 3) as $position) {
+                $suffix = sprintf('%02d', $position);
+                self::assertArrayHasKey(
+                    "navMegamenu01_00_col02span2_{$suffix}",
+                    $catalog
+                );
+                self::assertArrayNotHasKey(
+                    "navMegamenu01_00_col02link2_{$suffix}",
+                    $catalog
+                );
+            }
+
             foreach (['fb', 'in', 'yt', 'ig'] as $network) {
                 $linkKey = "navMegamenu01_00_rrss_{$network}";
                 $imageKey = "{$linkKey}_img";

@@ -27,22 +27,32 @@ require __DIR__ . '/../app/_moduleCommercePublic.php';
 
             <main>
                 <?php
-                echo controller('sectionCommerceCatalog01', 0, [
-                    'header_level' => 2,
-                    'header_text' => $commerceCatalog->heading(),
-                    'intro_text' => $commerceCatalog->intro(),
-                    'items_data' => $commerceCatalog->items(),
-                    'items' => count($commerceCatalog->items()),
-                    'inquiry_path' => $commerceCatalog->inquiryPath(),
-                    'labels' => $commerceCatalog->labels(),
-                    'locale' => $lang,
-                    'return_to' => $url,
-                    'catalog_path' => $url,
-                    'query' => $commerceCatalog->query(),
-                    'category_options' => $commerceCatalog->categoryOptions(),
-                    'tag_options' => $commerceCatalog->tagOptions(),
-                    'selected_items' => $commerceCatalog->basketProductIds(),
-                ]);
+                if (
+                    $commerceDevelopmentFixtures
+                    && $commerceCatalog->items() === []
+                ) {
+                    $showroomLanguage = $lang;
+                    $commerceShowroomBasePathOverride = $url;
+                    include __DIR__ . '/showroom/_commerce.php';
+                } else {
+                    echo controller('sectionCommerceCatalog01', 0, [
+                        'header_level' => 2,
+                        'header_text' => $commerceCatalog->heading(),
+                        'intro_text' => $commerceCatalog->intro(),
+                        'items_data' => $commerceCatalog->items(),
+                        'items' => count($commerceCatalog->items()),
+                        'inquiry_path' => $commerceCatalog->inquiryPath(),
+                        'labels' => $commerceCatalog->labels(),
+                        'locale' => $lang,
+                        'return_to' => $url,
+                        'catalog_path' => $url,
+                        'query' => $commerceCatalog->query(),
+                        'has_next' => $commerceCatalog->hasNext(),
+                        'category_options' => $commerceCatalog->categoryOptions(),
+                        'tag_options' => $commerceCatalog->tagOptions(),
+                        'selected_items' => $commerceCatalog->basketProductIds(),
+                    ]);
+                }
                 ?>
             </main>
 
