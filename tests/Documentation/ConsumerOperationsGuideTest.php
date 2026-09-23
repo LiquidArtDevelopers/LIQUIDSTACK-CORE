@@ -14,6 +14,7 @@ final class ConsumerOperationsGuideTest extends TestCase
         self::assertIsString($readme);
 
         foreach ([
+            'composer require "liquidstack/core:^1.35" --with-all-dependencies',
             'composer require "liquidstack/blog:*"',
             'composer require "liquidstack/commerce:*"',
             'composer liquidstack:migrate --plan --format=json',
@@ -25,6 +26,11 @@ final class ConsumerOperationsGuideTest extends TestCase
         ] as $command) {
             self::assertStringContainsString($command, $readme);
         }
+
+        self::assertStringNotContainsString(
+            '"liquidstack/core:1.35"',
+            $readme
+        );
     }
 
     public function testCoreReadmeKeepsReleaseWorkSeparate(): void

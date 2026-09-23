@@ -23,7 +23,7 @@ npm run build
 
 ```powershell
 git status --short
-composer update liquidstack/core --with-all-dependencies
+composer require "liquidstack/core:^1.35" --with-all-dependencies
 npm install
 composer show liquidstack/core --locked
 composer liquidstack:doctor --format=json
@@ -31,12 +31,9 @@ composer liquidstack:migrate --plan --format=json
 composer liquidstack:migrate --dry-run --format=json
 ```
 
-Si `composer.json` fija una versión exacta y no permite actualizar, ejecuta una
-vez este comando para que Composer escriba una restricción compatible actual:
-
-```powershell
-composer require liquidstack/core --with-all-dependencies
-```
+El comando anterior deja `^1.35` en `composer.json`. Ese caret permite que cada
+actualización instale la última release estable `1.x`; no lo sustituyas por una
+versión exacta como `1.35`.
 
 Un update sincroniza código y recursos. Nunca migra la DB, crea cuentas,
 inicializa Media ni envía correo automáticamente.
@@ -46,7 +43,7 @@ inicializa Media ni envía correo automáticamente.
 Primero actualiza CORE:
 
 ```powershell
-composer require liquidstack/core --with-all-dependencies
+composer require "liquidstack/core:^1.35" --with-all-dependencies
 ```
 
 Después ejecuta solo la opción necesaria. Blog y Commerce incluyen WebAdmin,
