@@ -78,7 +78,7 @@
 nav{
     background-color: c.$color01bis5;
     width: c.$anchoFull;
-    height: 8dvh;
+    // height: 8dvh;
     transition: height .2s ease;
     padding: 0.5rem 1rem;
     position: fixed;
@@ -89,7 +89,7 @@ nav{
     align-items: center;
     justify-content: center;
     @media only screen and (min-width:c.$tablet){
-        padding: 0.5rem 2rem;
+        padding: 1rem 2rem;
     }
     >:nth-child(1){
         width: 100%;
@@ -155,8 +155,8 @@ nav{
 
 // Estado reducido al hacer scroll
 nav.is-scrolled{
-    height: 6dvh;
-    background-color: c.$color01bis4;
+    // height: 6dvh;
+    // background-color: c.$color01bis;
 }
 
 .megamenu{
@@ -173,16 +173,17 @@ nav.is-scrolled{
     -moz-transition: 0.4s;
     // transition-behavior: allow-discrete;
     background-color: c.$color01;
-    top: 0;
+    top: 50px;
     display: none;
     flex-direction: row;
     justify-content: center;
     align-items: flex-start; 
     flex-wrap: wrap;
     gap: clamp(2rem, 2vw, 5rem);
+    padding-bottom: 10rem;
     @media only screen and (min-width:c.$tablet){
         &{
-            top: 8px;
+            top: 51px;
             padding: 4rem 1.5rem;
             width: 98%;
             border-radius: 2px; 
@@ -211,19 +212,13 @@ nav.is-scrolled{
         justify-content: flex-start;
         row-gap: 2rem;
         @media only screen and (min-width:c.$tablet){
-            &{
-                width: 45%    
-            }
+            width: 30%    
         }
         @media only screen and (min-width:c.$desktop){
-            &{
-                width: 30%;
-                // height: 400px;
-                border-right: 2px solid c.$color00; 
-            }
+            border-right: 2px solid c.$color00; 
         }
         >p{
-            font-size: 1.3rem;
+            font-size: clamp(1.1rem, 1vw, 1.3rem);
             font-family: c.$fuente02;
             letter-spacing: 2px;
         }
@@ -258,11 +253,15 @@ nav.is-scrolled{
                     -webkit-transition: 0.1s;
                     -o-transition: 0.1s;
                     -moz-transition: 0.1s;
+                    
                     &:hover{
                         filter: c.$color02SVG;
                         -webkit-filter: c.$color02SVG;
                     }
                     
+                }
+                a >span{
+                    font-size: clamp(0.8rem, 1vw, 1rem);
                 }
                 
                 .linkReducido{
