@@ -2486,7 +2486,8 @@
         ],
         "stubs/README.LIQUIDSTACK.md": [
             "sha256:05ecff0eb94bed86b3faa6ce46c22b531ea1082040ad3ba7cbc0f55526343554",
-            "sha256:1644692a82e12c328170a58c6a19272ed9854dce590c7f178f2f1361c35a16fd"
+            "sha256:1644692a82e12c328170a58c6a19272ed9854dce590c7f178f2f1361c35a16fd",
+            "sha256:e8ea9e395f376b9f99171bef2783206682918cf25dfa5fa662c62d0ce64cb66d"
         ],
         "stubs/public/index.php": [
             "sha256:908fe3651ac273a7a80c68f2f01066304541b78df05b0365464f7b34fbd048aa",

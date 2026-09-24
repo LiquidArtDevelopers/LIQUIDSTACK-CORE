@@ -4,6 +4,14 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.35.6] - 2026-09-24
+
+### Documentación
+
+- El manual gestionado de los consumidores separa los recorridos DB local a
+  producción, desarrollo contra una DB productiva vacía y activación de nuevos
+  módulos sobre una DB existente, incluyendo el traslado coordinado de Media.
+
 ## [1.35.5] - 2026-09-23
 
 ### Añadido
