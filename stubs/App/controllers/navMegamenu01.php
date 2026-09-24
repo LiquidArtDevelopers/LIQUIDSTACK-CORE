@@ -1,8 +1,18 @@
 <?php
+/**
+ * Copy recomendado: títulos de columna 2-48 caracteres; etiquetas de enlace
+ * 1-48 caracteres; textos de contacto 3-80 caracteres.
+ */
 function controller_navMegamenu01(int $i = 0, array $params = []): string
 {
     $pad  = sprintf('%02d', $i);
     $pref = "navMegamenu01_{$pad}_";
+
+    $escape = static fn (mixed $value): string => htmlspecialchars(
+        (string) $value,
+        ENT_QUOTES,
+        'UTF-8'
+    );
 
     $iconForward = '<img data-lang="'.$pref.'forward" src="'.
         $_ENV['RAIZ'].'/'.$GLOBALS["{$pref}forward"]->src.'" alt="'.
@@ -53,6 +63,125 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
             'title'  => $extractTitle($linkKey),
             'spanDL' => $textKey,
         ];
+    };
+
+    $routeDefinitions = $GLOBALS['arrayRutasGet'] ?? null;
+    if (!is_array($routeDefinitions)) {
+        $routeFile = dirname(__DIR__) . '/config/routes/get.php';
+        $routeDefinitions = is_file($routeFile) ? require $routeFile : [];
+        if (!is_array($routeDefinitions)) {
+            $routeDefinitions = [];
+        }
+    }
+
+    $resolveContentRoute = static function (array $contents) use (
+        $routeDefinitions
+    ): string {
+        $lang = (string) ($GLOBALS['lang'] ?? ($_ENV['LANG_DEFAULT'] ?? ''));
+        $routes = $routeDefinitions[$lang] ?? [];
+        if (!is_array($routes)) {
+            return '';
+        }
+
+        foreach ($routes as $route => $definition) {
+            if (
+                is_string($route)
+                && is_array($definition)
+                && in_array($definition['content'] ?? null, $contents, true)
+            ) {
+                return $route;
+            }
+        }
+
+        return '';
+    };
+
+    $catalogText = static function (string $key): string {
+        $entry = $GLOBALS[$key] ?? null;
+
+        if (is_object($entry) && isset($entry->text)) {
+            return (string) $entry->text;
+        }
+        if (is_array($entry) && isset($entry['text'])) {
+            return (string) $entry['text'];
+        }
+
+        return '';
+    };
+
+    $renderMenuItems = static function (array $items) use (
+        $catalogText,
+        $escape,
+        $iconForward
+    ): string {
+        $html = '<ul>';
+
+        foreach ($items as $item) {
+            if (!is_array($item) || !is_array($item['value'] ?? null)) {
+                continue;
+            }
+
+            $value = $item['value'];
+            $href = trim((string) ($value['href'] ?? ''));
+            $linkKey = (string) ($value['aDL'] ?? '');
+            $textKey = (string) ($value['spanDL'] ?? '');
+            if ($href === '' || $linkKey === '' || $textKey === '') {
+                continue;
+            }
+
+            $text = array_key_exists('text', $value)
+                ? (string) $value['text']
+                : $catalogText($textKey);
+            $title = trim((string) ($value['title'] ?? ''));
+            if ($title === '') {
+                $title = $text;
+            }
+
+            if (($item['type'] ?? null) === 'simple') {
+                $html .= '<li><a data-lang="'.$escape($linkKey).'" href="'
+                    .$escape($href).'" title="'.$escape($title).'">'
+                    .$iconForward.'<span data-lang="'.$escape($textKey).'">'
+                    .$escape($text).'</span></a></li>';
+                continue;
+            }
+
+            if (($item['type'] ?? null) !== 'group') {
+                continue;
+            }
+
+            $html .= '<li><div class="menu-group"><a data-lang="'
+                .$escape($linkKey).'" href="'.$escape($href).'" title="'
+                .$escape($title).'">'.$iconForward.'<span data-lang="'
+                .$escape($textKey).'">'.$escape($text)
+                .'</span></a><div class="submenu"><ul>';
+
+            foreach (($value['items'] ?? []) as $subItem) {
+                if (!is_array($subItem)) {
+                    continue;
+                }
+                $subHref = trim((string) ($subItem['href'] ?? ''));
+                $subLinkKey = (string) ($subItem['aDL'] ?? '');
+                $subTextKey = (string) ($subItem['spanDL'] ?? '');
+                if ($subHref === '' || $subLinkKey === '' || $subTextKey === '') {
+                    continue;
+                }
+                $subText = array_key_exists('text', $subItem)
+                    ? (string) $subItem['text']
+                    : $catalogText($subTextKey);
+                $subTitle = trim((string) ($subItem['title'] ?? ''));
+                if ($subTitle === '') {
+                    $subTitle = $subText;
+                }
+                $html .= '<li><a data-lang="'.$escape($subLinkKey).'" href="'
+                    .$escape($subHref).'" title="'.$escape($subTitle).'">'
+                    .$iconForward.'<span data-lang="'.$escape($subTextKey).'">'
+                    .$escape($subText).'</span></a></li>';
+            }
+
+            $html .= '</ul></div></div></li>';
+        }
+
+        return $html . '</ul>';
     };
 
     $col1Items = [
@@ -128,74 +257,102 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
         }
     endif;
 
-    $col1Html = '<ul>';
-    foreach ($col1Items as $item) {
-        if ($item['type'] === 'simple') {
-            $s       = $item['value'];
-            $spanTxt = $GLOBALS[$s['spanDL']]->text;
-            $col1Html .= '<li><a data-lang="'.$s['aDL'].'" href="'.$s['href'].'" title="'.$s['title'].'">'.$iconForward.'<span data-lang="'.$s['spanDL'].'">'.$spanTxt.'</span></a></li>';
-            continue;
+    $col1Html = $renderMenuItems($col1Items);
+
+    $col2CookieLink = $GLOBALS["{$pref}col02link_01"] ?? null;
+    $col2CookieText = $GLOBALS["{$pref}col02span2_01"] ?? null;
+    $col2PrivacyLink = $GLOBALS["{$pref}col02link_02"] ?? null;
+    $col2PrivacyText = $GLOBALS["{$pref}col02span2_02"] ?? null;
+    $col2LegalLink = $GLOBALS["{$pref}col02link_03"] ?? null;
+    $col2LegalText = $GLOBALS["{$pref}col02span2_03"] ?? null;
+
+    $col2CookieHref = is_object($col2CookieLink)
+        ? (string) ($col2CookieLink->href ?? '')
+        : '';
+    $col2CookieTitle = is_object($col2CookieLink)
+        ? (string) ($col2CookieLink->title ?? '')
+        : '';
+    $col2CookieLabel = is_object($col2CookieText)
+        ? (string) ($col2CookieText->text ?? '')
+        : '';
+    $col2PrivacyHref = is_object($col2PrivacyLink)
+        ? (string) ($col2PrivacyLink->href ?? '')
+        : '';
+    $col2PrivacyTitle = is_object($col2PrivacyLink)
+        ? (string) ($col2PrivacyLink->title ?? '')
+        : '';
+    $col2PrivacyLabel = is_object($col2PrivacyText)
+        ? (string) ($col2PrivacyText->text ?? '')
+        : '';
+    $col2LegalHref = is_object($col2LegalLink)
+        ? (string) ($col2LegalLink->href ?? '')
+        : '';
+    $col2LegalTitle = is_object($col2LegalLink)
+        ? (string) ($col2LegalLink->title ?? '')
+        : '';
+    $col2LegalLabel = is_object($col2LegalText)
+        ? (string) ($col2LegalText->text ?? '')
+        : '';
+
+    $resolveColumnTwoHref = static function (
+        string $configuredHref,
+        array $contents
+    ) use ($resolveContentRoute): string {
+        $configuredHref = trim($configuredHref);
+        if ($configuredHref !== '') {
+            return resolve_localized_href($configuredHref, ['absolute' => false]);
         }
 
-        $g        = $item['value'];
-        $groupTxt = $GLOBALS[$g['spanDL']]->text;
-        $col1Html .= '<li><div><a data-lang="'.$g['aDL'].'" href="'.$g['href'].'" title="'.$g['title'].'">'.$iconForward.'<span data-lang="'.$g['spanDL'].'">'.$groupTxt.'</span></a><div class="submenu"><ul>';
-        foreach ($g['items'] as $sub) {
-            $subTxt = $GLOBALS[$sub['spanDL']]->text;
-            $col1Html .= '<li><a data-lang="'.$sub['aDL'].'" href="'.$sub['href'].'" title="'.$subTxt.'">'.$iconForward.'<span data-lang="'.$sub['spanDL'].'">'.$subTxt.'</span></a></li>';
-        }
-        $col1Html .= '</ul></div></div></li>';
-    }
-    $col1Html .= '</ul>';
+        return $resolveContentRoute($contents);
+    };
 
-    $col2Simple = [
-        // [
-        //     'aDL'   => "{$pref}col02link_01",
-        //     'spanDL'=> "{$pref}col02span_01",
-        //     'href'  => $GLOBALS["{$pref}col02link_01_href"],
-        //     'title' => $GLOBALS["{$pref}col02link_01"]->title,
-        //     'text'  => $GLOBALS["{$pref}col02span_01"]->text,
-        // ],
-        // [
-        //     'aDL'   => "{$pref}col02link_02",
-        //     'spanDL'=> "{$pref}col02span_02",
-        //     'href'  => $GLOBALS["{$pref}col02link_02_href"],
-        //     'title' => $GLOBALS["{$pref}col02link_02"]->title,
-        //     'text'  => $GLOBALS["{$pref}col02span_02"]->text,
-        // ],
-    ];
-    $col2Links = '<ul>';
-    foreach ($col2Simple as $s) {
-        $col2Links .= '<li><a data-lang="'.$s['aDL'].'" href="'.$s['href'].'" title="'.$s['title'].'" target="_blank">'.$iconForward.'<span data-lang="'.$s['spanDL'].'">'.$s['text'].'</span></a></li>';
-    }
-    $col2Links .= '</ul>';
-
-    // términos y condiciones
-    $col2Simple2 = [
-        // Cookies
+    /*
+     * La columna 2 comparte exactamente el esquema simple/group de la columna
+     * 1. Se pueden añadir, quitar, reordenar o agrupar entradas sin cambiar el
+     * renderer; redes y logotipo permanecen como bloques independientes.
+     */
+    $col2Items = [
         [
-            'spanDL'=> "{$pref}col02span2_01",            
-            'text'  => $GLOBALS["{$pref}col02span2_01"]->text,
-            'tipo'  => "cookies",
+            'type' => 'simple',
+            'value' => [
+                'aDL' => "{$pref}col02link_01",
+                'href' => $resolveColumnTwoHref(
+                    $col2CookieHref,
+                    ['politica-de-cookies', 'gestion-cookies']
+                ),
+                'title' => $col2CookieTitle,
+                'spanDL' => "{$pref}col02span2_01",
+                'text' => $col2CookieLabel,
+            ],
         ],
-        // Privacidad
         [
-            'spanDL'=> "{$pref}col02span2_02",            
-            'text'  => $GLOBALS["{$pref}col02span2_02"]->text,
-            'tipo'  => "privacidad",
+            'type' => 'simple',
+            'value' => [
+                'aDL' => "{$pref}col02link_02",
+                'href' => $resolveColumnTwoHref(
+                    $col2PrivacyHref,
+                    ['politica-de-privacidad']
+                ),
+                'title' => $col2PrivacyTitle,
+                'spanDL' => "{$pref}col02span2_02",
+                'text' => $col2PrivacyLabel,
+            ],
         ],
-        // Aviso legal
         [
-            'spanDL'=> "{$pref}col02span2_03",            
-            'text'  => $GLOBALS["{$pref}col02span2_03"]->text,
-            'tipo'  => "",
+            'type' => 'simple',
+            'value' => [
+                'aDL' => "{$pref}col02link_03",
+                'href' => $resolveColumnTwoHref(
+                    $col2LegalHref,
+                    ['aviso-legal']
+                ),
+                'title' => $col2LegalTitle,
+                'spanDL' => "{$pref}col02span2_03",
+                'text' => $col2LegalLabel,
+            ],
         ],
     ];
-    $col2Links2 = '<ul>';
-    foreach ($col2Simple2 as $s) {
-        $col2Links2 .= '<li><span class="legal" data-tipo="'.$s['tipo'].'">'.$iconForward.'<span data-lang="'.$s['spanDL'].'">'.$s['text'].'</span></span></li>';
-    }
-    $col2Links2 .= '</ul>';
+    $col2Html = $renderMenuItems($col2Items);
 
     /* Añadir, quitar o reordenar entradas; un array vacío anula el bloque. */
     $socialItems = [
@@ -241,11 +398,6 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
         ],
     ];
 
-    $escape = static fn (mixed $value): string => htmlspecialchars(
-        (string) $value,
-        ENT_QUOTES,
-        'UTF-8'
-    );
     $col2SocialItems = '';
     foreach ($socialItems as $social) {
         $href = trim((string) $social['href']);
@@ -300,7 +452,7 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
         '{col1-links}'         => $col1Html,
         '{col2-intro-dl}'      => "{$pref}link_of_interest",
         '{col2-intro-text}'    => $GLOBALS["{$pref}link_of_interest"]->text,
-        '{col2-links}'         => $col2Links.$col2Links2,
+        '{col2-links}'         => $col2Html,
         '{col2-button}'        => '',
         '{col2-follow-dl}'     => "{$pref}follow_us_social_media",
         '{col2-follow-text}'   => $GLOBALS["{$pref}follow_us_social_media"]->text,
@@ -310,6 +462,11 @@ function controller_navMegamenu01(int $i = 0, array $params = []): string
         '{col3-intro-text}'    => $GLOBALS["{$pref}contact"]->text,
         '{col3-links}'         => $col3Html,
     ];
+    unset(
+        $params['offices'],
+        $params['public_link_keys'],
+        $params['show_private_access']
+    );
     $pageVars = array_replace($pageVars, $params);
     return render('App/templates/_navMegamenu01.html', $pageVars);
 }

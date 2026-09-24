@@ -4,6 +4,24 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.35.7] - 2026-09-24
+
+### Cambiado
+
+- `navMegamenu01` usa en su segunda columna el mismo contrato de enlaces
+  simples y grupos que la primera, mantiene redes y logotipo como bloques
+  independientes y enlaza las tres páginas legales mediante el `content` de
+  las rutas del idioma activo.
+
+### Corregido
+
+- Los dos separadores de escritorio del megamenú comparten una altura visual
+  estable y ya no crecen con las redes sociales ni con el logotipo de la
+  segunda columna.
+- El megamenú conserva sus tres columnas desde tablet, reduce de forma fluida
+  encabezados, enlaces, iconos y redes, y evita saltos de línea o desbordes en
+  sus etiquetas.
+
 ## [1.35.6] - 2026-09-24
 
 ### Cambiado

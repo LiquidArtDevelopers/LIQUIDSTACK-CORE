@@ -359,9 +359,9 @@ PHP
                     "navMegamenu01_00_col02span2_{$suffix}",
                     $catalog
                 );
-                self::assertArrayNotHasKey(
-                    "navMegamenu01_00_col02link2_{$suffix}",
-                    $catalog
+                self::assertSame(
+                    ['href', 'title'],
+                    array_keys($catalog["navMegamenu01_00_col02link_{$suffix}"])
                 );
             }
 

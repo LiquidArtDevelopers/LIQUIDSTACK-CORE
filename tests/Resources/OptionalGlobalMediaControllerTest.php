@@ -62,6 +62,8 @@ final class OptionalGlobalMediaControllerTest extends TestCase
     public function testNavigationKeepsEditableDefaultSocialSlots(): void
     {
         $this->configureNavigationGlobals();
+        $legalRoutes = $this->legalRouteDefinitions();
+        $this->putGlobal('arrayRutasGet', $legalRoutes);
 
         $html = $this->fromStubRoot(static fn (): string =>
             controller_navMegamenu01(0, [
@@ -79,10 +81,19 @@ final class OptionalGlobalMediaControllerTest extends TestCase
             '<img data-lang="navMegamenu01_00_forward"',
             $html
         );
-        self::assertStringNotContainsString(
-            'data-lang="navMegamenu01_00_col02link2_',
-            $html
-        );
+        foreach ([
+            'col02link_01' => '/es/politica-de-cookies',
+            'col02link_02' => '/es/politica-de-privacidad',
+            'col02link_03' => '/es/aviso-legal',
+        ] as $key => $href) {
+            self::assertStringContainsString(
+                'data-lang="navMegamenu01_00_' . $key . '" href="' . $href . '"',
+                $html
+            );
+        }
+        self::assertStringContainsString('class="menu-group"', $html);
+        self::assertStringNotContainsString('class="legal"', $html);
+        self::assertStringNotContainsString('data-tipo=', $html);
         self::assertSame(4, substr_count($html, '<a data-lang="navMegamenu01_00_rrss_'));
         self::assertStringNotContainsString('src="http://localhost:1309/"', $html);
         self::assertStringNotContainsString('href=""', $html);
@@ -129,6 +140,29 @@ final class OptionalGlobalMediaControllerTest extends TestCase
             'src="http://localhost:1309/assets/img/social.svg"',
             $html
         );
+    }
+
+    public function testNavigationResolvesLegalRoutesForTheActiveLanguage(): void
+    {
+        $this->configureNavigationGlobals();
+        $this->putGlobal('lang', 'en');
+        $legalRoutes = $this->legalRouteDefinitions();
+        $this->putGlobal('arrayRutasGet', $legalRoutes);
+
+        $html = $this->fromStubRoot(static fn (): string =>
+            controller_navMegamenu01(0, [
+                'offices' => [],
+                'show_private_access' => false,
+            ])
+        );
+
+        foreach ([
+            '/en/cookie-policy',
+            '/en/privacy-policy',
+            '/en/legal-notice',
+        ] as $href) {
+            self::assertStringContainsString('href="' . $href . '"', $html);
+        }
     }
 
     public function testNavigationAcceptsAnExactProjectOwnedPublicHref(): void
@@ -281,6 +315,9 @@ final class OptionalGlobalMediaControllerTest extends TestCase
             'col02span2_01' => ['text' => 'Cookies'],
             'col02span2_02' => ['text' => 'Privacidad'],
             'col02span2_03' => ['text' => 'Aviso legal'],
+            'col02link_01' => ['href' => '', 'title' => 'Cookies'],
+            'col02link_02' => ['href' => '', 'title' => 'Privacidad'],
+            'col02link_03' => ['href' => '', 'title' => 'Aviso legal'],
         ] as $suffix => $value) {
             $this->putGlobal($prefix . $suffix, (object) $value);
         }
@@ -334,6 +371,35 @@ final class OptionalGlobalMediaControllerTest extends TestCase
             (object) ['title' => 'Proveedor']
         );
         $this->putGlobal('footerInfo01_lad_info_href', 'https://example.com');
+    }
+
+    /** @return array<string, array<string, array{content: string}>> */
+    private function legalRouteDefinitions(): array
+    {
+        return [
+            'es' => [
+                '/es/politica-de-cookies' => [
+                    'content' => 'politica-de-cookies',
+                ],
+                '/es/politica-de-privacidad' => [
+                    'content' => 'politica-de-privacidad',
+                ],
+                '/es/aviso-legal' => [
+                    'content' => 'aviso-legal',
+                ],
+            ],
+            'en' => [
+                '/en/cookie-policy' => [
+                    'content' => 'gestion-cookies',
+                ],
+                '/en/privacy-policy' => [
+                    'content' => 'politica-de-privacidad',
+                ],
+                '/en/legal-notice' => [
+                    'content' => 'aviso-legal',
+                ],
+            ],
+        ];
     }
 
     private function fromStubRoot(callable $callback): string

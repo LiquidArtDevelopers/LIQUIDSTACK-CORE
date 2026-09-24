@@ -179,14 +179,15 @@ nav.is-scrolled{
     justify-content: center;
     align-items: flex-start; 
     flex-wrap: wrap;
-    gap: clamp(2rem, 2vw, 5rem);
+    gap: clamp(1.5rem, 2vw, 5rem);
     padding-bottom: 10rem;
     @media only screen and (min-width:c.$tablet){
         &{
             top: 51px;
             padding: 4rem 1.5rem;
             width: 98%;
-            border-radius: 2px; 
+            border-radius: 2px;
+            flex-wrap: nowrap;
         }
     }     
     @media only screen and (min-width:c.$desktop){
@@ -206,30 +207,61 @@ nav.is-scrolled{
     }
     .col{
         width: 100%;
+        position: relative;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
         row-gap: 2rem;
         @media only screen and (min-width:c.$tablet){
-            width: 30%    
-        }
-        @media only screen and (min-width:c.$desktop){
-            border-right: 2px solid c.$color00; 
+            width: auto;
+            min-width: 0;
+            flex: 1 1 0;
+            &:not(:last-child)::after{
+                content: '';
+                position: absolute;
+                top: 0;
+                left: calc(100% + clamp(0.75rem, 1vw, 2.5rem));
+                width: 2px;
+                height: 15rem;
+                background-color: c.$color00;
+                pointer-events: none;
+            }
         }
         >p{
             font-size: clamp(1.1rem, 1vw, 1.3rem);
             font-family: c.$fuente02;
             letter-spacing: 2px;
+            @media only screen and (min-width:c.$tablet){
+                max-width: 100%;
+                font-size: clamp(0.72rem, 1.15vw, 1.05rem);
+                letter-spacing: clamp(0.04rem, 0.12vw, 0.1rem);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        }
+        >span{
+            font-family: c.$fuente02;
+            @media only screen and (min-width:c.$tablet){
+                max-width: 100%;
+                font-size: clamp(0.7rem, 0.9vw, 0.95rem);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
         }
         >ul{
             width: c.$anchoFull;
+            min-width: 0;
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             justify-content: flex-start;
             row-gap: 1rem;
             li{
+                width: 100%;
+                min-width: 0;
                 display: flex;
                 flex-direction: column;
                 row-gap: 1rem;
@@ -244,6 +276,8 @@ nav.is-scrolled{
                     }                   
                 }
                 a, >span{
+                    max-width: 100%;
+                    min-width: 0;
                     display: flex;
                     flex-direction: row;
                     justify-content: flex-start;
@@ -262,12 +296,22 @@ nav.is-scrolled{
                 }
                 a >span{
                     font-size: clamp(0.8rem, 1vw, 1rem);
+                    @media only screen and (min-width:c.$tablet){
+                        min-width: 0;
+                        font-size: clamp(0.7rem, 0.9vw, 0.95rem);
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                    }
                 }
                 
                 .linkReducido{
                     width: 100%;
                     >span{
                         font-size: clamp(0.7rem, 1vw, 1.1rem);
+                        @media only screen and (min-width:c.$tablet){
+                            font-size: clamp(0.68rem, 0.85vw, 0.9rem);
+                        }
                     }
                 }
             }
@@ -275,7 +319,10 @@ nav.is-scrolled{
             img{
                 width: 20px;
                 filter: invert(1);
-                -webkit-filter: invert(1);                                       
+                -webkit-filter: invert(1);
+                @media only screen and (min-width:c.$tablet){
+                    width: clamp(0.8rem, 1.5vw, 1.25rem);
+                }
             }
         }            
         .boton{
@@ -284,72 +331,76 @@ nav.is-scrolled{
             font-size: 0.9rem;
         }                                
     }
-    >:nth-child(1){        
-        >ul{
-            >li {            
-                >div{
-                    display: flex; 
-                    flex-direction: row;
-                    justify-content: flex-start;
-                    align-items: center;
-                    column-gap: 1rem;
-                    position: relative;
-                    cursor: crosshair;
-                    color: c.$color00;              
-                    &:hover .submenu{                                             
-                        width: 100vw;
-                        padding: 0 1rem;
-                        opacity: 1;                        
-                        animation: aparecer ease-in;
-                        animation-duration: .4s;
-                        animation-iteration-count: 1;
-                        -webkit-animation: aparecer ease-in;
-                        -webkit-animation-duration: .4s;
-                        -webkit-animation-iteration-count: 1;
-                        @media only screen and (min-width:c.$tablet){
-                            &{
-                                width: 400px;
-                            }
-                        } 
-                        @keyframes aparecer {
-                            from{
-                                opacity: 0;
-                            }
-                            to{
-                                opacity: 1;
-                            }
-                        }
-                    }
-                    .submenu{
-                        position: absolute;
-                        z-index: 110;
-                        top: 1.5rem;
-                        left: -6rem;
-                        width: 0;
-                        opacity: 0;
-                        overflow: hidden;
-                        @media only screen and (min-width:c.$tablet){
-                            &{
-                                top: -2rem;
-                                left: 100%;  
-                            }
-                        }                     
-                        ul{
-                            padding: 2rem;
-                            border-radius: 10px;
-                            backdrop-filter: blur(5px);
-                            -webkit-backdrop-filter: blur(5px);
-                            background-color: c.$color01bis;
-                            display: flex;
-                            flex-direction: column;
-                            justify-content: flex-start;
-                            align-items: flex-start;
-                            row-gap: 1rem;
-                        }     
-                    }                    
-                }                
-            }            
-        }                    
+    .col >ul >li >.menu-group{
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        column-gap: 1rem;
+        position: relative;
+        cursor: crosshair;
+        color: c.$color00;
+        &:hover .submenu,
+        &:focus-within .submenu{
+            width: 100vw;
+            padding: 0 1rem;
+            opacity: 1;
+            animation: aparecer ease-in;
+            animation-duration: .4s;
+            animation-iteration-count: 1;
+            -webkit-animation: aparecer ease-in;
+            -webkit-animation-duration: .4s;
+            -webkit-animation-iteration-count: 1;
+            @media only screen and (min-width:c.$tablet){
+                &{
+                    width: min(22rem, calc(100vw - 2rem));
+                }
+            }
+            @keyframes aparecer {
+                from{
+                    opacity: 0;
+                }
+                to{
+                    opacity: 1;
+                }
+            }
+        }
+        .submenu{
+            position: absolute;
+            z-index: 110;
+            top: 1.5rem;
+            left: -6rem;
+            width: 0;
+            opacity: 0;
+            overflow: hidden;
+            @media only screen and (min-width:c.$tablet){
+                &{
+                    top: -2rem;
+                    left: 100%;
+                }
+            }
+            ul{
+                padding: 2rem;
+                border-radius: 10px;
+                backdrop-filter: blur(5px);
+                -webkit-backdrop-filter: blur(5px);
+                background-color: c.$color01bis;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+                align-items: flex-start;
+                row-gap: 1rem;
+            }
+        }
+    }
+    @media only screen and (min-width:c.$tablet){
+        >:nth-child(2) .menu-group .submenu{
+            left: 0;
+        }
+        >:nth-child(3) .menu-group .submenu{
+            right: 100%;
+            left: auto;
+        }
     }
     >:nth-child(2){
         row-gap: 2.5rem;
@@ -359,9 +410,9 @@ nav.is-scrolled{
             flex-direction: row;
             justify-content: center;
             align-items: center;
-            column-gap: 3rem;
+            column-gap: clamp(0.75rem, 1.5vw, 3rem);
             img{
-                width: 2rem;
+                width: clamp(1.25rem, 2vw, 2rem);
                 transition: 0.1s;
                 -webkit-transition: 0.1s;
                 -o-transition: 0.1s;
@@ -380,7 +431,8 @@ nav.is-scrolled{
             display: flex;
             justify-content: center;
             >img{
-                width: 200px;
+                width: clamp(7rem, 16vw, 12.5rem);
+                max-width: 100%;
                 filter: invert(1);
             }
         }
