@@ -54,8 +54,17 @@
         "resources/img/system/circle1.svg": [
             "sha256:b800c17480359b0119d19e6077d18a79a4f925deadb5f0cb1a6a7f29e1b85d8a"
         ],
+        "resources/img/system/fb.svg": [
+            "sha256:b39be40270b58a997ac0505a6d24b0e47a6a86675d2b1454c4562a5afad67b5e"
+        ],
         "resources/img/system/hidePassword.svg": [
             "sha256:06cae3757000593a6cfc8421f3b65f1b4aae5fe3bfbf0030cad8a9edeaff2a36"
+        ],
+        "resources/img/system/ig.svg": [
+            "sha256:95c1cc4f00f2d2bd52b126d1c31605cc16169a8ae4ddae7256f0770edee83bd4"
+        ],
+        "resources/img/system/in.svg": [
+            "sha256:4b091211d00d83b8e9a13613a7c2dbd639c052fd98167f6ff47b435f01fb9a79"
         ],
         "resources/img/system/mail.svg": [
             "sha256:78168e4b360871c5c6efde16a45e73853b11854a902d2c7220f947479651ca64"
@@ -71,6 +80,9 @@
         ],
         "resources/img/system/wp.svg": [
             "sha256:a0021f5e022b93355eea349ac815c01ab46cf79c75d0245665fe12bb7f149ace"
+        ],
+        "resources/img/system/yt.svg": [
+            "sha256:fc1bd45a8d2b0fb4a13264aca177f36df1ef7d571a80bd9c2ebcb7a1e2713621"
         ],
         "resources/js/_art18.js": [
             "sha256:f486f81ccdd54792b05d07111ecb3ce2bbbe1d2ad9c0bf55109ed7d328aa934f"
@@ -132,6 +144,9 @@
         ],
         "stubs/App/controllers/artWorksSkew01.php": [
             "sha256:c4b344962378891d002454aefa5b16786165aa6f687c3bb2cce43be0a178a1f1"
+        ],
+        "stubs/App/controllers/navMegamenu01.php": [
+            "sha256:fde025651f83038e34b47400510d50fe80b0a8c20490ca8355e38ba15b8f8545"
         ],
         "stubs/App/controllers/sectionDiskSlider01.php": [
             "sha256:d271ce5fc3659a8c7caf83dbdb54df2eaff17ca06bb5d8eff6ebe0d1d64e7272"

@@ -6,11 +6,29 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [1.35.6] - 2026-09-24
 
+### Cambiado
+
+- CORE usa el paquete público `gsap:^3.13.0` sin token; la sincronización
+  migra solo el alias canónico legacy `npm:@gsap/shockingly@3.12.5` en
+  `dependencies` o `devDependencies` y preserva cualquier versión personalizada.
+
+### Corregido
+
+- La sincronización reconoce el controlador equivalente de BASE y los cuatro
+  iconos sociales legacy del megamenú, evitando preservaciones falsas en
+  proyectos nuevos sin relajar la protección de personalizaciones reales.
+
 ### Documentación
 
 - El manual gestionado de los consumidores separa los recorridos DB local a
   producción, desarrollo contra una DB productiva vacía y activación de nuevos
   módulos sobre una DB existente, incluyendo el traslado coordinado de Media.
+- El mismo manual aclara que un storage Media explícito debe ser absoluto y
+  que reinstalar código o migraciones no renueva los datos demo de una DB
+  anterior; el instalador demo de BASE solo aporta los ficheros AVIF.
+- El manual resume la decisión de storage para DB local, DB remota usada desde
+  desarrollo, producción y snapshots heredados, y elimina la configuración
+  privada obsoleta de GSAP.
 
 ## [1.35.5] - 2026-09-23
 

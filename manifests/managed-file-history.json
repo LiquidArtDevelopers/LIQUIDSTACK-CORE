@@ -744,7 +744,8 @@
             "sha256:98e9b81bcc88879b0f84a9eba1ab16ceb9489eb271ae7c14ebc1be23f01194c8"
         ],
         "resources/img/system/fb.svg": [
-            "sha256:816e1471b5138ab6fc2df4b91d22187e143148a0d4de62a03c33dbce009b05c8"
+            "sha256:816e1471b5138ab6fc2df4b91d22187e143148a0d4de62a03c33dbce009b05c8",
+            "sha256:b39be40270b58a997ac0505a6d24b0e47a6a86675d2b1454c4562a5afad67b5e"
         ],
         "resources/img/system/hidePassword.svg": [
             "sha256:06cae3757000593a6cfc8421f3b65f1b4aae5fe3bfbf0030cad8a9edeaff2a36",
@@ -752,9 +753,11 @@
             "sha256:ed72d648c94a5b8feaa28dc0c31fbb8f8d7e34dfbd305e0b6fcaf459f0b3992a"
         ],
         "resources/img/system/ig.svg": [
-            "sha256:80de4f5b3bf026344395a9e0425a30f2c67059676383e4219463787470868b8d"
+            "sha256:80de4f5b3bf026344395a9e0425a30f2c67059676383e4219463787470868b8d",
+            "sha256:95c1cc4f00f2d2bd52b126d1c31605cc16169a8ae4ddae7256f0770edee83bd4"
         ],
         "resources/img/system/in.svg": [
+            "sha256:4b091211d00d83b8e9a13613a7c2dbd639c052fd98167f6ff47b435f01fb9a79",
             "sha256:518a5a356998d45822c77740f9a0307bb7fa09554419cb3b6ec7dc9e9f3d7cdb"
         ],
         "resources/img/system/mail.svg": [
@@ -821,7 +824,8 @@
             "sha256:f877a29ace2e6d358b56ee976e55439ea9c4ef22be4bc3c8a57b762430926878"
         ],
         "resources/img/system/yt.svg": [
-            "sha256:23c1ea081d3f5e25513f3cc9666d3f4d934cf8408e51cae274b9c25104d9ec16"
+            "sha256:23c1ea081d3f5e25513f3cc9666d3f4d934cf8408e51cae274b9c25104d9ec16",
+            "sha256:fc1bd45a8d2b0fb4a13264aca177f36df1ef7d571a80bd9c2ebcb7a1e2713621"
         ],
         "resources/js/_aniBackground01.js": [
             "sha256:cd84d0b7e5787b21f4b0a521f2d3c6bb289472f7655fda4b36097b809c3dc4f7",
@@ -2008,7 +2012,8 @@
             "sha256:5ee5f36363f2e2212ec8051879ffd00c98b172369e557c4ad309845082f96923",
             "sha256:73a820b15b013c3530fa622d63ac22344c910a8be2f6ec64c222f4ca92c9e203",
             "sha256:7a8717e676510ad5f30e30762054c7c0ef3c4c64c546764205cb383bd4befe54",
-            "sha256:9078ebbf250a8cdec3e061a90b4a2399cbfa1893438b1bf2ffdfcc6ca963c177"
+            "sha256:9078ebbf250a8cdec3e061a90b4a2399cbfa1893438b1bf2ffdfcc6ca963c177",
+            "sha256:fde025651f83038e34b47400510d50fe80b0a8c20490ca8355e38ba15b8f8545"
         ],
         "stubs/App/controllers/sect01.php": [
             "sha256:78a9c05eccfee288bf47e164273ce6176c6efc45902298444a19d4333aee490d",
@@ -2487,7 +2492,7 @@
         "stubs/README.LIQUIDSTACK.md": [
             "sha256:05ecff0eb94bed86b3faa6ce46c22b531ea1082040ad3ba7cbc0f55526343554",
             "sha256:1644692a82e12c328170a58c6a19272ed9854dce590c7f178f2f1361c35a16fd",
-            "sha256:e8ea9e395f376b9f99171bef2783206682918cf25dfa5fa662c62d0ce64cb66d"
+            "sha256:2b7b6a0f355a768c29e0c4390199b9230646dcaa2b17cafd68f64b89b7e39f31"
         ],
         "stubs/public/index.php": [
             "sha256:908fe3651ac273a7a80c68f2f01066304541b78df05b0365464f7b34fbd048aa",

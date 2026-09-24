@@ -57,6 +57,90 @@ final class InstallerFrontendPackageSyncTest extends TestCase
         $this->filesystem->remove($this->projectRoot);
     }
 
+    public function testCanonicalLegacyGsapDependencyMigratesAndIsIdempotent(): void
+    {
+        $this->writePackage([
+            'dependencies' => [
+                'gsap' => 'npm:@gsap/shockingly@3.12.5',
+            ],
+        ]);
+
+        $first = $this->sync();
+
+        self::assertSame(
+            '^3.13.0',
+            $this->readPackage()['dependencies']['gsap'] ?? null
+        );
+        self::assertStringContainsString(
+            'Updated canonical frontend dependencies in package.json: dependencies.gsap@^3.13.0',
+            $first
+        );
+
+        $second = $this->sync();
+
+        self::assertSame(
+            '^3.13.0',
+            $this->readPackage()['dependencies']['gsap'] ?? null
+        );
+        self::assertStringContainsString(
+            'Frontend dependencies already up to date',
+            $second
+        );
+        self::assertStringNotContainsString(
+            'Updated canonical frontend dependencies',
+            $second
+        );
+    }
+
+    public function testCanonicalLegacyGsapDevDependencyMigrates(): void
+    {
+        $this->writePackage([
+            'devDependencies' => [
+                'gsap' => 'npm:@gsap/shockingly@3.12.5',
+            ],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            '^3.13.0',
+            $this->readPackage()['devDependencies']['gsap'] ?? null
+        );
+        self::assertStringContainsString(
+            'Updated canonical frontend dependencies in package.json: devDependencies.gsap@^3.13.0',
+            $output
+        );
+    }
+
+    /** @dataProvider customizedGsapVersions */
+    public function testCustomizedGsapDependencyIsPreserved(string $version): void
+    {
+        $this->writePackage([
+            'dependencies' => ['gsap' => $version],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            $version,
+            $this->readPackage()['dependencies']['gsap'] ?? null
+        );
+        self::assertStringNotContainsString(
+            'Updated canonical frontend dependencies',
+            $output
+        );
+    }
+
+    /** @return array<string, array{string}> */
+    public static function customizedGsapVersions(): array
+    {
+        return [
+            'another private alias' => ['npm:@gsap/shockingly@^3.12.5'],
+            'another public range' => ['^3.12.5'],
+            'workspace policy' => ['workspace:*'],
+        ];
+    }
+
     public function testCanonicalLegacyLadScriptMigratesAndIsIdempotent(): void
     {
         $this->writePackage([

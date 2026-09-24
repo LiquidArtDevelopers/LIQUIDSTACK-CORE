@@ -368,6 +368,7 @@ class Installer
 
         $sections = ['dependencies', 'devDependencies'];
         $added    = [];
+        $updatedDependencies = [];
         $updatedScripts = [];
         $preservedScripts = [];
         $deferredScripts = [];
@@ -399,6 +400,59 @@ class Installer
 
             if ($projectPackage[$section] === [] && !$hadSection) {
                 unset($projectPackage[$section]);
+            }
+        }
+
+        $dependencyMigrations = $coreManifest['dependencyMigrations'] ?? [];
+        if (is_array($dependencyMigrations)) {
+            foreach ($dependencyMigrations as $name => $migration) {
+                if (
+                    !is_string($name)
+                    || $name === ''
+                    || !is_array($migration)
+                    || !is_array($migration['from'] ?? null)
+                ) {
+                    continue;
+                }
+
+                $targetVersion = null;
+                foreach ($sections as $section) {
+                    $candidate = $coreManifest[$section][$name] ?? null;
+                    if (is_string($candidate) && $candidate !== '') {
+                        $targetVersion = $candidate;
+                        break;
+                    }
+                }
+                if ($targetVersion === null) {
+                    continue;
+                }
+
+                $legacyValues = array_values(array_filter(
+                    $migration['from'],
+                    static fn (mixed $value): bool =>
+                        is_string($value) && $value !== ''
+                ));
+                if ($legacyValues === []) {
+                    continue;
+                }
+
+                foreach ($sections as $section) {
+                    $current = $projectPackage[$section][$name] ?? null;
+                    if (
+                        !is_string($current)
+                        || !in_array($current, $legacyValues, true)
+                    ) {
+                        continue;
+                    }
+
+                    $projectPackage[$section][$name] = $targetVersion;
+                    $updatedDependencies[] = sprintf(
+                        '%s.%s@%s',
+                        $section,
+                        $name,
+                        $targetVersion
+                    );
+                }
             }
         }
 
@@ -480,7 +534,11 @@ class Installer
             ));
         }
 
-        if ($added === [] && $updatedScripts === []) {
+        if (
+            $added === []
+            && $updatedDependencies === []
+            && $updatedScripts === []
+        ) {
             if ($deferredScripts === []) {
                 $io->write('<info>Frontend dependencies already up to date in package.json</info>');
             }
@@ -505,8 +563,16 @@ class Installer
                 implode(', ', array_values(array_unique($updatedScripts)))
             ));
         }
+        if ($updatedDependencies !== []) {
+            $io->write(sprintf(
+                '<info>Updated canonical frontend dependencies in package.json: %s</info>',
+                implode(', ', array_values(array_unique($updatedDependencies)))
+            ));
+        }
         if ($added !== []) {
             $io->write(sprintf('<info>Added frontend dependencies to package.json: %s</info>', implode(', ', $added)));
+        }
+        if ($added !== [] || $updatedDependencies !== []) {
             $io->write('<comment>Run npm install/yarn install/pnpm install to fetch new packages.</comment>');
         }
     }

@@ -40,6 +40,13 @@ inicializa Media ni envía correo automáticamente.
 
 ## Elegir el recorrido de DB
 
+| Situación | Decisión sobre Media |
+| --- | --- |
+| DB local durante el desarrollo | Usa Media local; al publicar, exporta la DB y copia/verifica Media en el mismo corte. |
+| DB remota usada desde desarrollo | Media sigue en el equipo local; cópiala/verifícala en el servidor antes de abrir producción. |
+| Runtime de producción | Configura una ruta absoluta, privada y persistente que el deploy no sustituya. |
+| DB heredada o demo | Composer y las migraciones no refrescan sus datos; el instalador demo solo copia bytes, no filas ni referencias. |
+
 WebAdmin, Blog y Commerce comparten una sola conexión `LIQUIDSTACK_DB_*`.
 No existen dos bloques simultáneos «local» y «producción»: cada runtime usa el
 único bloque de su `.env` privado. CORE no carga por sí solo
@@ -49,6 +56,12 @@ tooling materializa primero el perfil elegido en `.env`.
 Antes de cualquier comando con escritura, comprueba qué host está activo con
 `composer liquidstack:doctor --format=json`. Cambiar las variables selecciona
 otro destino, pero no copia esquema, contenido ni Media.
+
+Media mantiene su propio filesystem en cada runtime. En desarrollo loopback,
+`LIQUIDSTACK_WEBADMIN_MEDIA_STORAGE_ROOT` puede quedar vacía para usar
+`storage/liquidstack/webadmin/media`. Si se define, debe ser siempre una ruta
+absoluta; una ruta relativa como `storage/liquidstack/webadmin/media` es
+inválida.
 
 ### Caso 1: crear contenido en DB local y promoverlo después
 
@@ -158,6 +171,28 @@ Tras el corte, producción es la única fuente de escritura. No vuelvas a subir
 o retirar medios desde PHP local contra esa DB: crearías filas productivas que
 solo tienen bytes locales. Para seguir desarrollando, usa una copia aislada de
 DB y Media o una infraestructura de storage compartido expresamente validada.
+
+### Datos demo heredados de BASE
+
+Reinstalar el proyecto, actualizar CORE o aplicar migraciones no actualiza el
+contenido de una DB ya importada. Si se reutiliza una DB procedente de una
+versión anterior de BASE, conservará sus posts, assets y referencias antiguos.
+Las migraciones no actualizan ni reponen esos datos demo.
+
+Para obtener el snapshot demo actual, importa el `example_liquidstack_dev.sql`
+de la misma versión de BASE únicamente sobre una DB vacía o desechable y tras
+un backup. No lo importes sobre contenido que deba conservarse. Cuando ese SQL
+ya contenga los posts y metadatos Media, prepara el storage de cada entorno:
+
+```powershell
+composer liquidstack:media:init --yes --format=json
+composer liquidstack:demo-blog-media:install
+```
+
+El segundo comando solo existe en proyectos derivados de BASE que conserven
+su instalador demo: copia los AVIF, pero no crea filas ni referencias en la DB.
+Si local y producción comparten la misma DB remota, cada runtime necesita su
+propia raíz Media coherente con esas mismas filas.
 
 ### Caso 3: añadir módulos a un stack y DB existentes
 
@@ -303,8 +338,13 @@ secretos reales.
 | Blog | `LIQUIDSTACK_BLOG_SITEMAP_CACHE_ROOT` | Caché persistente del sitemap cuando está activada. |
 | Commerce | `LIQUIDSTACK_COMMERCE_INQUIRY_RECIPIENT`, `LIQUIDSTACK_COMMERCE_PRIVACY_VERSION`, `LIQUIDSTACK_COMMERCE_DEVELOPMENT_FIXTURES` | Consultas, consentimiento y fixtures solo de desarrollo. |
 
-`GSAP_TOKEN` pertenece al proceso npm/`.npmrc`, no al `.env` PHP. Todos los
-módulos activos deben usar el mismo perfil físico de DB en
+GSAP se instala desde el paquete público de npm y no requiere `GSAP_TOKEN` ni
+un registro privado en `.npmrc`. Los consumidores que conservaban exactamente
+el alias legacy se migran al actualizar CORE; ejecuta después `npm install`.
+CORE no modifica el `.npmrc` privado e ignorado: si aún contiene únicamente la
+configuración legacy de `npm.greensock.com`, elimínalo; si contiene otros
+registros necesarios, retira solo las líneas de GreenSock antes de instalar.
+Todos los módulos activos deben usar el mismo perfil físico de DB en
 `App/config/modules/*.php`.
 
 Para generar una clave WebAdmin válida sin mostrar otros secretos:
