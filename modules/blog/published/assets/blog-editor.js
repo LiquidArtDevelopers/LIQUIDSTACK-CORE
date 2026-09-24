@@ -122,6 +122,7 @@
     var PRESENTATION_TEXT_ALIGNS = ['start', 'center', 'end', 'justify'];
     var PRESENTATION_SIZES = ['s', 'm', 'l', 'xl'];
     var PRESENTATION_SPACINGS = ['none', 's', 'm', 'l', 'xl'];
+    var CONTAINER_PADDINGS = ['none', 's', 'm', 'l'];
     var SEPARATOR_LINE_STYLES = ['solid', 'dashed', 'dotted', 'double'];
     var SEPARATOR_THICKNESSES = ['thin', 'medium', 'thick'];
     var PRESENTATION_FONT_SIZES = [
@@ -2055,30 +2056,44 @@
     }
 
     function validContainerPresentation(value, containerType) {
+        if (!plainObject(value) || Object.keys(value).length === 0) {
+            return false;
+        }
         var hasBackground = Object.prototype.hasOwnProperty.call(
-            value || {},
+            value,
             'background'
         );
         var hasWidth = Object.prototype.hasOwnProperty.call(
-            value || {},
+            value,
             'width'
         );
         var hasAlign = Object.prototype.hasOwnProperty.call(
-            value || {},
+            value,
             'align'
         );
-        var allowedShape = containerType === 'section'
-            ? exactKeys(value, ['background'])
-            : (
-                exactKeys(value, ['background'])
-                || exactKeys(value, ['width', 'align'])
-                || exactKeys(value, ['width', 'align', 'background'])
-            );
+        var allowedKeys = ['background', 'padding', 'text_color'];
+        if (['article', 'div'].includes(containerType)) {
+            allowedKeys.push('width', 'align');
+        }
         if (
-            !allowedShape
+            !Object.keys(value).every(function (key) {
+                return allowedKeys.includes(key);
+            })
             || hasWidth !== hasAlign
+            || (containerType === 'section' && (hasWidth || hasAlign))
             || (hasWidth && !PRESENTATION_WIDTHS.includes(value.width))
             || (hasAlign && !PRESENTATION_ALIGNS.includes(value.align))
+            || (
+                value.padding !== undefined
+                && !CONTAINER_PADDINGS.includes(value.padding)
+            )
+            || (
+                value.text_color !== undefined
+                && (
+                    value.text_color === 'default'
+                    || !validPresentationTextColor(value.text_color)
+                )
+            )
         ) {
             return false;
         }
@@ -4834,6 +4849,61 @@
             ? String(alpha)
             : String(Number(alpha.toFixed(6)));
         return 'rgba(' + channels.join(', ') + ', ' + alphaValue + ')';
+    }
+
+    function colorChannels(value) {
+        if (typeof value !== 'string') {
+            return null;
+        }
+        var hex = value.trim().match(
+            /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
+        );
+        if (hex !== null) {
+            var source = hex[1].length === 3
+                ? hex[1].split('').map(function (channel) {
+                    return channel + channel;
+                }).join('')
+                : hex[1];
+            return [0, 2, 4].map(function (offset) {
+                return Number.parseInt(source.slice(offset, offset + 2), 16);
+            });
+        }
+        var rgba = canonicalRgba(value);
+        var match = rgba === null ? null : rgba.match(PRESENTATION_RGBA);
+        if (match === null) {
+            return null;
+        }
+        var alpha = Number(match[4]);
+        return [Number(match[1]), Number(match[2]), Number(match[3])].map(
+            function (channel) {
+                return (channel * alpha) + (255 * (1 - alpha));
+            }
+        );
+    }
+
+    function colorLuminance(value) {
+        var channels = colorChannels(value);
+        if (channels === null) {
+            return null;
+        }
+        var linear = channels.map(function (channel) {
+            channel /= 255;
+            return channel <= 0.04045
+                ? channel / 12.92
+                : Math.pow((channel + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * linear[0] + 0.7152 * linear[1]
+            + 0.0722 * linear[2];
+    }
+
+    function automaticContainerTextColor(background, palette) {
+        var resolved = PRESENTATION_BACKGROUNDS.includes(background)
+            ? palette[background]
+            : canonicalRgba(background);
+        var luminance = colorLuminance(resolved);
+        return luminance !== null && luminance <= 0.179
+            ? palette.color00
+            : palette.color01;
     }
 
     function byteToHex(value) {
@@ -10403,8 +10473,8 @@
             color01: '#272727',
             color02: '#24658e',
             color03: '#092f64',
-            color04: '#d6a757',
-            color05: '#697886'
+            color04: '#6b7280',
+            color05: '#a16207'
         };
         if (
             typeof HTMLElement === 'undefined'
@@ -18579,6 +18649,32 @@
                 wrapper.dataset.background = 'none';
             }
         }
+        var padding = containerPresentation.padding;
+        wrapper.dataset.padding = CONTAINER_PADDINGS.includes(padding)
+            ? padding
+            : 'default';
+        var containerTextColor = containerPresentation.text_color;
+        var textRgba = canonicalRgba(containerTextColor);
+        var palette = richAdvancedPreviewPalette(context.form);
+        if (PRESENTATION_BACKGROUNDS.includes(containerTextColor)) {
+            wrapper.dataset.containerTextColor = containerTextColor;
+            wrapper.style.setProperty(
+                '--blog-editor-container-text-color',
+                palette[containerTextColor]
+            );
+        } else if (textRgba !== null) {
+            wrapper.dataset.containerTextColor = 'rgba';
+            wrapper.style.setProperty(
+                '--blog-editor-container-text-color',
+                textRgba
+            );
+        } else if (background !== null && background !== undefined) {
+            wrapper.dataset.containerTextColor = 'auto';
+            wrapper.style.setProperty(
+                '--blog-editor-container-text-color',
+                automaticContainerTextColor(background, palette)
+            );
+        }
         var label = element(
             'span',
             'blogEditor__builderLabel',
@@ -19366,18 +19462,41 @@
     }
 
     function v2ContainerBackgroundOptions(context, node) {
-        var background = node.presentation
-            ? node.presentation.background
-            : 'none';
-        return [v2ColorControl(
-            context,
-            'Fondo del contenedor',
-            background,
-            node.id,
-            'container-background',
-            'none',
-            'Sin fondo'
-        )];
+        var presentation = node.presentation || {};
+        return [
+            v2ColorControl(
+                context,
+                'Fondo del contenedor',
+                presentation.background || 'none',
+                node.id,
+                'container-background',
+                'none',
+                'Sin fondo'
+            ),
+            v2ColorControl(
+                context,
+                'Color del texto',
+                presentation.text_color || 'auto',
+                node.id,
+                'container-text-color',
+                'auto',
+                'Automático'
+            ),
+            v2ConfigButtonGroup(
+                context,
+                'Relleno',
+                presentation.padding || 'default',
+                [
+                    { value: 'none', label: '0' },
+                    { value: 's', label: 'S' },
+                    { value: 'm', label: 'M' },
+                    { value: 'l', label: 'L' }
+                ],
+                node.id,
+                'container-padding',
+                'padding'
+            )
+        ];
     }
 
     function v2TextAlignmentOptions(context, node) {
@@ -22557,6 +22676,42 @@
         return true;
     }
 
+    function v2SetContainerTextColor(node, value) {
+        if (!['section', 'article', 'div'].includes(node.type)) {
+            return false;
+        }
+        if (value === 'auto') {
+            if (node.presentation) {
+                delete node.presentation.text_color;
+                if (Object.keys(node.presentation).length === 0) {
+                    delete node.presentation;
+                }
+            }
+            return true;
+        }
+        var canonical = PRESENTATION_BACKGROUNDS.includes(value)
+            ? value
+            : canonicalRgba(value);
+        if (canonical === null) {
+            return false;
+        }
+        node.presentation = node.presentation || {};
+        node.presentation.text_color = canonical;
+        return true;
+    }
+
+    function v2SetContainerPadding(node, value) {
+        if (
+            !['section', 'article', 'div'].includes(node.type)
+            || !CONTAINER_PADDINGS.includes(value)
+        ) {
+            return false;
+        }
+        node.presentation = node.presentation || {};
+        node.presentation.padding = value;
+        return true;
+    }
+
     function v2SetContainerConfig(node, key, value) {
         if (!['article', 'div'].includes(node.type)) {
             return false;
@@ -23002,6 +23157,12 @@
                                             customLocation.node,
                                             customValue
                                         )
+                                    ) || (
+                                        customKey === 'container-text-color'
+                                        && v2SetContainerTextColor(
+                                            customLocation.node,
+                                            customValue
+                                        )
                                     )
                                 )
                             )
@@ -23045,6 +23206,20 @@
                             || (
                                 configKey === 'container-background'
                                 && v2SetContainerBackground(
+                                    configLocation.node,
+                                    configValue
+                                )
+                            )
+                            || (
+                                configKey === 'container-text-color'
+                                && v2SetContainerTextColor(
+                                    configLocation.node,
+                                    configValue
+                                )
+                            )
+                            || (
+                                configKey === 'container-padding'
+                                && v2SetContainerPadding(
                                     configLocation.node,
                                     configValue
                                 )

@@ -352,6 +352,46 @@ final class BlogAdminRequestPolicyTest extends TestCase
         )));
     }
 
+    public function testBulkContractIsStrictBoundedAndUsesPerItemOperations(): void
+    {
+        $item = $this->uuid()
+            . '|es|3|22222222-2222-4222-8222-222222222222';
+        $form = [
+            'action' => BlogAdminRequestPolicy::BULK_ROBOTS,
+            'csrf' => 'csrf',
+            'destination_locale' => 'eu',
+            'items' => [$item],
+            'robots_follow' => '0',
+            'robots_index' => '1',
+        ];
+
+        self::assertTrue($this->policy->acceptsBulk($this->post(
+            '/admin/blog/posts/bulk',
+            $form
+        )));
+        self::assertFalse($this->policy->acceptsBulk($this->post(
+            '/admin/blog/posts/bulk',
+            $form + ['unexpected' => 'no']
+        )));
+        self::assertFalse($this->policy->acceptsBulk($this->post(
+            '/admin/blog/posts/bulk',
+            array_replace($form, ['items' => [$item, $item]])
+        )));
+
+        $tooMany = [];
+        for ($index = 1; $index <= 51; ++$index) {
+            $tooMany[] = sprintf(
+                '%08x-1111-4111-8111-111111111111|es|3|%08x-2222-4222-8222-222222222222',
+                $index,
+                $index
+            );
+        }
+        self::assertFalse($this->policy->acceptsBulk($this->post(
+            '/admin/blog/posts/bulk',
+            array_replace($form, ['items' => $tooMany])
+        )));
+    }
+
     public function testUrlResolutionIsAnExactPostOnlyContract(): void
     {
         self::assertTrue($this->policy->acceptsUrlManager($this->get(
@@ -434,7 +474,7 @@ final class BlogAdminRequestPolicyTest extends TestCase
         ], query: $query);
     }
 
-    /** @param array<string, string> $form */
+    /** @param array<string, mixed> $form */
     private function post(string $path, array $form): Request
     {
         return Request::fromInput([

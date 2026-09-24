@@ -96,6 +96,20 @@ final class BlogDocumentHtmlRenderer
         'center' => 'blogDocument__container--align-center',
         'end' => 'blogDocument__container--align-end',
     ];
+    private const CONTAINER_PADDING_CLASSES = [
+        'none' => 'blogDocument__container--padding-none',
+        's' => 'blogDocument__container--padding-s',
+        'm' => 'blogDocument__container--padding-m',
+        'l' => 'blogDocument__container--padding-l',
+    ];
+    private const CONTAINER_TEXT_COLOR_CLASSES = [
+        'color00' => 'blogDocument__container--text-color00',
+        'color01' => 'blogDocument__container--text-color01',
+        'color02' => 'blogDocument__container--text-color02',
+        'color03' => 'blogDocument__container--text-color03',
+        'color04' => 'blogDocument__container--text-color04',
+        'color05' => 'blogDocument__container--text-color05',
+    ];
     private const MODULE_TEXT_ALIGN_CLASSES = [
         'start' => 'blogDocument__module--text-align-start',
         'center' => 'blogDocument__module--text-align-center',
@@ -423,7 +437,7 @@ final class BlogDocumentHtmlRenderer
                 );
             }
             [$backgroundClass, $backgroundAttributes] =
-                $this->containerBackgroundProjection($node);
+                $this->containerPresentationProjection($node);
             $html .= '<section id="' . $this->containerId($node['id'])
                 . '" class="blogDocument__section' . $backgroundClass
                 . '"' . $backgroundAttributes . ' aria-labelledby="'
@@ -473,7 +487,7 @@ final class BlogDocumentHtmlRenderer
         $label = $type === 'article'
             ? $this->firstHeadingId($node) : null;
         [$backgroundClass, $backgroundAttributes] =
-            $this->containerBackgroundProjection($node);
+            $this->containerPresentationProjection($node);
         $layoutPresentationClass = $this->containerLayoutProjection($node);
         $html = '<' . $tag . ' id="' . $this->containerId($node['id'])
             . '" class="' . $class
@@ -690,7 +704,7 @@ final class BlogDocumentHtmlRenderer
      * @param array<string, mixed> $node
      * @return array{0: string, 1: string}
      */
-    private function containerBackgroundProjection(array $node): array
+    private function containerPresentationProjection(array $node): array
     {
         $presentation = $node['presentation'] ?? null;
         if ($presentation === null) {
@@ -701,42 +715,134 @@ final class BlogDocumentHtmlRenderer
                 BlogRenderingException::INVALID_RENDER_STATE
             );
         }
-        if (!array_key_exists('background', $presentation)) {
-            return ['', ''];
-        }
-        try {
-            $background = BlogPublicColor::fromInput(
-                $presentation['background']
-            );
-        } catch (InvalidArgumentException) {
-            throw new BlogRenderingException(
-                BlogRenderingException::INVALID_RENDER_STATE
-            );
-        }
-
-        if ($background->isThemeToken()) {
-            $class = self::CONTAINER_BACKGROUND_CLASSES[
-                $background->value()
-            ] ?? null;
-            if ($class === null) {
+        $classes = [];
+        $attributes = '';
+        $background = null;
+        if (array_key_exists('background', $presentation)) {
+            try {
+                $background = BlogPublicColor::fromInput(
+                    $presentation['background']
+                );
+            } catch (InvalidArgumentException) {
                 throw new BlogRenderingException(
                     BlogRenderingException::INVALID_RENDER_STATE
                 );
             }
+            $classes[] = 'blogDocument__container--background';
+            if ($background->isThemeToken()) {
+                $class = self::CONTAINER_BACKGROUND_CLASSES[
+                    $background->value()
+                ] ?? null;
+                if ($class === null) {
+                    throw new BlogRenderingException(
+                        BlogRenderingException::INVALID_RENDER_STATE
+                    );
+                }
+                $classes[] = $class;
+                $attributes .= ' data-blog-background="theme"'
+                    . ' data-blog-background-token="'
+                    . $this->escape($background->value()) . '"';
+            } else {
+                $classes[] = 'blogDocument__container--background-rgba';
+                $attributes .= ' data-blog-background="rgba"'
+                    . ' data-blog-background-rgba="'
+                    . $this->escape($background->value()) . '"';
+            }
+        }
 
-            return [
-                ' blogDocument__container--background ' . $class,
-                ' data-blog-background="theme" data-blog-background-token="'
-                    . $this->escape($background->value()) . '"',
-            ];
+        if (array_key_exists('padding', $presentation)) {
+            $padding = $presentation['padding'];
+            $paddingClass = is_string($padding)
+                ? (self::CONTAINER_PADDING_CLASSES[$padding] ?? null)
+                : null;
+            if ($paddingClass === null) {
+                throw new BlogRenderingException(
+                    BlogRenderingException::INVALID_RENDER_STATE
+                );
+            }
+            $classes[] = $paddingClass;
+            $attributes .= ' data-blog-container-padding="'
+                . $this->escape($padding) . '"';
+        }
+
+        if (array_key_exists('text_color', $presentation)) {
+            try {
+                $textColor = BlogPublicColor::fromInput(
+                    $presentation['text_color']
+                );
+            } catch (InvalidArgumentException) {
+                throw new BlogRenderingException(
+                    BlogRenderingException::INVALID_RENDER_STATE
+                );
+            }
+            if ($textColor->isThemeToken()) {
+                $textClass = self::CONTAINER_TEXT_COLOR_CLASSES[
+                    $textColor->value()
+                ] ?? null;
+                if ($textClass === null) {
+                    throw new BlogRenderingException(
+                        BlogRenderingException::INVALID_RENDER_STATE
+                    );
+                }
+                $classes[] = $textClass;
+                $attributes .= ' data-blog-container-text="theme"'
+                    . ' data-blog-container-text-token="'
+                    . $this->escape($textColor->value()) . '"';
+            } else {
+                $classes[] = 'blogDocument__container--text-rgba';
+                $attributes .= ' data-blog-container-text="rgba"'
+                    . ' data-blog-container-text-rgba="'
+                    . $this->escape($textColor->value()) . '"';
+            }
+        } elseif ($background !== null) {
+            $classes[] = 'blogDocument__container--text-auto';
+            $attributes .= ' data-blog-container-text="auto"';
+            if ($background->isThemeToken()) {
+                $classes[] = 'blogDocument__container--contrast-'
+                    . $background->value();
+            } else {
+                $classes[] = $this->rgbaUsesLightText($background->value())
+                    ? 'blogDocument__container--contrast-light'
+                    : 'blogDocument__container--contrast-dark';
+            }
         }
 
         return [
-            ' blogDocument__container--background '
-                . 'blogDocument__container--background-rgba',
-            ' data-blog-background="rgba" data-blog-background-rgba="'
-                . $this->escape($background->value()) . '"',
+            $classes === [] ? '' : ' ' . implode(' ', $classes),
+            $attributes,
         ];
+    }
+
+    private function rgbaUsesLightText(string $rgba): bool
+    {
+        if (
+            preg_match(
+                '/\Argba\((\d+), (\d+), (\d+), (0(?:\.\d+)?|1)\)\z/',
+                $rgba,
+                $matches
+            ) !== 1
+        ) {
+            throw new BlogRenderingException(
+                BlogRenderingException::INVALID_RENDER_STATE
+            );
+        }
+        $alpha = (float) $matches[4];
+        $channels = [];
+        foreach ([(int) $matches[1], (int) $matches[2], (int) $matches[3]] as $channel) {
+            $channels[] = (($channel * $alpha) + (255 * (1 - $alpha))) / 255;
+        }
+        $luminance = 0.2126 * $this->linearColorChannel($channels[0])
+            + 0.7152 * $this->linearColorChannel($channels[1])
+            + 0.0722 * $this->linearColorChannel($channels[2]);
+
+        return $luminance <= 0.179;
+    }
+
+    private function linearColorChannel(float $channel): float
+    {
+        return $channel <= 0.04045
+            ? $channel / 12.92
+            : (($channel + 0.055) / 1.055) ** 2.4;
     }
 
     /** @param array<string, mixed> $node */

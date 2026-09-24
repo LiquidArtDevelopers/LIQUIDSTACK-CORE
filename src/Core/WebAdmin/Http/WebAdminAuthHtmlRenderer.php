@@ -213,7 +213,8 @@ final class WebAdminAuthHtmlRenderer
             '{submit-lang-attr}' => '',
             '{submit-text}' => 'Entrar',
             '{feedback-slot}' => $feedback,
-            '{secondary-action-slot}' => '<a href="'
+            '{secondary-action-slot}' => '<a href="/">Ir a la web</a>'
+                . '<span aria-hidden="true"> &middot; </span><a href="'
                 . $this->path($basePath, '/password/forgot')
                 . '">He olvidado mi contrase&ntilde;a</a>',
         ];

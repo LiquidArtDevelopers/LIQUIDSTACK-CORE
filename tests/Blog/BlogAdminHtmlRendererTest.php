@@ -19,6 +19,59 @@ use PHPUnit\Framework\TestCase;
 
 final class BlogAdminHtmlRendererTest extends TestCase
 {
+    public function testBulkToolbarExposesSelectionAndIndependentRobotsControls(): void
+    {
+        $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
+        $summary = new BlogPostSummary(
+            '11111111-1111-4111-8111-111111111111',
+            '22222222-2222-4222-8222-222222222222',
+            'es',
+            'matrix',
+            'Matrix',
+            BlogPostVariant::DRAFT,
+            null,
+            2,
+            $now
+        );
+
+        $html = (new BlogAdminHtmlRenderer())->index(
+            '/admin/blog',
+            [$summary],
+            true,
+            canPublish: true,
+            canViewMedia: true,
+            publicPaths: ['es' => '/es/noticias', 'eu' => '/eu/albisteak'],
+            csrf: 'csrf-safe',
+            canDelete: true,
+            canDuplicate: true,
+            canAddLocalization: true,
+            canBulkPublish: true,
+            canManageRobots: true
+        );
+
+        self::assertStringContainsString(
+            'action="/admin/blog/posts/bulk"',
+            $html
+        );
+        self::assertStringContainsString('data-blog-bulk-select-all', $html);
+        self::assertStringContainsString('name="items[]"', $html);
+        self::assertStringContainsString('value="add_locale"', $html);
+        self::assertStringContainsString('name="robots_index"', $html);
+        self::assertStringContainsString('name="robots_follow"', $html);
+        self::assertStringContainsString(
+            'data-blog-bulk-submit>Aplicar acci&oacute;n</button>',
+            $html
+        );
+        self::assertStringNotContainsString(
+            'data-blog-bulk-submit disabled',
+            $html
+        );
+        self::assertStringContainsString('<option value="1">Index</option>', $html);
+        self::assertStringContainsString('<option value="0">Noindex</option>', $html);
+        self::assertStringContainsString('<option value="1">Follow</option>', $html);
+        self::assertStringContainsString('<option value="0">Nofollow</option>', $html);
+    }
+
     public function testListIsAccessibleEscapedAndUsesPublicIdentifiers(): void
     {
         $now = new DateTimeImmutable('2026-08-01T10:00:00Z');
@@ -705,7 +758,7 @@ final class BlogAdminHtmlRendererTest extends TestCase
             $html,
             'action="/admin/blog/posts/unpublish"'
         ));
-        self::assertSame(4, substr_count(
+        self::assertSame(5, substr_count(
             $html,
             'name="destination_locale"'
         ));
@@ -722,11 +775,11 @@ final class BlogAdminHtmlRendererTest extends TestCase
         );
         $draftRowStart = strpos(
             $html,
-            '<tr><th id="blog-row-title-22222222-2222-4222-8222-222222222222"'
+            '<th id="blog-row-title-22222222-2222-4222-8222-222222222222"'
         );
         $publishedRowStart = strpos(
             $html,
-            '<tr><th id="blog-row-title-44444444-4444-4444-8444-444444444444"'
+            '<th id="blog-row-title-44444444-4444-4444-8444-444444444444"'
         );
         self::assertIsInt($draftRowStart);
         self::assertIsInt($publishedRowStart);

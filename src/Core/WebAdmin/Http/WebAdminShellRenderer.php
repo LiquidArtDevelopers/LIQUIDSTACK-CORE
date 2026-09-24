@@ -109,6 +109,8 @@ final class WebAdminShellRenderer
                 $activeSuffix
             );
         }
+        $items .= '<li><a class="webadminShell-navLink" href="/">'
+            . 'Ir a la web</a></li>';
 
         return '<nav class="webadminShell-nav" '
             . 'aria-label="Administraci&oacute;n"><ul '

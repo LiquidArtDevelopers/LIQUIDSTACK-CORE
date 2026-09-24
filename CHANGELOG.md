@@ -4,6 +4,29 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.35.5] - 2026-09-23
+
+### Añadido
+
+- El listado de Blog permite seleccionar hasta 50 variantes y aplicar acciones
+  masivas de publicación, retirada, papelera, duplicado, nuevo idioma e
+  Index/Follow, con permisos, CSRF, locks y resultado independiente por ítem.
+- Los contenedores `section`, `article` y `div` del editor incorporan cuatro
+  niveles de padding y color de texto automático o manual sobre sus fondos.
+- El login y la navegación lateral de WebAdmin incorporan acceso directo a la
+  web pública.
+
+### Cambiado
+
+- Una variante `noindex` muestra una puntuación SEO del 0 % en rojo; `nofollow`
+  por sí solo conserva el análisis editorial.
+- El contraste de los contenedores se propaga a su contenido sin sobrescribir
+  colores explícitos, CTA ni controles de vídeo.
+
+### Corregido
+
+- Las acciones masivas de robots no publican contenido ni taxonomías privadas
+  pendientes y mantienen un fallback funcional cuando JavaScript no carga.
 
 ## [1.35.4] - 2026-09-23
 

@@ -259,6 +259,11 @@ final class WebAdminHtmlRendererTest extends TestCase
     {
         $html = $this->renderer->login('/admin/', 'csrf-value', false);
 
+        self::assertStringContainsString(
+            '<a href="/">Ir a la web</a>',
+            $html
+        );
+
         self::assertMatchesRegularExpression(
             '/<form(?=[^>]*method="post")(?=[^>]*action="\/admin\/login")[^>]*>/',
             $html

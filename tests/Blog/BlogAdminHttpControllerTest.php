@@ -781,6 +781,52 @@ final class BlogAdminHttpControllerTest extends TestCase
         );
     }
 
+    public function testBulkDuplicateReportsEachItemWithoutPretendingAtomicity(): void
+    {
+        foreach (['bulk-one', 'bulk-two'] as $slug) {
+            self::assertSame(303, $this->controller->create($this->post(
+                '/admin/blog/posts/create',
+                ['csrf' => $this->csrfToken, 'post' => '', 'locale' => 'es']
+                    + $this->editorial($slug)
+            ))->status());
+        }
+        $posts = $this->pdo->query(
+            'SELECT public_id FROM ls_blog_posts ORDER BY id ASC'
+        )->fetchAll(PDO::FETCH_COLUMN);
+        self::assertCount(2, $posts);
+
+        $response = $this->controller->bulk($this->post(
+            '/admin/blog/posts/bulk',
+            [
+                'action' => 'duplicate',
+                'csrf' => $this->csrfToken,
+                'destination_locale' => 'es',
+                'items' => [
+                    $posts[0]
+                        . '|es|1|91000000-0000-4000-8000-000000000011',
+                    $posts[1]
+                        . '|es|9|91000000-0000-4000-8000-000000000012',
+                ],
+                'robots_follow' => '1',
+                'robots_index' => '1',
+            ]
+        ));
+
+        self::assertSame(200, $response->status());
+        self::assertStringContainsString('1 de 2 variantes', $response->body());
+        self::assertStringContainsString(
+            'Copia independiente creada como borrador.',
+            $response->body()
+        );
+        self::assertStringContainsString(
+            'El artículo cambió desde que se cargó el listado.',
+            $response->body()
+        );
+        self::assertSame(3, (int) $this->pdo->query(
+            'SELECT COUNT(*) FROM ls_blog_posts'
+        )->fetchColumn());
+    }
+
     public function testIndependentDuplicateRequiresCategoryEditButLocaleCopyDoesNot(): void
     {
         self::assertSame(303, $this->controller->create($this->post(
@@ -2123,7 +2169,7 @@ final class BlogAdminHttpControllerTest extends TestCase
         ]);
     }
 
-    /** @param array<string, string> $form */
+    /** @param array<string, mixed> $form */
     private function post(string $path, array $form): Request
     {
         return Request::fromInput([

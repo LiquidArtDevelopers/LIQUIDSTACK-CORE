@@ -113,6 +113,7 @@ final class BlogRouteProviderTest extends TestCase
 
         foreach ([
             '/admin/blog/posts/duplicate',
+            '/admin/blog/posts/bulk',
             '/admin/blog/posts/trash',
             '/admin/blog/posts/restore',
             '/admin/blog/editor/save',

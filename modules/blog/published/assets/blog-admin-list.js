@@ -19,6 +19,8 @@
     const liveSearchSelector = '[data-blog-admin-live-search]';
     const languageFlowSelector = '[data-blog-language-flow]';
     const languagePanelSelector = '[data-blog-language-panel]';
+    const bulkFormSelector = '[data-blog-bulk-form]';
+    const bulkItemSelector = '[data-blog-bulk-item]';
     const previewLoadTimeoutMs = 12000;
     let previewState = null;
     let catalogForm = null;
@@ -31,6 +33,7 @@
     let confirmationState = null;
     const approvedConfirmationForms = new WeakSet();
     const languageFlowStates = new Set();
+    const bulkStates = new Set();
 
     const element = (tag, className, text = '') => {
         const node = document.createElement(tag);
@@ -424,6 +427,103 @@
                 submitLanguageFlow(state, event);
             }, { signal: controller.signal });
         });
+    };
+
+    const syncBulkState = (state) => {
+        const selected = state.items.filter((item) => item.checked).length;
+        state.count.textContent = String(selected);
+        state.submit.disabled = selected === 0;
+        state.selectAll.checked = selected > 0
+            && selected === state.items.length;
+        state.selectAll.indeterminate = selected > 0
+            && selected < state.items.length;
+        const action = state.action.value;
+        state.locale.hidden = action !== 'add_locale';
+        state.robots.hidden = action !== 'robots';
+        if (action === 'trash' || action === 'unpublish') {
+            state.form.dataset.blogConfirmForm = '';
+            state.form.dataset.blogConfirmAction = action;
+            state.form.dataset.blogTitle = 'los art\u00edculos seleccionados';
+        } else {
+            delete state.form.dataset.blogConfirmForm;
+            delete state.form.dataset.blogConfirmAction;
+            delete state.form.dataset.blogTitle;
+        }
+    };
+
+    const destroyBulkStates = (root = null) => {
+        [...bulkStates].forEach((state) => {
+            if (
+                root === null
+                || root === state.form
+                || (typeof root.contains === 'function'
+                    && root.contains(state.form))
+            ) {
+                delete state.form.dataset.blogBulkEnhanced;
+                bulkStates.delete(state);
+            }
+        });
+    };
+
+    const initializeBulk = (root = document) => {
+        if (
+            typeof root.querySelector !== 'function'
+            || typeof root.querySelectorAll !== 'function'
+        ) {
+            return;
+        }
+        const form = root.querySelector(bulkFormSelector);
+        if (form === null) {
+            return;
+        }
+        const selectAll = root.querySelector('[data-blog-bulk-select-all]');
+        const action = form?.querySelector('[data-blog-bulk-action]');
+        const locale = form?.querySelector('[data-blog-bulk-locale]');
+        const robots = form?.querySelector('[data-blog-bulk-robots]');
+        const count = form?.querySelector('[data-blog-bulk-count]');
+        const submit = form?.querySelector('[data-blog-bulk-submit]');
+        const items = Array.from(root.querySelectorAll(bulkItemSelector))
+            .filter((item) => item instanceof HTMLInputElement);
+        if (
+            !(form instanceof HTMLFormElement)
+            || form.dataset.blogBulkEnhanced === 'true'
+            || !(selectAll instanceof HTMLInputElement)
+            || !(action instanceof HTMLSelectElement)
+            || !(locale instanceof Element)
+            || !(robots instanceof Element)
+            || !(count instanceof Element)
+            || !(submit instanceof HTMLButtonElement)
+            || items.length === 0
+        ) {
+            return;
+        }
+        const state = {
+            form,
+            selectAll,
+            action,
+            locale,
+            robots,
+            count,
+            submit,
+            items,
+        };
+        form.dataset.blogBulkEnhanced = 'true';
+        bulkStates.add(state);
+        selectAll.addEventListener('change', () => {
+            items.forEach((item) => {
+                item.checked = selectAll.checked;
+            });
+            syncBulkState(state);
+        }, { signal: controller.signal });
+        items.forEach((item) => {
+            item.addEventListener('change', () => {
+                syncBulkState(state);
+            }, { signal: controller.signal });
+        });
+        action.addEventListener('change', () => {
+            syncBulkState(state);
+        }, { signal: controller.signal });
+        syncBulkState(state);
     };
 
     const previewDeviceStatus = (device) => ({
@@ -867,8 +967,10 @@
                 true
             );
             destroyLanguageFlows(currentResults);
+            destroyBulkStates(currentResults);
             currentResults.replaceWith(importedResults);
             initializeLanguageFlows(importedResults);
+            initializeBulk(importedResults);
             syncCatalogForm(incomingForm);
             rememberCatalogValues();
             if (typeof parsed.title === 'string' && parsed.title !== '') {
@@ -1054,6 +1156,7 @@
 
     initializeCatalog();
     initializeLanguageFlows();
+    initializeBulk();
 
     if (typeof window.addEventListener === 'function') {
         window.addEventListener('pageshow', () => {
@@ -1062,6 +1165,7 @@
                     restoreLanguageSubmission(state);
                 }
             });
+            bulkStates.forEach((state) => syncBulkState(state));
         }, { signal: controller.signal });
     }
 
@@ -1156,6 +1260,7 @@
             cancelCatalogRequest();
             controller.abort();
             destroyLanguageFlows();
+            destroyBulkStates();
             if (previewState !== null) {
                 resetPreviewLoad(previewState);
             }

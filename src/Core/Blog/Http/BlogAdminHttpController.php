@@ -12,7 +12,12 @@ use App\Core\Blog\BlogPostSummary;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\BlogService;
 use App\Core\Blog\Routing\BlogPublicationRouteGuard;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Blog\Seo\BlogUrlResolution;
+use App\Core\Blog\StructuredContent\BlogStructuredContentException;
+use App\Core\Blog\StructuredContent\Document\BlogLegacyDocumentFactory;
+use App\Core\Blog\StructuredContent\Editing\BlogStructuredDraft;
+use App\Core\Blog\StructuredContent\Categories\BlogEditorReservedCategoryCatalogInterface;
 use App\Core\Blog\Tags\BlogTagCapabilities;
 use App\Core\Http\PrivateRouteTransportPolicy;
 use App\Core\Http\Request;
@@ -144,6 +149,10 @@ final class BlogAdminHttpController
             $context['session'],
             MediaService::VIEW_CAPABILITY
         );
+        $canPublish = $authorization->hasCapability(
+            $context['session'],
+            self::PUBLISH_CAPABILITY
+        );
         $canAddLocalization = $canEdit && $canViewMedia;
         $canDuplicate = $canAddLocalization
             && $authorization->hasCapability(
@@ -226,10 +235,7 @@ final class BlogAdminHttpController
             canEdit: $canEdit,
             offset: $offset,
             hasNext: $hasNext,
-            canPublish: $authorization->hasCapability(
-                $context['session'],
-                self::PUBLISH_CAPABILITY
-            ),
+            canPublish: $canPublish,
             canViewMedia: $canViewMedia,
             shell: $this->shellContext($context, '/blog'),
             publicPaths: $publicPaths,
@@ -246,7 +252,15 @@ final class BlogAdminHttpController
             localesByPost: $localesByPost,
             canAddLocalization: $canAddLocalization,
             viewerProfile: $this->viewerProfile($context['session']),
-            seoScoresByLocalization: $seoScoresByLocalization
+            seoScoresByLocalization: $seoScoresByLocalization,
+            canBulkPublish: $canPublish
+                && $canAddLocalization
+                && $this->privateDraftPublicationReady()
+                && $this->runtime instanceof
+                    BlogStructuredEditorHttpRuntimeInterface,
+            canManageRobots: $canAddLocalization
+                && $this->runtime instanceof
+                    BlogStructuredEditorHttpRuntimeInterface
         ));
     }
 
@@ -647,6 +661,81 @@ final class BlogAdminHttpController
                 )
             );
         }
+    }
+
+    public function bulk(Request $request): Response
+    {
+        if (!$this->accepts($request, 'bulk')) {
+            return $this->plain(400, 'Bad request');
+        }
+        $context = $this->authorizedContext(
+            $request,
+            self::VIEW_CAPABILITY,
+            true
+        );
+        if ($context instanceof Response) {
+            return $context;
+        }
+        $action = (string) $request->form('action');
+        if (!$this->bulkActionAllowed($context['session'], $action)) {
+            return $this->plain(403, 'Forbidden');
+        }
+        $destinationLocale = (string) $request->form('destination_locale');
+        if (
+            $action === BlogAdminRequestPolicy::BULK_ADD_LOCALE
+            && !$this->isActiveLocale($destinationLocale)
+        ) {
+            return $this->plain(422, 'Unprocessable content');
+        }
+
+        $results = [];
+        foreach ($this->bulkItems($request) as $item) {
+            $label = $item['locale'] . ' · ' . substr($item['post'], 0, 8);
+            try {
+                $source = $this->runtime->service()->loadPost(
+                    $item['post'],
+                    $item['locale']
+                );
+                $label = $source->draft()->h1();
+                $results[] = $this->executeBulkItem(
+                    $action,
+                    $item,
+                    $source,
+                    $context['session'],
+                    (string) $request->form('csrf'),
+                    $destinationLocale,
+                    $request->form('robots_index') === '1',
+                    $request->form('robots_follow') === '1'
+                );
+            } catch (BlogException|BlogStructuredContentException $exception) {
+                $results[] = [
+                    'title' => $label,
+                    'locale' => $item['locale'],
+                    'state' => 'error',
+                    'message' => $this->bulkFailureMessage(
+                        $exception->issueCode()
+                    ),
+                    'href' => null,
+                    'link_label' => null,
+                ];
+            } catch (Throwable) {
+                $results[] = [
+                    'title' => $label,
+                    'locale' => $item['locale'],
+                    'state' => 'error',
+                    'message' => 'No se pudo completar esta variante.',
+                    'href' => null,
+                    'link_label' => null,
+                ];
+            }
+        }
+
+        return $this->html(200, $this->renderer->bulkResults(
+            $this->basePath(),
+            $this->bulkActionLabel($action),
+            $results,
+            $this->shellContext($context, '/blog')
+        ));
     }
 
     public function trashPost(Request $request): Response
@@ -1069,6 +1158,519 @@ final class BlogAdminHttpController
         return $context;
     }
 
+    private function bulkActionAllowed(
+        #[\SensitiveParameter] string $sessionToken,
+        string $action
+    ): bool {
+        $authorization = $this->runtime->authorization();
+        $has = static fn (string $capability): bool =>
+            $authorization->hasCapability($sessionToken, $capability);
+
+        return match ($action) {
+            BlogAdminRequestPolicy::BULK_TRASH =>
+                $this->runtime->service()->trashAvailable()
+                && $has(self::DELETE_CAPABILITY),
+            BlogAdminRequestPolicy::BULK_UNPUBLISH =>
+                $has(self::PUBLISH_CAPABILITY),
+            BlogAdminRequestPolicy::BULK_PUBLISH =>
+                $this->privateDraftPublicationReady()
+                && $this->runtime instanceof
+                    BlogStructuredEditorHttpRuntimeInterface
+                && $has(self::EDIT_CAPABILITY)
+                && $has(self::PUBLISH_CAPABILITY)
+                && $has(MediaService::VIEW_CAPABILITY),
+            BlogAdminRequestPolicy::BULK_DUPLICATE =>
+                $has(self::EDIT_CAPABILITY)
+                && $has(MediaService::VIEW_CAPABILITY)
+                && $has(BlogCategoryAdminHttpController::EDIT_CAPABILITY)
+                && (!$this->tagsAdministrationReady()
+                    || ($has(BlogTagCapabilities::VIEW)
+                        && $has(BlogTagCapabilities::EDIT))),
+            BlogAdminRequestPolicy::BULK_ADD_LOCALE =>
+                $has(self::EDIT_CAPABILITY)
+                && $has(MediaService::VIEW_CAPABILITY),
+            BlogAdminRequestPolicy::BULK_ROBOTS =>
+                $this->runtime instanceof
+                    BlogStructuredEditorHttpRuntimeInterface
+                && $has(self::EDIT_CAPABILITY)
+                && $has(MediaService::VIEW_CAPABILITY),
+            default => false,
+        };
+    }
+
+    /**
+     * @return list<array{post: string, locale: string, lock: int, operation: string}>
+     */
+    private function bulkItems(Request $request): array
+    {
+        $items = [];
+        foreach ((array) $request->form('items') as $encoded) {
+            [$post, $locale, $lock, $operation] = explode('|', $encoded);
+            $items[] = [
+                'post' => $post,
+                'locale' => $locale,
+                'lock' => (int) $lock,
+                'operation' => $operation,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param array{post: string, locale: string, lock: int, operation: string} $item
+     * @return array{title: string, locale: string, state: string, message: string, href: ?string, link_label: ?string}
+     */
+    private function executeBulkItem(
+        string $action,
+        array $item,
+        BlogPostVariant $source,
+        #[\SensitiveParameter] string $sessionToken,
+        #[\SensitiveParameter] string $csrfToken,
+        string $destinationLocale,
+        bool $robotsIndex,
+        bool $robotsFollow
+    ): array {
+        $title = $source->draft()->h1();
+        $success = static fn (
+            string $message,
+            ?string $href = null,
+            ?string $linkLabel = null,
+            string $locale = ''
+        ): array => [
+            'title' => $title,
+            'locale' => $locale === '' ? $item['locale'] : $locale,
+            'state' => 'success',
+            'message' => $message,
+            'href' => $href,
+            'link_label' => $linkLabel,
+        ];
+
+        return match ($action) {
+            BlogAdminRequestPolicy::BULK_TRASH => (function () use (
+                $item,
+                $sessionToken,
+                $csrfToken,
+                $success
+            ): array {
+                $this->runtime->service()->trashPost(
+                    $this->mutationGateAll($sessionToken, $csrfToken, [
+                        self::VIEW_CAPABILITY,
+                        self::DELETE_CAPABILITY,
+                    ]),
+                    $item['post'],
+                    $item['locale'],
+                    $item['lock']
+                );
+
+                return $success(
+                    'Borrador movido a la papelera.',
+                    $this->basePath() . '/trash',
+                    'Abrir papelera'
+                );
+            })(),
+            BlogAdminRequestPolicy::BULK_UNPUBLISH => (function () use (
+                $item,
+                $sessionToken,
+                $csrfToken,
+                $success
+            ): array {
+                $this->runtime->service()->unpublish(
+                    $this->runtime->mutationGate(
+                        $sessionToken,
+                        $csrfToken,
+                        self::PUBLISH_CAPABILITY
+                    ),
+                    $item['post'],
+                    $item['locale'],
+                    $item['lock']
+                );
+
+                return $success(
+                    'Publicación retirada. Falta decidir el destino SEO de su URL.',
+                    $this->basePath() . '/posts/url?'
+                        . http_build_query([
+                            'post' => $item['post'],
+                            'locale' => $item['locale'],
+                        ], '', '&', PHP_QUERY_RFC3986),
+                    'Resolver URL'
+                );
+            })(),
+            BlogAdminRequestPolicy::BULK_PUBLISH => (function () use (
+                $item,
+                $sessionToken,
+                $csrfToken,
+                $success
+            ): array {
+                $this->publishStructuredBulkItem(
+                    $item,
+                    $sessionToken,
+                    $csrfToken
+                );
+
+                return $success('Borrador guardado publicado.');
+            })(),
+            BlogAdminRequestPolicy::BULK_DUPLICATE => (function () use (
+                $item,
+                $sessionToken,
+                $csrfToken,
+                $success
+            ): array {
+                $created = $this->runtime->service()->duplicatePost(
+                    $this->duplicateMutationGate($sessionToken, $csrfToken),
+                    $item['post'],
+                    $item['locale'],
+                    $item['lock'],
+                    $item['operation']
+                );
+
+                return $success(
+                    'Copia independiente creada como borrador.',
+                    $this->editorHref($created),
+                    'Editar copia',
+                    $created->locale()
+                );
+            })(),
+            BlogAdminRequestPolicy::BULK_ADD_LOCALE => (function () use (
+                $item,
+                $sessionToken,
+                $csrfToken,
+                $destinationLocale,
+                $success
+            ): array {
+                $created = $this->runtime->service()->addLocalizationCopy(
+                    $this->editorCreationMutationGate(
+                        $sessionToken,
+                        $csrfToken
+                    ),
+                    $item['post'],
+                    $item['locale'],
+                    $destinationLocale,
+                    $item['lock'],
+                    $item['operation']
+                );
+
+                return $success(
+                    'Idioma añadido como borrador del mismo artículo.',
+                    $this->editorHref($created),
+                    'Editar idioma',
+                    $created->locale()
+                );
+            })(),
+            BlogAdminRequestPolicy::BULK_ROBOTS => $this->saveBulkRobots(
+                $item,
+                $source,
+                $sessionToken,
+                $csrfToken,
+                $robotsIndex,
+                $robotsFollow
+            ),
+            default => throw new BlogException(BlogException::INVALID_INPUT),
+        };
+    }
+
+    /**
+     * @param array{post: string, locale: string, lock: int, operation: string} $item
+     */
+    private function publishStructuredBulkItem(
+        array $item,
+        #[\SensitiveParameter] string $sessionToken,
+        #[\SensitiveParameter] string $csrfToken
+    ): BlogPostVariant {
+        $runtime = $this->structuredRuntime();
+        $editor = $runtime->structuredEditor();
+        $state = $editor->loadEditor($item['post'], $item['locale']);
+        $expectedLock = $item['lock'];
+        if ($state->workingSnapshot() === null) {
+            $legacy = $state->variant()->draft();
+            $stored = $editor->save(
+                $runtime->mutationGateAll(
+                    $sessionToken,
+                    $csrfToken,
+                    [self::EDIT_CAPABILITY, MediaService::VIEW_CAPABILITY]
+                ),
+                $item['post'],
+                $item['locale'],
+                $expectedLock,
+                new BlogStructuredDraft(
+                    $legacy->h1(),
+                    (new BlogLegacyDocumentFactory())->create(
+                        $legacy->bodyText()
+                    ),
+                    $legacy->slug(),
+                    $legacy->seoTitle(),
+                    $legacy->metaDescription(),
+                    $legacy->excerpt(),
+                    robotsPreferences: $legacy->robotsPreferences()
+                )
+            );
+            $expectedLock = $stored->lockVersion();
+        }
+
+        return $editor->publishSaved(
+            $runtime->mutationGateAll(
+                $sessionToken,
+                $csrfToken,
+                [
+                    self::EDIT_CAPABILITY,
+                    self::PUBLISH_CAPABILITY,
+                    MediaService::VIEW_CAPABILITY,
+                ]
+            ),
+            $item['post'],
+            $item['locale'],
+            $expectedLock,
+            $this->categoryWorkspaceVersion($item['post']),
+            function (string $locale, string $slug): void {
+                $this->publicationRouteGuard->assertAvailable(
+                    $this->runtime->projectRoot(),
+                    $this->runtime->blogConfig(),
+                    $locale,
+                    $slug
+                );
+            },
+            $this->tagWorkspaceVersion($item['post'], $item['locale'])
+        );
+    }
+
+    /**
+     * @param array{post: string, locale: string, lock: int, operation: string} $item
+     * @return array{title: string, locale: string, state: string, message: string, href: ?string, link_label: ?string}
+     */
+    private function saveBulkRobots(
+        array $item,
+        BlogPostVariant $source,
+        #[\SensitiveParameter] string $sessionToken,
+        #[\SensitiveParameter] string $csrfToken,
+        bool $index,
+        bool $follow
+    ): array {
+        $runtime = $this->structuredRuntime();
+        $editor = $runtime->structuredEditor();
+        $state = $editor->loadEditor($item['post'], $item['locale']);
+        $snapshot = $state->workingSnapshot();
+        $categoryWorkspaceVersion = $source->status()
+                === BlogPostVariant::PUBLISHED
+            ? $this->categoryWorkspaceVersion($item['post'])
+            : 0;
+        $tagWorkspaceVersion = $source->status()
+                === BlogPostVariant::PUBLISHED
+            ? $this->tagWorkspaceVersion($item['post'], $item['locale'])
+            : 0;
+        $hadPendingEditorialWorkspace = $state->workspace() !== null
+            || $categoryWorkspaceVersion > 0
+            || $tagWorkspaceVersion > 0;
+        $metadata = $snapshot?->compatibilityDraft() ?? $source->draft();
+        $preferences = new BlogRobotsPreferences($index, $follow);
+        $forcedNoIndex = $this->reservedCategoryAssigned(
+            $item['post'],
+            $item['locale']
+        );
+        if ($forcedNoIndex) {
+            $preferences = BlogRobotsPreferences::noIndexNoFollow();
+        }
+        $draft = new BlogStructuredDraft(
+            $metadata->h1(),
+            $snapshot?->document()
+                ?? (new BlogLegacyDocumentFactory())->create(
+                    $metadata->bodyText()
+                ),
+            $metadata->slug(),
+            $metadata->seoTitle(),
+            $metadata->metaDescription(),
+            $metadata->excerpt(),
+            robotsPreferences: $preferences
+        );
+        $stored = $editor->save(
+            $runtime->mutationGateAll(
+                $sessionToken,
+                $csrfToken,
+                [self::EDIT_CAPABILITY, MediaService::VIEW_CAPABILITY]
+            ),
+            $item['post'],
+            $item['locale'],
+            $item['lock'],
+            $draft
+        );
+        $message = $forcedNoIndex
+            ? 'La categoría Dummy mantiene noindex y nofollow.'
+            : 'Directivas actualizadas a ' . $preferences->directive() . '.';
+        $result = [
+            'title' => $source->draft()->h1(),
+            'locale' => $item['locale'],
+            'state' => 'success',
+            'message' => $message,
+            'href' => null,
+            'link_label' => null,
+        ];
+        if ($source->status() !== BlogPostVariant::PUBLISHED) {
+            return $result;
+        }
+        if ($hadPendingEditorialWorkspace) {
+            $result['state'] = 'warning';
+            $result['message'] .= ' Se guardó en el borrador privado sin '
+                . 'publicar los cambios editoriales pendientes.';
+            $result['href'] = $this->editorHref($stored);
+            $result['link_label'] = 'Revisar en el editor';
+
+            return $result;
+        }
+        if (!$this->runtime->authorization()->hasCapability(
+            $sessionToken,
+            self::PUBLISH_CAPABILITY
+        )) {
+            $result['state'] = 'warning';
+            $result['message'] .= ' El cambio queda pendiente de publicación.';
+            $result['href'] = $this->editorHref($stored);
+            $result['link_label'] = 'Abrir editor';
+
+            return $result;
+        }
+
+        try {
+            $editor->publishSaved(
+                $runtime->mutationGateAll(
+                    $sessionToken,
+                    $csrfToken,
+                    [
+                        self::EDIT_CAPABILITY,
+                        self::PUBLISH_CAPABILITY,
+                        MediaService::VIEW_CAPABILITY,
+                    ]
+                ),
+                $item['post'],
+                $item['locale'],
+                $stored->lockVersion(),
+                $categoryWorkspaceVersion,
+                function (string $locale, string $slug): void {
+                    $this->publicationRouteGuard->assertAvailable(
+                        $this->runtime->projectRoot(),
+                        $this->runtime->blogConfig(),
+                        $locale,
+                        $slug
+                    );
+                },
+                $tagWorkspaceVersion
+            );
+            $result['message'] .= ' La versión pública ya usa el cambio.';
+
+            return $result;
+        } catch (BlogException|BlogStructuredContentException) {
+            $result['state'] = 'warning';
+            $result['message'] .= ' Se guardó, pero queda pendiente de publicación.';
+            $result['href'] = $this->editorHref($stored);
+            $result['link_label'] = 'Revisar en el editor';
+
+            return $result;
+        }
+    }
+
+    private function structuredRuntime(): BlogStructuredEditorHttpRuntimeInterface
+    {
+        if (!$this->runtime instanceof BlogStructuredEditorHttpRuntimeInterface) {
+            throw new BlogStructuredContentException(
+                BlogStructuredContentException::STORAGE_UNAVAILABLE
+            );
+        }
+
+        return $this->runtime;
+    }
+
+    private function categoryWorkspaceVersion(string $postPublicId): int
+    {
+        if (!$this->runtime instanceof
+            BlogStructuredEditorCategoryHttpRuntimeInterface) {
+            return 0;
+        }
+
+        return $this->runtime->editorCategoryCatalog()?->workspaceVersion(
+            $postPublicId
+        ) ?? 0;
+    }
+
+    private function tagWorkspaceVersion(
+        string $postPublicId,
+        string $locale
+    ): int {
+        if (
+            !$this->runtime instanceof BlogTagAdminHttpRuntimeInterface
+            || !$this->runtime->tagsReady()
+        ) {
+            return 0;
+        }
+
+        return $this->runtime->tagService()?->workspaceVersion(
+            $postPublicId,
+            $locale
+        ) ?? 0;
+    }
+
+    private function reservedCategoryAssigned(
+        string $postPublicId,
+        string $locale
+    ): bool {
+        if (!$this->runtime instanceof
+            BlogStructuredEditorCategoryHttpRuntimeInterface) {
+            return false;
+        }
+        $catalog = $this->runtime->editorCategoryCatalog();
+        if (!$catalog instanceof BlogEditorReservedCategoryCatalogInterface) {
+            return false;
+        }
+
+        return $catalog->reservedCategoryAssigned($postPublicId, $locale);
+    }
+
+    private function editorHref(BlogPostVariant $variant): string
+    {
+        return $this->basePath() . '/editor?'
+            . http_build_query([
+                'post' => $variant->postPublicId(),
+                'locale' => $variant->locale(),
+            ], '', '&', PHP_QUERY_RFC3986);
+    }
+
+    private function bulkActionLabel(string $action): string
+    {
+        return match ($action) {
+            BlogAdminRequestPolicy::BULK_TRASH => 'Mover a la papelera',
+            BlogAdminRequestPolicy::BULK_UNPUBLISH => 'Retirar publicaciones',
+            BlogAdminRequestPolicy::BULK_PUBLISH => 'Publicar borradores',
+            BlogAdminRequestPolicy::BULK_DUPLICATE => 'Duplicar artículos',
+            BlogAdminRequestPolicy::BULK_ADD_LOCALE => 'Añadir idioma',
+            BlogAdminRequestPolicy::BULK_ROBOTS => 'Actualizar Index / Follow',
+            default => throw new BlogException(BlogException::INVALID_INPUT),
+        };
+    }
+
+    private function bulkFailureMessage(string $issueCode): string
+    {
+        return match ($issueCode) {
+            BlogException::ACTOR_GATE_FAILED =>
+                'La sesión o los permisos cambiaron; no se aplicó.',
+            BlogException::LOCK_CONFLICT =>
+                'El artículo cambió desde que se cargó el listado.',
+            BlogException::INVALID_STATE =>
+                'Su estado actual no admite esta acción.',
+            BlogException::PUBLISH_INCOMPLETE =>
+                'Faltan datos obligatorios para publicar.',
+            BlogException::LOCALE_CONFLICT =>
+                'Ese idioma ya existe en el artículo.',
+            BlogException::SLUG_CONFLICT =>
+                'La URL amigable ya está ocupada en ese idioma.',
+            BlogException::POST_NOT_FOUND,
+            BlogException::VARIANT_NOT_FOUND =>
+                'La variante ya no está disponible.',
+            BlogException::IDEMPOTENCY_CONFLICT,
+            BlogException::COPY_RESULT_TRASHED =>
+                'La copia ya fue procesada y requiere revisión manual.',
+            BlogException::INVALID_INPUT,
+            BlogStructuredContentException::INVALID_INPUT =>
+                'El contenido guardado no admite esta acción.',
+            default => 'No se pudo completar esta variante.',
+        };
+    }
+
     /** @return Closure(PDO): string */
     private function editorCreationMutationGate(
         #[\SensitiveParameter] string $sessionToken,
@@ -1222,6 +1824,7 @@ final class BlogAdminHttpController
             'save' => $this->requestPolicy->acceptsSave($request),
             'transition' => $this->requestPolicy->acceptsTransition($request),
             'duplicate' => $this->requestPolicy->acceptsDuplicate($request),
+            'bulk' => $this->requestPolicy->acceptsBulk($request),
             'trash' => $this->requestPolicy->acceptsTrash($request),
             'restore_from_trash' =>
                 $this->requestPolicy->acceptsRestoreFromTrash($request),

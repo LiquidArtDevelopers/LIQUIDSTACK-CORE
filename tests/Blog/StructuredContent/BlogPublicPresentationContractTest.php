@@ -75,21 +75,39 @@ final class BlogPublicPresentationContractTest extends TestCase
         );
     }
 
-    public function testContainerBackgroundsAreCanonicalClosedData(): void
+    public function testContainerPresentationIsCanonicalClosedData(): void
     {
         $article = $this->article(3, [$this->paragraph(6)]);
         $article['presentation'] = [
             'background' => ' RGBA(010, 020, 030, 0.2500) ',
+            'padding' => 'none',
+            'text_color' => 'color00',
         ];
         $division = $this->division(7, [$this->paragraph(10)]);
-        $division['presentation'] = ['background' => 'color04'];
-        $raw = $this->document([$article, $division]);
-        $raw['blocks'][0]['presentation'] = ['background' => 'color05'];
+        $division['presentation'] = [
+            'background' => 'color04',
+            'padding' => 's',
+            'text_color' => ' RGBA(240, 240, 240, 1.0000) ',
+        ];
+        $autoContrast = $this->division(20, [$this->paragraph(23)]);
+        $autoContrast['presentation'] = [
+            'background' => 'rgba(10, 20, 30, 1)',
+            'padding' => 'm',
+        ];
+        $raw = $this->document([$article, $division, $autoContrast]);
+        $raw['blocks'][0]['presentation'] = [
+            'background' => 'color05',
+            'padding' => 'l',
+        ];
 
         $document = BlogDocument::fromArray($raw);
         self::assertSame(
             'rgba(10, 20, 30, 0.25)',
             $document->blocks()[0]['children'][1]['presentation']['background']
+        );
+        self::assertSame(
+            'rgba(240, 240, 240, 1)',
+            $document->blocks()[0]['children'][2]['presentation']['text_color']
         );
         $html = $this->renderer([])->render($document);
         self::assertStringContainsString(
@@ -104,17 +122,33 @@ final class BlogPublicPresentationContractTest extends TestCase
             'data-blog-background-rgba="rgba(10, 20, 30, 0.25)"',
             $html
         );
+        foreach ([
+            'blogDocument__container--padding-none',
+            'blogDocument__container--padding-s',
+            'blogDocument__container--padding-m',
+            'blogDocument__container--padding-l',
+            'blogDocument__container--text-color00',
+            'blogDocument__container--text-rgba',
+            'blogDocument__container--contrast-color05',
+            'blogDocument__container--contrast-light',
+        ] as $class) {
+            self::assertStringContainsString($class, $html);
+        }
+        self::assertStringContainsString(
+            'data-blog-container-text-rgba="rgba(240, 240, 240, 1)"',
+            $html
+        );
         self::assertStringNotContainsString(' style=', $html);
 
         foreach ([
-            'color06',
-            'rgba(256, 0, 0, 1)',
-            'rgba(0, 0, 0, 1);background:url(javascript:alert(1))',
-        ] as $invalid) {
+            ['background' => 'color06'],
+            ['background' => 'rgba(256, 0, 0, 1)'],
+            ['background' => 'rgba(0, 0, 0, 1);background:url(javascript:alert(1))'],
+            ['padding' => 'xl'],
+            ['text_color' => 'default'],
+        ] as $invalidPresentation) {
             $candidate = $this->document([]);
-            $candidate['blocks'][0]['presentation'] = [
-                'background' => $invalid,
-            ];
+            $candidate['blocks'][0]['presentation'] = $invalidPresentation;
             $this->assertInvalidBlock($candidate);
         }
     }

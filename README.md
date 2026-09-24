@@ -1104,6 +1104,10 @@ Por tanto:
 - Un valor de tema específico de un recurso debe exponerse como una custom
   property CSS con fallback a una variable del contrato. El consumidor puede
   modificarla desde el contexto que hidrata la vista.
+- Blog usa `color03` como fallback de sus tokens opcionales `color04/05`. Si
+  un tema define `--ls-blog-color04` o `--ls-blog-color05`, debe definir también
+  su pareja `--ls-blog-color04-contrast` o `--ls-blog-color05-contrast` para
+  mantener el contraste automático del contenido.
 - Los SCSS de páginas son siempre locales y no forman parte de la
   sincronización gestionada.
 

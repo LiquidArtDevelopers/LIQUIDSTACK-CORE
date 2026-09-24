@@ -48,6 +48,10 @@ final class BlogSeoCatalogProjectionService
         $scores = [];
         foreach ($summaries as $summary) {
             $localization = $summary->localizationPublicId();
+            if (!$summary->robotsPreferences()->index()) {
+                $scores[$localization] = BlogSeoScore::fromCounts(0);
+                continue;
+            }
             $snapshot = $snapshots[$localization] ?? null;
             $publicPath = $publicPaths[$summary->locale()] ?? null;
             if ($snapshot === null || !is_string($publicPath)) {

@@ -100,6 +100,7 @@ final class BlogDocumentValidator
     ];
     private const SEPARATOR_THICKNESSES = ['thin', 'medium', 'thick'];
     private const PRESENTATION_SPACINGS = ['none', 's', 'm', 'l', 'xl'];
+    private const CONTAINER_PADDINGS = ['none', 's', 'm', 'l'];
 
     private readonly BlogDocumentTemplateRegistry $templates;
     private readonly BlogEmbedHtmlSanitizer $embedSanitizer;
@@ -710,7 +711,7 @@ final class BlogDocumentValidator
                 BlogDocumentException::INVALID_BLOCK
             );
         }
-        $allowed = ['background'];
+        $allowed = ['background', 'padding', 'text_color'];
         if (in_array($containerType, ['article', 'div'], true)) {
             $allowed[] = 'width';
             $allowed[] = 'align';
@@ -723,6 +724,8 @@ final class BlogDocumentValidator
             }
         }
         $hasBackground = array_key_exists('background', $presentation);
+        $hasPadding = array_key_exists('padding', $presentation);
+        $hasTextColor = array_key_exists('text_color', $presentation);
         $hasWidth = array_key_exists('width', $presentation);
         $hasAlign = array_key_exists('align', $presentation);
         if (
@@ -765,6 +768,36 @@ final class BlogDocumentValidator
                 );
             }
             $normalized['background'] = $background->value();
+        }
+        if (
+            $hasPadding
+            && (
+                !is_string($presentation['padding'])
+                || !in_array(
+                    $presentation['padding'],
+                    self::CONTAINER_PADDINGS,
+                    true
+                )
+            )
+        ) {
+            throw new BlogDocumentException(
+                BlogDocumentException::INVALID_BLOCK
+            );
+        }
+        if ($hasPadding) {
+            $normalized['padding'] = $presentation['padding'];
+        }
+        if ($hasTextColor) {
+            try {
+                $textColor = BlogPublicColor::fromInput(
+                    $presentation['text_color']
+                );
+            } catch (InvalidArgumentException) {
+                throw new BlogDocumentException(
+                    BlogDocumentException::INVALID_BLOCK
+                );
+            }
+            $normalized['text_color'] = $textColor->value();
         }
 
         return $normalized;

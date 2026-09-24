@@ -7,8 +7,8 @@
     --ls-blog-editor-color01: var(--ls-blog-color01, #272727);
     --ls-blog-editor-color02: var(--ls-blog-color02, #24658e);
     --ls-blog-editor-color03: var(--ls-blog-color03, #092f64);
-    --ls-blog-editor-color04: var(--ls-blog-color04, #d6a757);
-    --ls-blog-editor-color05: var(--ls-blog-color05, #697886);
+    --ls-blog-editor-color04: var(--ls-blog-color04, #6b7280);
+    --ls-blog-editor-color05: var(--ls-blog-color05, #a16207);
     --ls-blog-editor-basic-text-red: #b42318;
     --ls-blog-editor-basic-text-orange: #9a3412;
     --ls-blog-admin-seo-text-orange: #b85c00;
@@ -106,6 +106,94 @@
 
 .webadmin .blogAdminPage__tableViewport:focus-visible {
     outline-offset: 0.25rem;
+}
+
+.webadmin .blogAdminPage__bulkToolbar {
+    width: 100%;
+    margin: 0 0 1rem;
+    padding: 1rem;
+    display: grid;
+    align-items: end;
+    gap: 0.75rem;
+    background: var(--ls-webadmin-surface-strong);
+}
+
+.webadmin .blogAdminPage__bulkToolbar > :is(div, fieldset) {
+    min-width: 0;
+    display: grid;
+    gap: 0.35rem;
+}
+
+.webadmin .blogAdminPage__bulkToolbar fieldset {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.webadmin .blogAdminPage__bulkToolbar fieldset > div {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.webadmin .blogAdminPage__bulkToolbar :is(select, button) {
+    width: 100%;
+}
+
+.webadmin .blogAdminPage__bulkToolbar [hidden] {
+    display: none;
+}
+
+.webadmin .blogAdminPage__bulkCount {
+    margin: 0;
+    color: var(--ls-webadmin-muted);
+}
+
+.webadmin .blogAdminPage__bulkSelect {
+    width: 3rem;
+    min-width: 3rem;
+    text-align: center;
+}
+
+.webadmin .blogAdminPage__bulkSelect input {
+    width: 1.2rem;
+    min-height: 1.2rem;
+    margin: 0;
+}
+
+.webadmin .blogAdminPage__bulkResults {
+    max-width: 64rem;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+    list-style: none;
+}
+
+.webadmin .blogAdminPage__bulkResult {
+    padding: 1rem;
+    background: var(--ls-webadmin-surface-strong);
+}
+
+.webadmin .blogAdminPage__bulkResult p {
+    margin-block: 0.4rem;
+}
+
+.webadmin .blogAdminPage__bulkResult--success {
+    color: var(--ls-webadmin-success);
+}
+
+.webadmin .blogAdminPage__bulkResult--warning {
+    color: var(--ls-webadmin-accent);
+}
+
+.webadmin .blogAdminPage__bulkResult--error {
+    color: var(--ls-webadmin-danger);
+}
+
+@media (min-width: 64rem) {
+    .webadmin .blogAdminPage__bulkToolbar {
+        grid-template-columns: minmax(12rem, 1.4fr) minmax(11rem, 1fr)
+            minmax(16rem, 1.4fr) auto minmax(10rem, auto);
+    }
 }
 
 .webadmin .blogAdminPage > h1 {
@@ -2686,6 +2774,29 @@
     background: var(--blog-editor-container-background);
 }
 
+.webadmin .blogEditor__builderContainer[data-padding='none'] {
+    padding: 3.25rem 0 0;
+}
+
+.webadmin .blogEditor__builderContainer[data-padding='s'] {
+    padding: 3.25rem clamp(0.75rem, 2vw, 1.25rem)
+        clamp(0.75rem, 2vw, 1.25rem);
+}
+
+.webadmin .blogEditor__builderContainer[data-padding='m'] {
+    padding: 3.25rem clamp(1.25rem, 3vw, 2rem)
+        clamp(1.25rem, 3vw, 2rem);
+}
+
+.webadmin .blogEditor__builderContainer[data-padding='l'] {
+    padding: max(3.25rem, clamp(2rem, 5vw, 4rem))
+        clamp(2rem, 5vw, 4rem) clamp(2rem, 5vw, 4rem);
+}
+
+.webadmin .blogEditor__builderContainer[data-container-text-color] {
+    color: var(--blog-editor-container-text-color);
+}
+
 .webadmin .blogEditor__builderModule {
     --blog-builder-guide: var(--ls-blog-builder-module-guide);
     --blog-builder-guide-dash: 1rem;
@@ -2701,6 +2812,29 @@
     border: 0;
     border-radius: 0.75rem;
     background: var(--ls-blog-editor-canvas);
+}
+
+.webadmin
+    .blogEditor__builderContainer[data-container-text-color]
+    .blogEditor__builderModule[data-text-color='default'] {
+    color: inherit;
+}
+
+.webadmin
+    .blogEditor__builderContainer[data-container-text-color]
+    .blogEditor__builderModule[data-text-color='default']
+    .blogEditor__builderContent,
+.webadmin
+    .blogEditor__builderContainer[data-container-text-color]
+    .blogEditor__builderModule[data-text-color='default']
+    .blogEditor__builderContent > :first-child {
+    color: inherit;
+}
+
+.webadmin
+    .blogEditor__builderContainer:not([data-background='none'])
+    .blogEditor__builderModule {
+    background: transparent;
 }
 
 .webadmin .blogEditor__builderModule--heading,

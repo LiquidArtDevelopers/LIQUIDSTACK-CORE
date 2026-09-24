@@ -159,6 +159,7 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
             ['POST', $prefix . '/posts/unpublish', 'unpublish'],
             ['POST', $prefix . '/posts/url-resolution', 'finalizeUrl'],
             ['POST', $prefix . '/posts/duplicate', 'duplicate'],
+            ['POST', $prefix . '/posts/bulk', 'bulk'],
             ['POST', $prefix . '/posts/trash', 'trashPost'],
             ['POST', $prefix . '/posts/restore', 'restoreFromTrash'],
             ['GET', $prefix . '/posts/updated', 'updated'],
@@ -251,6 +252,11 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
     public function duplicate(Request $request): Response
     {
         return $this->handle('duplicate', $request);
+    }
+
+    public function bulk(Request $request): Response
+    {
+        return $this->handle('bulk', $request);
     }
 
     public function trashPost(Request $request): Response
@@ -535,6 +541,7 @@ final class BlogRouteProvider implements ModuleRouteProviderInterface
             'finalizeUrl' =>
                 $this->requestPolicy->acceptsUrlResolution($request),
             'duplicate' => $this->requestPolicy->acceptsDuplicate($request),
+            'bulk' => $this->requestPolicy->acceptsBulk($request),
             'trashPost' => $this->requestPolicy->acceptsTrash($request),
             'restoreFromTrash' =>
                 $this->requestPolicy->acceptsRestoreFromTrash($request),

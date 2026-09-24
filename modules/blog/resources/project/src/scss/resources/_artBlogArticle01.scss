@@ -1,6 +1,22 @@
+@use 'sass:color';
 @use '../config' as c;
 
+@function blog-container-contrast($background) {
+    @if color.channel($background, 'lightness', $space: hsl) > 50% {
+        @return c.$color01;
+    }
+
+    @return c.$color00;
+}
+
 .artBlogArticle01 {
+    --ls-blog-color00-contrast: #{blog-container-contrast(c.$color00)};
+    --ls-blog-color01-contrast: #{blog-container-contrast(c.$color01)};
+    --ls-blog-color02-contrast: #{blog-container-contrast(c.$color02)};
+    --ls-blog-color03-contrast: #{blog-container-contrast(c.$color03)};
+    // The shared SCSS contract ends at color03. Optional color04/05 use
+    // color03 as their local fallback; a theme overriding either CSS token
+    // must also provide its matching --ls-blog-colorNN-contrast token.
     font-family: c.$fuente02;
     width: min(100%, 92rem);
     margin-inline: auto;
@@ -809,6 +825,134 @@
                     padding-block: 5rem;
                     row-gap: 5rem;
                 }
+            }
+
+            .blogDocument__container {
+                &--padding-none {
+                    padding: 0;
+                }
+
+                &--padding-s {
+                    padding: clamp(0.75rem, 2vw, 1.25rem);
+                }
+
+                &--padding-m {
+                    padding: clamp(1.25rem, 3vw, 2rem);
+                }
+
+                &--padding-l {
+                    padding: clamp(2rem, 5vw, 4rem);
+                }
+
+                &--text-color00 {
+                    color: c.$color00;
+                }
+
+                &--text-color01 {
+                    color: c.$color01;
+                }
+
+                &--text-color02 {
+                    color: c.$color02;
+                }
+
+                &--text-color03 {
+                    color: c.$color03;
+                }
+
+                &--text-color04 {
+                    color: var(--ls-blog-color04, c.$color03);
+                }
+
+                &--text-color05 {
+                    color: var(--ls-blog-color05, c.$color03);
+                }
+
+                &--text-rgba {
+                    color: inherit;
+                    color: #{'attr(data-blog-container-text-rgba type(<color>), inherit)'};
+                }
+
+                &--contrast-color00 {
+                    color: var(--ls-blog-color00-contrast, c.$color01);
+                }
+
+                &--contrast-color01 {
+                    color: var(--ls-blog-color01-contrast, c.$color00);
+                }
+
+                &--contrast-color02 {
+                    color: var(--ls-blog-color02-contrast, c.$color00);
+                }
+
+                &--contrast-color03 {
+                    color: var(--ls-blog-color03-contrast, c.$color00);
+                }
+
+                &--contrast-color04 {
+                    color: var(
+                        --ls-blog-color04-contrast,
+                        #{blog-container-contrast(c.$color03)}
+                    );
+                }
+
+                &--contrast-color05 {
+                    color: var(
+                        --ls-blog-color05-contrast,
+                        #{blog-container-contrast(c.$color03)}
+                    );
+                }
+
+                &--contrast-light {
+                    color: c.$color00;
+                }
+
+                &--contrast-dark {
+                    color: c.$color01;
+                }
+            }
+
+            [data-blog-container-text]
+                :where(.blogDocument__module):not(
+                    :is(
+                        .blogDocument__module--text-color00,
+                        .blogDocument__module--text-color01,
+                        .blogDocument__module--text-color02,
+                        .blogDocument__module--text-color03,
+                        .blogDocument__module--text-color04,
+                        .blogDocument__module--text-color05,
+                        .blogDocument__module--text-rgba
+                    )
+                ),
+            [data-blog-container-text]
+                :where(.blogDocument__module):not(
+                    :is(
+                        .blogDocument__module--text-color00,
+                        .blogDocument__module--text-color01,
+                        .blogDocument__module--text-color02,
+                        .blogDocument__module--text-color03,
+                        .blogDocument__module--text-color04,
+                        .blogDocument__module--text-color05,
+                        .blogDocument__module--text-rgba
+                    )
+                )
+                :where(p, li, figcaption, footer, cite),
+            [data-blog-container-text]
+                :where(.blogDocument__module):not(
+                    :is(
+                        .blogDocument__module--text-color00,
+                        .blogDocument__module--text-color01,
+                        .blogDocument__module--text-color02,
+                        .blogDocument__module--text-color03,
+                        .blogDocument__module--text-color04,
+                        .blogDocument__module--text-color05,
+                        .blogDocument__module--text-rgba
+                    )
+                )
+                a:not(.blogDocument__ctaLink):not(
+                    .blogDocument__videoTrigger
+                ) {
+                color: inherit;
             }
         }
 

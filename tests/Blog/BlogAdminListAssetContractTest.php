@@ -195,6 +195,8 @@ final class BlogAdminListAssetContractTest extends TestCase
             "dialog.setAttribute(\n            'aria-describedby'",
             'confirmationState.dialog.showModal()',
             'approvedConfirmationForms.add(form)',
+            'destroyBulkStates(currentResults)',
+            'destroyBulkStates()',
             'event.preventDefault()',
             'previous.dispose()',
         ] as $contract) {

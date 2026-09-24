@@ -13,6 +13,24 @@ use App\Core\WebAdmin\Http\WebAdminHttpRequestPolicy;
 
 final class BlogAdminRequestPolicy
 {
+    public const MAX_BULK_ITEMS = 50;
+    public const BULK_TRASH = 'trash';
+    public const BULK_UNPUBLISH = 'unpublish';
+    public const BULK_PUBLISH = 'publish';
+    public const BULK_DUPLICATE = 'duplicate';
+    public const BULK_ADD_LOCALE = 'add_locale';
+    public const BULK_ROBOTS = 'robots';
+
+    /** @var list<string> */
+    public const BULK_ACTIONS = [
+        self::BULK_TRASH,
+        self::BULK_UNPUBLISH,
+        self::BULK_PUBLISH,
+        self::BULK_DUPLICATE,
+        self::BULK_ADD_LOCALE,
+        self::BULK_ROBOTS,
+    ];
+
     private const UUID =
         '/\A[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/';
     private const UUID_V4 =
@@ -262,6 +280,79 @@ final class BlogAdminRequestPolicy
                 self::UUID_V4,
                 (string) $request->form('operation_id')
             ) === 1;
+    }
+
+    public function acceptsBulk(Request $request): bool
+    {
+        if (
+            !$request->isValid()
+            || $request->method() !== 'POST'
+            || $request->queryParams() !== []
+        ) {
+            return false;
+        }
+        $contentType = strtolower(trim((string) strtok(
+            $request->header('content-type', ''),
+            ';'
+        )));
+        if ($contentType !== 'application/x-www-form-urlencoded') {
+            return false;
+        }
+        $form = $request->formParams();
+        $keys = array_keys($form);
+        sort($keys, SORT_STRING);
+        if ($keys !== [
+            'action',
+            'csrf',
+            'destination_locale',
+            'items',
+            'robots_follow',
+            'robots_index',
+        ]) {
+            return false;
+        }
+        if (
+            !is_string($form['action'])
+            || !in_array($form['action'], self::BULK_ACTIONS, true)
+            || !is_string($form['csrf'])
+            || $form['csrf'] === ''
+            || !is_string($form['destination_locale'])
+            || !$this->validLocale($form['destination_locale'])
+            || !is_string($form['robots_index'])
+            || !in_array($form['robots_index'], ['0', '1'], true)
+            || !is_string($form['robots_follow'])
+            || !in_array($form['robots_follow'], ['0', '1'], true)
+            || !is_array($form['items'])
+            || !array_is_list($form['items'])
+            || $form['items'] === []
+            || count($form['items']) > self::MAX_BULK_ITEMS
+        ) {
+            return false;
+        }
+
+        $seen = [];
+        foreach ($form['items'] as $item) {
+            if (!is_string($item) || strlen($item) > 128) {
+                return false;
+            }
+            $parts = explode('|', $item);
+            if (
+                count($parts) !== 4
+                || preg_match(self::UUID, $parts[0]) !== 1
+                || !$this->validLocale($parts[1])
+                || !$this->validLockVersion($parts[2])
+                || preg_match(self::UUID_V4, $parts[3]) !== 1
+            ) {
+                return false;
+            }
+            $identity = $parts[0] . '|' . $parts[1];
+            if (isset($seen[$identity])) {
+                return false;
+            }
+            $seen[$identity] = true;
+        }
+
+        return true;
     }
 
     public function acceptsTrash(Request $request): bool

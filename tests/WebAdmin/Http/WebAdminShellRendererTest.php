@@ -55,6 +55,10 @@ final class WebAdminShellRendererTest extends TestCase
             'href="/admin/blog" aria-current="page"',
             $html
         );
+        self::assertStringContainsString(
+            '<a class="webadminShell-navLink" href="/">Ir a la web</a>',
+            $html
+        );
         self::assertStringNotContainsString(
             'href="/admin/users" aria-current="page"',
             $html

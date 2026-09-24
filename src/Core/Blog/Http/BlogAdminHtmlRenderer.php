@@ -67,7 +67,9 @@ final class BlogAdminHtmlRenderer
         array $localesByPost = [],
         bool $canAddLocalization = false,
         ?WebAdminPublicProfile $viewerProfile = null,
-        array $seoScoresByLocalization = []
+        array $seoScoresByLocalization = [],
+        bool $canBulkPublish = false,
+        bool $canManageRobots = false
     ): string {
         if (
             $offset < 0
@@ -97,6 +99,17 @@ final class BlogAdminHtmlRenderer
                 'Invalid Blog analytics period presentation.'
             );
         }
+        $bulkOptions = $this->bulkActionOptions(
+            $canDelete,
+            $canPublish,
+            $canBulkPublish,
+            $canDuplicate,
+            $canAddLocalization,
+            $canManageRobots
+        );
+        $bulkEnabled = $summaries !== []
+            && $csrf !== ''
+            && $bulkOptions !== '';
         $rows = '';
         foreach ($summaries as $summary) {
             if (!$summary instanceof BlogPostSummary) {
@@ -256,7 +269,23 @@ final class BlogAdminHtmlRenderer
                     'Invalid Blog SEO score presentation.'
                 );
             }
-            $rows .= '<tr><th id="' . $rowTitleId . '" scope="row">'
+            $bulkCell = '';
+            if ($bulkEnabled) {
+                $bulkValue = implode('|', [
+                    $summary->postPublicId(),
+                    $summary->locale(),
+                    (string) $summary->lockVersion(),
+                    $this->requestIds->generateV4(),
+                ]);
+                $bulkCell = '<td class="blogAdminPage__bulkSelect"><input '
+                    . 'type="checkbox" name="items[]" form="blog-admin-bulk-form" '
+                    . 'value="' . $this->escape($bulkValue) . '" '
+                    . 'aria-label="Seleccionar ' . $this->escape($summary->h1())
+                    . '" aria-describedby="' . $rowTitleId
+                    . '" data-blog-bulk-item></td>';
+            }
+            $rows .= '<tr>' . $bulkCell . '<th id="' . $rowTitleId
+                . '" scope="row">'
                 . $this->escape($summary->h1()) . '</th><td>'
                 . $this->localeBadge($summary->locale()) . '</td><td>'
                 . $this->tableStatus($summary->status()) . '</td><td>'
@@ -273,7 +302,7 @@ final class BlogAdminHtmlRenderer
                 . '</td><td>' . $actions . '</td></tr>';
         }
         if ($rows === '') {
-            $columns = $showAnalytics ? 14 : 9;
+            $columns = ($showAnalytics ? 14 : 9) + ($bulkEnabled ? 1 : 0);
             $rows = '<tr><td colspan="' . $columns
                 . '">'
                 . ($catalogQuery->hasFilters()
@@ -317,6 +346,19 @@ final class BlogAdminHtmlRenderer
                 . 'aria-describedby="blog-analytics-bounce-help">'
                 . 'Rebote del Blog</th>'
             : '';
+        $bulkToolbar = $bulkEnabled
+            ? $this->bulkToolbar(
+                $basePath,
+                $csrf,
+                $bulkOptions,
+                $publicPaths
+            )
+            : '';
+        $bulkHeader = $bulkEnabled
+            ? '<th class="blogAdminPage__bulkSelect" scope="col"><input '
+                . 'type="checkbox" data-blog-bulk-select-all '
+                . 'aria-label="Seleccionar todos los art&iacute;culos visibles"></th>'
+            : '';
 
         return $this->page(
             'Art&iacute;culos del Blog',
@@ -335,9 +377,11 @@ final class BlogAdminHtmlRenderer
             . 'aria-live="polite" hidden></p>'
             . '<div id="blog-admin-results" data-blog-admin-results '
             . 'data-blog-admin-result-count="' . count($summaries) . '">'
+            . $bulkToolbar
             . '<div class="blogAdminPage__tableViewport" tabindex="0" '
             . 'role="region" aria-label="Variantes editoriales">'
             . '<table><caption>Variantes editoriales</caption><thead><tr>'
+            . $bulkHeader
             . $this->sortableHeading(
                 $basePath,
                 'T&iacute;tulo',
@@ -400,6 +444,160 @@ final class BlogAdminHtmlRenderer
             '/blog',
             $shell
         );
+    }
+
+    /**
+     * @param list<array{title: string, locale: string, state: string, message: string, href: ?string, link_label: ?string}> $results
+     */
+    public function bulkResults(
+        string $basePath,
+        string $actionLabel,
+        array $results,
+        ?WebAdminShellContext $shell = null
+    ): string {
+        if ($results === [] || count($results) > BlogAdminRequestPolicy::MAX_BULK_ITEMS) {
+            throw new InvalidArgumentException(
+                'Invalid Blog bulk result presentation.'
+            );
+        }
+        $items = '';
+        $successful = 0;
+        foreach ($results as $result) {
+            if (
+                !is_array($result)
+                || !is_string($result['title'] ?? null)
+                || !is_string($result['locale'] ?? null)
+                || !is_string($result['state'] ?? null)
+                || !in_array($result['state'], ['success', 'warning', 'error'], true)
+                || !is_string($result['message'] ?? null)
+                || !array_key_exists('href', $result)
+                || !array_key_exists('link_label', $result)
+                || ($result['href'] !== null
+                    && (!is_string($result['href'])
+                        || !str_starts_with($result['href'], '/')))
+                || ($result['link_label'] !== null
+                    && !is_string($result['link_label']))
+            ) {
+                throw new InvalidArgumentException(
+                    'Invalid Blog bulk result presentation.'
+                );
+            }
+            if ($result['state'] === 'success') {
+                ++$successful;
+            }
+            $link = $result['href'] === null
+                ? ''
+                : '<a href="' . $this->escape($result['href']) . '">'
+                    . $this->escape((string) $result['link_label']) . '</a>';
+            $items .= '<li class="blogAdminPage__bulkResult '
+                . 'blogAdminPage__bulkResult--' . $result['state'] . '">'
+                . '<strong>' . $this->escape($result['title']) . '</strong> '
+                . '<span>(' . $this->escape($result['locale']) . ')</span>'
+                . '<p>' . $this->escape($result['message']) . '</p>'
+                . $link . '</li>';
+        }
+
+        return $this->page(
+            'Resultado de acciones masivas',
+            '<article class="blogAdminPage" '
+            . 'aria-labelledby="blog-bulk-results-title">'
+            . '<h1 id="blog-bulk-results-title">'
+            . $this->escape($actionLabel) . '</h1>'
+            . '<p role="status">' . $successful . ' de ' . count($results)
+            . ' variantes completadas sin incidencias.</p>'
+            . '<ul class="blogAdminPage__bulkResults">' . $items . '</ul>'
+            . $this->backToBlog($basePath) . '</article>',
+            $basePath,
+            '/blog',
+            $shell
+        );
+    }
+
+    private function bulkActionOptions(
+        bool $canDelete,
+        bool $canPublish,
+        bool $canBulkPublish,
+        bool $canDuplicate,
+        bool $canAddLocalization,
+        bool $canManageRobots
+    ): string {
+        $options = '';
+        $append = static function (
+            string $value,
+            string $label
+        ) use (&$options): void {
+            $options .= '<option value="' . $value . '">' . $label
+                . '</option>';
+        };
+        if ($canBulkPublish) {
+            $append(BlogAdminRequestPolicy::BULK_PUBLISH, 'Publicar');
+        }
+        if ($canPublish) {
+            $append(
+                BlogAdminRequestPolicy::BULK_UNPUBLISH,
+                'Pasar a borrador'
+            );
+        }
+        if ($canDuplicate) {
+            $append(BlogAdminRequestPolicy::BULK_DUPLICATE, 'Duplicar');
+        }
+        if ($canAddLocalization) {
+            $append(
+                BlogAdminRequestPolicy::BULK_ADD_LOCALE,
+                'A&ntilde;adir idioma'
+            );
+        }
+        if ($canManageRobots) {
+            $append(
+                BlogAdminRequestPolicy::BULK_ROBOTS,
+                'Cambiar Index / Follow'
+            );
+        }
+        if ($canDelete) {
+            $append(
+                BlogAdminRequestPolicy::BULK_TRASH,
+                'Mover borradores a la papelera'
+            );
+        }
+
+        return $options;
+    }
+
+    /** @param array<string, string> $publicPaths */
+    private function bulkToolbar(
+        string $basePath,
+        string $csrf,
+        string $actionOptions,
+        array $publicPaths
+    ): string {
+        return '<form id="blog-admin-bulk-form" '
+            . 'class="blogAdminPage__bulkToolbar" method="post" action="'
+            . $this->path($basePath, '/posts/bulk')
+            . '" data-blog-bulk-form>'
+            . $this->csrfInput($csrf)
+            . '<div><label for="blog-bulk-action">Acci&oacute;n para la '
+            . 'selecci&oacute;n</label><select id="blog-bulk-action" '
+            . 'name="action" data-blog-bulk-action>' . $actionOptions
+            . '</select></div>'
+            . '<div data-blog-bulk-locale><label for="blog-bulk-locale">'
+            . 'Idioma que se a&ntilde;adir&aacute;</label><select '
+            . 'id="blog-bulk-locale" name="destination_locale">'
+            . $this->localeOptions($publicPaths) . '</select></div>'
+            . '<fieldset data-blog-bulk-robots><legend>Directivas '
+            . 'robots</legend><div><label for="blog-bulk-index">'
+            . 'Indexaci&oacute;n</label><select id="blog-bulk-index" '
+            . 'name="robots_index"><option value="1">Index</option>'
+            . '<option value="0">Noindex</option></select></div>'
+            . '<div><label for="blog-bulk-follow">Seguimiento</label>'
+            . '<select id="blog-bulk-follow" name="robots_follow">'
+            . '<option value="1">Follow</option><option value="0">'
+            . 'Nofollow</option></select></div></fieldset>'
+            . '<p class="blogAdminPage__bulkCount" role="status" '
+            . 'aria-live="polite"><strong data-blog-bulk-count>0</strong> '
+            . 'seleccionados</p><button class="webadminAction '
+            . 'webadminAction--primary" type="submit" '
+            . 'data-blog-bulk-submit>Aplicar acci&oacute;n</button>'
+            . '</form>';
     }
 
     /** @param list<BlogPostSummary> $summaries */

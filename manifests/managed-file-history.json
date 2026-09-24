@@ -3,6 +3,7 @@
     "algorithm": "sha256-eol-lf-v1",
     "files": {
         "modules/blog/published/assets/blog-admin-list.js": [
+            "sha256:6492b2ed08db378c1e8deefa930c24dfaf6a170716ca554d72179b1348cc65e4",
             "sha256:9b58956d246732acdbdf464dfe3f2f57c8f8f9f04b483134db53ee52cb62c1a1",
             "sha256:da98884b07d71f713ade1e7ca2dc1c5e0be1308b6d4621773d25fa350e11fdeb"
         ],
@@ -15,6 +16,7 @@
             "sha256:335d7e95960ceec56e47ec06d50b8c42a106086d73fc777b8d925a268be55dce",
             "sha256:3bcd7c2d9f3f2f6cbcc22d04b5985f7c2cd38a133f120acc78e5a21cd3158dda",
             "sha256:3df4678b3c32e70a6ef2440b74ca6bfd17687d95e35ce7b5f51f7f9837605426",
+            "sha256:403a6d106470d96d1710e5b143a91c8fafbcd5f0f87831a64c651ee96199f9cb",
             "sha256:4428ade23ed73ad06fb0c348998976eaab146bb61a85ca4530ed7a86cae95b85",
             "sha256:6b53ff1720edf44b4af7c574b8e38a43f71ad91e26d8125708ba84ce6d376670",
             "sha256:7bc4b30a678c219d583d0cfb25e3868347e7b1fa6db518b0ec4773158e8c3123",
@@ -35,6 +37,7 @@
             "sha256:20d568be908b7c3f6c9c1c7fc5980c0cd4d6ebcc28556e2b3bbca705024b9264",
             "sha256:31a74473ca4c76d32603c10a35f2799658763675340362876c5ee430afc01c70",
             "sha256:56619bb9e6d39b88e36a60d9715f09b98f6612ce304ec17da0dde24aa8b95187",
+            "sha256:60fbd4177bcead6e8c39e57bb8deda3a0bb3fa42445dd194c104a9fcc9b89240",
             "sha256:9c9e24f13769b4c3dee66f877b3938f0bb1f296e8f8e37668a7628542ceb246d",
             "sha256:a2b6e19ff593063a25858dca1e716d25a486244f371de236deaa9a5fb95c6075",
             "sha256:b6415394eef011279f5f717330e798f61ec6e37dbf65d704a0b8e0edfa0db71c",
@@ -48,6 +51,7 @@
             "sha256:2b368f0fa584c817afcc3987a5fdd31051146d16bb00c97f1e4d7520cc401362",
             "sha256:4e5b4551a096baea8c16fbb2b947c7c8e2722a66aa6823267d7bb07ee25af891",
             "sha256:6c596d1575965db994d00e2fdb97d087cae7cf5af69be51452c9447f6900f85d",
+            "sha256:8007c59a0a99160e3fee6d395de49eca814d2e5097410cdaa97ad21701990ca9",
             "sha256:af4e43bf33fc453ec61812415bfbfbfc513331f76d607a58a1331a63c9ad6bec",
             "sha256:b6319de54947243fa8c02c094d78a63ea1fef30ae54cbceda002cd506f77302f",
             "sha256:c4406c85d35479fc7ba0b77bb2f98d5cc7c427b43fd19bb57eabbc6eff2ad55b",
@@ -263,6 +267,7 @@
             "sha256:d65d9b5bb6b8e504ef3eb109ecd9075b2208b547f134106c825fb9112a804de4"
         ],
         "modules/blog/resources/project/src/scss/resources/_artBlogArticle01.scss": [
+            "sha256:144d86244b69326c573901bed1bd1cee03f52911f046d3e39bfca68b9d83b1e6",
             "sha256:5fac98ea5b515f29172e191ccac4e45653927c9efd69fd630950326be9dfc0b4",
             "sha256:6f6d341185e093e5c93d353ec3745128a22a2fa5960bdd28c46533082a7fa77b",
             "sha256:71d8e2bcffe374b2ce1eef03378e38f99e6b5253197a505ed40f95ec3c6aa518",

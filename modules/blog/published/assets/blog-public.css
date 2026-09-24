@@ -10,8 +10,18 @@
     --ls-blog-color01: #272727;
     --ls-blog-color02: #24658e;
     --ls-blog-color03: #092f64;
+    /*
+     * color04/05 are optional theme extensions. A theme overriding either
+     * color must also override its matching --ls-blog-colorNN-contrast.
+     */
     --ls-blog-color04: #6b7280;
     --ls-blog-color05: #a16207;
+    --ls-blog-color00-contrast: var(--ls-blog-color01);
+    --ls-blog-color01-contrast: var(--ls-blog-color00);
+    --ls-blog-color02-contrast: var(--ls-blog-color00);
+    --ls-blog-color03-contrast: var(--ls-blog-color00);
+    --ls-blog-color04-contrast: var(--ls-blog-color00);
+    --ls-blog-color05-contrast: var(--ls-blog-color00);
     --ls-blog-basic-text-red: #b42318;
     --ls-blog-basic-text-orange: #9a3412;
     --ls-blog-basic-text-yellow: #713f12;
@@ -1806,6 +1816,124 @@ h6.blogDocument__module--size-xl {
     main {
         padding-block: 2rem;
     }
+}
+
+.blogDocument--layout .blogDocument__container--padding-none {
+    padding: 0;
+}
+
+.blogDocument--layout .blogDocument__container--padding-s {
+    padding: clamp(0.75rem, 2vw, 1.25rem);
+}
+
+.blogDocument--layout .blogDocument__container--padding-m {
+    padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.blogDocument--layout .blogDocument__container--padding-l {
+    padding: clamp(2rem, 5vw, 4rem);
+}
+
+.blogDocument__container--text-color00 {
+    color: var(--ls-blog-color00);
+}
+
+.blogDocument__container--text-color01 {
+    color: var(--ls-blog-color01);
+}
+
+.blogDocument__container--text-color02 {
+    color: var(--ls-blog-color02);
+}
+
+.blogDocument__container--text-color03 {
+    color: var(--ls-blog-color03);
+}
+
+.blogDocument__container--text-color04 {
+    color: var(--ls-blog-color04);
+}
+
+.blogDocument__container--text-color05 {
+    color: var(--ls-blog-color05);
+}
+
+.blogDocument__container--text-rgba {
+    color: inherit;
+    color: attr(data-blog-container-text-rgba type(<color>), inherit);
+}
+
+.blogDocument__container--contrast-color00 {
+    color: var(--ls-blog-color00-contrast, var(--ls-blog-color01));
+}
+
+.blogDocument__container--contrast-color01 {
+    color: var(--ls-blog-color01-contrast, var(--ls-blog-color00));
+}
+
+.blogDocument__container--contrast-color02 {
+    color: var(--ls-blog-color02-contrast, var(--ls-blog-color00));
+}
+
+.blogDocument__container--contrast-color03 {
+    color: var(--ls-blog-color03-contrast, var(--ls-blog-color00));
+}
+
+.blogDocument__container--contrast-color04 {
+    color: var(--ls-blog-color04-contrast, var(--ls-blog-color00));
+}
+
+.blogDocument__container--contrast-color05 {
+    color: var(--ls-blog-color05-contrast, var(--ls-blog-color00));
+}
+
+.blogDocument__container--contrast-light {
+    color: var(--ls-blog-color00);
+}
+
+.blogDocument__container--contrast-dark {
+    color: var(--ls-blog-color01);
+}
+
+[data-blog-container-text]
+    :where(.blogDocument__module):not(
+        :is(
+            .blogDocument__module--text-color00,
+            .blogDocument__module--text-color01,
+            .blogDocument__module--text-color02,
+            .blogDocument__module--text-color03,
+            .blogDocument__module--text-color04,
+            .blogDocument__module--text-color05,
+            .blogDocument__module--text-rgba
+        )
+    ),
+[data-blog-container-text]
+    :where(.blogDocument__module):not(
+        :is(
+            .blogDocument__module--text-color00,
+            .blogDocument__module--text-color01,
+            .blogDocument__module--text-color02,
+            .blogDocument__module--text-color03,
+            .blogDocument__module--text-color04,
+            .blogDocument__module--text-color05,
+            .blogDocument__module--text-rgba
+        )
+    )
+    :where(p, li, figcaption, footer, cite),
+[data-blog-container-text]
+    :where(.blogDocument__module):not(
+        :is(
+            .blogDocument__module--text-color00,
+            .blogDocument__module--text-color01,
+            .blogDocument__module--text-color02,
+            .blogDocument__module--text-color03,
+            .blogDocument__module--text-color04,
+            .blogDocument__module--text-color05,
+            .blogDocument__module--text-rgba
+        )
+    )
+    a:not(.blogDocument__ctaLink):not(.blogDocument__videoTrigger) {
+    color: inherit;
 }
 
 @media (prefers-reduced-motion: reduce) {

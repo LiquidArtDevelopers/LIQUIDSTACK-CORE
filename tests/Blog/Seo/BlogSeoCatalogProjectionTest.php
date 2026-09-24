@@ -7,6 +7,7 @@ namespace Tests\Blog\Seo;
 use App\Core\Blog\BlogPostSummary;
 use App\Core\Blog\BlogPostVariant;
 use App\Core\Blog\Seo\BlogSeoCatalogProjectionService;
+use App\Core\Blog\Seo\BlogRobotsPreferences;
 use App\Core\Blog\Seo\BlogSeoScore;
 use App\Core\Blog\Seo\PdoBlogSeoCatalogSnapshotRepository;
 use App\Core\Blog\StructuredContent\Document\BlogDocument;
@@ -234,6 +235,35 @@ final class BlogSeoCatalogProjectionTest extends TestCase
         self::assertSame(11, $scores[$this->id(202)]->totalChecks());
     }
 
+    public function testNoindexForcesZeroButNofollowAloneDoesNot(): void
+    {
+        $draft = $this->draft('GuÃ­a robots completa', 'guia-robots');
+        $this->insertLocalization(1, $this->id(211), $draft);
+        $this->insertDocument(1, 1, $draft);
+        $this->insertLocalization(2, $this->id(212), $draft);
+        $this->insertDocument(2, 2, $draft);
+
+        $scores = (new BlogSeoCatalogProjectionService($this->repository()))
+            ->scoresFor([
+                $this->summary(
+                    1,
+                    211,
+                    $draft,
+                    new BlogRobotsPreferences(false, true)
+                ),
+                $this->summary(
+                    2,
+                    212,
+                    $draft,
+                    new BlogRobotsPreferences(true, false)
+                ),
+            ], ['es' => '/noticias']);
+
+        self::assertSame(0, $scores[$this->id(211)]->percentage());
+        self::assertSame(BlogSeoScore::BAND_RED, $scores[$this->id(211)]->band());
+        self::assertGreaterThan(0, $scores[$this->id(212)]->percentage());
+    }
+
     private function repository(): PdoBlogSeoCatalogSnapshotRepository
     {
         return new PdoBlogSeoCatalogSnapshotRepository(
@@ -417,7 +447,8 @@ final class BlogSeoCatalogProjectionTest extends TestCase
     private function summary(
         int $post,
         int $localization,
-        BlogStructuredDraft $draft
+        BlogStructuredDraft $draft,
+        ?BlogRobotsPreferences $robotsPreferences = null
     ): BlogPostSummary {
         $metadata = $draft->compatibilityDraft();
 
@@ -430,7 +461,8 @@ final class BlogSeoCatalogProjectionTest extends TestCase
             BlogPostVariant::DRAFT,
             null,
             1,
-            new DateTimeImmutable('2030-01-01', new DateTimeZone('UTC'))
+            new DateTimeImmutable('2030-01-01', new DateTimeZone('UTC')),
+            robotsPreferences: $robotsPreferences
         );
     }
 
