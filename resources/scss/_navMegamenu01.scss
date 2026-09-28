@@ -35,7 +35,7 @@
         -webkit-transform-origin: 0 0;
         -moz-transform-origin: 0 0;
         -o-transform-origin: 0 0;
-    }   
+    }
 }
 #toggle:checked ~ nav #toggleLabel span:nth-child(3) {
     transform: rotate(-45deg) translate(-1px, 0px);
@@ -62,15 +62,15 @@
     min-height: 430px;
     opacity: 1;
     pointer-events: initial;
-    overflow: scroll;    
+    overflow: scroll;
     @media only screen and (min-width:c.$tablet){
         &{
             height: 85vh;
         }
-    }  
+    }
     @media only screen and (min-width:c.$desktop){
         &{
-            height: auto;            
+            height: auto;
             overflow: visible;
         }
     }
@@ -127,7 +127,7 @@ nav{
                     }
                 }
             }
-        } 
+        }
         .logoPrimary{
             height: 60%;
             // position: relative;
@@ -139,15 +139,15 @@ nav{
             z-index: 110;
             @media only screen and (min-width:c.$tablet){
                 height: 90%;
-                
+
             }
             img{
                 width: 100%;
                 height: 100%;
-                object-fit: contain;                
-            }            
+                object-fit: contain;
+            }
         }
-    }      
+    }
     a, p, span{
         color: c.$color00;
     }
@@ -165,9 +165,9 @@ nav.is-scrolled{
     height: 0vh;
     opacity: 0;
     overflow: hidden;
-    pointer-events: none;    
+    pointer-events: none;
     padding: 6rem 1.5rem 4rem;
-    transition: 0.4s;    
+    transition: 0.4s;
     -webkit-transition: 0.4s;
     -o-transition: 0.4s;
     -moz-transition: 0.4s;
@@ -177,7 +177,7 @@ nav.is-scrolled{
     display: none;
     flex-direction: row;
     justify-content: center;
-    align-items: flex-start; 
+    align-items: flex-start;
     flex-wrap: wrap;
     gap: clamp(1rem, 2vw, 5rem);
     padding-bottom: 10rem;
@@ -189,11 +189,11 @@ nav.is-scrolled{
             border-radius: 2px;
             flex-wrap: nowrap;
         }
-    }     
+    }
     @media only screen and (min-width:c.$desktop){
         &{
             top: 100px;
-            width: 90%;  
+            width: 90%;
         }
     }
     &::-webkit-scrollbar {
@@ -272,8 +272,8 @@ nav.is-scrolled{
                     row-gap: 1rem;
                     @media only screen and (min-width: c.$tablet){
                         flex-direction: row;
-                        column-gap: 2rem; 
-                    }                   
+                        column-gap: 2rem;
+                    }
                 }
                 a, >span{
                     max-width: 100%;
@@ -287,12 +287,12 @@ nav.is-scrolled{
                     -webkit-transition: 0.1s;
                     -o-transition: 0.1s;
                     -moz-transition: 0.1s;
-                    
+
                     &:hover{
                         filter: c.$color02SVG;
                         -webkit-filter: c.$color02SVG;
                     }
-                    
+
                 }
                 a >span{
                     font-size: clamp(0.8rem, 1vw, 1rem);
@@ -304,7 +304,7 @@ nav.is-scrolled{
                         text-overflow: ellipsis;
                     }
                 }
-                
+
                 .linkReducido{
                     width: 100%;
                     >span{
@@ -315,7 +315,7 @@ nav.is-scrolled{
                     }
                 }
             }
-            
+
             img{
                 width: 20px;
                 filter: invert(1);
@@ -324,12 +324,12 @@ nav.is-scrolled{
                     width: clamp(0.8rem, 1.4vw, 1.2rem);
                 }
             }
-        }            
+        }
         .boton{
             padding: 0.7rem 1.5rem 0.6rem;
             font-size: 1rem;
             font-size: 0.9rem;
-        }                                
+        }
     }
     // Las columnas 1 y 2 comparten el mismo árbol recursivo (hasta 3 niveles).
     // En móvil se despliega en vertical; desde tablet cada padre abre solo su
@@ -429,7 +429,7 @@ nav.is-scrolled{
                 &:hover{
                     filter: c.$color02SVG;
                     -webkit-filter: c.$color02SVG;
-                }                    
+                }
             }
         }
         .megamenu-business-logo{
@@ -446,13 +446,13 @@ nav.is-scrolled{
     }
     >:nth-child(3){
         border-right: none;
-        height: auto;                
-    }    
+        height: auto;
+    }
 }
 
 /* FOOTER */
 footer{
-    
+
     .megamenu{
         position: relative;
         display: flex;
@@ -473,9 +473,9 @@ footer{
             display: none;
         }
         .idiomas{
-            display: none;       
-        } 
-    }    
+            display: none;
+        }
+    }
 }
 
 // TODO: PENDIENTE INDEPENDIZAR ESTILSO DEL FOOTER A OTROS CONTROLADORES PARA EL FOOTER

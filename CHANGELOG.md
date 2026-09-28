@@ -4,6 +4,13 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.35.10] - 2026-09-28
+
+### Corregido
+
+- El SCSS gestionado de `navMegamenu01` elimina espacios finales heredados,
+  evitando falsos fallos de `git diff --check` al actualizar un consumidor.
+
 ## [1.35.9] - 2026-09-28
 
 ### Corregido
