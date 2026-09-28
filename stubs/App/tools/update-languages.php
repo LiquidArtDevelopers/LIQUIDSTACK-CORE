@@ -1284,7 +1284,7 @@ function extract_keys(string $name, int $index): array {
             $key = $expand($g[2]);
             $prop = $g[3];
             if (strpos($key, '{') !== false || strpos($key, '}') !== false) continue;
-            if ($key === 'lang') continue;
+            if (in_array($key, ['lang', 'arrayRutasGet'], true)) continue;
             if (!preg_match('/^[A-Za-z0-9_-]+$/', $key)) continue;
             if (substr($key, -1) === '_') continue;
             $map[$key][$prop] = true;
@@ -1298,7 +1298,7 @@ function extract_keys(string $name, int $index): array {
         foreach ($m as $g) {
             $key = $expand($g[2]);
             if (strpos($key, '{') !== false || strpos($key, '}') !== false) continue;
-            if ($key === 'lang') continue;
+            if (in_array($key, ['lang', 'arrayRutasGet'], true)) continue;
             if (!preg_match('/^[A-Za-z0-9_-]+$/', $key)) continue;
             if (substr($key, -1) === '_') continue;
             if (!isset($map[$key])) {
@@ -1312,7 +1312,7 @@ function extract_keys(string $name, int $index): array {
         foreach ($assigns as $assign) {
             $key = $expand($assign[3]);
             if (strpos($key, '{') !== false || strpos($key, '}') !== false) continue;
-            if ($key === 'lang') continue;
+            if (in_array($key, ['lang', 'arrayRutasGet'], true)) continue;
             if (!preg_match('/^[A-Za-z0-9_-]+$/', $key)) continue;
             if (substr($key, -1) === '_') continue;
             $globalVars[$assign['var']] = $key;

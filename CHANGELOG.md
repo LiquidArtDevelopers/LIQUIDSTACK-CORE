@@ -4,6 +4,14 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.35.9] - 2026-09-28
+
+### Corregido
+
+- `update-languages.php global` distingue el registro interno de rutas
+  `arrayRutasGet` de una clave traducible al analizar el nuevo sniper del
+  megamenú, evitando contaminar los catálogos del consumidor.
+
 ## [1.35.8] - 2026-09-28
 
 ### Añadido

@@ -357,6 +357,7 @@ PHP
                 array_keys($catalog['navMegamenu01_00_forward'])
             );
             self::assertArrayNotHasKey('forward', $catalog);
+            self::assertArrayNotHasKey('arrayRutasGet', $catalog);
             foreach ([
                 'content_of_this_website',
                 'homeText',
