@@ -4,10 +4,19 @@
   "leaflet": "1.9.4",
   "three": "^0.170.0"
 },
+"devDependencies": {
+  "sass": "^1.79.0"
+},
 "dependencyMigrations": {
   "gsap": {
     "from": [
       "npm:@gsap/shockingly@3.12.5"
+    ]
+  },
+  "sass": {
+    "from": [
+      "1.70.0",
+      "^1.70.0"
     ]
   }
 },

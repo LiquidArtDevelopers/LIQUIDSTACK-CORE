@@ -17,6 +17,7 @@ final class ManagedFileRegistry
     private const INSTALL_IF_MISSING_FILES = [
         'resources/scss/_moduleTerminos.scss',
         'stubs/App/class/_comprobaciones.php',
+        'stubs/App/includes/_navMegamenu01.php',
         'stubs/App/templates/_formContactAdmin.html',
         'stubs/App/templates/_formContactUser.html',
     ];
@@ -42,6 +43,7 @@ final class ManagedFileRegistry
         'stubs/App/app/url.php',
         'stubs/App/class/_comprobaciones.php',
         'stubs/App/config/helpers.php',
+        'stubs/App/includes/_navMegamenu01.php',
         'stubs/public/index.php',
         'stubs/tools/liquidstack/vite/update-languages-plugin.mjs',
     ];

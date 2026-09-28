@@ -80,6 +80,17 @@ final class ManagedFileRegistryTest extends TestCase
         }
     }
 
+    public function testMegamenuSniperIsAProjectOwnedSeed(): void
+    {
+        $sourceId = 'stubs/App/includes/_navMegamenu01.php';
+
+        self::assertSame(
+            ManagedFileRegistry::POLICY_INSTALL_IF_MISSING,
+            ManagedFileRegistry::policyForSource($sourceId)
+        );
+        self::assertNull(ManagedFileRegistry::groupForSource($sourceId));
+    }
+
     public function testLegalRuntimeUpdatesByHashWhileStylesRemainASeed(): void
     {
         self::assertSame(

@@ -959,6 +959,7 @@
         ],
         "resources/js/_navMegamenu01.js": [
             "sha256:5b143394d4f6dc2897edeb0b14091a5073dc0ee39bdcf548d2909888648ea2e1",
+            "sha256:65470d44a04d6ccfa52f6ee56d4ee636bc90e11fa86c1394577269e279edd165",
             "sha256:7938e075cdfb759f66042d0dd1e9ac4f4c8de5815993186be74766963461d993"
         ],
         "resources/js/_sectTabs01.js": [
@@ -1473,6 +1474,7 @@
         ],
         "resources/scss/_navMegamenu01.scss": [
             "sha256:2cce1b55c9cf9c8cb635e31044d1bce3aec6ef39567b7dc93ee76dea9d153a30",
+            "sha256:6762e5d70d9ca5574e39814ff67386fbf2506b3cda678b3fa4b0c5744ed55be3",
             "sha256:7d898d35c934478ba5a68c6c83f9ef7b633a576f1b20739c209f2c6b32e111c7",
             "sha256:e0cca77fca28bb5039005b5835c29460721e5a37b4082287779ddd10306059f4",
             "sha256:e10840489866908cacb4f59db838d8d73fe3c7f6366fb8d8a47d223354809e50",
@@ -2015,6 +2017,7 @@
             "sha256:73a820b15b013c3530fa622d63ac22344c910a8be2f6ec64c222f4ca92c9e203",
             "sha256:7a8717e676510ad5f30e30762054c7c0ef3c4c64c546764205cb383bd4befe54",
             "sha256:9078ebbf250a8cdec3e061a90b4a2399cbfa1893438b1bf2ffdfcc6ca963c177",
+            "sha256:a81427de45dfec092a214525b8bb33aa02f516663bf7fa62e9ca219e08185be3",
             "sha256:fde025651f83038e34b47400510d50fe80b0a8c20490ca8355e38ba15b8f8545"
         ],
         "stubs/App/controllers/sect01.php": [
@@ -2358,6 +2361,7 @@
             "sha256:7249913eb1ada23ec439fbd1157fae83a6da4b03ee2b1d55bda872489a1effb8"
         ],
         "stubs/App/templates/_navMegamenu01.html": [
+            "sha256:72c0d3959cb3ea1f070eae3d5431516ae62c581a993466ab823276958ecf263e",
             "sha256:c5d76fb3be648a31a38b44b5c92ef51a3876ffdfb481d7800677205a9b81e769"
         ],
         "stubs/App/templates/_sect01.html": [
@@ -2422,7 +2426,8 @@
             "sha256:009dee0e3eef6f3e4ada704edd6b9cf43ab321b1ba50edfc00791a325311af26",
             "sha256:08e1aa92842796987a2dcbb2053501d066394f41434f5c708756e87eda0eac86",
             "sha256:0be58f9e455478c92f918fe89696e4e6ffc3dc1a931be5dcd6b7ef9acce740f3",
-            "sha256:55fc4e1b8afcc4b2b86f8a212e5e283495664683df420ee10fd2b478ef6e8b62",
+            "sha256:21b0ee1d7e821954c4a98ab215c253edffc5cf02e53e2367d6f5d82720ba5131",
+            "sha256:24fb2b4f8acb6287b084d1ce46616a13045cafe4c54b104b69fda94a90090e70",
             "sha256:836870942c4f19c6d8139c2b6c0cf11d0610e7a6356d75da6c042dfeb002eef0",
             "sha256:aaf912c2bbc7168f5ad263062e8b0b60aabadbc81603cb75dbbacb96e966dde8",
             "sha256:d9d4e0530a49172428f20514e5f00fd5a5821de89cdec3f7715bba2a8948831a"

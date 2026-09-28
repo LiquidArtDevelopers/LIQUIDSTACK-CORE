@@ -112,6 +112,85 @@ final class InstallerFrontendPackageSyncTest extends TestCase
         );
     }
 
+    /** @dataProvider canonicalLegacySassVersions */
+    public function testCanonicalLegacySassDependencyMigrates(
+        string $section,
+        string $legacyVersion
+    ): void {
+        $this->writePackage([
+            $section => [
+                'sass' => $legacyVersion,
+            ],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            '^1.79.0',
+            $this->readPackage()[$section]['sass'] ?? null
+        );
+        self::assertStringContainsString(
+            sprintf(
+                'Updated canonical frontend dependencies in package.json: '
+                . '%s.sass@^1.79.0',
+                $section
+            ),
+            $output
+        );
+    }
+
+    /** @return array<string, array{string, string}> */
+    public static function canonicalLegacySassVersions(): array
+    {
+        return [
+            'exact devDependency' => ['devDependencies', '1.70.0'],
+            'caret dependency' => ['dependencies', '^1.70.0'],
+        ];
+    }
+
+    public function testMissingSassIsAddedAsADevDependency(): void
+    {
+        $this->writePackage([
+            'private' => true,
+            'dependencies' => [
+                'gsap' => '^3.13.0',
+                'leaflet' => '1.9.4',
+                'three' => '^0.170.0',
+            ],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            '^1.79.0',
+            $this->readPackage()['devDependencies']['sass'] ?? null
+        );
+        self::assertStringContainsString(
+            'Added frontend dependencies to package.json: sass@^1.79.0',
+            $output
+        );
+    }
+
+    public function testCustomizedSassVersionIsPreserved(): void
+    {
+        $this->writePackage([
+            'devDependencies' => [
+                'sass' => '^1.79.1',
+            ],
+        ]);
+
+        $output = $this->sync();
+
+        self::assertSame(
+            '^1.79.1',
+            $this->readPackage()['devDependencies']['sass'] ?? null
+        );
+        self::assertStringNotContainsString(
+            'Updated canonical frontend dependencies',
+            $output
+        );
+    }
+
     /** @dataProvider customizedGsapVersions */
     public function testCustomizedGsapDependencyIsPreserved(string $version): void
     {

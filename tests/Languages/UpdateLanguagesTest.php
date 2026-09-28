@@ -335,9 +335,13 @@ PHP
             $coreRoot . '/stubs/App/controllers/navMegamenu01.php',
             $this->fixtureRoot . '/App/controllers/navMegamenu01.php'
         );
+        $this->filesystem->copy(
+            $coreRoot . '/stubs/App/includes/_navMegamenu01.php',
+            $this->fixtureRoot . '/App/includes/_navMegamenu01.php'
+        );
         $this->writeFile(
             $this->fixtureRoot . '/App/includes/_nav.php',
-            "<?php echo controller('navMegamenu01', 0);\n"
+            "<?php require __DIR__ . '/_navMegamenu01.php';\n"
         );
 
         $this->runUpdater('global');
@@ -353,6 +357,45 @@ PHP
                 array_keys($catalog['navMegamenu01_00_forward'])
             );
             self::assertArrayNotHasKey('forward', $catalog);
+            foreach ([
+                'content_of_this_website',
+                'homeText',
+                'servicesText',
+                'servicesItem0Text',
+                'contactText',
+                'link_of_interest',
+                'follow_us_social_media',
+                'contact',
+                'correo_text',
+            ] as $textKey) {
+                self::assertSame(
+                    ['text'],
+                    array_keys(
+                        $catalog["navMegamenu01_00_{$textKey}"]
+                    )
+                );
+            }
+            foreach ([
+                'home',
+                'services',
+                'servicesItem0',
+                'contactLink',
+            ] as $linkKey) {
+                self::assertSame(
+                    ['href', 'title'],
+                    array_keys(
+                        $catalog["navMegamenu01_00_{$linkKey}"]
+                    )
+                );
+            }
+            self::assertSame(
+                ['title'],
+                array_keys($catalog['navMegamenu01_00_correo_link'])
+            );
+            self::assertArrayHasKey(
+                'navMegamenu01_00_correo_link_href',
+                $catalog
+            );
             foreach (range(1, 3) as $position) {
                 $suffix = sprintf('%02d', $position);
                 self::assertArrayHasKey(

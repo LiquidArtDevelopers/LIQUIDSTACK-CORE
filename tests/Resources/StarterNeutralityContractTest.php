@@ -8,9 +8,12 @@ final class StarterNeutralityContractTest extends TestCase
 {
     public function testLegacyMegamenuUsesOnlyExplicitProjectOfficeData(): void
     {
+        $root = dirname(__DIR__, 2);
         $controller = (string) file_get_contents(
-            dirname(__DIR__, 2)
-                . '/stubs/App/controllers/navMegamenu01.php'
+            $root . '/stubs/App/controllers/navMegamenu01.php'
+        );
+        $sniper = (string) file_get_contents(
+            $root . '/stubs/App/includes/_navMegamenu01.php'
         );
 
         self::assertStringContainsString(
@@ -18,16 +21,12 @@ final class StarterNeutralityContractTest extends TestCase
             $controller
         );
         self::assertStringContainsString(
-            "? \$params['offices']",
-            $controller
+            "'offices' => []",
+            $sniper
         );
-        self::assertStringContainsString(
-            ': [];',
-            $controller
-        );
-        self::assertStringNotContainsString("'label' =>", $controller);
-        self::assertStringNotContainsString("'tels' =>", $controller);
-        self::assertStringNotContainsString('maps.app.goo.gl', $controller);
+        self::assertStringNotContainsString('maps.app.goo.gl', $sniper);
+        self::assertStringNotContainsString('Madrid', $sniper);
+        self::assertStringNotContainsString('Bilbao', $sniper);
     }
 
     public function testHelperExamplesUseOnlyReservedExampleDomain(): void
@@ -57,9 +56,13 @@ final class StarterNeutralityContractTest extends TestCase
             $root . '/stubs/App/templates/_footerInfo01.html'
         );
 
-        self::assertStringContainsString('$socialItems = [', $navigation);
+        self::assertStringContainsString("'socials' => [", $navigation);
         self::assertStringContainsString(
-            "\$col2SocialItems === ''",
+            "if (\$image === '' || \$label === '')",
+            $navigation
+        );
+        self::assertStringContainsString(
+            "if (\$logoImage !== '')",
             $navigation
         );
         foreach (['fb', 'in', 'yt', 'ig'] as $network) {

@@ -554,6 +554,141 @@ function mask_nested_controller_calls(string $call): string {
     return $call;
 }
 
+function decode_static_php_string_token(string $literal): ?string {
+    $length = strlen($literal);
+    if ($length < 2) {
+        return null;
+    }
+
+    $quote = $literal[0];
+    if (($quote !== "'" && $quote !== '"') || $literal[$length - 1] !== $quote) {
+        return null;
+    }
+
+    $value = substr($literal, 1, -1);
+    if ($quote === "'") {
+        return str_replace(["\\\\", "\\'"], ["\\", "'"], $value);
+    }
+
+    return stripcslashes($value);
+}
+
+function extract_static_nav_catalog_keys(
+    string $call,
+    string $controllerName,
+    int $index
+): array {
+    if ($controllerName !== 'navMegamenu01') {
+        return [];
+    }
+
+    $fieldProperties = [
+        'intro_key' => ['text'],
+        'follow_key' => ['text'],
+        'text_key' => ['text'],
+        'address_key' => ['text'],
+        'label_key' => ['text'],
+        'link_key' => ['href', 'title'],
+        'map_link_key' => ['title'],
+        'image_key' => ['src', 'alt', 'title'],
+        'map_image_key' => ['src', 'alt', 'title'],
+        'href_key' => [],
+        'number_key' => [],
+    ];
+    $prefix = $controllerName . '_' . sprintf('%02d', $index) . '_';
+    $tokens = token_get_all('<?php ' . mask_nested_controller_calls($call) . ';');
+    $significant = [];
+
+    foreach ($tokens as $token) {
+        if (is_array($token) && in_array($token[0], [
+            T_OPEN_TAG,
+            T_WHITESPACE,
+            T_COMMENT,
+            T_DOC_COMMENT,
+        ], true)) {
+            continue;
+        }
+        $significant[] = $token;
+    }
+
+    $keys = [];
+    merge_key_props(
+        $keys,
+        $prefix . 'forward',
+        ['src', 'alt', 'title']
+    );
+    $arrayContexts = [];
+    $count = count($significant);
+    for ($position = 0; $position + 2 < $count; $position++) {
+        if ($significant[$position] === '[') {
+            $context = null;
+            if (
+                $position >= 2
+                && is_array($significant[$position - 1])
+                && $significant[$position - 1][0] === T_DOUBLE_ARROW
+                && is_array($significant[$position - 2])
+                && $significant[$position - 2][0] === T_CONSTANT_ENCAPSED_STRING
+            ) {
+                $context = decode_static_php_string_token(
+                    $significant[$position - 2][1]
+                );
+            }
+            $arrayContexts[] = $context;
+            continue;
+        }
+        if ($significant[$position] === ']') {
+            array_pop($arrayContexts);
+            continue;
+        }
+
+        $fieldToken = $significant[$position];
+        $arrowToken = $significant[$position + 1];
+        $valueToken = $significant[$position + 2];
+        if (
+            !is_array($fieldToken)
+            || $fieldToken[0] !== T_CONSTANT_ENCAPSED_STRING
+            || !is_array($arrowToken)
+            || $arrowToken[0] !== T_DOUBLE_ARROW
+            || !is_array($valueToken)
+            || $valueToken[0] !== T_CONSTANT_ENCAPSED_STRING
+        ) {
+            continue;
+        }
+
+        $field = decode_static_php_string_token($fieldToken[1]);
+        $reference = decode_static_php_string_token($valueToken[1]);
+        if (
+            $field === null
+            || $reference === null
+            || !array_key_exists($field, $fieldProperties)
+            || !preg_match('/^[A-Za-z0-9_-]+$/', $reference)
+        ) {
+            continue;
+        }
+
+        $key = str_starts_with($reference, $prefix)
+            ? $reference
+            : $prefix . $reference;
+        $properties = $fieldProperties[$field];
+        if (
+            $field === 'link_key'
+            && (
+                in_array('socials', $arrayContexts, true)
+                || in_array('email', $arrayContexts, true)
+                || in_array('phones', $arrayContexts, true)
+            )
+        ) {
+            $properties = ['title'];
+        }
+        if ($field === 'address_key' && in_array('email', $arrayContexts, true)) {
+            $properties = [];
+        }
+        merge_key_props($keys, $key, $properties);
+    }
+
+    return $keys;
+}
+
 function parse_static_controller_params(string $call): array {
     $call = mask_nested_controller_calls($call);
     $params = [];
@@ -643,6 +778,11 @@ function extract_controller_calls(string $content): array {
             'name' => $match[2][0],
             'index' => $index,
             'params' => parse_static_controller_params($call),
+            'catalog_keys' => extract_static_nav_catalog_keys(
+                $call,
+                $match[2][0],
+                $index
+            ),
         ];
     }
 
@@ -1431,12 +1571,28 @@ function collect_key_map(array $controllers, array $templateMap): array {
                 $uniq[$key]['params'] ?? [],
                 $c['params'] ?? []
             );
+            $incomingCatalogKeys = $c['catalog_keys'] ?? [];
+            if (is_array($incomingCatalogKeys)) {
+                if (
+                    !isset($uniq[$key]['catalog_keys'])
+                    || !is_array($uniq[$key]['catalog_keys'])
+                ) {
+                    $uniq[$key]['catalog_keys'] = [];
+                }
+                merge_inline_key_sets(
+                    $uniq[$key]['catalog_keys'],
+                    $incomingCatalogKeys
+                );
+            }
         }
     }
     $langKeys = [];
     foreach ($uniq as $c) {
         $pad = sprintf('%02d', $c['index']);
         $extracted = extract_keys($c['name'], $c['index']);
+        foreach (($c['catalog_keys'] ?? []) as $catalogKey => $properties) {
+            merge_key_props($extracted, $catalogKey, $properties);
+        }
         $tmplGroup = $c['name'] . '_00';
         if (isset($templateMap[$tmplGroup])) {
             $tmplKeys = $templateMap[$tmplGroup];

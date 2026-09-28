@@ -66,6 +66,7 @@ final class InstallerModuleHookTest extends TestCase
         self::assertContains('App/tools/liquidstack-dev.mjs', $targets);
         self::assertContains('App/tools/php-dev-router.php', $targets);
         self::assertContains('README.LIQUIDSTACK.md', $targets);
+        self::assertContains('App/includes/_navMegamenu01.php', $targets);
         self::assertContains('App/controllers/hero00.php', $targets);
         self::assertContains(
             'public/assets/modules/blog/blog-public.css',

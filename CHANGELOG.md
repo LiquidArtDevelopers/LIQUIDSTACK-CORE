@@ -4,6 +4,32 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.35.8] - 2026-09-28
+
+### Añadido
+
+- `navMegamenu01` incorpora un sniper `install_if_missing` donde cada proyecto
+  puede definir árboles de hasta tres niveles, CTA, redes, logotipo, correo,
+  sedes y visibilidad según la sesión pública sin personalizar el controlador.
+
+### Cambiado
+
+- Las tres columnas del megamenú se renderizan desde una configuración
+  estructurada; el adaptador legacy mantiene operativos los consumidores que
+  todavía usan `public_link_keys`, `show_private_access` y `offices`.
+- `update-languages.php global` descubre de forma estática las claves anidadas
+  del nuevo sniper sin ejecutar su PHP.
+
+### Corregido
+
+- La sincronización frontend declara Dart Sass compatible con
+  `color.channel(..., $space: hsl)` y migra los pins legacy `1.70.0` y
+  `^1.70.0`, evitando fallos de build tras actualizar los recursos de Blog.
+- Cualquier enlace del megamenú, incluidos los destinos ancla, cierra el panel
+  de navegación después del clic.
+- Los submenús de las columnas uno y dos admiten tres niveles sin perder las
+  tres columnas ni los separadores estables desde tablet.
+
 ## [1.35.7] - 2026-09-24
 
 ### Cambiado

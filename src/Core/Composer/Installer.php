@@ -898,6 +898,7 @@ class Installer
             ['path' => 'App/class/_comprobaciones.php', 'type' => 'file'],
             ['path' => 'App/app/updateLanguage.php', 'type' => 'file'],
             ['path' => 'App/controllers', 'type' => 'dir'],
+            ['path' => 'App/includes/_navMegamenu01.php', 'type' => 'file'],
             ['path' => 'App/templates', 'type' => 'dir'],
             ['path' => 'App/views', 'type' => 'dir'],
             ['path' => 'App/tools', 'type' => 'dir'],

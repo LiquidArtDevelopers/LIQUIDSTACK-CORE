@@ -218,6 +218,61 @@ final class OptionalGlobalMediaControllerTest extends TestCase
         );
     }
 
+    public function testNavigationRendersStructuredTreesAndSessionRules(): void
+    {
+        $this->configureNavigationGlobals();
+        foreach (['child', 'grandchild', 'tooDeep', 'member'] as $name) {
+            $this->putGlobal(
+                "navMegamenu01_00_{$name}Link",
+                (object) ['href' => "#{$name}", 'title' => $name]
+            );
+            $this->putGlobal(
+                "navMegamenu01_00_{$name}Text",
+                (object) ['text' => $name]
+            );
+        }
+
+        $config = [
+            'col1' => ['items' => [[
+                'link_key' => 'services',
+                'text_key' => 'servicesText',
+                'children' => [[
+                    'link_key' => 'childLink',
+                    'text_key' => 'childText',
+                    'children' => [[
+                        'link_key' => 'grandchildLink',
+                        'text_key' => 'grandchildText',
+                        'children' => [[
+                            'link_key' => 'tooDeepLink',
+                            'text_key' => 'tooDeepText',
+                        ]],
+                    ]],
+                ]],
+            ], [
+                'link_key' => 'memberLink',
+                'text_key' => 'memberText',
+                'when' => 'authenticated',
+            ]]],
+            'col2' => ['socials' => false, 'logo' => false],
+            'col3' => ['email' => false, 'offices' => []],
+        ];
+
+        $guest = $this->fromStubRoot(
+            static fn (): string => controller_navMegamenu01(0, $config)
+        );
+        self::assertSame(2, substr_count($guest, 'class="menu-group"'));
+        self::assertStringContainsString('href="#grandchild"', $guest);
+        self::assertStringNotContainsString('tooDeep', $guest);
+        self::assertStringNotContainsString('member</span>', $guest);
+        self::assertStringNotContainsString('politica-de-cookies', $guest);
+
+        $_SESSION['id_rol'] = 1;
+        $member = $this->fromStubRoot(
+            static fn (): string => controller_navMegamenu01(0, $config)
+        );
+        self::assertStringContainsString('member</span>', $member);
+    }
+
     public function testNavigationRendersOnlyExplicitProjectOffices(): void
     {
         $this->configureNavigationGlobals();

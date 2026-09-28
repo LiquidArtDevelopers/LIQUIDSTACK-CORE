@@ -82,6 +82,10 @@ final class InstallerResourceSyncTest extends TestCase
         Installer::postUpdate($this->createEvent());
 
         $coreRoot = dirname(__DIR__, 2);
+        self::assertFileEquals(
+            $coreRoot . '/stubs/App/includes/_navMegamenu01.php',
+            $this->projectRoot . '/App/includes/_navMegamenu01.php'
+        );
         $updatedApacheConfig = (string) file_get_contents(
             $this->projectRoot . '/public/.htaccess'
         );
@@ -623,6 +627,18 @@ final class InstallerResourceSyncTest extends TestCase
             '<svg data-project-logo="true"></svg>',
             file_get_contents($logoPath)
         );
+    }
+
+    public function testComposerUpdatePreservesExistingMegamenuSniper(): void
+    {
+        $sniperPath = $this->projectRoot
+            . '/App/includes/_navMegamenu01.php';
+        $projectSniper = '<?php // navegación propia del proyecto';
+        $this->writeFile($sniperPath, $projectSniper);
+
+        Installer::postUpdate($this->createEvent());
+
+        self::assertSame($projectSniper, file_get_contents($sniperPath));
     }
 
     public function testResourceSyncStopsSafelyWhenScssConfigIsMissing(): void

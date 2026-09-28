@@ -1,473 +1,738 @@
 <?php
+
 /**
- * Copy recomendado: títulos de columna 2-48 caracteres; etiquetas de enlace
- * 1-48 caracteres; textos de contacto 3-80 caracteres.
+ * Megamenú global configurable desde su sniper.
+ *
+ * Copy recomendado: títulos de columna de 15–40 caracteres; enlaces de
+ * 2–55 caracteres; direcciones de 5–120 caracteres.
  */
 function controller_navMegamenu01(int $i = 0, array $params = []): string
 {
-    $pad  = sprintf('%02d', $i);
+    $pad = sprintf('%02d', $i);
     $pref = "navMegamenu01_{$pad}_";
+    $root = rtrim((string) ($_ENV['RAIZ'] ?? ''), '/');
 
     $escape = static fn (mixed $value): string => htmlspecialchars(
         (string) $value,
-        ENT_QUOTES,
+        ENT_QUOTES | ENT_SUBSTITUTE,
         'UTF-8'
     );
 
-    $iconForward = '<img data-lang="'.$pref.'forward" src="'.
-        $_ENV['RAIZ'].'/'.$GLOBALS["{$pref}forward"]->src.'" alt="'.
-        $GLOBALS["{$pref}forward"]->alt.'" title="'.
-        $GLOBALS["{$pref}forward"]->title.'">';
-
-
-    $extractHref = static function (string $globalKey): string {
-        $linkObj = $GLOBALS[$globalKey] ?? null;
-
-        if (is_object($linkObj) && isset($linkObj->href)) {
-            return (string) $linkObj->href;
+    $catalogKey = static function (mixed $suffix) use ($pref): ?string {
+        if (!is_string($suffix)) {
+            return null;
         }
 
-        if (is_array($linkObj) && isset($linkObj['href'])) {
-            return (string) $linkObj['href'];
+        $suffix = trim($suffix);
+        if ($suffix === '' || preg_match('/^[A-Za-z0-9_-]+$/', $suffix) !== 1) {
+            return null;
         }
 
-        return '';
+        return str_starts_with($suffix, $pref) ? $suffix : $pref . $suffix;
     };
 
-    $extractTitle = static function (string $globalKey): string {
-        $linkObj = $GLOBALS[$globalKey] ?? null;
-
-        if (is_object($linkObj) && isset($linkObj->title)) {
-            return (string) $linkObj->title;
+    $catalogField = static function (
+        mixed $suffix,
+        string $field,
+        mixed $fallback = ''
+    ) use ($catalogKey): mixed {
+        $key = $catalogKey($suffix);
+        if ($key === null || !array_key_exists($key, $GLOBALS)) {
+            return $fallback;
         }
 
-        if (is_array($linkObj) && isset($linkObj['title'])) {
-            return (string) $linkObj['title'];
+        $entry = $GLOBALS[$key];
+        if (is_object($entry) && property_exists($entry, $field)) {
+            return $entry->{$field};
+        }
+        if (is_array($entry) && array_key_exists($field, $entry)) {
+            return $entry[$field];
+        }
+        if ($field === 'value' && is_scalar($entry)) {
+            return $entry;
         }
 
-        return '';
+        return $fallback;
     };
 
-    $buildLink = static function (
-        string $linkKey,
-        string $textKey,
-        ?string $overrideHref = null,
-        array $hrefOptions = ['absolute' => false]
-    ) use ($extractHref, $extractTitle): array {
-        $hrefValue = $overrideHref ?? $extractHref($linkKey);
-        $href      = $overrideHref === null ? resolve_localized_href($hrefValue, $hrefOptions) : $hrefValue;
+    $assetUrl = static function (mixed $source) use ($root): string {
+        $source = trim((string) $source);
+        if ($source === '') {
+            return '';
+        }
+        if (
+            str_starts_with($source, 'data:image/')
+            || str_starts_with($source, '//')
+            || preg_match('#^https?://#i', $source) === 1
+        ) {
+            return $source;
+        }
 
-        return [
-            'aDL'    => $linkKey,
-            'href'   => $href,
-            'title'  => $extractTitle($linkKey),
-            'spanDL' => $textKey,
-        ];
+        return ($root !== '' ? $root . '/' : '/') . ltrim($source, '/');
     };
 
-    $routeDefinitions = $GLOBALS['arrayRutasGet'] ?? null;
-    if (!is_array($routeDefinitions)) {
-        $routeFile = dirname(__DIR__) . '/config/routes/get.php';
-        $routeDefinitions = is_file($routeFile) ? require $routeFile : [];
-        if (!is_array($routeDefinitions)) {
-            $routeDefinitions = [];
+    $safeHref = static function (mixed $value, string $fallback = ''): string {
+        $href = trim((string) $value);
+        if ($href === '') {
+            return '';
         }
-    }
+        if (preg_match('/[\x00-\x1F\x7F]/', $href) === 1) {
+            return $fallback;
+        }
 
-    $resolveContentRoute = static function (array $contents) use (
-        $routeDefinitions
+        $scheme = parse_url($href, PHP_URL_SCHEME);
+        if (
+            is_string($scheme)
+            && $scheme !== ''
+            && !in_array(
+                strtolower($scheme),
+                ['http', 'https', 'mailto', 'tel'],
+                true
+            )
+        ) {
+            return $fallback;
+        }
+
+        return $href;
+    };
+
+    $resolveHref = static function (array $config) use (
+        $catalogField,
+        $safeHref
     ): string {
-        $lang = (string) ($GLOBALS['lang'] ?? ($_ENV['LANG_DEFAULT'] ?? ''));
-        $routes = $routeDefinitions[$lang] ?? [];
-        if (!is_array($routes)) {
+        $hasOverride = array_key_exists('href', $config);
+        $rawHref = $hasOverride
+            ? (string) $config['href']
+            : (string) $catalogField(
+                $config['link_key'] ?? null,
+                'href',
+                ''
+            );
+        if (trim($rawHref) === '') {
             return '';
         }
 
-        foreach ($routes as $route => $definition) {
-            if (
-                is_string($route)
-                && is_array($definition)
-                && in_array($definition['content'] ?? null, $contents, true)
-            ) {
-                return $route;
-            }
+        if (($config['resolve'] ?? true) === false) {
+            return $safeHref($rawHref);
         }
 
-        return '';
+        $resolved = resolve_localized_href($rawHref, [
+            'absolute' => ($config['absolute'] ?? false) === true,
+        ]);
+
+        return $safeHref($resolved);
     };
 
-    $catalogText = static function (string $key): string {
-        $entry = $GLOBALS[$key] ?? null;
-
-        if (is_object($entry) && isset($entry->text)) {
-            return (string) $entry->text;
+    $linkWindowAttributes = static function (array $config): string {
+        $external = ($config['external'] ?? false) === true;
+        $target = $external ? '_blank' : ($config['target'] ?? '_self');
+        if (
+            !in_array($target, ['_self', '_blank'], true)
+            || $target === '_self'
+        ) {
+            return '';
         }
-        if (is_array($entry) && isset($entry['text'])) {
-            return (string) $entry['text'];
-        }
 
-        return '';
+        return ' target="_blank" rel="noopener noreferrer"';
     };
 
-    $renderMenuItems = static function (array $items) use (
-        $catalogText,
+    $isVisible = static function (array $config): bool {
+        $when = $config['when'] ?? 'always';
+        if (!in_array($when, ['always', 'guest', 'authenticated'], true)) {
+            return false;
+        }
+
+        $authenticated = isset($_SESSION['id_rol']);
+        return $when === 'always'
+            || ($when === 'guest' && !$authenticated)
+            || ($when === 'authenticated' && $authenticated);
+    };
+
+    $renderImage = static function (
+        mixed $suffix,
+        string $fallbackSource = ''
+    ) use ($assetUrl, $catalogField, $catalogKey, $escape): string {
+        $key = $catalogKey($suffix);
+        if ($key === null) {
+            return '';
+        }
+
+        $source = (string) $catalogField($suffix, 'src', $fallbackSource);
+        if ($source === '') {
+            $source = $fallbackSource;
+        }
+        $source = $assetUrl($source);
+        if ($source === '') {
+            return '';
+        }
+
+        return '<img data-lang="' . $escape($key) . '" src="'
+            . $escape($source) . '" alt="'
+            . $escape($catalogField($suffix, 'alt', '')) . '" title="'
+            . $escape($catalogField($suffix, 'title', '')) . '">';
+    };
+
+    $forwardIcon = $renderImage('forward');
+
+    $renderNodes = null;
+    $renderNodes = static function (mixed $nodes, int $depth = 1) use (
+        &$renderNodes,
+        $catalogField,
+        $catalogKey,
         $escape,
-        $iconForward
+        $forwardIcon,
+        $isVisible,
+        $linkWindowAttributes,
+        $resolveHref
     ): string {
-        $html = '<ul>';
-
-        foreach ($items as $item) {
-            if (!is_array($item) || !is_array($item['value'] ?? null)) {
-                continue;
-            }
-
-            $value = $item['value'];
-            $href = trim((string) ($value['href'] ?? ''));
-            $linkKey = (string) ($value['aDL'] ?? '');
-            $textKey = (string) ($value['spanDL'] ?? '');
-            if ($href === '' || $linkKey === '' || $textKey === '') {
-                continue;
-            }
-
-            $text = array_key_exists('text', $value)
-                ? (string) $value['text']
-                : $catalogText($textKey);
-            $title = trim((string) ($value['title'] ?? ''));
-            if ($title === '') {
-                $title = $text;
-            }
-
-            if (($item['type'] ?? null) === 'simple') {
-                $html .= '<li><a data-lang="'.$escape($linkKey).'" href="'
-                    .$escape($href).'" title="'.$escape($title).'">'
-                    .$iconForward.'<span data-lang="'.$escape($textKey).'">'
-                    .$escape($text).'</span></a></li>';
-                continue;
-            }
-
-            if (($item['type'] ?? null) !== 'group') {
-                continue;
-            }
-
-            $html .= '<li><div class="menu-group"><a data-lang="'
-                .$escape($linkKey).'" href="'.$escape($href).'" title="'
-                .$escape($title).'">'.$iconForward.'<span data-lang="'
-                .$escape($textKey).'">'.$escape($text)
-                .'</span></a><div class="submenu"><ul>';
-
-            foreach (($value['items'] ?? []) as $subItem) {
-                if (!is_array($subItem)) {
-                    continue;
-                }
-                $subHref = trim((string) ($subItem['href'] ?? ''));
-                $subLinkKey = (string) ($subItem['aDL'] ?? '');
-                $subTextKey = (string) ($subItem['spanDL'] ?? '');
-                if ($subHref === '' || $subLinkKey === '' || $subTextKey === '') {
-                    continue;
-                }
-                $subText = array_key_exists('text', $subItem)
-                    ? (string) $subItem['text']
-                    : $catalogText($subTextKey);
-                $subTitle = trim((string) ($subItem['title'] ?? ''));
-                if ($subTitle === '') {
-                    $subTitle = $subText;
-                }
-                $html .= '<li><a data-lang="'.$escape($subLinkKey).'" href="'
-                    .$escape($subHref).'" title="'.$escape($subTitle).'">'
-                    .$iconForward.'<span data-lang="'.$escape($subTextKey).'">'
-                    .$escape($subText).'</span></a></li>';
-            }
-
-            $html .= '</ul></div></div></li>';
+        if (!is_array($nodes) || $nodes === [] || $depth > 3) {
+            return '';
         }
 
-        return $html . '</ul>';
+        $itemsHtml = '';
+        foreach ($nodes as $node) {
+            if (!is_array($node) || !$isVisible($node)) {
+                continue;
+            }
+
+            $linkKey = $catalogKey($node['link_key'] ?? null);
+            $textKey = $catalogKey($node['text_key'] ?? null);
+            if ($linkKey === null || $textKey === null) {
+                continue;
+            }
+
+            $text = (string) $catalogField($node['text_key'], 'text', '');
+            $title = (string) $catalogField(
+                $node['link_key'],
+                'title',
+                ''
+            );
+            $href = $resolveHref($node);
+            if ($href === '') {
+                continue;
+            }
+
+            $linkHtml = '<a data-lang="' . $escape($linkKey) . '" href="'
+                . $escape($href) . '" title="' . $escape($title) . '"'
+                . $linkWindowAttributes($node) . '>' . $forwardIcon
+                . '<span data-lang="' . $escape($textKey) . '">'
+                . $escape($text) . '</span></a>';
+
+            $childrenHtml = $depth < 3
+                ? $renderNodes($node['children'] ?? [], $depth + 1)
+                : '';
+            if ($childrenHtml === '') {
+                $itemsHtml .= '<li>' . $linkHtml . '</li>';
+                continue;
+            }
+
+            $itemsHtml .= '<li><div class="menu-group">' . $linkHtml
+                . '<div class="submenu">' . $childrenHtml . '</div>'
+                . '</div></li>';
+        }
+
+        return $itemsHtml === '' ? '' : '<ul>' . $itemsHtml . '</ul>';
     };
 
-    $col1Items = [
-        [
-            'type'  => 'simple',
-            'value' => $buildLink("{$pref}home", "{$pref}homeText", homeUrl($GLOBALS['lang']), []),
-        ],
-        [
-            'type'  => 'group',
-            'value' => [
-                'aDL'    => "{$pref}services",
-                'href'   => resolve_localized_href($extractHref("{$pref}services"), ['absolute' => false]),
-                'title'  => $extractTitle("{$pref}services"),
-                'spanDL' => "{$pref}servicesText",
-                'items'  => [
-                    $buildLink("{$pref}servicesItem0", "{$pref}servicesItem0Text"),
-                ],
-            ],
-        ],
-    ];
-
-    $publicLinkKeys = $params['public_link_keys'] ?? [];
-    if (is_array($publicLinkKeys)) {
-        foreach ($publicLinkKeys as $publicLinkKey) {
-            if (!is_array($publicLinkKey)) {
-                continue;
-            }
-            $linkKey = $publicLinkKey['link'] ?? null;
-            $textKey = $publicLinkKey['text'] ?? null;
-            $overrideHref = $publicLinkKey['href'] ?? null;
-            if (
-                !is_string($linkKey)
-                || !is_string($textKey)
-                || ($overrideHref !== null && !is_string($overrideHref))
-                || !isset($GLOBALS[$linkKey], $GLOBALS[$textKey])
-                || trim($overrideHref ?? $extractHref($linkKey)) === ''
-            ) {
-                continue;
-            }
-            $col1Items[] = [
-                'type' => 'simple',
-                'value' => $buildLink($linkKey, $textKey, $overrideHref),
-            ];
-        }
-    }
-    $col1Items[] = [
-        'type'  => 'simple',
-        'value' => $buildLink("{$pref}contactLink", "{$pref}contactText"),
-    ];
-
-    $showPrivateAccess = ($params['show_private_access'] ?? true) === true;
-    if ($showPrivateAccess && !isset($_SESSION["id_rol"])):
-        $col1Items[] = [
-            'type'  => 'simple',
-            'value' => $buildLink("{$pref}login", "{$pref}loginText"),
-        ];
-    endif;
-
-    if ($showPrivateAccess && isset($_SESSION["id_rol"])):
-        $privateLinks = [
-            $buildLink("{$pref}link0", "{$pref}link0Text"),
-            $buildLink("{$pref}link4", "{$pref}link4Text"),
-            $buildLink("{$pref}link1", "{$pref}link1Text"),
-            $buildLink("{$pref}link2", "{$pref}link2Text"),
-            $buildLink("{$pref}link3", "{$pref}link3Text"),
-        ];
-
-        foreach ($privateLinks as $link) {
-            $col1Items[] = [
-                'type'  => 'simple',
-                'value' => $link,
-            ];
-        }
-    endif;
-
-    $col1Html = $renderMenuItems($col1Items);
-
-    $col2CookieLink = $GLOBALS["{$pref}col02link_01"] ?? null;
-    $col2CookieText = $GLOBALS["{$pref}col02span2_01"] ?? null;
-    $col2PrivacyLink = $GLOBALS["{$pref}col02link_02"] ?? null;
-    $col2PrivacyText = $GLOBALS["{$pref}col02span2_02"] ?? null;
-    $col2LegalLink = $GLOBALS["{$pref}col02link_03"] ?? null;
-    $col2LegalText = $GLOBALS["{$pref}col02span2_03"] ?? null;
-
-    $col2CookieHref = is_object($col2CookieLink)
-        ? (string) ($col2CookieLink->href ?? '')
-        : '';
-    $col2CookieTitle = is_object($col2CookieLink)
-        ? (string) ($col2CookieLink->title ?? '')
-        : '';
-    $col2CookieLabel = is_object($col2CookieText)
-        ? (string) ($col2CookieText->text ?? '')
-        : '';
-    $col2PrivacyHref = is_object($col2PrivacyLink)
-        ? (string) ($col2PrivacyLink->href ?? '')
-        : '';
-    $col2PrivacyTitle = is_object($col2PrivacyLink)
-        ? (string) ($col2PrivacyLink->title ?? '')
-        : '';
-    $col2PrivacyLabel = is_object($col2PrivacyText)
-        ? (string) ($col2PrivacyText->text ?? '')
-        : '';
-    $col2LegalHref = is_object($col2LegalLink)
-        ? (string) ($col2LegalLink->href ?? '')
-        : '';
-    $col2LegalTitle = is_object($col2LegalLink)
-        ? (string) ($col2LegalLink->title ?? '')
-        : '';
-    $col2LegalLabel = is_object($col2LegalText)
-        ? (string) ($col2LegalText->text ?? '')
-        : '';
-
-    $resolveColumnTwoHref = static function (
-        string $configuredHref,
-        array $contents
-    ) use ($resolveContentRoute): string {
-        $configuredHref = trim($configuredHref);
-        if ($configuredHref !== '') {
-            return resolve_localized_href($configuredHref, ['absolute' => false]);
+    $renderIntro = static function (mixed $suffix) use (
+        $catalogField,
+        $catalogKey,
+        $escape
+    ): string {
+        $key = $catalogKey($suffix);
+        if ($key === null) {
+            return '';
         }
 
-        return $resolveContentRoute($contents);
+        return '<p data-lang="' . $escape($key) . '">'
+            . $escape($catalogField($suffix, 'text', '')) . '</p>';
     };
 
     /*
-     * La columna 2 comparte exactamente el esquema simple/group de la columna
-     * 1. Se pueden añadir, quitar, reordenar o agrupar entradas sin cambiar el
-     * renderer; redes y logotipo permanecen como bloques independientes.
+     * Compatibilidad temporal con llamadas anteriores a la configuración por
+     * columnas. Mantiene operativos BASE y consumidores aún no migrados sin
+     * volver a mezclar su configuración con el renderer canónico.
      */
-    $col2Items = [
-        [
-            'type' => 'simple',
-            'value' => [
-                'aDL' => "{$pref}col02link_01",
-                'href' => $resolveColumnTwoHref(
-                    $col2CookieHref,
-                    ['politica-de-cookies', 'gestion-cookies']
-                ),
-                'title' => $col2CookieTitle,
-                'spanDL' => "{$pref}col02span2_01",
-                'text' => $col2CookieLabel,
-            ],
-        ],
-        [
-            'type' => 'simple',
-            'value' => [
-                'aDL' => "{$pref}col02link_02",
-                'href' => $resolveColumnTwoHref(
-                    $col2PrivacyHref,
-                    ['politica-de-privacidad']
-                ),
-                'title' => $col2PrivacyTitle,
-                'spanDL' => "{$pref}col02span2_02",
-                'text' => $col2PrivacyLabel,
-            ],
-        ],
-        [
-            'type' => 'simple',
-            'value' => [
-                'aDL' => "{$pref}col02link_03",
-                'href' => $resolveColumnTwoHref(
-                    $col2LegalHref,
-                    ['aviso-legal']
-                ),
-                'title' => $col2LegalTitle,
-                'spanDL' => "{$pref}col02span2_03",
-                'text' => $col2LegalLabel,
-            ],
-        ],
-    ];
-    $col2Html = $renderMenuItems($col2Items);
-
-    /* Añadir, quitar o reordenar entradas; un array vacío anula el bloque. */
-    $socialItems = [
-        [
-            'link_key' => "{$pref}rrss_fb",
-            'href' => $GLOBALS["{$pref}rrss_fb_href"] ?? '',
-            'title' => $GLOBALS["{$pref}rrss_fb"]->title ?? '',
-            'image_key' => "{$pref}rrss_fb_img",
-            'src' => $GLOBALS["{$pref}rrss_fb_img"]->src ?? '',
-            'alt' => $GLOBALS["{$pref}rrss_fb_img"]->alt ?? '',
-            'image_title' => $GLOBALS["{$pref}rrss_fb_img"]->title ?? '',
-            'default_src' => 'assets/img/system/fb.svg',
-        ],
-        [
-            'link_key' => "{$pref}rrss_in",
-            'href' => $GLOBALS["{$pref}rrss_in_href"] ?? '',
-            'title' => $GLOBALS["{$pref}rrss_in"]->title ?? '',
-            'image_key' => "{$pref}rrss_in_img",
-            'src' => $GLOBALS["{$pref}rrss_in_img"]->src ?? '',
-            'alt' => $GLOBALS["{$pref}rrss_in_img"]->alt ?? '',
-            'image_title' => $GLOBALS["{$pref}rrss_in_img"]->title ?? '',
-            'default_src' => 'assets/img/system/in.svg',
-        ],
-        [
-            'link_key' => "{$pref}rrss_yt",
-            'href' => $GLOBALS["{$pref}rrss_yt_href"] ?? '',
-            'title' => $GLOBALS["{$pref}rrss_yt"]->title ?? '',
-            'image_key' => "{$pref}rrss_yt_img",
-            'src' => $GLOBALS["{$pref}rrss_yt_img"]->src ?? '',
-            'alt' => $GLOBALS["{$pref}rrss_yt_img"]->alt ?? '',
-            'image_title' => $GLOBALS["{$pref}rrss_yt_img"]->title ?? '',
-            'default_src' => 'assets/img/system/yt.svg',
-        ],
-        [
-            'link_key' => "{$pref}rrss_ig",
-            'href' => $GLOBALS["{$pref}rrss_ig_href"] ?? '',
-            'title' => $GLOBALS["{$pref}rrss_ig"]->title ?? '',
-            'image_key' => "{$pref}rrss_ig_img",
-            'src' => $GLOBALS["{$pref}rrss_ig_img"]->src ?? '',
-            'alt' => $GLOBALS["{$pref}rrss_ig_img"]->alt ?? '',
-            'image_title' => $GLOBALS["{$pref}rrss_ig_img"]->title ?? '',
-            'default_src' => 'assets/img/system/ig.svg',
-        ],
-    ];
-
-    $col2SocialItems = '';
-    foreach ($socialItems as $social) {
-        $href = trim((string) $social['href']);
-        $imageSource = trim((string) $social['src']);
-        if ($imageSource === '') {
-            $imageSource = $social['default_src'];
+    $usesStructuredConfig = array_key_exists('col1', $params)
+        || array_key_exists('col2', $params)
+        || array_key_exists('col3', $params);
+    if (!$usesStructuredConfig) {
+        $routeDefinitions = $GLOBALS['arrayRutasGet'] ?? null;
+        if (!is_array($routeDefinitions)) {
+            $routeFile = dirname(__DIR__) . '/config/routes/get.php';
+            $routeDefinitions = is_file($routeFile)
+                ? require $routeFile
+                : [];
+            if (!is_array($routeDefinitions)) {
+                $routeDefinitions = [];
+            }
         }
-        $title = trim((string) $social['title']);
-        $imageTitle = trim((string) $social['image_title']);
-        $alt = trim((string) $social['alt']);
-        $label = $title !== '' ? $title : ($alt !== '' ? $alt : $imageTitle);
-        $linkAttributes = $href === ''
-            ? ''
-            : ' href="'.$escape($href).'" target="_blank" rel="noopener noreferrer"';
 
-        $col2SocialItems .= '<a data-lang="'.$escape($social['link_key']).'"'
-            .$linkAttributes.' aria-label="'.$escape($label).'" title="'
-            .$escape($title).'"><img data-lang="'.$escape($social['image_key'])
-            .'" src="'.$escape(rtrim((string) $_ENV['RAIZ'], '/').'/'.ltrim($imageSource, '/'))
-            .'" alt="'.$escape($alt).'" title="'.$escape($imageTitle).'">'
-            .'</a>';
+        $resolveContentRoute = static function (array $contents) use (
+            $routeDefinitions
+        ): string {
+            $lang = (string) (
+                $GLOBALS['lang'] ?? ($_ENV['LANG_DEFAULT'] ?? '')
+            );
+            $routes = $routeDefinitions[$lang] ?? [];
+            if (!is_array($routes)) {
+                return '';
+            }
+
+            foreach ($routes as $route => $definition) {
+                if (
+                    is_string($route)
+                    && is_array($definition)
+                    && in_array(
+                        $definition['content'] ?? null,
+                        $contents,
+                        true
+                    )
+                ) {
+                    return $route;
+                }
+            }
+
+            return '';
+        };
+
+        $legacyLegalHref = static function (
+            string $linkKey,
+            array $contents
+        ) use ($catalogField, $resolveContentRoute): string {
+            $configuredHref = trim((string) $catalogField(
+                $linkKey,
+                'href',
+                ''
+            ));
+            if ($configuredHref !== '') {
+                return resolve_localized_href(
+                    $configuredHref,
+                    ['absolute' => false]
+                );
+            }
+
+            return $resolveContentRoute($contents);
+        };
+
+        $col1Items = [
+            [
+                'link_key' => 'home',
+                'text_key' => 'homeText',
+                'href' => homeUrl($GLOBALS['lang']),
+                'resolve' => false,
+            ],
+            [
+                'link_key' => 'services',
+                'text_key' => 'servicesText',
+                'children' => [[
+                    'link_key' => 'servicesItem0',
+                    'text_key' => 'servicesItem0Text',
+                ]],
+            ],
+        ];
+
+        $publicLinkKeys = $params['public_link_keys'] ?? [];
+        if (is_array($publicLinkKeys)) {
+            foreach ($publicLinkKeys as $publicLink) {
+                if (!is_array($publicLink)) {
+                    continue;
+                }
+                $linkKey = $publicLink['link'] ?? null;
+                $textKey = $publicLink['text'] ?? null;
+                if (!is_string($linkKey) || !is_string($textKey)) {
+                    continue;
+                }
+
+                $node = [
+                    'link_key' => $linkKey,
+                    'text_key' => $textKey,
+                ];
+                if (array_key_exists('href', $publicLink)) {
+                    if (!is_string($publicLink['href'])) {
+                        continue;
+                    }
+                    $node['href'] = $publicLink['href'];
+                    $node['resolve'] = false;
+                }
+                $col1Items[] = $node;
+            }
+        }
+
+        $col1Items[] = [
+            'link_key' => 'contactLink',
+            'text_key' => 'contactText',
+        ];
+
+        if (($params['show_private_access'] ?? true) === true) {
+            $col1Items[] = [
+                'link_key' => 'login',
+                'text_key' => 'loginText',
+                'when' => 'guest',
+            ];
+            foreach (['link0', 'link4', 'link1', 'link2', 'link3'] as $key) {
+                $col1Items[] = [
+                    'link_key' => $key,
+                    'text_key' => $key . 'Text',
+                    'when' => 'authenticated',
+                ];
+            }
+        }
+
+        $legacyOffices = [];
+        foreach (
+            is_array($params['offices'] ?? null) ? $params['offices'] : []
+            as $office
+        ) {
+            if (!is_array($office)) {
+                continue;
+            }
+            if (is_array($office['phones'] ?? null)) {
+                $legacyOffices[] = $office;
+                continue;
+            }
+
+            $phones = [];
+            foreach (
+                is_array($office['tels'] ?? null) ? $office['tels'] : []
+                as $phoneIndex => $number
+            ) {
+                if (!is_scalar($number) || trim((string) $number) === '') {
+                    continue;
+                }
+                $phones[] = [
+                    'number' => (string) $number,
+                    'link_key' => 'tel_link',
+                    'image_key' => $phoneIndex === 0 ? 'tel_img' : 'mp_img',
+                ];
+            }
+
+            $legacyOffices[] = [
+                'label' => is_scalar($office['label'] ?? null)
+                    ? (string) $office['label']
+                    : '',
+                'phones' => $phones,
+                'address' => is_scalar($office['addr'] ?? null)
+                    ? (string) $office['addr']
+                    : '',
+                'map' => is_scalar($office['map'] ?? null)
+                    ? (string) $office['map']
+                    : '',
+                'map_link_key' => 'ubicacion_link',
+                'map_image_key' => 'ubicacion_img',
+            ];
+        }
+
+        $params = [
+            'col1' => [
+                'intro_key' => 'content_of_this_website',
+                'items' => $col1Items,
+            ],
+            'col2' => [
+                'intro_key' => 'link_of_interest',
+                'items' => [
+                    [
+                        'link_key' => 'col02link_01',
+                        'text_key' => 'col02span2_01',
+                        'href' => $legacyLegalHref(
+                            'col02link_01',
+                            ['politica-de-cookies', 'gestion-cookies']
+                        ),
+                        'resolve' => false,
+                    ],
+                    [
+                        'link_key' => 'col02link_02',
+                        'text_key' => 'col02span2_02',
+                        'href' => $legacyLegalHref(
+                            'col02link_02',
+                            ['politica-de-privacidad']
+                        ),
+                        'resolve' => false,
+                    ],
+                    [
+                        'link_key' => 'col02link_03',
+                        'text_key' => 'col02span2_03',
+                        'href' => $legacyLegalHref(
+                            'col02link_03',
+                            ['aviso-legal']
+                        ),
+                        'resolve' => false,
+                    ],
+                ],
+                'cta_html' => '',
+                'follow_key' => 'follow_us_social_media',
+                'socials' => [
+                    [
+                        'link_key' => 'rrss_fb',
+                        'href_key' => 'rrss_fb_href',
+                        'image_key' => 'rrss_fb_img',
+                        'default_src' => 'assets/img/system/fb.svg',
+                        'label' => 'Facebook',
+                    ],
+                    [
+                        'link_key' => 'rrss_in',
+                        'href_key' => 'rrss_in_href',
+                        'image_key' => 'rrss_in_img',
+                        'default_src' => 'assets/img/system/in.svg',
+                        'label' => 'LinkedIn',
+                    ],
+                    [
+                        'link_key' => 'rrss_yt',
+                        'href_key' => 'rrss_yt_href',
+                        'image_key' => 'rrss_yt_img',
+                        'default_src' => 'assets/img/system/yt.svg',
+                        'label' => 'YouTube',
+                    ],
+                    [
+                        'link_key' => 'rrss_ig',
+                        'href_key' => 'rrss_ig_href',
+                        'image_key' => 'rrss_ig_img',
+                        'default_src' => 'assets/img/system/ig.svg',
+                        'label' => 'Instagram',
+                    ],
+                ],
+                'logo' => ['image_key' => 'logo_business'],
+            ],
+            'col3' => [
+                'intro_key' => 'contact',
+                'email' => [
+                    'link_key' => 'correo_link',
+                    'address_key' => 'correo_link_href',
+                    'text_key' => 'correo_text',
+                    'image_key' => 'correo_img',
+                ],
+                'offices' => $legacyOffices,
+            ],
+        ];
     }
-    $col2Social = $col2SocialItems === ''
+
+    $col1 = is_array($params['col1'] ?? null) ? $params['col1'] : [];
+    $col2 = is_array($params['col2'] ?? null) ? $params['col2'] : [];
+    $col3 = is_array($params['col3'] ?? null) ? $params['col3'] : [];
+
+    $socialItemsHtml = '';
+    $socials = $col2['socials'] ?? false;
+    if (is_array($socials)) {
+        foreach ($socials as $social) {
+            if (!is_array($social) || !$isVisible($social)) {
+                continue;
+            }
+
+            $linkKey = $catalogKey($social['link_key'] ?? null);
+            $imageKey = $catalogKey($social['image_key'] ?? null);
+            if ($linkKey === null || $imageKey === null) {
+                continue;
+            }
+
+            $href = array_key_exists('href', $social)
+                ? (string) $social['href']
+                : (string) $catalogField(
+                    $social['href_key'] ?? null,
+                    'value',
+                    ''
+                );
+            $href = $safeHref($href, '');
+            $explicitLabel = is_scalar($social['label'] ?? null)
+                ? trim((string) $social['label'])
+                : '';
+            $linkTitle = trim((string) $catalogField(
+                $social['link_key'],
+                'title',
+                ''
+            ));
+            $imageAlt = trim((string) $catalogField(
+                $social['image_key'],
+                'alt',
+                ''
+            ));
+            $imageTitle = trim((string) $catalogField(
+                $social['image_key'],
+                'title',
+                ''
+            ));
+            $label = $explicitLabel !== ''
+                ? $explicitLabel
+                : ($linkTitle !== ''
+                    ? $linkTitle
+                    : ($imageAlt !== '' ? $imageAlt : $imageTitle));
+            $image = $renderImage(
+                $social['image_key'],
+                is_string($social['default_src'] ?? null)
+                    ? $social['default_src']
+                    : ''
+            );
+            if ($image === '' || $label === '') {
+                continue;
+            }
+
+            $hrefAttributes = $href === ''
+                ? ''
+                : ' href="' . $escape($href) . '"'
+                    . $linkWindowAttributes([
+                        'target' => $social['target'] ?? '_blank',
+                        'external' => $social['external'] ?? true,
+                    ]);
+            $socialItemsHtml .= '<a data-lang="' . $escape($linkKey) . '"'
+                . $hrefAttributes . ' aria-label="' . $escape($label)
+                . '" title="' . $escape($label) . '">' . $image . '</a>';
+        }
+    }
+
+    $socialBlock = '';
+    if ($socialItemsHtml !== '') {
+        $followKey = $catalogKey($col2['follow_key'] ?? null);
+        if ($followKey !== null) {
+            $socialBlock .= '<span data-lang="' . $escape($followKey) . '">'
+                . $escape($catalogField($col2['follow_key'], 'text', ''))
+                . '</span>';
+        }
+        $socialBlock .= '<div class="rrss">' . $socialItemsHtml . '</div>';
+    }
+
+    $logoHtml = '';
+    $logo = $col2['logo'] ?? false;
+    if (is_array($logo) && $logo !== []) {
+        $logoImage = $renderImage($logo['image_key'] ?? null);
+        if ($logoImage !== '') {
+            $logoHtml = '<div class="megamenu-business-logo">'
+                . $logoImage . '</div>';
+        }
+    }
+
+    $col3ItemsHtml = '';
+    $email = $col3['email'] ?? false;
+    if (is_array($email) && $email !== []) {
+        $address = trim((string) $catalogField(
+            $email['address_key'] ?? null,
+            'value',
+            ''
+        ));
+        $address = preg_replace('/[\r\n]+/', '', $address) ?? '';
+        $linkKey = $catalogKey($email['link_key'] ?? null);
+        $textKey = $catalogKey($email['text_key'] ?? null);
+        if ($address !== '' && $linkKey !== null && $textKey !== null) {
+            $col3ItemsHtml .= '<li><a data-lang="' . $escape($linkKey)
+                . '" href="mailto:' . $escape($address) . '" title="'
+                . $escape($catalogField($email['link_key'], 'title', ''))
+                . '" class="si_select linkReducido">'
+                . $renderImage($email['image_key'] ?? null)
+                . '<span data-lang="' . $escape($textKey) . '">'
+                . $escape($catalogField($email['text_key'], 'text', ''))
+                . '</span></a></li>';
+        }
+    }
+
+    $offices = $col3['offices'] ?? [];
+    if (is_array($offices)) {
+        foreach ($offices as $office) {
+            if (!is_array($office) || !$isVisible($office)) {
+                continue;
+            }
+
+            $labelKey = $catalogKey($office['label_key'] ?? null);
+            $label = $labelKey !== null
+                ? (string) $catalogField($office['label_key'], 'text', '')
+                : (string) ($office['label'] ?? '');
+            $officeHtml = $label === ''
+                ? ''
+                : '<p' . ($labelKey !== null
+                    ? ' data-lang="' . $escape($labelKey) . '"'
+                    : '') . ' class="resaltado">' . $escape($label) . '</p>';
+
+            $phoneItemsHtml = '';
+            $phones = $office['phones'] ?? [];
+            if (is_array($phones)) {
+                foreach ($phones as $phone) {
+                    if (!is_array($phone)) {
+                        continue;
+                    }
+                    $number = array_key_exists('number_key', $phone)
+                        ? (string) $catalogField(
+                            $phone['number_key'],
+                            'value',
+                            ''
+                        )
+                        : (string) ($phone['number'] ?? '');
+                    $number = trim($number);
+                    $dial = preg_replace('/[^0-9+]/', '', $number) ?? '';
+                    $linkKey = $catalogKey($phone['link_key'] ?? null);
+                    if ($number === '' || $dial === '' || $linkKey === null) {
+                        continue;
+                    }
+
+                    $phoneItemsHtml .= '<a data-lang="' . $escape($linkKey)
+                        . '" href="tel:' . $escape($dial) . '" title="'
+                        . $escape($catalogField(
+                            $phone['link_key'],
+                            'title',
+                            ''
+                        ))
+                        . '" class="si_select">'
+                        . $renderImage($phone['image_key'] ?? null)
+                        . '<span>' . $escape($number) . '</span></a>';
+                }
+            }
+            if ($phoneItemsHtml !== '') {
+                $officeHtml .= '<div>' . $phoneItemsHtml . '</div>';
+            }
+
+            $addressKey = $catalogKey($office['address_key'] ?? null);
+            $address = $addressKey !== null
+                ? (string) $catalogField($office['address_key'], 'text', '')
+                : (string) ($office['address'] ?? '');
+            if ($address !== '') {
+                $addressLang = $addressKey !== null
+                    ? ' data-lang="' . $escape($addressKey) . '"'
+                    : '';
+                $addressContent = $renderImage(
+                    $office['map_image_key'] ?? null
+                ) . '<span' . $addressLang . '>' . $escape($address)
+                    . '</span>';
+                $map = $safeHref($office['map'] ?? '', '');
+                $mapLinkKey = $catalogKey(
+                    $office['map_link_key'] ?? null
+                );
+                if ($map !== '' && $mapLinkKey !== null) {
+                    $officeHtml .= '<a data-lang="' . $escape($mapLinkKey)
+                        . '" href="' . $escape($map) . '" title="'
+                        . $escape($catalogField(
+                            $office['map_link_key'],
+                            'title',
+                            ''
+                        ))
+                        . '" class="si_select" target="_blank" '
+                        . 'rel="noopener noreferrer">' . $addressContent
+                        . '</a>';
+                } else {
+                    $officeHtml .= '<span class="si_select">'
+                        . $addressContent . '</span>';
+                }
+            }
+
+            if ($officeHtml !== '') {
+                $col3ItemsHtml .= '<li>' . $officeHtml . '</li>';
+            }
+        }
+    }
+
+    $ctaHtml = is_string($col2['cta_html'] ?? null)
+        ? $col2['cta_html']
+        : '';
+    $col3Links = $col3ItemsHtml === ''
         ? ''
-        : '<div class="rrss">'.$col2SocialItems.'</div>';
-
-    $logo = $GLOBALS["{$pref}logo_business"];
-    $col2Logo = '<div><img data-lang="'."{$pref}logo_business".'" src="'.$_ENV['RAIZ'].'/'.$logo->src.'" alt="'.$logo->alt.'" title="'.$logo->title.'"></div>';
-
-    $col3Html = '<ul>';
-    $col3Html .= '<li><a data-lang="'."{$pref}correo_link".'" href="mailto:'.$GLOBALS["{$pref}correo_link_href"].'" title="'.$GLOBALS["{$pref}correo_link"]->title.'" class="si_select linkReducido"><img data-lang="'."{$pref}correo_img".'" src="'.$_ENV['RAIZ'].'/'.$GLOBALS["{$pref}correo_img"]->src.'" alt="'.$GLOBALS["{$pref}correo_img"]->alt.'" title="'.$GLOBALS["{$pref}correo_img"]->title.'"><span data-lang="'."{$pref}correo_text".'">'.$GLOBALS["{$pref}correo_text"]->text.'</span></a></li>';
-
-    /* Las sedes son datos propios de cada proyecto, nunca defaults de CORE. */
-    $sedes = is_array($params['offices'] ?? null)
-        ? $params['offices']
-        : [];
-
-    foreach ($sedes as $s) {
-        $col3Html .= '<li><p class="resaltado">'.$s['label'].'</p><div>';
-        $idx = 0;
-        foreach ($s['tels'] as $tel) {
-            $iconTel = $idx++ === 0 ? "{$pref}tel_img" : "{$pref}mp_img";
-            $col3Html .= '<a data-lang="'."{$pref}tel_link".'" href="tel:'.preg_replace('/[^0-9+]/','',$tel).'" title="'.$GLOBALS["{$pref}tel_link"]->title.'" class="si_select"><img data-lang="'.$iconTel.'" src="'.$_ENV['RAIZ'].'/'.$GLOBALS[$iconTel]->src.'" alt="'.$GLOBALS[$iconTel]->alt.'" title="'.$GLOBALS[$iconTel]->title.'"><span>'.$tel.'</span></a>';
-        }
-        $col3Html .= '</div><a data-lang="'."{$pref}ubicacion_link".'" href="'.$s['map'].'" target="_blank" title="'.$GLOBALS["{$pref}ubicacion_link"]->title.'" class="si_select"><img data-lang="'."{$pref}ubicacion_img".'" src="'.$_ENV['RAIZ'].'/'.$GLOBALS["{$pref}ubicacion_img"]->src.'" alt="'.$GLOBALS["{$pref}ubicacion_img"]->alt.'" title="'.$GLOBALS["{$pref}ubicacion_img"]->title.'"><span>'.$s['addr'].'</span></a></li>';
-    }
-    $col3Html .= '</ul>';
+        : '<ul>' . $col3ItemsHtml . '</ul>';
 
     $pageVars = [
-        '{col1-intro-dl}'      => "{$pref}content_of_this_website",
-        '{col1-intro-text}'    => $GLOBALS["{$pref}content_of_this_website"]->text,
-        '{col1-links}'         => $col1Html,
-        '{col2-intro-dl}'      => "{$pref}link_of_interest",
-        '{col2-intro-text}'    => $GLOBALS["{$pref}link_of_interest"]->text,
-        '{col2-links}'         => $col2Html,
-        '{col2-button}'        => '',
-        '{col2-follow-dl}'     => "{$pref}follow_us_social_media",
-        '{col2-follow-text}'   => $GLOBALS["{$pref}follow_us_social_media"]->text,
-        '{col2-social}'        => $col2Social,
-        '{col2-logo-business}' => $col2Logo,
-        '{col3-intro-dl}'      => "{$pref}contact",
-        '{col3-intro-text}'    => $GLOBALS["{$pref}contact"]->text,
-        '{col3-links}'         => $col3Html,
+        '{col1-intro}' => $renderIntro($col1['intro_key'] ?? null),
+        '{col1-links}' => $renderNodes($col1['items'] ?? []),
+        '{col2-intro}' => $renderIntro($col2['intro_key'] ?? null),
+        '{col2-links}' => $renderNodes($col2['items'] ?? []),
+        '{col2-button}' => $ctaHtml,
+        '{col2-social-block}' => $socialBlock,
+        '{col2-logo-business}' => $logoHtml,
+        '{col3-intro}' => $renderIntro($col3['intro_key'] ?? null),
+        '{col3-links}' => $col3Links,
     ];
-    unset(
-        $params['offices'],
-        $params['public_link_keys'],
-        $params['show_private_access']
-    );
-    $pageVars = array_replace($pageVars, $params);
+
     return render('App/templates/_navMegamenu01.html', $pageVars);
 }
-?>

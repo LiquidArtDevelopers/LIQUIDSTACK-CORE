@@ -1355,38 +1355,34 @@ Los proyectos pueden ampliar el catálogo sin personalizar el grupo gestionado:
 
 CORE no distribuye ni elimina esos hooks locales.
 
-#### Parámetros project-owned de `navMegamenu01`
+#### Sniper project-owned de `navMegamenu01`
 
-El controlador conserva sus enlaces históricos por defecto, pero los proyectos
-nuevos pueden componer una navegación pública sin copiar ni editar el stub:
+CORE instala una sola vez `App/includes/_navMegamenu01.php`. El fichero usa la
+política `install_if_missing`: cada proyecto conserva en él su navegación,
+contactos y orden, mientras controlador, template, JS y SCSS siguen recibiendo
+actualizaciones canónicas. `_nav.php` y `_footer.php` pueden compartirlo con:
 
 ```php
-controller('navMegamenu01', 0, [
-    'public_link_keys' => [[
-        'link' => 'navMegamenu01_00_blog',
-        'text' => 'navMegamenu01_00_blogText',
-    ]],
-    'show_private_access' => false,
-    'offices' => [[
-        'label' => 'Oficina de ejemplo',
-        'tels' => ['+34 900 000 000'],
-        'addr' => 'Dirección configurable',
-        'map' => 'https://example.com/map',
-    ]],
-]);
+<?php require __DIR__ . '/_navMegamenu01.php'; ?>
 ```
 
-`public_link_keys` es opcional y parte de `[]`. Cada elemento referencia dos
-claves ya hidratadas del catálogo activo: `link` apunta a un objeto con `href`
-y `title`, mientras `text` apunta a otro objeto con `text`. Las entradas
-incompletas se omiten. Un `href` absoluto o root-relative opcional permite al
-proyecto usar exactamente una ruta modular ya resuelta. La decisión de mostrar
-ese enlace sigue perteneciendo al consumidor: Commerce solo debe añadirse
-cuando `public.enabled=true`, y Composer no reescribe menús personalizados.
-`show_private_access` vale `true` por defecto para no romper consumidores
-existentes y, al establecerlo en `false`, oculta tanto login como enlaces de
-sesión. `offices` parte siempre de `[]`; las sedes son datos del proyecto y cada
-una declara `label`, `tels`, `addr` y `map`.
+`col1.items` y `col2.items` admiten nodos con `link_key`, `text_key`, `href`
+opcional y `children` hasta tres niveles. `resolve => false` conserva un destino
+ya resuelto o un ancla; `external => true` abre de forma segura en otra pestaña.
+`when` acepta `always`, `guest` o `authenticated` y consulta la sesión pública
+del stack, no la sesión de WebAdmin.
+
+La segunda columna configura también `cta_html`, `follow_key`, `socials` y
+`logo`. La tercera admite un correo y cero o más `offices`, cada una con cero o
+más `phones`, dirección y mapa. `''`, `false` o `[]` desactivan CTA, logo,
+redes, correo o sedes sin editar el controlador. Las claves estáticas del
+sniper se hidratan mediante `php App/tools/update-languages.php global`.
+
+El controlador mantiene un adaptador para las llamadas anteriores con
+`public_link_keys`, `show_private_access` y `offices`; solo se usa cuando no se
+declara ninguna de `col1`, `col2` o `col3`. Sirve para actualizar consumidores
+existentes sin vaciar su menú, pero las personalizaciones nuevas pertenecen al
+sniper distribuido.
 
 ### 4) Dependencias NPM del recurso
 
