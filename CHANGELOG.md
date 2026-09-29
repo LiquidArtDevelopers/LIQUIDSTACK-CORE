@@ -4,6 +4,18 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.35.11] - 2026-09-29
+
+### Corregido
+
+- `update-languages.php global --prune-unused` sincroniza las claves del
+  megamenú estructurado al añadir o retirar items, sin mezclar el adaptador
+  legacy ni podar otras claves globales.
+- Los enlaces cuyo `href` está fijado en el sniper ya no ofrecen ese atributo
+  como editable, evitando cambios que se perderían al recargar.
+- El editor inline aplica en vivo los valores escalares `*_href` de redes y
+  correo, además de persistirlos.
+
 ## [1.35.10] - 2026-09-28
 
 ### Corregido

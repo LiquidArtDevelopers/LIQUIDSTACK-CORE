@@ -1376,7 +1376,13 @@ La segunda columna configura también `cta_html`, `follow_key`, `socials` y
 `logo`. La tercera admite un correo y cero o más `offices`, cada una con cero o
 más `phones`, dirección y mapa. `''`, `false` o `[]` desactivan CTA, logo,
 redes, correo o sedes sin editar el controlador. Las claves estáticas del
-sniper se hidratan mediante `php App/tools/update-languages.php global`.
+sniper se hidratan mediante `php App/tools/update-languages.php global`. Al
+retirar nodos, ejecuta expresamente
+`php App/tools/update-languages.php global --prune-unused`: la poda queda
+limitada al prefijo exacto de la instancia estructurada del megamenú y conserva
+el resto del catálogo global. Un `href` declarado en el sniper es estructural y
+no se ofrece como editable; si se omite, el enlace puede gestionarse desde su
+objeto de idioma.
 
 El controlador mantiene un adaptador para las llamadas anteriores con
 `public_link_keys`, `show_private_access` y `offices`; solo se usa cuando no se

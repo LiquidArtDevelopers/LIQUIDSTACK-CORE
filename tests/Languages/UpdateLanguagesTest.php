@@ -377,15 +377,21 @@ PHP
                 );
             }
             foreach ([
-                'home',
                 'services',
                 'servicesItem0',
-                'contactLink',
             ] as $linkKey) {
                 self::assertSame(
                     ['href', 'title'],
                     array_keys(
                         $catalog["navMegamenu01_00_{$linkKey}"]
+                    )
+                );
+            }
+            foreach (['home', 'contactLink'] as $fixedLinkKey) {
+                self::assertSame(
+                    ['title'],
+                    array_keys(
+                        $catalog["navMegamenu01_00_{$fixedLinkKey}"]
                     )
                 );
             }
@@ -421,6 +427,142 @@ PHP
                 self::assertArrayHasKey("{$linkKey}_href", $catalog);
             }
         }
+    }
+
+    public function testStructuredGlobalMegamenuAddsAndPrunesOnlyItsOwnedKeys(): void
+    {
+        $coreRoot = dirname(__DIR__, 2);
+        $this->filesystem->copy(
+            $coreRoot . '/stubs/App/controllers/navMegamenu01.php',
+            $this->fixtureRoot . '/App/controllers/navMegamenu01.php'
+        );
+        $this->writeFile(
+            $this->fixtureRoot . '/App/includes/_nav.php',
+            "<?php require __DIR__ . '/_navMegamenu01.php';\n"
+        );
+        $this->writeFile(
+            $this->fixtureRoot . '/App/includes/_navMegamenu01.php',
+            <<<'PHP'
+<?php
+echo controller('navMegamenu01', 0, [
+    'col1' => [
+        'intro_key' => 'intro',
+        'items' => [
+            [
+                'link_key' => 'alpha_link',
+                'text_key' => 'alpha_text',
+            ],
+            [
+                'link_key' => 'retired_link',
+                'text_key' => 'retired_text',
+            ],
+        ],
+    ],
+    'col2' => ['items' => []],
+    'col3' => [],
+]);
+PHP
+        );
+
+        $this->runUpdater('global');
+        foreach (['es', 'en'] as $language) {
+            $path = $this->fixtureRoot
+                . "/App/config/languages/global/{$language}.json";
+            $catalog = $this->readJson($path);
+            self::assertArrayHasKey(
+                'navMegamenu01_00_alpha_link',
+                $catalog
+            );
+            self::assertArrayHasKey(
+                'navMegamenu01_00_retired_link',
+                $catalog
+            );
+            self::assertArrayNotHasKey(
+                'navMegamenu01_00_login',
+                $catalog,
+                'El adaptador legacy no pertenece al sniper estructurado.'
+            );
+            $catalog['otherGlobal_00_keep'] = ['text' => 'Keep'];
+            $catalog['navMegamenu01_01_keep'] = ['text' => 'Other instance'];
+            $this->writeJson($path, $catalog);
+        }
+
+        $this->writeFile(
+            $this->fixtureRoot . '/App/includes/_navMegamenu01.php',
+            <<<'PHP'
+<?php
+echo controller('navMegamenu01', 0, [
+    'col1' => [
+        'intro_key' => 'intro',
+        'items' => [
+            [
+                'link_key' => 'alpha_link',
+                'text_key' => 'alpha_text',
+            ],
+            [
+                'link_key' => 'literal_link',
+                'text_key' => 'literal_text',
+                'href' => '#literal',
+                'resolve' => false,
+            ],
+        ],
+    ],
+    'col2' => ['items' => []],
+    'col3' => [],
+]);
+PHP
+        );
+
+        $this->runUpdater('global');
+        foreach (['es', 'en'] as $language) {
+            $catalog = $this->readJson(
+                $this->fixtureRoot
+                    . "/App/config/languages/global/{$language}.json"
+            );
+            self::assertArrayHasKey(
+                'navMegamenu01_00_retired_link',
+                $catalog,
+                'La hidratacion normal debe seguir siendo aditiva.'
+            );
+            self::assertSame(
+                ['title'],
+                array_keys($catalog['navMegamenu01_00_literal_link']),
+                'Un href fijado por el sniper no debe ofrecerse como editable.'
+            );
+            self::assertArrayHasKey(
+                'navMegamenu01_00_literal_text',
+                $catalog
+            );
+        }
+
+        $this->runUpdater('global', ['--prune-unused']);
+        foreach (['es', 'en'] as $language) {
+            $catalog = $this->readJson(
+                $this->fixtureRoot
+                    . "/App/config/languages/global/{$language}.json"
+            );
+            self::assertArrayNotHasKey(
+                'navMegamenu01_00_retired_link',
+                $catalog
+            );
+            self::assertArrayNotHasKey(
+                'navMegamenu01_00_retired_text',
+                $catalog
+            );
+            self::assertArrayHasKey('navMegamenu01_00_alpha_link', $catalog);
+            self::assertArrayHasKey('navMegamenu01_00_literal_link', $catalog);
+            self::assertArrayHasKey('otherGlobal_00_keep', $catalog);
+            self::assertArrayHasKey('navMegamenu01_01_keep', $catalog);
+        }
+
+        $secondPrune = $this->runUpdater(
+            'global',
+            ['--prune-unused']
+        );
+        self::assertSame(
+            2,
+            substr_count($secondPrune, '[update-languages] Sin cambios:')
+        );
     }
 
     public function testProjectedItemsDoNotHydrateCatalogItemFixtures(): void

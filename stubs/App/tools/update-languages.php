@@ -617,9 +617,47 @@ function extract_static_nav_catalog_keys(
         $prefix . 'forward',
         ['src', 'alt', 'title']
     );
-    $arrayContexts = [];
+    $arrayFrames = [];
+    $registerFrame = static function (array $frame) use (
+        &$keys,
+        $fieldProperties,
+        $prefix
+    ): void {
+        $references = $frame['references'] ?? [];
+        $contexts = $frame['contexts'] ?? [];
+        $fields = $frame['fields'] ?? [];
+
+        foreach ($references as $field => $reference) {
+            if (!array_key_exists($field, $fieldProperties)) {
+                continue;
+            }
+
+            $key = str_starts_with($reference, $prefix)
+                ? $reference
+                : $prefix . $reference;
+            $properties = $fieldProperties[$field];
+            if (
+                $field === 'link_key'
+                && (
+                    isset($fields['href'])
+                    || in_array('socials', $contexts, true)
+                    || in_array('email', $contexts, true)
+                    || in_array('phones', $contexts, true)
+                )
+            ) {
+                $properties = ['title'];
+            }
+            if (
+                $field === 'address_key'
+                && in_array('email', $contexts, true)
+            ) {
+                $properties = [];
+            }
+            merge_key_props($keys, $key, $properties);
+        }
+    };
     $count = count($significant);
-    for ($position = 0; $position + 2 < $count; $position++) {
+    for ($position = 0; $position < $count; $position++) {
         if ($significant[$position] === '[') {
             $context = null;
             if (
@@ -633,60 +671,93 @@ function extract_static_nav_catalog_keys(
                     $significant[$position - 2][1]
                 );
             }
-            $arrayContexts[] = $context;
+            $contexts = array_values(array_filter(array_map(
+                static fn(array $frame): ?string => $frame['context'] ?? null,
+                $arrayFrames
+            )));
+            if ($context !== null) {
+                $contexts[] = $context;
+            }
+            $arrayFrames[] = [
+                'context' => $context,
+                'contexts' => $contexts,
+                'fields' => [],
+                'references' => [],
+            ];
             continue;
         }
         if ($significant[$position] === ']') {
-            array_pop($arrayContexts);
+            $frame = array_pop($arrayFrames);
+            if (is_array($frame)) {
+                $registerFrame($frame);
+            }
+            continue;
+        }
+
+        if ($position + 1 >= $count || $arrayFrames === []) {
             continue;
         }
 
         $fieldToken = $significant[$position];
         $arrowToken = $significant[$position + 1];
-        $valueToken = $significant[$position + 2];
         if (
             !is_array($fieldToken)
             || $fieldToken[0] !== T_CONSTANT_ENCAPSED_STRING
             || !is_array($arrowToken)
             || $arrowToken[0] !== T_DOUBLE_ARROW
+        ) {
+            continue;
+        }
+
+        $field = decode_static_php_string_token($fieldToken[1]);
+        if ($field === null) {
+            continue;
+        }
+
+        $frameIndex = count($arrayFrames) - 1;
+        $arrayFrames[$frameIndex]['fields'][$field] = true;
+        if ($position + 2 >= $count) {
+            continue;
+        }
+
+        $valueToken = $significant[$position + 2];
+        if (
+            !array_key_exists($field, $fieldProperties)
             || !is_array($valueToken)
             || $valueToken[0] !== T_CONSTANT_ENCAPSED_STRING
         ) {
             continue;
         }
 
-        $field = decode_static_php_string_token($fieldToken[1]);
         $reference = decode_static_php_string_token($valueToken[1]);
         if (
-            $field === null
-            || $reference === null
-            || !array_key_exists($field, $fieldProperties)
+            $reference === null
             || !preg_match('/^[A-Za-z0-9_-]+$/', $reference)
         ) {
             continue;
         }
+        $arrayFrames[$frameIndex]['references'][$field] = $reference;
+    }
 
-        $key = str_starts_with($reference, $prefix)
-            ? $reference
-            : $prefix . $reference;
-        $properties = $fieldProperties[$field];
-        if (
-            $field === 'link_key'
-            && (
-                in_array('socials', $arrayContexts, true)
-                || in_array('email', $arrayContexts, true)
-                || in_array('phones', $arrayContexts, true)
-            )
-        ) {
-            $properties = ['title'];
+    while ($arrayFrames !== []) {
+        $frame = array_pop($arrayFrames);
+        if (is_array($frame)) {
+            $registerFrame($frame);
         }
-        if ($field === 'address_key' && in_array('email', $arrayContexts, true)) {
-            $properties = [];
-        }
-        merge_key_props($keys, $key, $properties);
     }
 
     return $keys;
+}
+
+function structured_nav_catalog_is_authoritative(
+    string $call,
+    string $controllerName
+): bool {
+    return $controllerName === 'navMegamenu01'
+        && preg_match(
+            '/[\'"](?:col1|col2|col3)[\'"]\s*=>\s*\[/',
+            mask_nested_controller_calls($call)
+        ) === 1;
 }
 
 function parse_static_controller_params(string $call): array {
@@ -782,6 +853,10 @@ function extract_controller_calls(string $content): array {
                 $call,
                 $match[2][0],
                 $index
+            ),
+            'catalog_authoritative' => structured_nav_catalog_is_authoritative(
+                $call,
+                $match[2][0]
             ),
         ];
     }
@@ -1103,7 +1178,8 @@ function update_lang_file(
     array $template,
     bool $removeMissing,
     array $fallback,
-    array $activePrefixes
+    array $activePrefixes,
+    array $authoritativeCatalogPrefixes
 ): void {
     if (!is_dir($dir)) {
         mkdir($dir, 0777, true);
@@ -1124,9 +1200,26 @@ function update_lang_file(
             'description' => true,
             'robots' => true,
         ];
-        // Preserve only keys present in the new map or explicitly whitelisted base entries.
+        // A structured catalog such as navMegamenu01 owns only its exact
+        // resource-instance prefix. Prune retired keys there while preserving
+        // every unrelated global key. Other resources retain the conservative
+        // legacy behavior because their dynamic/backend keys cannot be proven
+        // unused through static discovery alone.
         foreach ($data as $k => $v) {
-            if (array_key_exists($k, $keyMap) || key_matches_active_prefix($k, $activePrefixes)) {
+            if (array_key_exists($k, $keyMap)) {
+                $ordered[$k] = $v;
+                continue;
+            }
+            if ($authoritativeCatalogPrefixes !== []) {
+                if (!key_matches_active_prefix(
+                    $k,
+                    $authoritativeCatalogPrefixes
+                )) {
+                    $ordered[$k] = $v;
+                }
+                continue;
+            }
+            if (key_matches_active_prefix($k, $activePrefixes)) {
                 $ordered[$k] = $v;
                 continue;
             }
@@ -1432,6 +1525,28 @@ function collect_active_key_prefixes(array $controllers): array {
     return array_keys($prefixes);
 }
 
+function collect_authoritative_catalog_prefixes(array $controllers): array {
+    $prefixes = [];
+    foreach ($controllers as $controller) {
+        if (empty($controller['catalog_authoritative'])) {
+            continue;
+        }
+
+        $name = $controller['name'] ?? '';
+        $index = $controller['index'] ?? null;
+        if (
+            !is_string($name)
+            || !preg_match('/^[A-Za-z0-9_-]+$/', $name)
+            || !is_int($index)
+        ) {
+            continue;
+        }
+        $prefixes[$name . '_' . sprintf('%02d', $index) . '_'] = true;
+    }
+
+    return array_keys($prefixes);
+}
+
 function nested_item_count($value, string $letter, int $index): int {
     if (!is_array($value)) {
         return max(0, (int) $value);
@@ -1571,6 +1686,9 @@ function collect_key_map(array $controllers, array $templateMap): array {
                 $uniq[$key]['params'] ?? [],
                 $c['params'] ?? []
             );
+            if (!empty($c['catalog_authoritative'])) {
+                $uniq[$key]['catalog_authoritative'] = true;
+            }
             $incomingCatalogKeys = $c['catalog_keys'] ?? [];
             if (is_array($incomingCatalogKeys)) {
                 if (
@@ -1590,6 +1708,14 @@ function collect_key_map(array $controllers, array $templateMap): array {
     foreach ($uniq as $c) {
         $pad = sprintf('%02d', $c['index']);
         $extracted = extract_keys($c['name'], $c['index']);
+        if (!empty($c['catalog_authoritative'])) {
+            $authoritativePrefix = $c['name'] . '_' . $pad . '_';
+            foreach (array_keys($extracted) as $extractedKey) {
+                if (str_starts_with($extractedKey, $authoritativePrefix)) {
+                    unset($extracted[$extractedKey]);
+                }
+            }
+        }
         foreach (($c['catalog_keys'] ?? []) as $catalogKey => $properties) {
             merge_key_props($extracted, $catalogKey, $properties);
         }
@@ -1732,6 +1858,9 @@ foreach ($slugsToProcess as $targetSlug) {
 
     $langKeys = collect_key_map($list, $templateMap);
     $activePrefixes = collect_active_key_prefixes($list);
+    $authoritativeCatalogPrefixes = collect_authoritative_catalog_prefixes(
+        $list
+    );
 
     $inlineKeys = $inlineKeysBySlug[$targetSlug] ?? [];
     if ($targetSlug === 'global' && $primarySlugs !== []) {
@@ -1755,7 +1884,11 @@ foreach ($slugsToProcess as $targetSlug) {
         // Hydration is non-destructive by default. Removing unused entries is
         // an explicit maintenance operation because static discovery cannot
         // prove that a key is not consumed by dynamic or backend code.
-        $removeMissing = $pruneUnused && $targetSlug !== 'global';
+        $removeMissing = $pruneUnused
+            && (
+                $targetSlug !== 'global'
+                || $authoritativeCatalogPrefixes !== []
+            );
         $file = "$dir/$lang.json";
         if (!$langKeys && !file_exists($file)) {
             continue;
@@ -1767,7 +1900,8 @@ foreach ($slugsToProcess as $targetSlug) {
             $template,
             $removeMissing,
             $templateFallback,
-            $activePrefixes
+            $activePrefixes,
+            $authoritativeCatalogPrefixes
         );
     }
 }

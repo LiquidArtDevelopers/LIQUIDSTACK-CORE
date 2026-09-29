@@ -176,7 +176,8 @@
             "sha256:5512b173661d5cdfe94aa1d8a2bba6218c2f74530feecada6621723d81302b96"
         ],
         "stubs/App/tools/update-languages.php": [
-            "sha256:009dee0e3eef6f3e4ada704edd6b9cf43ab321b1ba50edfc00791a325311af26"
+            "sha256:009dee0e3eef6f3e4ada704edd6b9cf43ab321b1ba50edfc00791a325311af26",
+            "sha256:5bb47c1cc7828a8d2004d3fb4425dcce86e88e793ede70cbd38119e0c7a9a65f"
         ],
         "stubs/App/views/_showroom.php": [
             "sha256:5431e3f91dffff0f082c477e318674086641acabbdde355aa46fc1acde30e574",

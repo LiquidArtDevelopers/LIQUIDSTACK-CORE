@@ -446,6 +446,26 @@ final class InlineEditorInfrastructureTest extends TestCase
         self::assertTrue($result['missingContractRejected']);
     }
 
+    public function testRelatedHrefEntriesRefreshTheirAnchorWithoutReload(): void
+    {
+        $inlineEditor = (string) file_get_contents(
+            dirname(__DIR__, 2) . '/resources/js/_inlineEditor.js'
+        );
+
+        self::assertStringContainsString(
+            'if (lower === "href")',
+            $inlineEditor
+        );
+        self::assertStringContainsString(
+            'return { attribute: "href", label: "href" };',
+            $inlineEditor
+        );
+        self::assertStringContainsString(
+            'element.setAttribute(meta.attribute, value);',
+            $inlineEditor
+        );
+    }
+
     public function testResponsivePicturePersistsItsFourSourcesTogether(): void
     {
         $sources = [

@@ -1157,6 +1157,10 @@ const parseRelatedSuffix = (suffix) => {
     return { attribute: "src", label: "src" };
   }
 
+  if (lower === "href") {
+    return { attribute: "href", label: "href" };
+  }
+
   return { attribute: null, label: suffix };
 };
 

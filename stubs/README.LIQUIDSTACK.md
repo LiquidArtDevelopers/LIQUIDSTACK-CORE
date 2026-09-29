@@ -384,13 +384,18 @@ php App/tools/update-languages.php global
 php App/tools/update-languages.php templates
 $LiquidStackContent = Read-Host 'Slug content de la vista'
 php App/tools/update-languages.php $LiquidStackContent
+
+# Solo tras retirar items del megamenu estructurado
+php App/tools/update-languages.php global --prune-unused
 ```
 
 `global` inspecciona includes globales, `templates` el showroom y el tercer
 comando una vista cuyo `content` exista en `App/config/routes/get.php`. El
-proceso es aditivo. Usa `--prune-unused` solo sobre una vista concreta y tras
-revisar el diff. Blog y Commerce traducen su contenido editorial desde
-WebAdmin/DB, no con este script.
+proceso normal es aditivo. `global --prune-unused` retira exclusivamente las
+claves que ya no declara una instancia estructurada de `navMegamenu01` y
+conserva las demás claves globales; revisa siempre el diff. Para otras vistas,
+usa `--prune-unused` solo sobre su `content` concreto. Blog y Commerce traducen
+su contenido editorial desde WebAdmin/DB, no con este script.
 
 ## Cierre de cualquier actualización
 

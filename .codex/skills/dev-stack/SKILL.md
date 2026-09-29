@@ -202,6 +202,11 @@ controller('nombre', $index, [
 - Al renombrar una clave, trasladar primero su valor. La hidratación ordinaria
   conserva la clave antigua; retirarla manualmente o usar `--prune-unused`
   únicamente después de verificar que ya no tiene consumidores.
+- En el sniper estructurado de `navMegamenu01`, las altas se hidratan con
+  `php App/tools/update-languages.php global`; tras retirar nodos, ejecutar
+  `php App/tools/update-languages.php global --prune-unused`. Esa poda debe
+  limitarse al prefijo exacto de la instancia del megamenú y preservar el resto
+  de `global`.
 - El actualizador completa claves y propiedades ausentes desde los templates,
   pero conserva cualquier clave o propiedad ya declarada, aunque su valor sea
   `""`, `null` o tenga una forma legacy. Revisar igualmente la forma final de
