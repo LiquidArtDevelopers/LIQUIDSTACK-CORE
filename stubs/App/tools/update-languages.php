@@ -1301,7 +1301,14 @@ function update_lang_file(
         $dummy = resolve_template_value($template, $fallback, 'example');
         $dummy = is_array($dummy) ? $dummy : [];
 
-        $obj = $existingArr;
+        // During an explicit prune, authoritative structured catalogs also
+        // own the property shape of each entry. This removes obsolete
+        // editable fields (for example a legacy `href` now fixed by the
+        // sniper) without normal additive hydration rewriting user data.
+        $obj = $removeMissing
+            && key_matches_active_prefix($k, $authoritativeCatalogPrefixes)
+            ? []
+            : $existingArr;
         foreach ($props as $p) {
             if (array_key_exists($p, $existingArr)) {
                 $obj[$p] = $existingArr[$p];

@@ -515,10 +515,9 @@ PHP
 
         $this->runUpdater('global');
         foreach (['es', 'en'] as $language) {
-            $catalog = $this->readJson(
-                $this->fixtureRoot
-                    . "/App/config/languages/global/{$language}.json"
-            );
+            $path = $this->fixtureRoot
+                . "/App/config/languages/global/{$language}.json";
+            $catalog = $this->readJson($path);
             self::assertArrayHasKey(
                 'navMegamenu01_00_retired_link',
                 $catalog,
@@ -533,6 +532,11 @@ PHP
                 'navMegamenu01_00_literal_text',
                 $catalog
             );
+
+            // Simulate a catalog generated before literal sniper hrefs stopped
+            // being exposed as editable inline fields.
+            $catalog['navMegamenu01_00_literal_link']['href'] = '/legacy';
+            $this->writeJson($path, $catalog);
         }
 
         $this->runUpdater('global', ['--prune-unused']);
@@ -550,7 +554,10 @@ PHP
                 $catalog
             );
             self::assertArrayHasKey('navMegamenu01_00_alpha_link', $catalog);
-            self::assertArrayHasKey('navMegamenu01_00_literal_link', $catalog);
+            self::assertSame(
+                ['title'],
+                array_keys($catalog['navMegamenu01_00_literal_link'])
+            );
             self::assertArrayHasKey('otherGlobal_00_keep', $catalog);
             self::assertArrayHasKey('navMegamenu01_01_keep', $catalog);
         }

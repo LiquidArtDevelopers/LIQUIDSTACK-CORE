@@ -4,6 +4,13 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.35.12] - 2026-09-29
+
+### Corregido
+
+- La poda explícita del megamenú normaliza también las propiedades de cada
+  clave gestionada, retirando atributos inline obsoletos sin alterar valores.
+
 ## [1.35.11] - 2026-09-29
 
 ### Corregido
