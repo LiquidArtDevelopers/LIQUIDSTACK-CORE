@@ -4,6 +4,14 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.35.13] - 2026-09-29
+
+### Corregido
+
+- La poda del megamenú no considera autoritativo un sniper con colecciones
+  runtime salvo que declare un contrato estático completo, evitando retirar
+  enlaces modulares o legales que el analizador no puede demostrar ausentes.
+
 ## [1.35.12] - 2026-09-29
 
 ### Corregido

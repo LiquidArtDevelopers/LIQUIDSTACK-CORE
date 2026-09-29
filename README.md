@@ -1384,6 +1384,12 @@ el resto del catálogo global. Un `href` declarado en el sniper es estructural y
 no se ofrece como editable; si se omite, el enlace puede gestionarse desde su
 objeto de idioma.
 
+Si el sniper inyecta colecciones runtime mediante variables, funciones o
+`...$items`, la poda se desactiva de forma conservadora. Para habilitarla debe
+incluir `catalog_dynamic_complete => true` y un `catalog_contract` estático
+con todos los posibles `link_key`, `text_key`, `image_key`, etc. dinámicos. El
+contrato solo documenta el catálogo: el controlador no lo renderiza.
+
 El controlador mantiene un adaptador para las llamadas anteriores con
 `public_link_keys`, `show_private_access` y `offices`; solo se usa cuando no se
 declara ninguna de `col1`, `col2` o `col3`. Sirve para actualizar consumidores

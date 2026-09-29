@@ -753,11 +753,37 @@ function structured_nav_catalog_is_authoritative(
     string $call,
     string $controllerName
 ): bool {
-    return $controllerName === 'navMegamenu01'
-        && preg_match(
+    if ($controllerName !== 'navMegamenu01') {
+        return false;
+    }
+
+    $maskedCall = mask_nested_controller_calls($call);
+    if (
+        preg_match(
             '/[\'"](?:col1|col2|col3)[\'"]\s*=>\s*\[/',
-            mask_nested_controller_calls($call)
+            $maskedCall
+        ) !== 1
+    ) {
+        return false;
+    }
+
+    $hasDynamicCollections = preg_match('/\.\.\./', $maskedCall) === 1
+        || preg_match(
+            '/[\'"](?:items|children|socials|offices|phones)[\'"]'
+                . '\s*=>\s*+(?!\[|array\s*\()/i',
+            $maskedCall
         ) === 1;
+    if (!$hasDynamicCollections) {
+        return true;
+    }
+
+    // Runtime collections cannot be proven complete through static analysis.
+    // A project may opt in only after declaring every possible dynamic entry
+    // as static link_key/text_key/etc. records inside catalog_contract.
+    return preg_match(
+        '/[\'"]catalog_dynamic_complete[\'"]\s*=>\s*true\b/i',
+        $maskedCall
+    ) === 1;
 }
 
 function parse_static_controller_params(string $call): array {

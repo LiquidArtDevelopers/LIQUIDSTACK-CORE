@@ -393,7 +393,10 @@ php App/tools/update-languages.php global --prune-unused
 comando una vista cuyo `content` exista en `App/config/routes/get.php`. El
 proceso normal es aditivo. `global --prune-unused` retira exclusivamente las
 claves que ya no declara una instancia estructurada de `navMegamenu01` y
-conserva las demás claves globales; revisa siempre el diff. Para otras vistas,
+conserva las demás claves globales. Si el sniper usa colecciones runtime, la
+poda se omite salvo que declare `catalog_dynamic_complete => true` y un
+`catalog_contract` estático con todas sus claves posibles; revisa siempre el
+diff. Para otras vistas,
 usa `--prune-unused` solo sobre su `content` concreto. Blog y Commerce traducen
 su contenido editorial desde WebAdmin/DB, no con este script.
 

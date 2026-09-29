@@ -572,6 +572,108 @@ PHP
         );
     }
 
+    public function testDynamicMegamenuRequiresACompleteStaticCatalogContractToPrune(): void
+    {
+        $coreRoot = dirname(__DIR__, 2);
+        $this->filesystem->copy(
+            $coreRoot . '/stubs/App/controllers/navMegamenu01.php',
+            $this->fixtureRoot . '/App/controllers/navMegamenu01.php'
+        );
+        $this->writeFile(
+            $this->fixtureRoot . '/App/includes/_nav.php',
+            "<?php require __DIR__ . '/_navMegamenu01.php';\n"
+        );
+
+        $dynamicInclude = static fn(bool $complete): string => sprintf(
+            <<<'PHP'
+<?php
+$runtimeItems = [];
+
+echo controller('navMegamenu01', 0, [
+    'catalog_dynamic_complete' => %s,
+    'catalog_contract' => [
+        'items' => [[
+            'link_key' => 'runtime_link',
+            'text_key' => 'runtime_text',
+        ]],
+    ],
+    'col1' => [
+        'items' => [
+            [
+                'link_key' => 'alpha_link',
+                'text_key' => 'alpha_text',
+            ],
+            ...$runtimeItems,
+        ],
+    ],
+    'col2' => ['items' => []],
+    'col3' => [],
+]);
+PHP,
+            $complete ? 'true' : 'false'
+        );
+
+        $this->writeFile(
+            $this->fixtureRoot . '/App/includes/_navMegamenu01.php',
+            $dynamicInclude(false)
+        );
+        foreach (['es', 'en'] as $language) {
+            $path = $this->fixtureRoot
+                . "/App/config/languages/global/{$language}.json";
+            $this->writeJson($path, [
+                'navMegamenu01_00_runtime_link' => [
+                    'href' => '/runtime',
+                    'title' => 'Runtime',
+                ],
+                'navMegamenu01_00_runtime_text' => ['text' => 'Runtime'],
+                'navMegamenu01_00_retired_link' => [
+                    'href' => '/retired',
+                    'title' => 'Retired',
+                ],
+                'otherGlobal_00_keep' => ['text' => 'Keep'],
+            ]);
+        }
+
+        $this->runUpdater('global', ['--prune-unused']);
+        foreach (['es', 'en'] as $language) {
+            $catalog = $this->readJson(
+                $this->fixtureRoot
+                    . "/App/config/languages/global/{$language}.json"
+            );
+            self::assertArrayHasKey(
+                'navMegamenu01_00_retired_link',
+                $catalog,
+                'Una coleccion runtime sin contrato no debe activar la poda.'
+            );
+        }
+
+        $this->writeFile(
+            $this->fixtureRoot . '/App/includes/_navMegamenu01.php',
+            $dynamicInclude(true)
+        );
+        $this->runUpdater('global', ['--prune-unused']);
+        foreach (['es', 'en'] as $language) {
+            $catalog = $this->readJson(
+                $this->fixtureRoot
+                    . "/App/config/languages/global/{$language}.json"
+            );
+            self::assertArrayNotHasKey(
+                'navMegamenu01_00_retired_link',
+                $catalog
+            );
+            self::assertArrayHasKey(
+                'navMegamenu01_00_runtime_link',
+                $catalog
+            );
+            self::assertArrayHasKey(
+                'navMegamenu01_00_runtime_text',
+                $catalog
+            );
+            self::assertArrayHasKey('navMegamenu01_00_alpha_link', $catalog);
+            self::assertArrayHasKey('otherGlobal_00_keep', $catalog);
+        }
+    }
+
     public function testProjectedItemsDoNotHydrateCatalogItemFixtures(): void
     {
         $this->writeFile(

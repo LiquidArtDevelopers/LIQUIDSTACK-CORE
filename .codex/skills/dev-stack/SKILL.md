@@ -207,6 +207,9 @@ controller('nombre', $index, [
   `php App/tools/update-languages.php global --prune-unused`. Esa poda debe
   limitarse al prefijo exacto de la instancia del megamenú y preservar el resto
   de `global`.
+- Si el sniper inyecta colecciones runtime, no considerarlo autoritativo salvo
+  que declare `catalog_dynamic_complete => true` y un `catalog_contract`
+  estático que enumere todas las claves posibles de esas colecciones.
 - El actualizador completa claves y propiedades ausentes desde los templates,
   pero conserva cualquier clave o propiedad ya declarada, aunque su valor sea
   `""`, `null` o tenga una forma legacy. Revisar igualmente la forma final de
