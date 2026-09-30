@@ -400,6 +400,24 @@ diff. Para otras vistas,
 usa `--prune-unused` solo sobre su `content` concreto. Blog y Commerce traducen
 su contenido editorial desde WebAdmin/DB, no con este script.
 
+### Imagen social de páginas estáticas
+
+Las páginas estáticas pueden definir la imagen común de Open Graph y Twitter
+en el JSON localizado de su `content`:
+
+```json
+"social_image": {
+    "src": "assets/img/vistas/imagen-social-1200.avif"
+}
+```
+
+La ruta puede ser relativa a `RAIZ` o una URL absoluta `http(s)`. Si la clave
+existe en `global/{idioma}.json`, actúa como imagen general del proyecto; la
+misma clave en el JSON de una página la sustituye solo para esa URL e idioma.
+Los artículos Blog conservan prioridad y usan su portada publicada. Una clave
+con `src` vacío omite `og:image` y `twitter:image` expresamente. El actualizador
+de idiomas preserva `social_image` incluso con `--prune-unused`.
+
 ## Cierre de cualquier actualización
 
 ```powershell

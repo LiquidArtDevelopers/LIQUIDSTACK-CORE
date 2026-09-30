@@ -134,6 +134,7 @@ PHP
 
         $home = [
             'title' => 'Home',
+            'social_image' => ['src' => 'assets/img/social-card.avif'],
             'art17_00_headerPrimary' => 'Legacy scalar heading',
             'art17_00_a_cta' => [
                 'text' => '',
@@ -317,6 +318,10 @@ PHP
         );
 
         self::assertArrayNotHasKey('obsolete_00_copy', $catalog);
+        self::assertSame(
+            ['src' => 'assets/img/social-card.avif'],
+            $catalog['social_image']
+        );
         self::assertSame(
             'Dormant customer copy',
             $catalog['art17_00_a_list_z']['text']

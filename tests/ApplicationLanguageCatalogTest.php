@@ -40,6 +40,7 @@ final class ApplicationLanguageCatalogTest extends TestCase
             'templates_only',
             'showroom_only',
             'shared',
+            'social_image',
             'css',
             'js',
         ] as $key) {
@@ -141,6 +142,94 @@ final class ApplicationLanguageCatalogTest extends TestCase
                 'content' => 'showroom',
                 'resources' => 'servicio',
             ])
+        );
+    }
+
+    public function testLocalizedSocialImageOverridesTheGlobalCatalog(): void
+    {
+        $_ENV['RAIZ'] = 'https://example.test/site';
+        $this->writeJson('global', [
+            'social_image' => ['src' => 'assets/img/global.avif'],
+        ]);
+        $this->writeJson('showroom', [
+            'social_image' => ['src' => '/assets/img/showroom.avif'],
+        ]);
+
+        $view = $this->fixtureRoot . '/social-image-view.php';
+        file_put_contents(
+            $view,
+            '<?php echo json_encode($pageMeta, JSON_THROW_ON_ERROR);'
+        );
+
+        self::assertSame(
+            ['image' => 'https://example.test/site/assets/img/showroom.avif'],
+            json_decode(
+                $this->renderRoute($view, [
+                    'content' => 'showroom',
+                    'resources' => 'servicio',
+                ]),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            )
+        );
+    }
+
+    public function testGlobalSocialImageIsInheritedAndAbsoluteUrlsArePreserved(): void
+    {
+        $_ENV['RAIZ'] = 'https://example.test';
+        $this->writeJson('global', [
+            'social_image' => [
+                'src' => 'https://cdn.example.test/social/card.jpg',
+            ],
+        ]);
+        $this->writeJson('showroom', []);
+
+        $view = $this->fixtureRoot . '/global-social-image-view.php';
+        file_put_contents(
+            $view,
+            '<?php echo json_encode($pageMeta, JSON_THROW_ON_ERROR);'
+        );
+
+        self::assertSame(
+            ['image' => 'https://cdn.example.test/social/card.jpg'],
+            json_decode(
+                $this->renderRoute($view, [
+                    'content' => 'showroom',
+                    'resources' => 'servicio',
+                ]),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            )
+        );
+    }
+
+    public function testEmptyOrUnsafeSocialImageSuppressesTheHeadFallback(): void
+    {
+        $_ENV['RAIZ'] = 'https://example.test';
+        $this->writeJson('global', [
+            'social_image' => ['src' => '//untrusted.example/card.jpg'],
+        ]);
+        $this->writeJson('showroom', []);
+
+        $view = $this->fixtureRoot . '/empty-social-image-view.php';
+        file_put_contents(
+            $view,
+            '<?php echo json_encode($pageMeta, JSON_THROW_ON_ERROR);'
+        );
+
+        self::assertSame(
+            ['image' => null],
+            json_decode(
+                $this->renderRoute($view, [
+                    'content' => 'showroom',
+                    'resources' => 'servicio',
+                ]),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            )
         );
     }
 

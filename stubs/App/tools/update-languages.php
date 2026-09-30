@@ -1225,6 +1225,7 @@ function update_lang_file(
             'title' => true,
             'description' => true,
             'robots' => true,
+            'social_image' => true,
         ];
         // A structured catalog such as navMegamenu01 owns only its exact
         // resource-instance prefix. Prune retired keys there while preserving

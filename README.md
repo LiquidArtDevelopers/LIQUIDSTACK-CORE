@@ -114,6 +114,12 @@ Al ejecutar `composer install` o `composer update` en un proyecto que consume es
 - `resources/img` -> `public/assets/img`.
 - `resources/video` -> `public/assets/video`.
 
+Las rutas estáticas proyectan la clave localizada `social_image.src` de sus
+catálogos sobre el mismo contrato `pageMeta.image` que consumen Blog y el head
+del proyecto. El catálogo de la ruta prevalece sobre `global`; los metadatos
+dinámicos del detalle Blog prevalecen a su vez sobre ambos. La operación para
+los consumidores se documenta en `stubs/README.LIQUIDSTACK.md`.
+
 ### Convención de variantes visuales
 
 Un sufijo `vN`, como `art05v1`, identifica una variante visual independiente

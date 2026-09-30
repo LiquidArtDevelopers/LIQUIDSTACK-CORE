@@ -30,6 +30,23 @@ export default function initNavMegamenu01() {
 
   nav.addEventListener('click', closeOnNavigation);
 
+  const submenuGroups = [...nav.querySelectorAll('.megamenu .menu-group')];
+  const placeSubmenu = (event) => {
+    const group = event.currentTarget;
+    const submenu = group?.querySelector(':scope > .submenu');
+    if (!submenu) return;
+
+    submenu.classList.remove('is-flipped');
+    if (submenu.getBoundingClientRect().right > window.innerWidth - 16) {
+      submenu.classList.add('is-flipped');
+    }
+  };
+
+  submenuGroups.forEach((group) => {
+    group.addEventListener('pointerenter', placeSubmenu);
+    group.addEventListener('focusin', placeSubmenu);
+  });
+
   // Activa clase cuando no estamos en el tope de la página.
   const scrollTrigger = ScrollTrigger.create({
     start: 'top -1',
@@ -40,6 +57,10 @@ export default function initNavMegamenu01() {
 
   const cleanup = () => {
     nav.removeEventListener('click', closeOnNavigation);
+    submenuGroups.forEach((group) => {
+      group.removeEventListener('pointerenter', placeSubmenu);
+      group.removeEventListener('focusin', placeSubmenu);
+    });
     scrollTrigger.kill();
     if (nav[cleanupKey] === cleanup) {
       delete nav[cleanupKey];

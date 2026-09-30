@@ -4,6 +4,24 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.36.0] - 2026-09-30
+
+### Añadido
+
+- Las páginas estáticas pueden declarar `social_image.src` en el catálogo
+  localizado global o de la ruta para alimentar `og:image` y `twitter:image`;
+  el detalle Blog mantiene prioridad con la portada de la publicación.
+- `update-languages.php --prune-unused` preserva la configuración localizada
+  de imagen social y el README consumidor documenta su uso.
+
+### Corregido
+
+- `art18` deja de ejecutar la función global obsoleta `str-slice()` de Sass;
+  la variable que la utilizaba no intervenía en el renderizado.
+- Los submenús de `navMegamenu01` nacen junto al enlace que los abre, crecen
+  hasta el ancho mínimo necesario para mostrar sus textos y cambian de lado
+  cuando alcanzarían el borde de la ventana, también en árboles anidados.
+
 ## [1.35.13] - 2026-09-29
 
 ### Corregido

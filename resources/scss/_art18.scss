@@ -4,7 +4,6 @@
     width: 100%;
     padding: 3rem;
     background-color: c.$color01;
-    $bullet-fill: str-slice("#{c.$color00bis}", 2);
     display: flex;
     // flex-wrap: wrap;
     flex-direction: column;

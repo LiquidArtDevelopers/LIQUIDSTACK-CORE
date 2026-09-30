@@ -335,6 +335,14 @@ nav.is-scrolled{
     // En móvil se despliega en vertical; desde tablet cada padre abre solo su
     // hijo directo para no revelar simultáneamente todos los descendientes.
     >:nth-child(-n + 2){
+        > ul > li > .menu-group{
+            @media only screen and (min-width:c.$tablet){
+                width: fit-content;
+                max-width: 100%;
+                align-self: flex-start;
+            }
+        }
+
         li > div{
             width: 100%;
             min-width: 0;
@@ -379,7 +387,10 @@ nav.is-scrolled{
                     z-index: 110;
                     top: -0.75rem;
                     left: 100%;
-                    width: clamp(9rem, 18vw, 14rem);
+                    width: max-content;
+                    min-width: clamp(12rem, 18vw, 14rem);
+                    max-width: min(32rem, calc(100vw - 2rem));
+                    box-sizing: border-box;
                     padding-left: clamp(0.2rem, 0.5vw, 0.5rem);
                     opacity: 0;
                     visibility: hidden;
@@ -389,12 +400,28 @@ nav.is-scrolled{
                         visibility 0s linear 180ms;
 
                     > ul{
+                        width: 100%;
+                        box-sizing: border-box;
                         padding: clamp(0.75rem, 1.3vw, 1.25rem);
                         border: 0;
                         border-radius: 10px;
                         backdrop-filter: blur(5px);
                         -webkit-backdrop-filter: blur(5px);
                         background-color: c.$color01bis;
+                    }
+
+                    a > span{
+                        white-space: normal;
+                        overflow: visible;
+                        overflow-wrap: anywhere;
+                        text-overflow: clip;
+                    }
+
+                    &.is-flipped{
+                        right: 100%;
+                        left: auto;
+                        padding-right: clamp(0.2rem, 0.5vw, 0.5rem);
+                        padding-left: 0;
                     }
                 }
 

@@ -302,6 +302,15 @@ class Application
                 foreach ($data as $k => $v) {
                     $GLOBALS[$k] = $v;
                 }
+
+                /*
+                 * Static routes may declare a localized social image in the
+                 * same catalog that owns their title and description. The
+                 * project head already consumes pageMeta.image for dynamic
+                 * Blog routes, so project the static value onto that shared
+                 * contract without making the catalog itself know about PHP.
+                 */
+                $pageMeta = $this->localizedPageMeta($data);
             }
         }
 
@@ -437,6 +446,68 @@ class Application
     }
 
     /**
+     * @param array<string, mixed> $catalog
+     * @return array{image?: ?string}
+     */
+    private function localizedPageMeta(array $catalog): array
+    {
+        if (!array_key_exists('social_image', $catalog)) {
+            return [];
+        }
+
+        $entry = $catalog['social_image'];
+        if (is_object($entry)) {
+            $entry = get_object_vars($entry);
+        }
+        if (!is_array($entry) || !array_key_exists('src', $entry)) {
+            return [];
+        }
+
+        $source = is_string($entry['src'])
+            ? trim($entry['src'])
+            : '';
+
+        return ['image' => $this->socialImageUrl($source)];
+    }
+
+    private function socialImageUrl(string $source): ?string
+    {
+        if ($source === '') {
+            return null;
+        }
+        if (
+            str_contains($source, '\\')
+            || preg_match('/[\x00-\x1F\x7F]/', $source) === 1
+            || str_starts_with($source, '//')
+            || str_starts_with($source, '#')
+            || str_starts_with($source, '?')
+        ) {
+            return null;
+        }
+
+        $parts = parse_url($source);
+        if ($parts === false) {
+            return null;
+        }
+        if (isset($parts['scheme'])) {
+            $scheme = strtolower((string) $parts['scheme']);
+            if (
+                !in_array($scheme, ['http', 'https'], true)
+                || !isset($parts['host'])
+                || isset($parts['user'])
+                || isset($parts['pass'])
+                || filter_var($source, FILTER_VALIDATE_URL) === false
+            ) {
+                return null;
+            }
+
+            return $source;
+        }
+
+        return $this->publicAssetUrl($source);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function readLanguageCatalog(string $catalog, string $lang): array
@@ -464,6 +535,7 @@ class Application
     {
         
         $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/global/{$lang}.json"));
+        $pageMetaCatalog = $data;
         if ($data) {
             extract($data);
             foreach ($data as $k => $v) {
@@ -472,12 +544,15 @@ class Application
         }
 
         $data = (array) json_decode(file_get_contents(Paths::appPath() . "/config/languages/404/{$lang}.json"));
+        $pageMetaCatalog = array_replace($pageMetaCatalog, $data);
         if ($data) {
             extract($data);
             foreach ($data as $k => $v) {
                 $GLOBALS[$k] = $v;
             }
         }
+
+        $pageMeta = $this->localizedPageMeta($pageMetaCatalog);
 
         $resources = '404';
 
