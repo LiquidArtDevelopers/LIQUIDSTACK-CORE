@@ -14,6 +14,13 @@ final class CanonicalModuleDistributionTest extends TestCase
         $catalog = ModuleCatalog::fromCoreRoot($root);
 
         self::assertSame([[
+            'source' => 'published/.php.ini',
+            'target' => 'public/.php.ini',
+            'type' => 'file',
+            'policy' => 'install_if_missing',
+            'group' => 'module:webadmin:public/.php.ini',
+            'track_state' => true,
+        ], [
             'source' => 'published/assets',
             'target' => 'public/assets/modules/webadmin',
             'type' => 'dir',
