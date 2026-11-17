@@ -89,8 +89,8 @@ final class ApacheDiscoveryCachePolicySynchronizer
 
         if (hash_equals($contents, $updated)) {
             $this->io->write(
-                '<info>La política de revalidación de sitemap.xml y '
-                    . 'robots.txt ya está integrada en '
+                '<info>La política de caché de descubrimiento y documentos '
+                    . 'dinámicos ya está integrada en '
                     . self::TARGET
                     . '.</info>'
             );
@@ -143,8 +143,8 @@ final class ApacheDiscoveryCachePolicySynchronizer
         }
 
         $this->io->write(
-            '<info>Integrada la política de revalidación de sitemap.xml y '
-                . 'robots.txt en '
+            '<info>Integrada la política de caché de descubrimiento y '
+                . 'documentos dinámicos en '
                 . self::TARGET
                 . ' sin reemplazar la configuración del proyecto.</info>'
         );
@@ -252,6 +252,10 @@ final class ApacheDiscoveryCachePolicySynchronizer
             '# deben revalidarse para no heredar la caché general de activos.',
             '<IfModule mod_expires.c>',
             '    <FilesMatch "^(?:sitemap\\.xml|robots\\.txt)$">',
+            '        ExpiresActive Off',
+            '    </FilesMatch>',
+            '    # PHP/HTML conservan la política de caché de la aplicación.',
+            '    <FilesMatch "\\.(?:php|html?)$">',
             '        ExpiresActive Off',
             '    </FilesMatch>',
             '</IfModule>',

@@ -4,6 +4,15 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.36.2] - 2026-11-17
+
+### Corregido
+
+- El bloque Apache gestionado desactiva `mod_expires` para PHP y HTML,
+  evitando que una caché general semanal añada `Expires` y `max-age` a las
+  respuestas del Blog, sitemap dinámico o WebAdmin. Conserva el `Cache-Control`
+  de la aplicación y las duraciones de caché de los assets estáticos.
+
 ## [1.36.1] - 2026-11-17
 
 ### Corregido

@@ -90,6 +90,59 @@ final class ApacheDiscoveryCachePolicySynchronizerTest extends TestCase
         self::assertSame(1, substr_count($updated, 'RewriteRule ^ index.php'));
     }
 
+    public function testDisablesExpiresForPhpAndHtmlWithoutReplacingApplicationCacheControl(): void
+    {
+        self::assertTrue($this->synchronizer()->sync($this->root));
+        $updated = (string) file_get_contents($this->target);
+        preg_match_all(
+            '/<FilesMatch "([^"]+)">\s*ExpiresActive Off\s*<\/FilesMatch>/',
+            $updated,
+            $matches
+        );
+        self::assertCount(2, $matches[1]);
+
+        // The PHP front controller remains the final filename after routing
+        // extensionless pages, Blog XML and private admin requests.
+        foreach (['index.php', 'page.html', 'fragment.htm', 'sitemap.xml', 'robots.txt'] as $filename) {
+            self::assertTrue($this->matchesAny($matches[1], $filename), $filename);
+        }
+        foreach (['bundle.js', 'theme.css', 'cover.avif', 'logo.png', 'font.woff2', 'feed.xml', 'notes.txt'] as $filename) {
+            self::assertFalse($this->matchesAny($matches[1], $filename), $filename);
+        }
+
+        // Only static discovery documents receive a CORE Cache-Control rule;
+        // PHP can retain no-store, no-cache or its own explicit public policy.
+        self::assertSame(1, substr_count($updated, 'Header set Cache-Control'));
+        self::assertStringContainsString(
+            'Header set Cache-Control "public, no-cache, must-revalidate"',
+            $updated
+        );
+    }
+
+    public function testDynamicExceptionsPreserveProjectAssetLifetimes(): void
+    {
+        $original = "<IfModule mod_expires.c>\n"
+            . "    ExpiresActive On\n"
+            . "    ExpiresByType image/avif \"access plus 1 year\"\n"
+            . "    ExpiresByType text/css \"access plus 1 month\"\n"
+            . "    ExpiresDefault \"access plus 1 week\"\n"
+            . "</IfModule>\n"
+            . "<FilesMatch \"\\.(?:css|js)$\">\n"
+            . "    Header set Cache-Control \"public, max-age=2592000\"\n"
+            . "</FilesMatch>\n";
+        $this->writeTarget($original);
+
+        self::assertTrue($this->synchronizer()->sync($this->root));
+        $updated = (string) file_get_contents($this->target);
+        self::assertStringStartsWith($original . "\n", $updated);
+        self::assertStringContainsString(
+            '<FilesMatch "\\.(?:php|html?)$">',
+            $updated
+        );
+        self::assertTrue($this->synchronizer()->sync($this->root));
+        self::assertSame($updated, file_get_contents($this->target));
+    }
+
     public function testCreatesOnlyTheCacheBlockWhenHtaccessIsMissing(): void
     {
         self::assertFileDoesNotExist($this->target);
@@ -212,5 +265,17 @@ final class ApacheDiscoveryCachePolicySynchronizerTest extends TestCase
     private function writeTarget(string $contents): void
     {
         $this->filesystem->dumpFile($this->target, $contents);
+    }
+
+    /** @param list<string> $patterns */
+    private function matchesAny(array $patterns, string $filename): bool
+    {
+        foreach ($patterns as $pattern) {
+            if (preg_match('~' . $pattern . '~', $filename) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -110,6 +110,9 @@ Antes de darlo por terminado:
 4. Hacer QA HTTP postdeploy: canonicalización de host/HTTPS, `200` para
    sitemap y robots, tipo de contenido correcto y
    `Cache-Control: public, no-cache, must-revalidate` sin `Expires` prolongado.
+   Con Blog o WebAdmin activos, comprobar además que sus respuestas PHP no
+   heredan una caducidad general del hosting que contradiga el `Cache-Control`
+   del runtime; conservar por separado la caché larga de los assets estáticos.
 5. Con Blog activo, comprobar `/blog-sitemap.xml`, su ETag, que no crea sesión
    y que una petición condicional puede devolver `304`.
 6. No aplicar migraciones automáticamente solo por configurar CI/CD. Preparar

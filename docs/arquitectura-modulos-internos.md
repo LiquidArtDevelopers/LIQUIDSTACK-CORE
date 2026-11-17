@@ -281,12 +281,17 @@ integración aditiva independiente, no como un fichero gestionado. Mantiene
 intacto todo lo situado fuera de sus dos marcadores y falla cerrado ante un
 destino enlazado, no regular, excesivo o con marcadores ambiguos. En un
 directorio `public` real puede crear un `.htaccess` ausente que contenga solo
-el bloque. La regla se limita a los nombres exactos `sitemap.xml` y
+el bloque. La regla de descubrimiento se limita a los nombres exactos `sitemap.xml` y
 `robots.txt`: desactiva para ellos `mod_expires` y fija
 `Cache-Control: public, no-cache, must-revalidate`, de modo que no hereden un
 `ExpiresDefault` semanal. El contenido de ambos documentos continúa siendo
 project-owned y los proxies o CDN externos deben respetar esa cabecera o
 purgarse mediante su propia configuración operativa.
+
+El mismo bloque desactiva la generación automática de `Expires` y `max-age`
+para ficheros PHP y HTML, incluido el front controller tras la reescritura.
+Así conserva el `Cache-Control` propio de Blog y WebAdmin sin añadir una
+caducidad heredada del hosting; las reglas de caché de assets no se modifican.
 
 ### Perfiles de conexión modular
 
