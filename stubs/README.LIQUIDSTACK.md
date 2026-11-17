@@ -19,6 +19,17 @@ Para generar producción:
 npm run build
 ```
 
+### PHP web en Dinahosting
+
+Con WebAdmin activo, CORE crea `public/.php.ini` si falta, con
+`zend.exception_ignore_args=On`, y preserva cualquier copia existente.
+Al desplegar en Dinahosting, incluye este archivo oculto junto al `index.php`
+del document root efectivo (`www`), no en la raíz privada del backend.
+Comprueba que PHP web aplica la directiva: el valor del CLI no lo demuestra.
+Otros proveedores pueden requerir otro mecanismo; si el hosting impide el
+cambio, soporte debe activarlo y recargar PHP. No lo sustituyas por `ini_set`
+ni desactives la protección de WebAdmin.
+
 ## Actualizar CORE sin cambiar los módulos activos
 
 ```powershell

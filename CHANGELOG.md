@@ -4,6 +4,32 @@ Todas las versiones de `liquidstack/core` siguen [Semantic Versioning](https://s
 
 ## [Unreleased]
 
+## [1.36.1] - 2026-11-17
+
+### Corregido
+
+- WebAdmin conserva en el log interno el código específico de protección de
+  argumentos de excepciones; el visitante sigue recibiendo un 503 genérico.
+- `doctor` puede inspeccionar assets modulares y el manifest de Blog bajo
+  `www` cuando el despliegue no contiene `public`, sin ocultar un `public`
+  existente pero inválido ni aceptar raíces enlazadas.
+- El icono de pausa de `sectionBlogSlider02` hereda el color del botón y
+  mantiene el contraste al hacer hover.
+
+### Añadido
+
+- WebAdmin instala `public/.php.ini` para Dinahosting únicamente si no existe,
+  con `zend.exception_ignore_args=On`; Blog y Commerce lo reciben por su
+  dependencia. La skill de despliegue recuerda incluir el dotfile en el
+  document root y verificar el PHP web efectivo, además del CLI.
+
+### Actualización
+
+- Ejecutar `composer update liquidstack/core` y desplegar también el fichero
+  público `.php.ini` si el hosting utiliza este mecanismo. Una configuración
+  existente se conserva; otros proveedores pueden requerir soporte o su
+  configuración PHP propia. No se ejecutan migraciones ni cambios de datos.
+
 ## [1.36.0] - 2026-09-30
 
 ### Añadido

@@ -21,6 +21,12 @@
     },
     "project_files": [
         {
+            "source": "published/.php.ini",
+            "target": "public/.php.ini",
+            "type": "file",
+            "policy": "install_if_missing"
+        },
+        {
             "source": "published/assets",
             "target": "public/assets/modules/webadmin",
             "type": "dir",

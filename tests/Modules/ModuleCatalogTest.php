@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Core\Modules\ModuleCatalog;
 use App\Core\Modules\ModulePublishedSourceFinder;
 use App\Core\Modules\ModuleSelection;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -78,6 +79,62 @@ final class ModuleCatalogTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('módulo desconocido missing');
         ModuleCatalog::fromModulesRoot($this->fixtureRoot);
+    }
+
+    public function testWebadminPublishesOnlyAMissingPhpIniSeed(): void
+    {
+        $coreRoot = dirname(__DIR__, 2);
+        $files = ModuleCatalog::fromCoreRoot($coreRoot)
+            ->get('webadmin')->projectFiles();
+        $seed = array_values(array_filter(
+            $files,
+            static fn (array $entry): bool => $entry['target'] === 'public/.php.ini'
+        ));
+
+        self::assertCount(1, $seed);
+        self::assertSame('file', $seed[0]['type']);
+        self::assertSame('install_if_missing', $seed[0]['policy']);
+        self::assertSame(
+            ['zend.exception_ignore_args' => true],
+            parse_ini_file(
+                $coreRoot . '/modules/webadmin/' . $seed[0]['source'],
+                false,
+                INI_SCANNER_TYPED
+            )
+        );
+    }
+
+    #[DataProvider('unsafePhpIniTargets')]
+    public function testPhpIniSeedCannotExpandPublicationPermissions(
+        string $id,
+        string $target,
+        string $type,
+        string $policy
+    ): void {
+        $manifest = $this->manifest($id, 'liquidstack/' . $id);
+        $manifest['project_files'] = [[
+            'source' => 'published/.php.ini',
+            'target' => $target,
+            'type' => $type,
+            'policy' => $policy,
+        ]];
+        $this->writeManifest($id, $manifest);
+
+        $this->expectException(RuntimeException::class);
+        ModuleCatalog::fromModulesRoot($this->fixtureRoot);
+    }
+
+    public static function unsafePhpIniTargets(): array
+    {
+        return [
+            'foreign module' => ['blog', 'public/.php.ini', 'file', 'install_if_missing'],
+            'public directory' => ['webadmin', 'public', 'dir', 'install_if_missing'],
+            'ini directory' => ['webadmin', 'public/.php.ini', 'dir', 'install_if_missing'],
+            'other ini' => ['webadmin', 'public/php.ini', 'file', 'install_if_missing'],
+            'private environment' => ['webadmin', '.env', 'file', 'install_if_missing'],
+            'public environment' => ['webadmin', 'public/.env', 'file', 'install_if_missing'],
+            'overwrite policy' => ['webadmin', 'public/.php.ini', 'file', 'managed_hash'],
+        ];
     }
 
     public function testSelectionRejectsCircularDependencies(): void

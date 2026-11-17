@@ -90,7 +90,13 @@ final class WebAdminHttpRuntimeFactory implements
         WebAdminConfig $config
     ): WebAdminHttpRuntime {
         try {
-            ExceptionTraceGuard::assertEnabled();
+            try {
+                ExceptionTraceGuard::assertEnabled();
+            } catch (\RuntimeException) {
+                throw new WebAdminHttpRuntimeException(
+                    'webadmin.security.exception_trace_arguments_enabled'
+                );
+            }
             if (!PasswordHasher::runtimeSupportsArgon2id()) {
                 throw new WebAdminHttpRuntimeException(
                     'webadmin.password_policy_unsupported'

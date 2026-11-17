@@ -10,7 +10,8 @@ final class PhpErrorLogWebAdminRuntimeIssueReporter implements
     public function report(string $issueCode): void
     {
         if (
-            preg_match('/\Awebadmin\.[a-z0-9_]+\z/', $issueCode) !== 1
+            $issueCode !== 'webadmin.security.exception_trace_arguments_enabled'
+            && preg_match('/\Awebadmin\.[a-z0-9_]+\z/', $issueCode) !== 1
         ) {
             $issueCode = 'webadmin.runtime_unavailable';
         }

@@ -74,6 +74,48 @@ final class InstallerModuleSyncTest extends TestCase
         );
     }
 
+    public function testPhpIniSeedFollowsWebadminWithoutScssAndPreservesOverrides(): void
+    {
+        $manifestPath = $this->modulesRoot . '/webadmin/module.json';
+        $manifest = json_decode(
+            (string) file_get_contents($manifestPath),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        array_unshift($manifest['project_files'], [
+            'source' => 'published/.php.ini',
+            'target' => 'public/.php.ini',
+            'type' => 'file',
+            'policy' => 'install_if_missing',
+        ]);
+        $this->filesystem->dumpFile(
+            $manifestPath,
+            json_encode($manifest, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)
+        );
+        $contents = "zend.exception_ignore_args = On\n";
+        $this->filesystem->dumpFile(
+            $this->modulesRoot . '/webadmin/published/.php.ini',
+            $contents
+        );
+        $target = $this->projectRoot . '/public/.php.ini';
+
+        $this->sync([], false);
+        self::assertFileDoesNotExist($target);
+
+        $this->sync(['liquidstack/blog'], false);
+        self::assertSame($contents, file_get_contents($target));
+        $repeat = $this->sync(['liquidstack/blog'], false);
+        self::assertSame(0, $repeat->stats()['added']);
+        self::assertSame(0, $repeat->stats()['updated']);
+        self::assertSame($contents, file_get_contents($target));
+
+        $custom = "zend.exception_ignore_args = On\nmemory_limit = 256M\n";
+        $this->filesystem->dumpFile($target, $custom);
+        $this->sync(['liquidstack/webadmin'], false);
+        self::assertSame($custom, file_get_contents($target));
+    }
+
     public function testMissingModuleOriginPreventsPartialPublication(): void
     {
         $manifestPath = $this->modulesRoot
@@ -481,7 +523,10 @@ final class InstallerModuleSyncTest extends TestCase
     /**
      * @param list<string> $requirements
      */
-    private function sync(array $requirements): ManagedFileSynchronizer
+    private function sync(
+        array $requirements,
+        bool $includeStandardResources = true
+    ): ManagedFileSynchronizer
     {
         $io = new BufferIO();
         $catalog = ModuleCatalog::fromModulesRoot($this->modulesRoot);
@@ -500,7 +545,7 @@ final class InstallerModuleSyncTest extends TestCase
         (new ModuleProjectFileSynchronizer(
             $this->projectRoot,
             $io
-        ))->queue($selection, $synchronizer);
+        ))->queue($selection, $synchronizer, $includeStandardResources);
         $synchronizer->apply();
 
         return $synchronizer;

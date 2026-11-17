@@ -222,6 +222,41 @@ final class WebAdminHttpRuntimeFactoryTest extends TestCase
         }
     }
 
+    public function testExceptionTraceArgumentsFailWithSpecificCodeBeforeConnecting(): void
+    {
+        $calls = 0;
+        $factory = new WebAdminHttpRuntimeFactory(
+            dirname(__DIR__, 3),
+            static function () use (&$calls): PdoConnectionFactoryInterface {
+                ++$calls;
+                throw new RuntimeException('must not connect');
+            }
+        );
+        $context = new ModuleRuntimeContext($this->projectRoot, [
+            WebAdminHttpRuntimeFactory::SECURITY_KEY_ENV
+                => 'private-test-value-must-not-leak',
+        ]);
+        self::assertNotFalse(ini_set('zend.exception_ignore_args', '0'));
+
+        try {
+            $factory->create($context, WebAdminConfig::defaults());
+            self::fail('Exception trace arguments must fail closed.');
+        } catch (WebAdminHttpRuntimeException $exception) {
+            self::assertSame(
+                'webadmin.security.exception_trace_arguments_enabled',
+                $exception->issueCode()
+            );
+            self::assertSame(
+                'WebAdmin runtime is unavailable.',
+                $exception->getMessage()
+            );
+            self::assertNull($exception->getPrevious());
+        } finally {
+            ini_set('zend.exception_ignore_args', '1');
+        }
+        self::assertSame(0, $calls);
+    }
+
     public function testInvalidSecurityKeyFailsBeforeConnectingAndNeverLeaks(): void
     {
         $calls = 0;

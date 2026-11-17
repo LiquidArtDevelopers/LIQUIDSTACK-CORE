@@ -103,6 +103,14 @@ duplica en el proyecto. Solo los ficheros declarados expresamente en
 namespace propio del módulo en `public/assets/modules`, `src/js/modules` o
 `src/scss/modules`.
 
+WebAdmin puede sembrar además el destino exacto `public/.php.ini`, únicamente
+como fichero `install_if_missing`. Contiene la protección de argumentos en
+trazas para hostings como Dinahosting, no secretos, y se publica incluso sin
+contrato SCSS. No concede acceso a otros INI ni a directorios públicos y no
+sobrescribe la configuración existente del consumidor. El despliegue debe
+incluir el dotfile en el document root efectivo y verificar que PHP web lo carga;
+su presencia no sustituye esa comprobación ni configura otros proveedores.
+
 Un módulo puede declarar además una lista cerrada `resources` para publicar
 recursos visuales LiquidStack en sus rutas estándar. Cada identificador se
 valida y habilita exclusivamente sus ficheros exactos de controlador, template,
@@ -369,6 +377,10 @@ estrictamente de solo lectura: valida el contrato PDO, compara el registro de
 migraciones con el catálogo y verifica las postcondiciones del esquema. La
 salida estructurada contiene nombres de variables y códigos estables, nunca
 credenciales, correos, claves, DSN, SQL o mensajes internos del driver.
+Los diagnósticos de assets y del manifest Vite aceptan `www` cuando no existe
+`public`. Si ambos existen, prevalece `public`; un directorio público inválido
+o enlazado no autoriza a inspeccionar silenciosamente otro destino. Esta
+resolución es de solo lectura y no cambia los targets de Composer ni el runtime.
 Con Blog activo también distingue el fallback público `standalone` del shell
 `project`, verifica su composición, dependencias, metadata/nonce, bundle y
 política CSP efectiva, incluida la autorización de CookieLad cuando se detecta
@@ -532,6 +544,9 @@ bcrypt según el host. La clave se genera una vez, se guarda fuera del
 repositorio y no se rota mediante Composer. El sentinel público
 `EXAMPLE_ONLY_CHANGE_ME_BEFORE_REAL_USE_0000` se considera inválido en el mismo
 parser canónico que comparten runtime y diagnóstico.
+Si la protección de argumentos está desactivada, el log HTTP conserva el código
+`webadmin.security.exception_trace_arguments_enabled`; la respuesta pública
+permanece en 503 genérico y nunca incorpora la excepción original.
 
 Las contraseñas nuevas exigen ocho caracteres Unicode, minúscula, mayúscula,
 número y signo, además de UTF-8 válido y un máximo de 1024 bytes. Esa

@@ -20,6 +20,7 @@ use App\Core\Modules\Blog\BlogMigrationRequirements;
 use App\Core\Modules\Blog\BlogTagCapabilitySeedPostcondition;
 use App\Core\Modules\Blog\BlogTagSchemaMigrationPostconditionVerifier;
 use App\Core\Modules\Diagnostics\ProjectAssetInspector;
+use App\Core\Modules\Diagnostics\ProjectPublicRootResolver;
 use App\Core\WebAdmin\Configuration\WebAdminConfigException;
 use App\Core\WebAdmin\Configuration\WebAdminConfig;
 use App\Core\WebAdmin\Configuration\WebAdminConfigLoader;
@@ -2243,8 +2244,10 @@ final class BlogDiagnosticService
         string $projectRoot,
         string $runtimeEnvironment
     ): array {
+        $publicDirectory = (new ProjectPublicRootResolver())
+            ->relativeDirectory($projectRoot);
         $base = [
-            'path' => self::PRODUCTION_MANIFEST,
+            'path' => ($publicDirectory ?? 'public') . '/.vite/manifest.json',
             'entry' => self::PROJECT_ARTICLE_SOURCE_ENTRY,
             'environment' => $runtimeEnvironment,
         ];
@@ -2264,9 +2267,10 @@ final class BlogDiagnosticService
         }
 
         $manifestPath = rtrim($projectRoot, '/\\')
-            . '/public/.vite/manifest.json';
+            . '/' . ($publicDirectory ?? 'public') . '/.vite/manifest.json';
         if (
-            !is_file($manifestPath)
+            $publicDirectory === null
+            || !is_file($manifestPath)
             || is_link($manifestPath)
             || !is_readable($manifestPath)
         ) {

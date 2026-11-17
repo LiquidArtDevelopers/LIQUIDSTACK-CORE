@@ -294,6 +294,11 @@ final class ModuleProjectFileSynchronizer
         string $target,
         string $moduleId
     ): bool {
+        // Runtime seed: it must not depend on a frontend SCSS contract.
+        if ($moduleId === 'webadmin' && $target === 'public/.php.ini') {
+            return true;
+        }
+
         foreach ([
             'public/assets/modules/' . $moduleId,
             'src/js/modules/' . $moduleId,

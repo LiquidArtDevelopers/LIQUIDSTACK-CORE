@@ -777,7 +777,7 @@ PHP
         );
     }
 
-    public function testProjectShellRequiresCompleteManifestInProduction(): void
+    public function testProjectShellRequiresCompleteManifestInProductionInPublicOrWww(): void
     {
         $this->writeProjectArticleShell();
         $service = new BlogDiagnosticService();
@@ -843,6 +843,28 @@ PHP
         );
         self::assertTrue($ready['public_shell']['ready']);
         self::assertSame([], $ready['public_shell']['issues']);
+
+        $this->filesystem->rename($this->root . '/public', $this->root . '/www');
+        $relocated = $service->inspect(
+            $this->root,
+            ['es', 'en'],
+            $environment,
+            '/admin',
+            true,
+            $this->appliedPlan(),
+            true
+        )->toArray();
+
+        self::assertTrue($relocated['public_shell']['ready']);
+        self::assertTrue($relocated['readiness']['blog_ready']);
+        self::assertSame(
+            'www/.vite/manifest.json',
+            $relocated['public_shell']['production_manifest']['path']
+        );
+        self::assertSame(
+            'ready',
+            $relocated['public_shell']['production_manifest']['status']
+        );
     }
 
     public function testProductionManifestKeepsCssAndJavascriptExtensionsDistinct(): void

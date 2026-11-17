@@ -367,6 +367,12 @@ final class ModuleDefinition
                     $manifestPath
                 ));
             }
+            if ($target === 'public/.php.ini' && $policy !== 'install_if_missing') {
+                throw new RuntimeException(sprintf(
+                    'public/.php.ini solo admite install_if_missing en %s.',
+                    $manifestPath
+                ));
+            }
             if (
                 $policy === 'merge_json_additive'
                 && (
@@ -531,6 +537,10 @@ final class ModuleDefinition
         string $type,
         array $resources
     ): void {
+        if ($id === 'webadmin' && $type === 'file' && $target === 'public/.php.ini') {
+            return;
+        }
+
         $roots = [
             'public/assets/modules/' . $id,
             'src/js/modules/' . $id,

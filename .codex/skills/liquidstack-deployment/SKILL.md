@@ -45,6 +45,23 @@ description: "Configuración, revisión y validación de CI/CD y despliegues de 
 - En local, restaurar el perfil de desarrollo tras probar un build. En CI el
   job es efímero y debe conservar el perfil de producción hasta empaquetar.
 
+## PHP web y Dinahosting
+
+- Con WebAdmin activo, directamente o por otro módulo, CORE instala
+  `public/.php.ini` solo si falta, con `zend.exception_ignore_args=On`.
+  Las personalizaciones existentes se preservan; no trasladarlo a la raíz
+  privada del backend ni tratarlo como un `.env`.
+- En Dinahosting, incluir este dotfile en el artefacto/FTP junto al `index.php`
+  del document root efectivo (`www` en su topología habitual). No asumir que
+  copiarlo al servidor activa la directiva: comprobar el valor efectivo de PHP
+  web por separado del CLI. Otros proveedores pueden usar otro mecanismo.
+  Referencia del proveedor: [modificar parámetros PHP](https://dinahosting.com/ayuda/como-modificar-parametros-php/).
+- Si PHP-FPM o la configuración del hosting impiden aplicarlo, pedir a soporte
+  que active la directiva y recargue el servicio. No sustituirlo por `ini_set`,
+  relajar el guard de seguridad ni publicar un `phpinfo()` con datos sensibles.
+- Mantener también DB y Media privadas y persistentes: este fichero no
+  sustituye su promoción ni autoriza copiar `.env` o storage dentro de `www`.
+
 ## Sitemap estático
 
 - `App/tools/build-sitemap.php` construye `public/sitemap.xml` desde

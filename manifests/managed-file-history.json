@@ -343,6 +343,7 @@
         "modules/blog/resources/project/src/scss/resources/_sectionBlogSlider02.scss": [
             "sha256:068f0aefba24600469db88df0d9a53b69775f5195c1d63ea5bb61483b9d508a8",
             "sha256:0e9a4d98330c3ec7d5c04770ace952c78e9fd3a606874ff02110248136a37ea1",
+            "sha256:411a8508efa3e77a8fbb050a5490039412c608ba29656132475e448a8fcc8903",
             "sha256:4b58e71a7e07da5c72e64ccce48fd4097ca742fb80e349a83f378c8907df9916"
         ],
         "modules/blog/resources/project/src/scss/resources/_sectionBlogStack01.scss": [
@@ -2515,7 +2516,8 @@
             "sha256:2b7b6a0f355a768c29e0c4390199b9230646dcaa2b17cafd68f64b89b7e39f31",
             "sha256:36fd730a85544d0fe49d9cc5130e26280225b590f9f254f14caac863b9033d71",
             "sha256:9dd4ee06642f52e67d7f80c425fcec450f190458dc4093822a93d77f6188d7d8",
-            "sha256:c8968b5e4689886f344f46fadca2b93076df78c644d3dcbfb5ccabec2fe91428"
+            "sha256:c8968b5e4689886f344f46fadca2b93076df78c644d3dcbfb5ccabec2fe91428",
+            "sha256:e41077713a21057d5b548d403a071aef57d5f773a2124bd228e9da3930fe61b1"
         ],
         "stubs/public/index.php": [
             "sha256:908fe3651ac273a7a80c68f2f01066304541b78df05b0365464f7b34fbd048aa",

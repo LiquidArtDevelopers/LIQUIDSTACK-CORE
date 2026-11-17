@@ -43,6 +43,33 @@ final class PhpErrorLogWebAdminRuntimeIssueReporterTest extends TestCase
         );
     }
 
+    public function testExceptionTraceGuardCodeIsPreservedWithoutDetails(): void
+    {
+        $reporter = new PhpErrorLogWebAdminRuntimeIssueReporter();
+        $reporter->report('webadmin.security.exception_trace_arguments_enabled');
+
+        $contents = (string) file_get_contents($this->errorLog);
+        self::assertStringContainsString(
+            '[LiquidStack WebAdmin] '
+                . 'webadmin.security.exception_trace_arguments_enabled',
+            $contents
+        );
+        self::assertStringNotContainsString('webadmin.runtime_unavailable', $contents);
+    }
+
+    public function testUnknownNestedIssueCodeIsStillRedacted(): void
+    {
+        $reporter = new PhpErrorLogWebAdminRuntimeIssueReporter();
+        $reporter->report('webadmin.security.private_context');
+
+        $contents = (string) file_get_contents($this->errorLog);
+        self::assertStringContainsString(
+            '[LiquidStack WebAdmin] webadmin.runtime_unavailable',
+            $contents
+        );
+        self::assertStringNotContainsString('private_context', $contents);
+    }
+
     public function testUnexpectedTextIsRedactedBeforeLogging(): void
     {
         $reporter = new PhpErrorLogWebAdminRuntimeIssueReporter();

@@ -65,6 +65,15 @@ final class ProjectAssetInspector
             return false;
         }
 
+        if (str_starts_with($asset, 'public/')) {
+            $publicDirectory = (new ProjectPublicRootResolver())
+                ->relativeDirectory($root);
+            if ($publicDirectory === null) {
+                return false;
+            }
+            $asset = $publicDirectory . substr($asset, strlen('public'));
+        }
+
         $path = $root . DIRECTORY_SEPARATOR . str_replace(
             '/',
             DIRECTORY_SEPARATOR,
